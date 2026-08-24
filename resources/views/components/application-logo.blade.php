@@ -1,0 +1,12 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" {{ $attributes->merge(['fill' => 'none']) }}>
+    <defs>
+        <linearGradient id="ngekos-gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#14b8a6" />
+            <stop offset="1" stop-color="#059669" />
+        </linearGradient>
+    </defs>
+    <rect width="64" height="64" rx="16" fill="url(#ngekos-gradient)" />
+    <path d="M13.5 30.5L32 13L50.5 30.5" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M19 27.5V48.5H45V27.5" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M26.5 48.5V37.5H37.5V48.5" stroke="#99f6e4" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -1,0 +1,161 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Booking;
+use App\Models\Kamar;
+use App\Models\Pembayaran;
+use App\Models\Penyewaan;
+use App\Models\Properti;
+use App\Models\Tagihan;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+
+class DomainDataSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $u = User::all()->keyBy('email');
+
+        $pemilikBudi = $u['pemilik1@ngekos.test'] ?? null;
+        $pemilikSiti = $u['pemilik2@ngekos.test'] ?? null;
+        $admin = $u['admin.ngekos@gmail.com'] ?? null;
+        $rina = $u['anak1@ngekos.test'] ?? null;
+        $yoga = $u['anak2@ngekos.test'] ?? null;
+        $maya = $u['anak3@ngekos.test'] ?? null;
+
+        if (! $pemilikBudi || ! $pemilikSiti || ! $admin || ! $rina || ! $yoga || ! $maya) {
+            return;
+        }
+
+        $melati = Properti::firstOrCreate(['nama' => 'Kos Melati'], [
+            'pemilik_id' => $pemilikBudi->id,
+            'kota' => 'Bandung',
+            'alamat' => 'Jl. Melati No. 12, Bandung',
+            'deskripsi' => 'Kos bersih dekat kampus, tersedia kamar AC.',
+            'fasilitas' => 'WiFi, Kamar mandi dalam, Kasur, Lemari',
+            'aturan' => 'Jam malam 23.00, dilarang membawa tamu menginap.',
+            'denda_per_hari' => 5000,
+            'status' => 'aktif',
+        ]);
+        $melati->admins()->syncWithoutDetaching([$admin->id]);
+
+        $mawar = Properti::firstOrCreate(['nama' => 'Kos Mawar'], [
+            'pemilik_id' => $pemilikBudi->id,
+            'kota' => 'Bandung',
+            'alamat' => 'Jl. Mawar No. 8, Bandung',
+            'deskripsi' => 'Kos murah dekat pasar, cocok untuk pekerja.',
+            'fasilitas' => 'WiFi, Dapur bersama, Parkir motor',
+            'aturan' => 'Dilarang merokok di dalam kamar.',
+            'denda_per_hari' => 5000,
+            'status' => 'aktif',
+        ]);
+        $mawar->admins()->syncWithoutDetaching([$admin->id]);
+
+        $anggrek = Properti::firstOrCreate(['nama' => 'Kos Anggrek'], [
+            'pemilik_id' => $pemilikSiti->id,
+            'kota' => 'Bandung',
+            'alamat' => 'Jl. Anggrek No. 3, Bandung',
+            'deskripsi' => 'Kos eksklusif dengan kamar luas ber-AC.',
+            'fasilitas' => 'AC, WiFi, Kulkas, Kamar mandi dalam',
+            'aturan' => 'Bebas jam malam, dilarang bising.',
+            'denda_per_hari' => 10000,
+            'status' => 'aktif',
+        ]);
+        $anggrek->admins()->syncWithoutDetaching([$admin->id]);
+
+        $a1 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A1'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'status' => 'tersedia',
+        ]);
+        $a2 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A2'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'status' => 'terisi',
+        ]);
+        $a3 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A3'], [
+            'kapasitas' => 2, 'harga_sewa_bulanan' => 1200000, 'status' => 'tersedia',
+        ]);
+
+        $b1 = Kamar::firstOrCreate(['properti_id' => $mawar->id, 'nama' => 'B1'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'status' => 'terisi',
+        ]);
+        $b2 = Kamar::firstOrCreate(['properti_id' => $mawar->id, 'nama' => 'B2'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'status' => 'tersedia',
+        ]);
+
+        $c1 = Kamar::firstOrCreate(['properti_id' => $anggrek->id, 'nama' => 'C1'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'status' => 'tersedia',
+        ]);
+        $c2 = Kamar::firstOrCreate(['properti_id' => $anggrek->id, 'nama' => 'C2'], [
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'status' => 'terisi',
+        ]);
+
+        Booking::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a1->id], [
+            'tanggal_booking' => now()->subDay()->toDateString(),
+            'status' => 'menunggu',
+            'catatan' => 'Ingin pindah bulan depan.',
+        ]);
+        Booking::firstOrCreate(['anak_kos_id' => $yoga->id, 'kamar_id' => $b2->id], [
+            'tanggal_booking' => now()->subDays(3)->toDateString(),
+            'status' => 'disetujui',
+            'catatan' => null,
+        ]);
+        Booking::firstOrCreate(['anak_kos_id' => $maya->id, 'kamar_id' => $c1->id], [
+            'tanggal_booking' => now()->subDays(2)->toDateString(),
+            'status' => 'menunggu',
+            'catatan' => 'Tanya soal harga bulanan.',
+        ]);
+
+        $sewaRina = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a2->id], [
+            'properti_id' => $melati->id,
+            'tanggal_masuk' => now()->subMonths(2)->startOfMonth()->toDateString(),
+            'status' => 'aktif',
+        ]);
+        $sewaYoga = Penyewaan::firstOrCreate(['anak_kos_id' => $yoga->id, 'kamar_id' => $b1->id], [
+            'properti_id' => $mawar->id,
+            'tanggal_masuk' => now()->subMonth()->startOfMonth()->toDateString(),
+            'status' => 'aktif',
+        ]);
+        Penyewaan::firstOrCreate(['anak_kos_id' => $maya->id, 'kamar_id' => $c2->id], [
+            'properti_id' => $anggrek->id,
+            'tanggal_masuk' => now()->subMonths(6)->startOfMonth()->toDateString(),
+            'tanggal_keluar' => now()->startOfMonth()->subDay()->toDateString(),
+            'status' => 'selesai',
+        ]);
+
+        $tagihanRinaJul = Tagihan::firstOrCreate(
+            ['penyewaan_id' => $sewaRina->id, 'periode' => now()->subMonth()->translatedFormat('F Y')],
+            ['jumlah' => 1000000, 'denda' => 0, 'jatuh_tempo' => now()->subMonth()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
+        );
+        $tagihanRinaAgu = Tagihan::firstOrCreate(
+            ['penyewaan_id' => $sewaRina->id, 'periode' => now()->translatedFormat('F Y')],
+            ['jumlah' => 1000000, 'denda' => 0, 'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'belum_bayar']
+        );
+        $tagihanYogaJul = Tagihan::firstOrCreate(
+            ['penyewaan_id' => $sewaYoga->id, 'periode' => now()->subMonth()->translatedFormat('F Y')],
+            ['jumlah' => 850000, 'denda' => 0, 'jatuh_tempo' => now()->subMonth()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
+        );
+        $tagihanYogaAgu = Tagihan::firstOrCreate(
+            ['penyewaan_id' => $sewaYoga->id, 'periode' => now()->translatedFormat('F Y')],
+            ['jumlah' => 850000, 'denda' => 0, 'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'belum_bayar']
+        );
+
+        Pembayaran::firstOrCreate(['tagihan_id' => $tagihanRinaJul->id, 'anak_kos_id' => $rina->id], [
+            'metode' => 'transfer',
+            'jumlah' => 1000000,
+            'status' => 'diverifikasi',
+            'diverifikasi_oleh' => $admin->id,
+            'verified_at' => now()->subMonth()->startOfMonth()->addDays(3),
+        ]);
+        Pembayaran::firstOrCreate(['tagihan_id' => $tagihanYogaJul->id, 'anak_kos_id' => $yoga->id], [
+            'metode' => 'transfer',
+            'jumlah' => 850000,
+            'status' => 'diverifikasi',
+            'diverifikasi_oleh' => $admin->id,
+            'verified_at' => now()->subMonth()->startOfMonth()->addDays(2),
+        ]);
+        Pembayaran::firstOrCreate(['tagihan_id' => $tagihanYogaAgu->id, 'anak_kos_id' => $yoga->id], [
+            'metode' => 'transfer',
+            'jumlah' => 850000,
+            'status' => 'menunggu_verifikasi',
+        ]);
+    }
+}

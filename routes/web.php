@@ -1,0 +1,77 @@
+<?php
+
+use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
+
+// Beranda publik: halaman pembuka (landing).
+Volt::route('/', 'pages.beranda')->name('home');
+
+// Katalog kos (publik).
+Volt::route('kos', 'pages.katalog.kos')->name('kos.index');
+
+// Detail kos (publik).
+Volt::route('kos/{properti}', 'pages.katalog.detail')->name('kos.detail');
+
+// Pusat bantuan: chatbot & hubungi admin.
+Volt::route('bantuan', 'pages.bantuan.index')->name('bantuan');
+Volt::route('bantuan/riwayat', 'pages.bantuan.riwayat')
+    ->middleware('auth')
+    ->name('bantuan.riwayat');
+Volt::route('bantuan/masuk', 'pages.bantuan.masuk')
+    ->middleware(['auth', 'verified', 'role:super_admin|admin'])
+    ->name('bantuan.masuk');
+
+// Chat penyewa <-> pemilik kos.
+Volt::route('chat', 'pages.chat.index')
+    ->middleware('auth')
+    ->name('chat.index');
+Volt::route('chat/{properti}', 'pages.chat.room')
+    ->middleware('auth')
+    ->name('chat.room');
+Volt::route('chat/{properti}/anak-kos/{anakKos}', 'pages.chat.room')
+    ->middleware('auth')
+    ->name('chat.room.anak');
+
+// Kelola pengguna & peran (khusus super admin).
+Volt::route('pengguna', 'pages.super-admin.pengguna')
+    ->middleware(['auth', 'verified', 'role:super_admin'])
+    ->name('pengguna');
+
+// Kelola kos (pemilik pemiliknya sendiri; admin/super admin mengelola semuanya).
+Volt::route('pemilik/properti', 'pages.pemilik.properti')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.properti');
+Volt::route('pemilik/properti/buat', 'pages.pemilik.properti-form')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.properti.buat');
+Volt::route('pemilik/properti/{properti}/ubah', 'pages.pemilik.properti-form')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.properti.ubah');
+Volt::route('pemilik/properti/{properti}/kamar', 'pages.pemilik.kamar')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.kamar');
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Entry point: arahkan ke dashboard sesuai role.
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::view('dashboard/super-admin', 'dashboard.super-admin')
+        ->middleware('role:super_admin')
+        ->name('dashboard.super-admin');
+    Route::view('dashboard/pemilik', 'dashboard.pemilik')
+        ->middleware('role:pemilik')
+        ->name('dashboard.pemilik');
+    Route::view('dashboard/admin', 'dashboard.admin')
+        ->middleware('role:admin')
+        ->name('dashboard.admin');
+    Route::view('dashboard/anak-kos', 'dashboard.anak-kos')
+        ->middleware('role:anak_kos')
+        ->name('dashboard.anak-kos');
+});
+
+Route::view('profile', 'profile')
+    ->middleware(['auth'])
+    ->name('profile');
+
+require __DIR__.'/auth.php';
