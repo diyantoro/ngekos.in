@@ -1,58 +1,202 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
+
+<img src="https://img.icons8.com/fluency/96/home.png" width="72" alt="Ngekos.in logo" />
+
+# Ngekos.in
+
+### Satu Aplikasi untuk Semua Urusan Kos —  Booking, Bayar, Pantau Kamar, sampai Check-out
+
+<br />
+
+[![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![Livewire](https://img.shields.io/badge/Livewire-3-4E56A6?style=for-the-badge&logo=livewire&logoColor=white)](https://livewire.laravel.com)
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+
+<br />
+
+[![Status](https://img.shields.io/badge/status-in%20development-yellow?style=flat-square)]()
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)]()
+[![Made with](https://img.shields.io/badge/made%20with-%E2%98%95%20%26%20Laravel-orange?style=flat-square)]()
+
+</div>
+
+<br />
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/palette/macchiato.png" width="0" height="0" alt="" />
 </p>
 
-## About Laravel
+> **Ngekos.in** menggantikan buku catatan, grup WhatsApp, dan spreadsheet kos dengan satu sistem digital yang rapi — dari calon penghuni cari kamar, booking, bayar sewa, sampai check-out, semuanya tercatat otomatis.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<br />
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📚 Daftar Isi
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- [Tentang Project](#-tentang-project)
+- [Fitur Utama](#-fitur-utama)
+- [Role Pengguna](#-role-pengguna)
+- [Tech Stack](#%EF%B8%8F-tech-stack)
+- [Alur Data](#-alur-data)
+- [Instalasi](#-instalasi--menjalankan-secara-lokal)
+- [Progress Pengembangan](#-progress-pengembangan)
+- [Kontributor](#-kontributor)
 
-## Learning Laravel
+<br />
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 🏡 Tentang Project
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Mengelola kos secara manual itu ribet — kamar mana yang masih kosong sering nggak jelas, tagihan telat gak ketahuan, dan booking cuma modal chat WhatsApp yang gampang kelewat.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+**Ngekos.in** hadir sebagai jembatan digital antara **Pemilik kos**, **Admin**, dan **Anak Kos** — satu platform, satu sumber kebenaran, tanpa drama.
 
-## Agentic Development
+<br />
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## ✨ Fitur Utama
 
-```bash
-composer require laravel/boost --dev
+<table>
+<tr>
+<td width="50%" valign="top">
 
-php artisan boost:install
+### 🛏️ Booking Kamar
+Cari kamar kosong, ajukan booking online, batalkan sendiri kalau berubah pikiran — sebelum di-ACC Admin.
+
+### 💸 Notifikasi Pembayaran
+Reminder otomatis H-3, H-1, jatuh tempo, sampai telat. Siklus tagihan fleksibel: **harian** atau **bulanan**.
+
+### 📊 Status Hunian Real-time
+Kosong, dipesan, terisi, atau maintenance — semua ke-update otomatis, gak perlu dicatat manual.
+
+</td>
+<td width="50%" valign="top">
+
+### 🔑 Check-in & Check-out
+Serah terima kamar tercatat digital, lengkap validasi tagihan sebelum check-out kelar.
+
+### ⏰ Denda Otomatis
+Telat bayar? Sistem hitung dendanya sendiri sesuai aturan tiap properti.
+
+### 🏘️ Multi-Properti
+Punya beberapa kos di lokasi berbeda? Satu akun Pemilik cukup untuk kelola semuanya.
+
+</td>
+</tr>
+</table>
+
+<br />
+
+## 👥 Role Pengguna
+
+<div align="center">
+
+| 🛡️ Role | Deskripsi Singkat |
+|:---|:---|
+| **Super Admin** | Kontrol penuh seluruh Pemilik & konfigurasi sistem |
+| **Admin** | Operasional harian properti yang ditugaskan Pemilik |
+| **Pemilik** | Kelola properti, kamar, harga, admin & laporan |
+| **Anak Kos** | Booking, pantau tagihan, upload bukti bayar |
+
+</div>
+
+<br />
+
+## 🛠️ Tech Stack
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=laravel,php,tailwind,mysql,html,css,js" />
+
+| Layer | Teknologi |
+|:---|:---|
+| **Backend** | Laravel 11 (PHP 8.3+) |
+| **Frontend** | Livewire 3 · Alpine.js · Tailwind CSS |
+| **Database** | MySQL 8 |
+| **Auth & Role** | Laravel Breeze · Spatie Laravel-Permission |
+| **Queue & Scheduler** | Laravel Queue · Task Scheduling |
+
+</div>
+
+<br />
+
+## 🔄 Alur Data
+
+```
+   Users ──┬── Properti ──── Kamar ──┬── Booking ──── Penyewaan ──┬── Tagihan ──── Pembayaran
+           │                          │                            │
+           └── Admin_Properti         └── status: kosong/terisi    └── Notifikasi
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+<br />
 
-## Contributing
+## 🚀 Instalasi & Menjalankan Secara Lokal
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+<details>
+<summary><b>Klik untuk lihat langkah instalasi lengkap</b></summary>
 
-## Code of Conduct
+<br />
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Prasyarat:** PHP ≥ 8.3 · Composer · Node.js & NPM · MySQL 8
 
-## Security Vulnerabilities
+```bash
+# 1️⃣ Clone repository
+git clone https://github.com/diyantoro/ngekos.in.git
+cd ngekos.in
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 2️⃣ Install dependency PHP
+composer install
 
-## License
+# 3️⃣ Salin file environment & generate app key
+cp .env.example .env
+php artisan key:generate
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 4️⃣ Atur koneksi database di file .env
+DB_DATABASE=ngekos_in
+DB_USERNAME=root
+DB_PASSWORD=
+
+# 5️⃣ Jalankan migration & seeder
+php artisan migrate --seed
+
+# 6️⃣ Install dependency frontend
+npm install
+npm run dev
+
+# 7️⃣ Jalankan server lokal
+php artisan serve
+```
+
+Aplikasi berjalan di **http://127.0.0.1:8000** 🎉
+
+</details>
+
+<br />
+
+## 📌 Progress Pengembangan
+
+- [x] Perencanaan produk (PRD) & skema database
+- [ ] Setup project & autentikasi multi-role
+- [ ] Manajemen properti & kamar
+- [ ] Modul booking
+- [ ] Modul check-in & check-out
+- [ ] Modul tagihan, pembayaran & denda otomatis
+- [ ] Notifikasi otomatis
+- [ ] Dashboard per role
+
+<br />
+
+## 👤 Kontributor
+
+<div align="center">
+
+**Diyantoro**
+Informatics Student · Universitas Teknologi Digital Indonesia (UTDI), Yogyakarta
+
+<br />
+
+⭐ Jangan lupa kasih star kalau project ini membantu!
+
+<br />
+
+Made with ☕ in Yogyakarta
+
+</div>
