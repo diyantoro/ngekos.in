@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Pengaturan;
 use App\Models\Penyewaan;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -57,7 +58,7 @@ class ProsesTagihan extends Command
                     'periode' => $bulan->translatedFormat('F Y'),
                     'jumlah' => $sewaan->kamar->harga_sewa_bulanan,
                     'denda' => 0,
-                    'jatuh_tempo' => $bulan->copy()->endOfMonth()->toDateString(),
+                    'jatuh_tempo' => Pengaturan::jatuhTempoUntuk($bulan)->toDateString(),
                     'status' => 'belum_bayar',
                 ]);
 
@@ -76,7 +77,8 @@ class ProsesTagihan extends Command
      */
     private function hitungDenda(Penyewaan $sewaan, Carbon $hariIni): int
     {
-        $dendaPerHari = (float) ($sewaan->properti?->denda_per_hari ?? 0);
+        // Denda per properti lebih diutamakan; bila kosong, pakai pengaturan global.
+        $dendaPerHari = (float) ($sewaan->properti?->denda_per_hari ?? Pengaturan::dendaPerHari());
 
         if ($dendaPerHari <= 0) {
             return 0;

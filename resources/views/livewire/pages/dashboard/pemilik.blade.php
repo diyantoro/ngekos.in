@@ -3,6 +3,7 @@
 use App\Models\Booking;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
+use App\Models\Pengaturan;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
@@ -153,7 +154,7 @@ new class extends Component
                 'status' => 'aktif',
             ]);
 
-            // Tagihan untuk seluruh durasi sewa, jatuh tempo tiap akhir bulan.
+            // Tagihan untuk seluruh durasi sewa, jatuh tempo sesuai pengaturan aplikasi.
             for ($i = 0; $i < $durasi; $i++) {
                 $bulan = $masuk->copy()->addMonthsNoOverflow($i);
 
@@ -161,7 +162,7 @@ new class extends Component
                     'periode' => $bulan->translatedFormat('F Y'),
                     'jumlah' => $kamar->harga_sewa_bulanan,
                     'denda' => 0,
-                    'jatuh_tempo' => $bulan->endOfMonth()->toDateString(),
+                    'jatuh_tempo' => Pengaturan::jatuhTempoUntuk($bulan)->toDateString(),
                     'status' => 'belum_bayar',
                 ]);
             }
@@ -305,6 +306,7 @@ new class extends Component
                         <p class="py-10 text-center text-sm text-gray-400">Belum ada properti. Tambahkan properti melalui menu kelola properti.</p>
                     @endforelse
                 @elseif ($tab === 'booking')
+                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -369,6 +371,7 @@ new class extends Component
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 @elseif ($tab === 'sewaan')
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">

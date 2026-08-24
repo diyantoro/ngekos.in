@@ -25,7 +25,7 @@ new class extends Component
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
                         <x-application-logo class="block h-9 w-9" />
-                        <span class="hidden sm:block text-lg font-bold text-gray-800">Ngekos<span class="text-teal-600">.in</span></span>
+                        <x-brand-name class="hidden sm:block text-lg font-bold text-gray-800" />
                     </a>
                 </div>
 
@@ -68,6 +68,9 @@ new class extends Component
                     <x-nav-link :href="route('bantuan')" :active="request()->routeIs('bantuan')" wire:navigate>
                         {{ __('Bantuan') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('pengaturan')" :active="request()->routeIs('pengaturan')" wire:navigate>
+                        {{ __('Pengaturan') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -93,8 +96,8 @@ new class extends Component
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile')" wire:navigate>
-                            {{ __('Profile') }}
+                        <x-dropdown-link :href="route('pengaturan')" wire:navigate>
+                            {{ __('Pengaturan') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -156,6 +159,9 @@ new class extends Component
             <x-responsive-nav-link :href="route('bantuan')" :active="request()->routeIs('bantuan')" wire:navigate>
                 {{ __('Bantuan') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('pengaturan')" :active="request()->routeIs('pengaturan')" wire:navigate>
+                {{ __('Pengaturan') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
@@ -166,8 +172,8 @@ new class extends Component
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile')" wire:navigate>
-                    {{ __('Profile') }}
+                <x-responsive-nav-link :href="route('pengaturan')" :active="request()->routeIs('pengaturan')" wire:navigate>
+                    {{ __('Pengaturan') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->

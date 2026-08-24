@@ -154,7 +154,7 @@ new class extends Component
 
         <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     <button wire:click="$set('tab', 'booking')"
                         class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'booking' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                         Booking

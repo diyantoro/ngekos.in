@@ -70,7 +70,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('dashboard.anak-kos');
 });
 
-Route::view('profile', 'profile')
+// Pengaturan aplikasi: situs & kos (super admin), profil, notifikasi (semua role).
+Volt::route('pengaturan', 'pages.pengaturan')
+    ->middleware(['auth', 'verified'])
+    ->name('pengaturan');
+
+// Halaman profile lama diarahkan ke pengaturan agar tautan lama tetap jalan.
+Route::redirect('profile', '/pengaturan')
     ->middleware(['auth'])
     ->name('profile');
 

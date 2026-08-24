@@ -321,7 +321,8 @@ new class extends Component
                         <p class="py-10 text-center text-sm text-gray-400">Tidak ada kamar tersedia.</p>
                     @endforelse
                 @elseif ($tab === 'booking')
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                        <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Kamar</th>
@@ -356,6 +357,7 @@ new class extends Component
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 @elseif ($tab === 'sewaan')
                     <div class="space-y-4">
                         @forelse ($sewaans as $sewaan)
@@ -415,7 +417,8 @@ new class extends Component
                         @endforelse
                     </div>
                 @elseif ($tab === 'tagihan')
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                        <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode</th>
@@ -452,8 +455,10 @@ new class extends Component
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 @else
-                    <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                        <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode</th>
@@ -489,6 +494,7 @@ new class extends Component
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 @endif
             </div>
         </div>

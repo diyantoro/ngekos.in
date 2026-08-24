@@ -40,7 +40,35 @@ new class extends Component
                 ->latest()
                 ->limit(10)
                 ->get(),
+            'pembayarans' => Pembayaran::with(['anakKos', 'tagihan'])
+                ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
+                ->latest()
+                ->limit(15)
+                ->get(),
         ];
+    }
+
+    public function verifikasiPembayaran(int $id): void
+    {
+        $pembayaran = Pembayaran::with('anakKos', 'tagihan')
+            ->find($id);
+
+        if (! $pembayaran || $pembayaran->status !== 'menunggu_verifikasi') {
+            return;
+        }
+
+        $pembayaran->update([
+            'status' => 'diverifikasi',
+            'diverifikasi_oleh' => auth()->id(),
+            'verified_at' => now(),
+        ]);
+
+        $tagihan = $pembayaran->tagihan;
+        $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
+
+        if ($total >= $tagihan->jumlah + $tagihan->denda) {
+            $tagihan->update(['status' => 'lunas']);
+        }
     }
 }; ?>
 
@@ -69,7 +97,7 @@ new class extends Component
 
         <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                     <button wire:click="$set('tab', 'properti')"
                         class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'properti' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                         Properti
@@ -81,6 +109,10 @@ new class extends Component
                     <button wire:click="$set('tab', 'booking')"
                         class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'booking' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
                         Booking
+                    </button>
+                    <button wire:click="$set('tab', 'pembayaran')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Pembayaran
                     </button>
                 </div>
                 <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari data..."
@@ -154,6 +186,56 @@ new class extends Component
                                 </tr>
                             @empty
                                 <tr><td colspan="4" class="px-6 py-10 text-center text-sm text-gray-400">Tidak ada pengguna yang cocok.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                @elseif ($tab === 'pembayaran')
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anak Kos</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Metode</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bukti</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse ($pembayarans as $pembayaran)
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->metode }}</td>
+                                    <td class="px-6 py-4 text-sm">
+                                        @if ($pembayaran->bukti)
+                                            <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
+                                                class="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 hover:underline">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                Lihat
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Tidak ada</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4"><x-status-badge :status="$pembayaran->status" /></td>
+                                    <td class="px-6 py-4">
+                                        @if ($pembayaran->status === 'menunggu_verifikasi')
+                                            <div class="flex justify-end">
+                                                <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:loading.attr="disabled"
+                                                    class="inline-flex items-center rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition">
+                                                    Verifikasi
+                                                </button>
+                                            </div>
+                                        @else
+                                            <span class="block text-right text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-400">Belum ada pembayaran.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

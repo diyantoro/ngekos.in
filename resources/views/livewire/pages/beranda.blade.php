@@ -132,7 +132,7 @@ new #[Layout('layouts.publik')] class extends Component
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 space-y-16">
         <div class="text-center max-w-2xl mx-auto">
             <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Semua Kebutuhan Kos, Satu Aplikasi</h2>
-            <p class="mt-3 text-gray-500">Dari pencarian pertama sampai pembayaran bulanan, Ngekos.in menghilangkan catatan manual dan chat yang berantakan.</p>
+            <p class="mt-3 text-gray-500">Dari pencarian pertama sampai pembayaran bulanan, {{ \App\Models\Pengaturan::namaSitus() }} menghilangkan catatan manual dan chat yang berantakan.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
