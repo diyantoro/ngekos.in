@@ -63,7 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:pemilik')
         ->name('dashboard.pemilik');
     Route::view('dashboard/admin', 'dashboard.admin')
-        ->middleware('role:admin')
+        ->middleware('role:admin|super_admin')
         ->name('dashboard.admin');
     Route::view('dashboard/anak-kos', 'dashboard.anak-kos')
         ->middleware('role:anak_kos')

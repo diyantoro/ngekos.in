@@ -25,8 +25,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'properti.kelola-admin',
             // Kamar (Modul 2)
             'kamar.lihat', 'kamar.buat', 'kamar.ubah', 'kamar.hapus',
-            // Booking (Modul 3)
-            'booking.lihat', 'booking.buat', 'booking.ubah', 'booking.batal', 'booking.hapus',
             // Penyewaan / check-in-out (Modul 4)
             'penyewaan.lihat', 'penyewaan.buat', 'penyewaan.ubah', 'penyewaan.hapus',
             // Tagihan & Pembayaran (Modul 5)
@@ -46,13 +44,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'pemilik' => array_values(array_diff($permissions, ['konfigurasi.kelola'])),
             'admin' => [
                 'kamar.lihat', 'kamar.ubah',
-                'booking.lihat', 'booking.ubah',
                 'penyewaan.lihat', 'penyewaan.buat', 'penyewaan.ubah',
                 'tagihan.lihat', 'tagihan.ubah',
                 'pembayaran.lihat', 'pembayaran.verifikasi',
             ],
             'anak_kos' => [
-                'booking.lihat', 'booking.buat', 'booking.batal',
                 'penyewaan.lihat',
                 'tagihan.lihat',
                 'pembayaran.lihat', 'pembayaran.buat',

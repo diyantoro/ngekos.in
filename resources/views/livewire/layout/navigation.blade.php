@@ -5,32 +5,25 @@ use Livewire\Volt\Component;
 
 new class extends Component
 {
-    /**
-     * Log the current user out of the application.
-     */
     public function logout(Logout $logout): void
     {
         $logout();
-
         $this->redirect('/', navigate: true);
     }
 }; ?>
 
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
-    <!-- Primary Navigation Menu -->
+<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
+        <div class="flex justify-between h-14">
             <div class="flex">
-                <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2.5">
-                        <x-application-logo class="block h-9 w-9" />
+                    <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2">
+                        <x-application-logo class="h-8 w-8" />
                         <x-brand-name class="hidden sm:block text-lg font-bold text-gray-800" />
                     </a>
                 </div>
 
-                <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-1 sm:-my-px sm:ms-6 sm:flex items-center">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -40,12 +33,10 @@ new class extends Component
                     @if (auth()->user()->hasAnyRole(['anak_kos', 'pemilik']))
                         <x-nav-link :href="route('chat.index')" :active="request()->routeIs('chat.*')" wire:navigate>
                             {{ __('Pesan') }}
-                            @php
-                                $pesanBelumDibaca = auth()->user()->pesanBelumDibaca();
-                            @endphp
-                            @if ($pesanBelumDibaca > 0)
+                            @php $unread = auth()->user()->pesanBelumDibaca(); @endphp
+                            @if ($unread > 0)
                                 <span class="ms-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white align-middle">
-                                    {{ $pesanBelumDibaca > 9 ? '9+' : $pesanBelumDibaca }}
+                                    {{ $unread > 9 ? '9+' : $unread }}
                                 </span>
                             @endif
                         </x-nav-link>
@@ -74,24 +65,22 @@ new class extends Component
                 </div>
             </div>
 
-            <!-- Settings Dropdown -->
+            <!-- Settings Dropdown with Avatar -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div x-data="{{ json_encode(['nama' => auth()->user()->nama]) }}" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"></div>
-
-                            @if (auth()->user()->roles->isNotEmpty())
-                                <span class="ms-2 hidden md:inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-200">
-                                    {{ str(auth()->user()->roles->first()->name)->replace('_', ' ')->title() }}
-                                </span>
-                            @endif
-
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
+                        <button class="inline-flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-100 transition">
+                            <x-user-avatar size="sm" />
+                            <div class="text-left hidden md:block">
+                                <div x-data="{{ json_encode(['nama' => auth()->user()->nama]) }}" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"
+                                     class="text-sm font-semibold text-gray-700 leading-tight"></div>
+                                @if (auth()->user()->roles->isNotEmpty())
+                                    <span class="text-[10px] font-medium text-teal-600">
+                                        {{ str(auth()->user()->roles->first()->name)->replace('_', ' ')->title() }}
+                                    </span>
+                                @endif
                             </div>
+                            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
                     </x-slot>
 
@@ -99,8 +88,6 @@ new class extends Component
                         <x-dropdown-link :href="route('pengaturan')" wire:navigate>
                             {{ __('Pengaturan') }}
                         </x-dropdown-link>
-
-                        <!-- Authentication -->
                         <button wire:click="logout" class="w-full text-start">
                             <x-dropdown-link>
                                 {{ __('Log Out') }}
@@ -110,21 +97,21 @@ new class extends Component
                 </x-dropdown>
             </div>
 
-            <!-- Hamburger -->
+            <!-- Hamburger (mobile) -->
             <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
+    <!-- Responsive Menu -->
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-t border-gray-100 bg-white">
+        <div class="px-4 pt-3 pb-2 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
@@ -135,7 +122,7 @@ new class extends Component
                 <x-responsive-nav-link :href="route('chat.index')" :active="request()->routeIs('chat.*')" wire:navigate>
                     {{ __('Pesan') }}
                     @if (auth()->user()->pesanBelumDibaca() > 0)
-                        <span class="ms-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white align-middle">
+                        <span class="ms-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white">
                             {{ auth()->user()->pesanBelumDibaca() > 9 ? '9+' : auth()->user()->pesanBelumDibaca() }}
                         </span>
                     @endif
@@ -164,19 +151,15 @@ new class extends Component
             </x-responsive-nav-link>
         </div>
 
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['nama' => auth()->user()->nama]) }}" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"></div>
-                <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
+        <div class="pt-3 pb-3 border-t border-gray-200">
+            <div class="px-4 flex items-center gap-3">
+                <x-user-avatar size="md" />
+                <div>
+                    <div class="font-medium text-sm text-gray-800" x-data="{{ json_encode(['nama' => auth()->user()->nama]) }}" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"></div>
+                    <div class="text-xs text-gray-500">{{ auth()->user()->email }}</div>
+                </div>
             </div>
-
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('pengaturan')" :active="request()->routeIs('pengaturan')" wire:navigate>
-                    {{ __('Pengaturan') }}
-                </x-responsive-nav-link>
-
-                <!-- Authentication -->
+            <div class="mt-3 px-4 space-y-1">
                 <button wire:click="logout" class="w-full text-start">
                     <x-responsive-nav-link>
                         {{ __('Log Out') }}

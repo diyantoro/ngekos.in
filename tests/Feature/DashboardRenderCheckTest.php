@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Booking;
-use App\Models\Kamar;
+use App\Models\Pembayaran;
+use App\Models\Penyewaan;
 use App\Models\User;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -45,7 +45,7 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSee('Kos Melati');
     }
 
-    public function test_admin_dashboard_renders_component_and_actions_work(): void
+    public function test_admin_dashboard_renders_component_and_can_verify_payment(): void
     {
         $user = User::where('email', 'admin.ngekos@gmail.com')->first();
 
@@ -54,9 +54,15 @@ class DashboardRenderCheckTest extends TestCase
             ->assertOk()
             ->assertSeeVolt('pages.dashboard.admin');
 
-        $component = Volt::test('pages.dashboard.admin');
-        $component->call('setujuiBooking', Booking::where('status', 'menunggu')->first()->id);
-        $component->assertHasNoErrors();
+        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->first();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.admin');
+        $component->call('verifikasiPembayaran', $pembayaran->id)
+            ->assertHasNoErrors()
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'diverifikasi'));
+
+        $pembayaran->refresh();
+        $this->assertSame('diverifikasi', $pembayaran->status);
     }
 
     public function test_anak_kos_dashboard_renders_component_and_actions_work(): void
@@ -67,65 +73,26 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.anak-kos'))
             ->assertOk()
             ->assertSeeVolt('pages.dashboard.anak-kos')
-            ->assertSee('Cari Kamar');
-    }
+            ->assertSee('Sewa Saya');
 
-    public function test_anak_kos_can_book_available_kamar(): void
-    {
-        $user = User::where('email', 'anak1@ngekos.test')->first();
-        $kamar = Kamar::where('status', 'tersedia')
-            ->whereDoesntHave('bookings', fn ($q) => $q->where('anak_kos_id', $user->id)->whereIn('status', ['menunggu', 'disetujui']))
-            ->firstOrFail();
+        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
 
         $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
+        $component->call('ajukanKeluar', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'check-out'));
 
-        // pesanKamar membuka modal booking, konfirmasiPesan mengajukan booking.
-        $component->call('pesanKamar', $kamar->id)
-            ->assertSet('modalKamarId', $kamar->id);
-
-        $component->call('konfirmasiPesan')
-            ->assertHasNoErrors()
-            ->assertSet('modalKamarId', null);
-
-        $this->assertNotNull($component->get('pesan'));
-
-        $this->assertDatabaseHas('bookings', [
-            'anak_kos_id' => $user->id,
-            'kamar_id' => $kamar->id,
-            'status' => 'menunggu',
-        ]);
-
-        $booking = Booking::where('anak_kos_id', $user->id)->where('kamar_id', $kamar->id)->firstOrFail();
-        $component->call('batalBooking', $booking->id)
-            ->assertSet('pesan', 'Booking dibatalkan.');
-
-        $this->assertDatabaseHas('bookings', [
-            'id' => $booking->id,
-            'status' => 'batal',
-        ]);
+        $this->assertNotNull($sewaan->refresh()->permintaan_keluar_pada);
     }
 
-    public function test_anak_kos_cannot_book_same_kamar_twice(): void
+    public function test_anak_kos_dashboard_shows_penyewaan_and_tagihan(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->first();
-        $kamar = Kamar::where('status', 'tersedia')->firstOrFail();
 
-        $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
-
-        $component->call('pesanKamar', $kamar->id);
-        $component->call('konfirmasiPesan');
-        $this->assertDatabaseHas('bookings', [
-            'anak_kos_id' => $user->id,
-            'kamar_id' => $kamar->id,
-            'status' => 'menunggu',
-        ]);
-
-        $component->call('pesanKamar', $kamar->id);
-        $component->call('konfirmasiPesan')
-            ->assertHasNoErrors()
-            ->assertSet('galat', 'Kamu sudah memiliki booking aktif untuk kamar ini.');
-
-        $this->assertSame(1, Booking::where('anak_kos_id', $user->id)->where('kamar_id', $kamar->id)->whereIn('status', ['menunggu', 'disetujui'])->count());
+        $this->actingAs($user)
+            ->get(route('dashboard.anak-kos'))
+            ->assertOk()
+            ->assertSee('Penyewaan Aktif')
+            ->assertSee('Tagihan Belum Bayar');
     }
 
     public function test_dashboard_route_blocked_for_wrong_role(): void

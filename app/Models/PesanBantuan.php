@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PesanBantuan extends Model
 {
     protected $fillable = [
-        'user_id', 'nama', 'email', 'subjek', 'pesan', 'status', 'balasan', 'dibalas_oleh', 'dibalas_at',
+        'user_id', 'nama', 'email', 'subjek', 'pesan', 'status', 'balasan', 'dibalas_oleh', 'dibalas_at', 'dibaca_pada',
     ];
 
     protected function casts(): array
     {
         return [
             'dibalas_at' => 'datetime',
+            'dibaca_pada' => 'datetime',
         ];
     }
 

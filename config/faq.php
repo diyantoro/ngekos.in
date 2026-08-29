@@ -35,8 +35,8 @@ return [
     ],
 
     [
-        'kata_kunci' => ['booking', 'pesan kamar', 'pesan', 'sewa kamar', 'menyewa'],
-        'jawaban' => 'Untuk memesan kamar: masuk sebagai Anak Kos, buka halaman detail kos, pilih kamar yang berstatus "Tersedia", lalu klik "Pesan Kamar". Booking akan menunggu persetujuan admin/pemilik. Kamu bisa melihat status booking di dashboard Anak Kos.',
+        'kata_kunci' => ['chat', 'pesan', 'tanya pemilik', 'hubungi pemilik', 'kirim pesan'],
+        'jawaban' => 'Untuk bertanya ke pemilik kos: masuk sebagai Anak Kos, buka halaman detail kos, lalu klik "Chat Pemilik" atau "Tanya Pemilik". Kamu bisa langsung mengobrol dengan pemilik untuk menanyakan ketersediaan, harga, atau hal lainnya.',
     ],
 
     [

@@ -15,7 +15,7 @@ new class extends Component
     {
         $this->percakapan[] = [
             'dari' => 'bot',
-            'teks' => 'Halo! Saya asisten virtual Ngekos.in 👋 Ada yang bisa saya bantu? Coba tanya seputar daftar akun, cari kos, booking, atau pembayaran.',
+            'teks' => 'Halo! Saya asisten virtual Ngekos.in 👋 Ada yang bisa saya bantu? Coba tanya seputar daftar akun, cari kos, chat pemilik, atau pembayaran.',
         ];
     }
 
@@ -44,7 +44,7 @@ new class extends Component
 
             $this->percakapan[] = [
                 'dari' => 'bot',
-                'teks' => 'Maaf, saya belum bisa menjawab pertanyaan itu. Pertanyaanmu sudah saya teruskan ke admin dan akan dibalas di halaman Riwayat Bantuan. Atau coba tanya dengan kata kunci seperti "booking", "pembayaran", atau "daftar akun".',
+                'teks' => 'Maaf, saya belum bisa menjawab pertanyaan itu. Pertanyaanmu sudah saya teruskan ke admin dan akan dibalas di halaman Riwayat Bantuan. Atau coba tanya dengan kata kunci seperti "chat pemilik", "pembayaran", atau "daftar akun".',
             ];
 
             return;
@@ -154,7 +154,7 @@ new class extends Component
 
         <!-- Saran cepat -->
         <div class="flex gap-2 overflow-x-auto px-4 py-2 bg-white border-t border-gray-100">
-            @foreach (['Cara daftar akun', 'Cara booking kamar', 'Cara pembayaran', 'Hubungi admin'] as $saran)
+            @foreach (['Cara daftar akun', 'Cara chat pemilik kos', 'Cara pembayaran', 'Hubungi admin'] as $saran)
                 <button type="button" wire:click="kirim('{{ $saran }}')"
                     class="shrink-0 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-100 hover:bg-teal-100 transition">
                     {{ $saran }}

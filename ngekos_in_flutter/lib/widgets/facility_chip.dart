@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+import '../config/theme.dart';
+
+class FacilityChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool showCheckbox;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const FacilityChip({
+    super.key,
+    required this.label,
+    this.icon,
+    this.showCheckbox = false,
+    this.isSelected = false,
+    this.onTap,
+  });
+
+  static final Map<String, IconData> facilityIcons = {
+    'wifi': Icons.wifi_rounded,
+    'ac': Icons.ac_unit_rounded,
+    'kasur': Icons.king_bed_rounded,
+    'dapur': Icons.kitchen_rounded,
+    'kamar_mandi': Icons.bathtub_rounded,
+    'kamar_mandi_dalam': Icons.bathtub_rounded,
+    'laundry': Icons.local_laundry_service_rounded,
+    'parkir': Icons.local_parking_rounded,
+    'cuci': Icons.local_laundry_service_rounded,
+    'jemur': Icons.wb_sunny_rounded,
+    'gym': Icons.fitness_center_rounded,
+    'kolam': Icons.pool_rounded,
+    'security': Icons.security_rounded,
+    'cctv': Icons.videocam_rounded,
+    'listrik': Icons.electrical_services_rounded,
+    'air': Icons.water_drop_rounded,
+    'gas': Icons.local_fire_department_rounded,
+    'internet': Icons.language_rounded,
+    'tv': Icons.tv_rounded,
+    'rak_baju': Icons.checkroom_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    if (showCheckbox) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppTheme.primary : AppTheme.border,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon ?? facilityIcons[label.toLowerCase()] ?? Icons.check_circle_outline_rounded,
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                size: 24,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDFA),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null || facilityIcons.containsKey(label.toLowerCase())) ...[
+            Icon(
+              icon ?? facilityIcons[label.toLowerCase()]!,
+              size: 14,
+              color: AppTheme.primary,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppTheme.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}

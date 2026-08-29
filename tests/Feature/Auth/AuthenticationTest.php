@@ -26,6 +26,10 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
+            ->assertSeeVolt('pages.auth.pilih-peran');
+
+        $this->get('/login/anak_kos')
+            ->assertOk()
             ->assertSeeVolt('pages.auth.login');
     }
 

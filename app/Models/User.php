@@ -9,14 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['nama', 'email', 'no_hp', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
+#[Fillable(['nama', 'email', 'no_hp', 'avatar', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -44,6 +45,7 @@ class User extends Authenticatable
             'tagihan_baru' => 'Email saat tagihan bulanan dibuat',
             'pembayaran_diverifikasi' => 'Email saat pembayaran diverifikasi',
             'chat_baru' => 'Pemberitahuan pesan chat baru',
+            'bantuan_balasan' => 'Notifikasi push saat admin membalas pesan bantuan',
         ];
     }
 
@@ -72,11 +74,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Booking yang diajukan user ini (role: anak kos).
+     * Token perangkat (FCM) untuk notifikasi push.
      */
-    public function bookings(): HasMany
+    public function deviceTokens(): HasMany
     {
-        return $this->hasMany(Booking::class, 'anak_kos_id');
+        return $this->hasMany(DeviceToken::class);
     }
 
     /**
@@ -101,5 +103,26 @@ class User extends Authenticatable
     public function getIsSuperAdminAttribute(): bool
     {
         return $this->hasRole('super_admin');
+    }
+
+    /**
+     * URL avatar user (fallback ke inisial nama).
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? asset('storage/' . $this->avatar) : null;
+    }
+
+    /**
+     * Inisial dari nama user (untuk avatar placeholder).
+     */
+    public function getInisialAttribute(): string
+    {
+        $parts = explode(' ', trim($this->nama));
+        if (count($parts) >= 2) {
+            return strtoupper(mb_substr($parts[0], 0, 1) . mb_substr(end($parts), 0, 1));
+        }
+
+        return strtoupper(mb_substr($this->nama, 0, 2));
     }
 }

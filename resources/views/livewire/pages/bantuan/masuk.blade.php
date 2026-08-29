@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\PesanBantuan;
+use App\Services\PushNotifier;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -46,6 +47,18 @@ new #[Layout('layouts.app')] class extends Component
             'dibalas_oleh' => auth()->id(),
             'dibalas_at' => now(),
         ]);
+
+        if ($pesan->user) {
+            PushNotifier::sendToUser(
+                $pesan->user,
+                [
+                    'title' => 'Balasan dari Admin',
+                    'body' => ($pesan->subjek ?: 'Pesan bantuanmu').' telah dibalas. Lihat di Riwayat Bantuan.',
+                ],
+                ['type' => 'bantuan_balasan', 'pesan_id' => (string) $pesan->id],
+                'bantuan_balasan'
+            );
+        }
 
         unset($this->balasan[$id]);
     }

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Booking;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
@@ -86,22 +85,6 @@ class DomainDataSeeder extends Seeder
         ]);
         $c2 = Kamar::firstOrCreate(['properti_id' => $anggrek->id, 'nama' => 'C2'], [
             'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'status' => 'terisi',
-        ]);
-
-        Booking::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a1->id], [
-            'tanggal_booking' => now()->subDay()->toDateString(),
-            'status' => 'menunggu',
-            'catatan' => 'Ingin pindah bulan depan.',
-        ]);
-        Booking::firstOrCreate(['anak_kos_id' => $yoga->id, 'kamar_id' => $b2->id], [
-            'tanggal_booking' => now()->subDays(3)->toDateString(),
-            'status' => 'disetujui',
-            'catatan' => null,
-        ]);
-        Booking::firstOrCreate(['anak_kos_id' => $maya->id, 'kamar_id' => $c1->id], [
-            'tanggal_booking' => now()->subDays(2)->toDateString(),
-            'status' => 'menunggu',
-            'catatan' => 'Tanya soal harga bulanan.',
         ]);
 
         $sewaRina = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a2->id], [

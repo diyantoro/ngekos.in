@@ -35,7 +35,7 @@
                         Kelola Kos Lebih<br>Mudah &amp; Terorganisir
                     </h1>
                     <p class="mt-4 text-teal-100 max-w-md">
-                        Cari kamar, ajukan booking, pantau tagihan, dan verifikasi pembayaran semua dalam satu aplikasi.
+                        Cari kamar, chat pemilik langsung, pantau tagihan, dan verifikasi pembayaran semua dalam satu aplikasi.
                     </p>
 
                     <ul class="mt-8 space-y-4">
@@ -43,7 +43,7 @@
                             <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </span>
-                            Booking kamar dalam beberapa klik
+                            Chat pemilik kamar langsung
                         </li>
                         <li class="flex items-center gap-3 text-teal-50">
                             <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25">
@@ -60,7 +60,7 @@
                     </ul>
                 </div>
 
-                <p class="relative text-sm text-teal-200">&copy; {{ date('Y') }} Ngekos.in &mdash; Sistem Manajemen Kos &amp; Sewa Kamar</p>
+                <p class="relative text-sm text-teal-200">&copy; {{ date('Y') }} Ngekos.in &mdash; Sistem Manajemen Kos</p>
             </div>
 
             <!-- Form Panel -->

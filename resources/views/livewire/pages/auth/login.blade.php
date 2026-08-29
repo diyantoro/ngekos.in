@@ -9,9 +9,14 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public LoginForm $form;
 
-    /**
-     * Handle an incoming authentication request.
-     */
+    public string $peran = 'anak_kos';
+
+    public function mount(string $peran = 'anak_kos'): void
+    {
+        abort_unless(in_array($peran, ['anak_kos', 'pemilik']), 404);
+        $this->peran = $peran;
+    }
+
     public function login(): void
     {
         $this->validate();
@@ -25,9 +30,22 @@ new #[Layout('layouts.guest')] class extends Component
 }; ?>
 
 <div>
+    <div class="mb-4">
+        <a href="{{ route('login') }}" wire:navigate
+           class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+            Ganti peran
+        </a>
+    </div>
+
     <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900">Masuk ke Ngekos.in</h2>
-        <p class="mt-1 text-sm text-gray-500">Silakan masuk menggunakan akun Anda.</p>
+        <div class="mx-auto mb-3 h-16 w-16 overflow-hidden rounded-full {{ $peran === 'pemilik' ? 'bg-emerald-100' : 'bg-teal-100' }}">
+            <img src="{{ asset($peran === 'pemilik' ? 'images/login-owner.svg' : 'images/login-tenant.svg') }}" alt="" class="h-full w-full object-cover">
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900">Masuk</h2>
+        <p class="mt-1 text-sm text-gray-500">
+            Sebagai <span class="font-semibold {{ $peran === 'pemilik' ? 'text-emerald-600' : 'text-teal-600' }}">{{ $peran === 'pemilik' ? 'Pemilik Kos' : 'Pencari Kos' }}</span>
+        </p>
     </div>
 
     <!-- Session Status -->

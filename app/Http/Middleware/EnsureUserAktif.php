@@ -14,6 +14,12 @@ class EnsureUserAktif
         $user = $request->user();
 
         if ($user && ! $user->aktif()) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Akun Anda dinonaktifkan. Silakan hubungi admin atau super admin.',
+                ], 403);
+            }
+
             Auth::guard('web')->logout();
 
             $request->session()->invalidate();

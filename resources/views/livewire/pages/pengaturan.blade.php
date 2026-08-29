@@ -50,7 +50,9 @@ new #[Layout('layouts.app')] class extends Component
 
     public function bolehKelola(): bool
     {
-        return Auth::user()->hasPermissionTo('konfigurasi.kelola');
+        return Auth::user()
+            ->getAllPermissions()
+            ->contains('name', 'konfigurasi.kelola');
     }
 
     public function simpanSitus(): void
