@@ -39,12 +39,17 @@ class BantuanController extends Controller
 
     public function riwayat(Request $request): JsonResponse
     {
-        PesanBantuan::where('user_id', $request->user()->id)
-            ->whereNotNull('balasan')
-            ->whereNull('dibaca_pada')
-            ->update(['dibaca_pada' => now()]);
+        try {
+            PesanBantuan::where('user_id', $request->user()->id)
+                ->whereNotNull('balasan')
+                ->whereNull('dibaca_pada')
+                ->update(['dibaca_pada' => now()]);
+        } catch (\Throwable $e) {
+            // Kolom dibaca_pada mungkin belum ada jika migrasi belum dijalankan.
+        }
 
-        $pesans = PesanBantuan::where('user_id', $request->user()->id)
+        $pesans = PesanBantuan::select('id', 'user_id', 'nama', 'email', 'subjek', 'pesan', 'status', 'balasan', 'dibalas_oleh', 'dibalas_at', 'created_at', 'updated_at')
+            ->where('user_id', $request->user()->id)
             ->latest()
             ->get()
             ->map(fn (PesanBantuan $p) => $this->format($p));
@@ -129,7 +134,6 @@ class BantuanController extends Controller
             'balasan' => $p->balasan,
             'dibalas_oleh' => $p->pembalas?->nama,
             'dibalas_at' => $p->dibalas_at,
-            'dibaca_pada' => $p->dibaca_pada,
             'status' => $p->status,
             'created_at' => $p->created_at,
             'updated_at' => $p->updated_at,

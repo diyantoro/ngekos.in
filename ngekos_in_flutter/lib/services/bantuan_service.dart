@@ -19,7 +19,13 @@ class BantuanService {
 
   static Future<List<BantuanMessage>> getRiwayat() async {
     final data = await ApiService.get(ApiConfig.bantuanRiwayat);
-    return (data as List).map((e) => BantuanMessage.fromJson(e)).toList();
+    if (data is List) {
+      return data.map((e) => BantuanMessage.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    if (data is Map && data.containsKey('message')) {
+      throw Exception(data['message']);
+    }
+    return [];
   }
 
   static Future<List<BantuanMessage>> getMasuk() async {

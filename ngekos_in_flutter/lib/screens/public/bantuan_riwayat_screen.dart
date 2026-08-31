@@ -6,6 +6,7 @@ import '../../models/bantuan.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/bantuan_service.dart';
 import '../../widgets/status_badge.dart';
+import 'bantuan_screen.dart';
 
 class BantuanRiwayatScreen extends StatefulWidget {
   const BantuanRiwayatScreen({super.key});
@@ -47,37 +48,62 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
     }
   }
 
+  void _openKirimPesan() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const BantuanScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(title: const Text('Riwayat Bantuan', style: TextStyle(fontWeight: FontWeight.bold))),
+      floatingActionButton: _messages.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _openKirimPesan,
+              backgroundColor: AppTheme.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Kirim Pesan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
               ? _buildError()
               : _messages.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.help_outline_rounded, size: 64, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          const Text('Belum ada riwayat bantuan', style: TextStyle(color: AppTheme.textSecondary)),
-                          const SizedBox(height: 8),
-                          const Text('Kirim pesan dari menu Bantuan untuk mulai.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-                        ],
-                      ),
-                    )
+                  ? _buildEmpty()
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                         itemCount: _messages.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) => _buildMessageCard(_messages[index]),
                       ),
                     ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.help_outline_rounded, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            const Text('Belum ada riwayat bantuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+            const SizedBox(height: 8),
+            const Text('Kirim pesan ke admin untuk mendapatkan bantuan.', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _openKirimPesan,
+              icon: const Icon(Icons.chat_rounded, size: 18),
+              label: const Text('Kirim Pesan ke Admin'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

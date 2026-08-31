@@ -29,7 +29,7 @@ class BantuanMessage {
 
   factory BantuanMessage.fromJson(Map<String, dynamic> json) {
     return BantuanMessage(
-      id: json['id'],
+      id: json['id'] is int ? json['id'] : int.tryParse('${json['id']}') ?? 0,
       userId: json['user_id'],
       nama: json['nama'] ?? '',
       email: json['email'] ?? '',
@@ -37,10 +37,19 @@ class BantuanMessage {
       pesan: json['pesan'] ?? '',
       balasan: json['balasan'],
       dibalasOleh: json['dibalas_oleh'],
-      dibalasAt: json['dibalas_at'] != null ? DateTime.parse(json['dibalas_at']) : null,
+      dibalasAt: _parseDate(json['dibalas_at']),
       status: json['status'] ?? 'baru',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      createdAt: _parseDate(json['created_at']),
+      updatedAt: _parseDate(json['updated_at']),
     );
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null || value.toString().isEmpty) return null;
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return null;
+    }
   }
 }

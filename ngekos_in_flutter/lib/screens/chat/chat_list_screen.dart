@@ -8,7 +8,8 @@ import '../../services/chat_service.dart';
 import 'chat_detail_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+  final bool isActive;
+  const ChatListScreen({super.key, this.isActive = true});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -17,14 +18,29 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> {
   List<Conversation> _conversations = [];
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadConversations();
+    if (widget.isActive) {
+      _loadConversations();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ChatListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive != oldWidget.isActive && widget.isActive) {
+      _loadConversations();
+    }
   }
 
   Future<void> _loadConversations() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final data = await ChatService.getConversations();
       setState(() {
@@ -32,7 +48,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -46,42 +65,77 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : _conversations.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat_bubble_outline_rounded, size: 64, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      Text('Belum ada percakapan', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadConversations,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _conversations.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
-                    itemBuilder: (context, index) {
-                      final conv = _conversations[index];
-                      return _ConversationTile(
-                        conversation: conv,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatDetailScreen(
-                              propertiId: conv.propertiId,
-                              propertiNama: conv.propertiNama ?? '',
-                              lawan: conv.lawan,
-                              anakKosId: conv.anakKosId,
-                            ),
+          : _error != null
+              ? _buildError()
+              : _conversations.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline_rounded, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text('Belum ada percakapan', style: TextStyle(fontSize: 16, color: Colors.grey[500])),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Mulai chat dengan pemilik kos dari detail kos.',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
                           ),
-                        ).then((_) => _loadConversations()),
-                      );
-                    },
-                  ),
-                ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadConversations,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _conversations.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                        itemBuilder: (context, index) {
+                          final conv = _conversations[index];
+                          return _ConversationTile(
+                            conversation: conv,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatDetailScreen(
+                                  propertiId: conv.propertiId,
+                                  propertiNama: conv.propertiNama ?? '',
+                                  lawan: conv.lawan,
+                                  anakKosId: conv.anakKosId,
+                                ),
+                              ),
+                            ).then((_) => _loadConversations()),
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text('Gagal memuat percakapan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text(
+              'Periksa koneksi internetmu, lalu coba lagi.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _loadConversations,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

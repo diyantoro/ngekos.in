@@ -104,7 +104,7 @@ class AkunScreen extends StatelessWidget {
                 _MenuItem(
                   icon: Icons.apartment_outlined,
                   title: 'Properti Saya',
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PropertiListScreen())),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PropertiListScreen(isActive: true))),
                 ),
               ],
               _MenuItem(

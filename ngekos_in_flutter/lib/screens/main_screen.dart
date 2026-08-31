@@ -46,7 +46,7 @@ class _MainScreenState extends State<MainScreen> {
     final screens = [
       dashboardScreen,
       const KatalogScreen(),
-      if (!isAdmin && !isSuperAdmin) const ChatListScreen() else const SizedBox.shrink(),
+      if (!isAdmin && !isSuperAdmin) ChatListScreen(isActive: _currentIndex == 2) else const SizedBox.shrink(),
       if (showKelola) PropertiListScreen(isActive: kelolaActive),
       const AkunScreen(),
     ];
@@ -65,6 +65,9 @@ class _MainScreenState extends State<MainScreen> {
           }
         },
         showKelola: showKelola,
+        avatar: user?.avatar,
+        inisial: user?.inisial,
+        unreadCount: user?.pesanBelumDibaca ?? 0,
       ),
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
-import 'login_screen.dart';
+import 'pilih_peran_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String token;
@@ -41,7 +41,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         'token': widget.token,
       });
       if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen(peran: 'anak_kos')));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password berhasil direset. Silakan login.'), backgroundColor: AppTheme.success),
         );

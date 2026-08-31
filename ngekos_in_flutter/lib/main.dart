@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
@@ -8,8 +9,9 @@ import 'screens/public/landing_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/push_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id');
   PushService.init();
   runApp(const NgekosApp());
 }

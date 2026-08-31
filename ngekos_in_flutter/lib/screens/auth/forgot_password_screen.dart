@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
-import 'login_screen.dart';
+import 'pilih_peran_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -135,7 +135,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                         const SizedBox(height: 16),
                         TextButton(
-                          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen(peran: 'anak_kos'))),
+                          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
                           child: const Text('Kembali ke login'),
                         ),
                       ],
