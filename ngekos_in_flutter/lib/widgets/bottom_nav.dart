@@ -82,7 +82,7 @@ class BottomNav extends StatelessWidget {
           width: 24,
           height: 24,
           fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _buildInitialCircle(),
+          errorWidget: (_, _, _) => _buildInitialCircle(),
         ),
       );
     }

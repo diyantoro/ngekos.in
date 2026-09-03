@@ -478,7 +478,7 @@ class _LandingScreenState extends State<LandingScreen> {
                             width: double.infinity,
                             height: 140,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => const Center(child: Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
+                            errorWidget: (_, _, _) => const Center(child: Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
                           ),
                         )
                       : const Center(child: Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
@@ -615,8 +615,10 @@ class _LandingScreenState extends State<LandingScreen> {
             const SizedBox(height: 8),
             const Text('Buat akun gratis sekarang dan mulai cari kos impianmu.', style: TextStyle(fontSize: 14, color: Colors.white70)),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
               children: [
                 GestureDetector(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
@@ -626,7 +628,6 @@ class _LandingScreenState extends State<LandingScreen> {
                     child: const Text('Daftar Gratis', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0D9488))),
                   ),
                 ),
-                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
                   child: Container(

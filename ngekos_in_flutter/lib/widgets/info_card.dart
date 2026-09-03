@@ -34,7 +34,7 @@ class InfoCard extends StatelessWidget {
                 Expanded(
                   child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                 ),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
           ),

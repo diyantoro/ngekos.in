@@ -138,12 +138,14 @@ class AkunScreen extends StatelessWidget {
                       ],
                     ),
                   );
-                  if (confirm == true && context.mounted) {
+                  if (confirm == true) {
                     await auth.logout();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PilihPeranScreen()),
-                    );
+                    if (context.mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PilihPeranScreen()),
+                      );
+                    }
                   }
                 },
               ),

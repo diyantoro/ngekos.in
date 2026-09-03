@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../services/katalog_service.dart';
@@ -17,6 +19,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
   List<Properti> _propertis = [];
   bool _isLoading = true;
   bool _hasMore = true;
+  bool _showMap = false;
   int _page = 1;
   String? _search;
   String? _selectedKota;
@@ -54,6 +57,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
         page: 1,
       );
       final items = (data['data'] as List).map((e) => Properti.fromJson(e)).toList();
+      if (!mounted) return;
       setState(() {
         _propertis = items;
         _page = 1;
@@ -61,6 +65,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -76,6 +81,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
         page: _page + 1,
       );
       final items = (data['data'] as List).map((e) => Properti.fromJson(e)).toList();
+      if (!mounted) return;
       setState(() {
         _propertis.addAll(items);
         _page++;
@@ -105,6 +111,30 @@ class _KatalogScreenState extends State<KatalogScreen> {
               selectedHargaMax: _selectedHargaMax,
               selectedKapasitas: _selectedKapasitas,
             ),
+            if (!_isLoading && _propertis.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      _showMap ? Icons.view_list_rounded : Icons.map_rounded,
+                      size: 18,
+                      color: _showMap ? Colors.white : AppTheme.primary,
+                    ),
+                    label: Text(_showMap ? 'Daftar' : 'Peta'),
+                    selected: _showMap,
+                    showCheckmark: false,
+                    selectedColor: AppTheme.primary,
+                    labelStyle: TextStyle(
+                      color: _showMap ? Colors.white : AppTheme.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onSelected: (_) => setState(() => _showMap = !_showMap),
+                  ),
+                ),
+              ),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
@@ -119,27 +149,116 @@ class _KatalogScreenState extends State<KatalogScreen> {
                             ],
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _loadKatalog,
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _propertis.length,
-                            itemBuilder: (context, index) => _KosCard(
-                              properti: _propertis[index],
-                              onTap: () => Navigator.push(
+                      : _showMap
+                          ? _MapKatalogView(
+                              propertis: _propertis,
+                              onTapped: (p) => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => DetailKosScreen(propertiId: _propertis[index].id),
+                                  builder: (_) => DetailKosScreen(propertiId: p.id),
+                                ),
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _loadKatalog,
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _propertis.length,
+                                itemBuilder: (context, index) => _KosCard(
+                                  properti: _propertis[index],
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DetailKosScreen(propertiId: _propertis[index].id),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MapKatalogView extends StatelessWidget {
+  final List<Properti> propertis;
+  final void Function(Properti) onTapped;
+
+  const _MapKatalogView({required this.propertis, required this.onTapped});
+
+  @override
+  Widget build(BuildContext context) {
+    final withLocation =
+        propertis.where((p) => p.latitude != null && p.longitude != null).toList();
+
+    if (withLocation.isEmpty) {
+      return const Center(
+        child: Text('Belum ada kos dengan lokasi di peta'),
+      );
+    }
+
+    final latAvg = withLocation.map((p) => p.latitude!).reduce((a, b) => a + b) / withLocation.length;
+    final lngAvg = withLocation.map((p) => p.longitude!).reduce((a, b) => a + b) / withLocation.length;
+
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: LatLng(latAvg, lngAvg),
+        initialZoom: 12,
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+        ),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'id.ngekosin.app',
+          maxNativeZoom: 19,
+        ),
+        MarkerLayer(
+          markers: withLocation
+              .map(
+                (p) => Marker(
+                  point: LatLng(p.latitude!, p.longitude!),
+                  width: 90,
+                  height: 60,
+                  child: GestureDetector(
+                    onTap: () => onTapped(p),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          constraints: const BoxConstraints(maxWidth: 80),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 4),
+                            ],
+                          ),
+                          child: Text(
+                            p.nama,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                          ),
+                        ),
+                        const Icon(Icons.location_pin, color: AppTheme.primary, size: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+        ),
+      ],
     );
   }
 }
@@ -172,12 +291,12 @@ class _KosCard extends StatelessWidget {
                       height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         height: 180,
                         color: Colors.grey[200],
                         child: const Center(child: CircularProgressIndicator()),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         height: 180,
                         color: Colors.grey[200],
                         child: const Icon(Icons.image_not_supported_rounded, size: 48, color: Colors.grey),

@@ -1,5 +1,5 @@
-import 'dart:io';
 import '../config/api_config.dart';
+import '../src/platform_file.dart';
 import '../models/properti.dart';
 import '../models/kamar.dart';
 import 'api_service.dart';
@@ -15,6 +15,8 @@ class PropertiManageService {
     required String nama,
     required String kota,
     required String alamat,
+    double? latitude,
+    double? longitude,
     String? deskripsi,
     List<String>? fasilitas,
     String? aturan,
@@ -22,7 +24,7 @@ class PropertiManageService {
     int? harga,
     String jenisHarga = 'bulanan',
     String status = 'aktif',
-    File? foto,
+    PlatformFile? foto,
   }) async {
     final fields = <String, String>{
       'nama': nama,
@@ -31,6 +33,8 @@ class PropertiManageService {
       'jenis_harga': jenisHarga,
       'status': status,
     };
+    if (latitude != null) fields['latitude'] = latitude.toString();
+    if (longitude != null) fields['longitude'] = longitude.toString();
     if (deskripsi != null) fields['deskripsi'] = deskripsi;
     if (fasilitas != null) fields['fasilitas'] = fasilitas.join(',');
     if (aturan != null) fields['aturan'] = aturan;
@@ -51,6 +55,8 @@ class PropertiManageService {
     required String nama,
     required String kota,
     required String alamat,
+    double? latitude,
+    double? longitude,
     String? deskripsi,
     List<String>? fasilitas,
     String? aturan,
@@ -58,7 +64,7 @@ class PropertiManageService {
     int? harga,
     String jenisHarga = 'bulanan',
     String status = 'aktif',
-    File? foto,
+    PlatformFile? foto,
   }) async {
     final fields = <String, String>{
       'nama': nama,
@@ -68,6 +74,8 @@ class PropertiManageService {
       'status': status,
       '_method': 'PUT',
     };
+    if (latitude != null) fields['latitude'] = latitude.toString();
+    if (longitude != null) fields['longitude'] = longitude.toString();
     if (deskripsi != null) fields['deskripsi'] = deskripsi;
     if (fasilitas != null) fields['fasilitas'] = fasilitas.join(',');
     if (aturan != null) fields['aturan'] = aturan;
@@ -84,7 +92,7 @@ class PropertiManageService {
   }
 
   static Future<void> deleteProperti(int id) async {
-    await ApiService.post('${ApiConfig.propertiManageDetail(id)}', body: {'_method': 'DELETE'});
+    await ApiService.post(ApiConfig.propertiManageDetail(id), body: {'_method': 'DELETE'});
   }
 
   static Future<List<Kamar>> getKamars(int propertiId) async {
@@ -100,7 +108,7 @@ class PropertiManageService {
     required int hargaSewaBulanan,
     String jenisHarga = 'bulanan',
     String status = 'tersedia',
-    File? foto,
+    PlatformFile? foto,
   }) async {
     final fields = <String, String>{
       'nama': nama,
@@ -126,7 +134,7 @@ class PropertiManageService {
     required int hargaSewaBulanan,
     String jenisHarga = 'bulanan',
     String status = 'tersedia',
-    File? foto,
+    PlatformFile? foto,
   }) async {
     final fields = <String, String>{
       'nama': nama,

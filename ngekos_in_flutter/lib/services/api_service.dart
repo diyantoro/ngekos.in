@@ -1,30 +1,37 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../src/platform_file.dart';
 
 class ApiService {
   static String? _token;
 
   static const Duration _timeout = Duration(seconds: 25);
 
+  /// Token disimpan di Android Keystore / iOS Keychain (bukan SharedPreferences)
+  /// agar tidak mudah terbaca oleh pihak luar. Diganti null saat test.
+  static FlutterSecureStorage? _secureStorage;
+
+  static FlutterSecureStorage get _storage =>
+      _secureStorage ??= const FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+
   /// Dapat diganti saat test dengan MockClient dari package:http.
   static http.Client client = http.Client();
 
   static Future<String?> get token async {
     if (_token != null) return _token;
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
+    _token = await _storage.read(key: 'auth_token');
     return _token;
   }
 
   static Future<void> setToken(String? newToken) async {
     _token = newToken;
-    final prefs = await SharedPreferences.getInstance();
     if (newToken != null) {
-      await prefs.setString('auth_token', newToken);
+      await _storage.write(key: 'auth_token', value: newToken);
     } else {
-      await prefs.remove('auth_token');
+      await _storage.delete(key: 'auth_token');
     }
   }
 
@@ -83,14 +90,14 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  static Future<dynamic> postMultipart(String url, {Map<String, String>? fields, File? file, String? fileField}) async {
+  static Future<dynamic> postMultipart(String url, {Map<String, String>? fields, PlatformFile? file, String? fileField}) async {
     final t = await token;
     final request = http.MultipartRequest('POST', Uri.parse(url));
     request.headers['Accept'] = 'application/json';
     if (t != null) request.headers['Authorization'] = 'Bearer $t';
     if (fields != null) request.fields.addAll(fields);
     if (file != null && fileField != null) {
-      request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+      request.files.add(http.MultipartFile.fromBytes(fileField, file.bytes, filename: file.name));
     }
     final streamedResponse = await request.send().timeout(_timeout, onTimeout: _timeoutException);
     final response = await http.Response.fromStream(streamedResponse);
@@ -105,14 +112,40 @@ class ApiService {
   }
 
   static dynamic _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body);
+    // Server mati / bermasalah: hapus token yang sudah tidak berlaku.
+    if (response.statusCode == 401) setToken(null);
+
+    dynamic body;
+    try {
+      body = jsonDecode(response.body);
+    } catch (_) {
+      // Respons bukan JSON (mis. HTML error dari server) — jangan sampai crash,
+      // hanya tampilkan status generic.
+      body = null;
+    }
+
+    if (body is Map<String, dynamic> && body['errors'] is Map) {
+      // Backend menyebut field yg bermasalah (validation error) — bungkus jadi pesan.
+      final first = (body['errors'] as Map).values.firstWhere(
+            (v) => v is List && v.isNotEmpty,
+            orElse: () => '',
+          );
+      if (first is List && first.isNotEmpty) {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: first.first.toString(),
+          errors: body['errors'] as Map<String, dynamic>?,
+        );
+      }
+    }
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     }
     throw ApiException(
       statusCode: response.statusCode,
-      message: body['message'] ?? 'Terjadi kesalahan',
-      errors: body['errors'],
+      message: body?['message'] ?? 'Terjadi kesalahan',
+      errors: body?['errors'],
     );
   }
 }

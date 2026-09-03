@@ -1,3 +1,4 @@
+import '../config/api_config.dart';
 import '../utils/json.dart';
 
 class Kamar {
@@ -27,7 +28,7 @@ class Kamar {
       hargaSewaBulanan: jsonInt(json['harga_sewa_bulanan'], 0),
       jenisHarga: json['jenis_harga'],
       status: json['status'] ?? 'tersedia',
-      foto: json['foto'],
+      foto: ApiConfig.resolveStorageUrl(json['foto']),
     );
   }
 

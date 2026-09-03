@@ -15,10 +15,10 @@ class PengaturanService {
   }) async {
     await ApiService.post(ApiConfig.pengaturanSitus, body: {
       'nama': nama,
-      if (deskripsi != null) 'deskripsi': deskripsi,
-      if (email != null) 'email': email,
-      if (telepon != null) 'telepon': telepon,
-      if (alamat != null) 'alamat': alamat,
+      'deskripsi': ?deskripsi,
+      'email': ?email,
+      'telepon': ?telepon,
+      'alamat': ?alamat,
     });
   }
 

@@ -25,7 +25,26 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $this->redirectIntended(
+            default: $this->dashboardRoute(),
+            navigate: true,
+        );
+    }
+
+    /**
+     * Arahkan langsung ke dashboard sesuai role, menghindari redirect
+     * antara `/dashboard` -> halaman role yang menambah satu round-trip.
+     */
+    protected function dashboardRoute(): string
+    {
+        $role = auth()->user()->getRoleNames()->first();
+
+        return match ($role) {
+            'super_admin' => route('dashboard.super-admin', absolute: false),
+            'pemilik' => route('dashboard.pemilik', absolute: false),
+            'admin' => route('dashboard.admin', absolute: false),
+            default => route('dashboard.anak-kos', absolute: false),
+        };
     }
 }; ?>
 

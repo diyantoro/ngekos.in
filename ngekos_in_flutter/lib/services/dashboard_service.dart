@@ -1,5 +1,5 @@
-import 'dart:io';
 import '../config/api_config.dart';
+import '../src/platform_file.dart';
 import '../models/penyewaan.dart';
 import '../models/tagihan.dart';
 import '../models/pembayaran.dart';
@@ -36,7 +36,7 @@ class DashboardService {
     required int tagihanId,
     required String metode,
     required int jumlah,
-    File? bukti,
+    PlatformFile? bukti,
   }) async {
     final fields = <String, String>{
       'tagihan_id': tagihanId.toString(),

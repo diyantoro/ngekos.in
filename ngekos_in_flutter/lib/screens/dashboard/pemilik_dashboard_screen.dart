@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
+import '../../config/api_config.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/dashboard_service.dart';
 import '../../widgets/stat_card.dart';
@@ -10,6 +12,7 @@ import '../../widgets/tab_bar_widget.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/promo_ads_banner.dart';
 import '../../widgets/trending_kos_section.dart';
+import '../../widgets/dashboard_line_chart.dart';
 
 class PemilikDashboardScreen extends StatefulWidget {
   const PemilikDashboardScreen({super.key, this.isActive = false});
@@ -53,12 +56,14 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
       final d = await DashboardService.getPemilikDashboard();
       final p = await DashboardService.getPemilikProperti();
       final s = await DashboardService.getPemilikSewaans();
-      if (mounted) setState(() {
-        _dashboard = d;
-        _propertis = p is List ? p : (p['data'] as List? ?? []);
-        _sewaans = s;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _dashboard = d;
+          _propertis = p is List ? p : (p['data'] as List? ?? []);
+          _sewaans = s;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -103,6 +108,8 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
                         Expanded(child: StatCard(label: 'Pendapatan', value: AppTheme.formatRupiah(_dashboard?['pendapatan_bulan_ini'] ?? 0), icon: const Icon(Icons.payments_rounded), tone: 'amber')),
                       ],
                     ),
+                    const SizedBox(height: 20),
+                    _buildChartSection(),
                     const SizedBox(height: 20),
                     const TrendingKosSection(),
                     const SizedBox(height: 20),
@@ -162,9 +169,10 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
         final terisi = (p['kamar_terisi'] ?? 0) as int;
         final persentase = total > 0 ? (terisi / total * 100).round() : 0;
         final kamars = (p['kamars'] as List? ?? []);
+        final fotoUrl = ApiConfig.resolveStorageUrl(p['foto']?.toString());
         return Container(
+          clipBehavior: Clip.antiAlias,
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFF9FAFB),
             borderRadius: BorderRadius.circular(12),
@@ -173,6 +181,28 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SizedBox(
+                height: 140,
+                width: double.infinity,
+                child: fotoUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: fotoUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => Container(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          child: const Center(child: Icon(Icons.home_rounded, size: 48, color: AppTheme.primary)),
+                        ),
+                      )
+                    : Container(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        child: const Center(child: Icon(Icons.home_rounded, size: 48, color: AppTheme.primary)),
+                      ),
+              ),
+              Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               Row(
                 children: [
                   Expanded(
@@ -231,7 +261,7 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
                   ],
                 ),
               ),
-              ...kamars.map((k) => Container(
+...kamars.map((k) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.borderLight))),
                 child: Row(
@@ -246,12 +276,15 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
                         ],
                       ),
                     ),
-                    Expanded(flex: 1, child: Text('${AppTheme.formatRupiah(k['harga_sewa_bulanan'] ?? 0)}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+                    Expanded(flex: 1, child: Text(AppTheme.formatRupiah(k['harga_sewa_bulanan'] ?? 0), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
                     Expanded(flex: 1, child: Align(alignment: Alignment.centerLeft, child: StatusBadge(status: k['status'] ?? ''))),
                   ],
                 ),
               )),
             ],
+          ),
+        ),
+      ],
           ),
         );
       }).toList(),
@@ -374,8 +407,42 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
     );
   }
 
-  Future<void> _checkout(dynamic s) async {
-    final confirmed = await showDialog<bool>(
+  Widget _buildChartSection() {
+    final chart = _dashboard?['chart'];
+    if (chart is! Map) return const SizedBox.shrink();
+
+    final labels = (chart['labels'] as List? ?? []).cast<String>();
+    final pendapatan = (chart['pendapatan'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+    final lunas = (chart['lunas'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+    final belum = (chart['belum'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+
+    if (labels.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        DashboardLineChart(
+          title: 'Pendapatan 6 Bulan Terakhir',
+          labels: labels,
+          yCurrency: true,
+          series: [
+            FlLineData(label: 'Pendapatan', values: pendapatan, color: AppTheme.primary),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DashboardLineChart(
+          title: 'Tagihan: Lunas vs Belum Lunas',
+          labels: labels,
+          yCurrency: true,
+          series: [
+            FlLineData(label: 'Lunas', values: lunas, color: AppTheme.accent),
+            FlLineData(label: 'Belum Lunas', values: belum, color: AppTheme.rose),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _checkout(dynamic s) async {    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

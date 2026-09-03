@@ -6,17 +6,17 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\KatalogController;
-use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PengaturanController;
 use App\Http\Controllers\Api\PenggunaController;
+use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PropertiManageController;
 use Illuminate\Support\Facades\Route;
 
-// Public routes
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword']);
+// Public routes (dibatasi rate untuk mencegah brute-force & spam)
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Public katalog
 Route::get('/kos', [KatalogController::class, 'index']);

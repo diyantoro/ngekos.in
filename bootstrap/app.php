@@ -22,10 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\EnsureUserAktif::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         $middleware->api(append: [
             \App\Http\Middleware\EnsureUserAktif::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
         $middleware->statefulApi();

@@ -102,7 +102,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: _propertis.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) => _buildCard(_propertis[index]),
                   ),
                 ),
@@ -122,7 +122,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(height: 140, color: AppTheme.surfaceGray, child: const Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
+                    errorWidget: (_, _, _) => Container(height: 140, color: AppTheme.surfaceGray, child: const Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
                   )
                 : Container(
                     height: 140,

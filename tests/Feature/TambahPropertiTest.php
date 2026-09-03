@@ -41,4 +41,37 @@ class TambahPropertiTest extends TestCase
         $properti = Properti::where('pemilik_id', $pemilik->id)->firstOrFail();
         $this->assertNotNull($properti->foto);
     }
+
+    public function test_form_fasilitas_render_dan_centang_tersimpan(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+
+        $component = Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form');
+
+        $component->assertViewHas('pilihPemilik', false)
+            ->set('nama', 'Kos Mawar')
+            ->set('fasilitasTerpilih', ['WiFi', 'AC', 'Kamar Mandi Dalam'])
+            ->call('simpan');
+
+        $this->assertDatabaseHas('propertis', [
+            'pemilik_id' => $pemilik->id,
+            'fasilitas' => 'WiFi, AC, Kamar Mandi Dalam',
+        ]);
+    }
+
+    public function test_form_fasilitas_grouped_options_tampil(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+
+        $view = Livewire::actingAs($pemilik)
+            ->test('pages.pemilik.properti-form')
+            ->html();
+
+        $this->assertStringContainsString('Fasilitas Kamar', $view);
+        $this->assertStringContainsString('Fasilitas Kamar Mandi', $view);
+        $this->assertStringContainsString('Fasilitas Parkir', $view);
+        $this->assertStringContainsString('Fasilitas Umum', $view);
+        $this->assertStringContainsString('Peraturan Khusus', $view);
+        $this->assertStringContainsString('images/fasilitas/ac.png', $view);
+    }
 }

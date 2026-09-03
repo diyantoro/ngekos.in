@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
@@ -8,12 +6,31 @@ class ApiConfig {
 
   static String get baseUrl {
     if (_overrideBaseUrl.isNotEmpty) return _overrideBaseUrl;
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       // Android emulator: 10.0.2.2 menunjuk ke host machine. Perangkat fisik:
       // gunakan --dart-define=API_BASE_URL=http://<IP-LAN-PC>:8000/api
       return 'http://10.0.2.2:8000/api';
     }
     return 'http://127.0.0.1:8000/api';
+  }
+
+  /// Ubah nilai URL penyimpanan (mungkin relatif seperti `/storage/xxx.jpg`)
+  /// menjadi URL absolut terhadap host API yang sedang dipakai.
+  ///
+  /// API mengembalikan path relatif terhadap host-nya sendiri agar gambar
+  /// bisa diakses dari emulator/perangkat fisik (yang pakai host berbeda
+  /// dengan `APP_URL` di server), bukan dari host server.
+  static String? resolveStorageUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+
+    var host = baseUrl;
+    if (host.endsWith('/api')) host = host.substring(0, host.length - 4);
+    if (host.endsWith('/')) host = host.substring(0, host.length - 1);
+
+    if (raw.startsWith('/')) return host + raw;
+
+    return '$host/$raw';
   }
 
   static String get login => '$baseUrl/login';

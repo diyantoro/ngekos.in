@@ -280,6 +280,8 @@ class PropertiManageController extends Controller
         return $request->validate([
             'nama' => 'required|string|max:255',
             'kota' => 'nullable|string|max:100',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string|max:500',
             'deskripsi' => 'nullable|string',
             'fasilitas' => 'nullable|string',
@@ -298,6 +300,8 @@ class PropertiManageController extends Controller
         $data = [
             'nama' => $validated['nama'],
             'kota' => $validated['kota'] ?? null,
+            'latitude' => $this->nullableCoord($validated['latitude'] ?? null),
+            'longitude' => $this->nullableCoord($validated['longitude'] ?? null),
             'alamat' => $validated['alamat'] ?? null,
             'deskripsi' => $validated['deskripsi'] ?? null,
             'aturan' => $validated['aturan'] ?? null,
@@ -307,7 +311,7 @@ class PropertiManageController extends Controller
         ];
 
         if (! blank($validated['fasilitas'] ?? null)) {
-            $data['fasilitas'] = implode(', ', array_filter(array_map('trim', explode(',', $validated['fasilitas']))));
+            $data['fasilitas'] = \App\Support\FacilityHelper::normalizeString($validated['fasilitas']);
         } else {
             $data['fasilitas'] = null;
         }
@@ -325,6 +329,8 @@ class PropertiManageController extends Controller
             'id' => $p->id,
             'nama' => $p->nama,
             'kota' => $p->kota,
+            'latitude' => $p->latitude !== null ? (float) $p->latitude : null,
+            'longitude' => $p->longitude !== null ? (float) $p->longitude : null,
             'alamat' => $p->alamat,
             'deskripsi' => $p->deskripsi,
             'fasilitas' => $p->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $p->fasilitas)))) : [],
@@ -333,7 +339,7 @@ class PropertiManageController extends Controller
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? asset('storage/' . $p->foto) : null,
+            'foto' => $p->foto ? '/storage/'.$p->foto : null,
             'total_kamar' => (int) ($p->total_kamar ?? 0),
             'kamar_terisi' => (int) ($p->kamar_terisi ?? 0),
             'kamars' => $p->kamars->map(fn (Kamar $k) => $this->formatKamar($k))->values(),
@@ -349,7 +355,16 @@ class PropertiManageController extends Controller
             'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
             'jenis_harga' => $k->jenis_harga,
             'status' => $k->status,
-            'foto' => $k->foto ? asset('storage/' . $k->foto) : null,
+            'foto' => $k->foto ? '/storage/'.$k->foto : null,
         ];
+    }
+
+    private function nullableCoord(mixed $value): ?string
+    {
+        if ($value === null || $value === '' || (is_numeric($value) && (float) $value == 0)) {
+            return null;
+        }
+
+        return (string) $value;
     }
 }

@@ -96,7 +96,7 @@ class PenggunaController extends Controller
             'nama' => $u->nama,
             'email' => $u->email,
             'no_hp' => $u->no_hp,
-            'avatar' => $u->avatar_url,
+            'avatar' => $u->avatar ? '/storage/'.$u->avatar : null,
             'inisial' => $u->inisial,
             'peran' => $u->getRoleNames()->first(),
             'roles' => $u->roles->pluck('name')->values(),

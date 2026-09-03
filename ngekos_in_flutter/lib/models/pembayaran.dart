@@ -1,3 +1,4 @@
+import '../config/api_config.dart';
 import '../utils/json.dart';
 
 class Pembayaran {
@@ -29,7 +30,7 @@ class Pembayaran {
       periode: json['periode'],
       metode: json['metode'],
       jumlah: jsonInt(json['jumlah'], 0),
-      bukti: json['bukti'],
+      bukti: ApiConfig.resolveStorageUrl(json['bukti']),
       status: json['status'] ?? '',
       diverifikasiOleh: json['diverifikasi_oleh'],
       verifiedAt: json['verified_at'] != null

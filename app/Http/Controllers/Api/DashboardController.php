@@ -8,6 +8,7 @@ use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +46,7 @@ class DashboardController extends Controller
                 'id' => $s->id,
                 'kamar' => $s->kamar?->nama,
                 'properti' => $s->properti?->nama,
-                'properti_foto' => $s->properti?->foto ? asset('storage/' . $s->properti->foto) : null,
+                'properti_foto' => $s->properti?->foto ? '/storage/'.$s->properti->foto : null,
                 'tanggal_masuk' => $s->tanggal_masuk,
                 'tanggal_keluar' => $s->tanggal_keluar,
                 'status' => $s->status,
@@ -86,7 +87,7 @@ class DashboardController extends Controller
                 'periode' => $p->tagihan?->periode,
                 'metode' => $p->metode,
                 'jumlah' => (float) $p->jumlah,
-                'bukti' => $p->bukti ? asset('storage/' . $p->bukti) : null,
+                'bukti' => $p->bukti ? '/storage/'.$p->bukti : null,
                 'status' => $p->status,
                 'diverifikasi_oleh' => $p->verifikator?->nama,
                 'verified_at' => $p->verified_at,
@@ -174,12 +175,20 @@ class DashboardController extends Controller
             ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
             ->count();
 
+        $scope = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId));
+
+        $chart = $this->monthlyChart(
+            $scope,
+            fn ($q) => $q->whereHas('penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId)),
+        );
+
         return response()->json([
             'total_properti' => $totalProperti,
             'total_kamar' => $totalKamar,
             'kamar_terisi' => $kamarTerisi,
             'pendapatan_bulan_ini' => $pendapatanBulanIni,
             'penyewaan_aktif' => $penyewaanAktif,
+            'chart' => $chart,
         ]);
     }
 
@@ -194,6 +203,7 @@ class DashboardController extends Controller
                 $belumLunas = $s->tagihans->where('status', '!=', 'lunas');
                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
+
                 return [
                     'id' => $s->id,
                     'anak_kos_nama' => $s->anakKos?->nama,
@@ -271,13 +281,17 @@ class DashboardController extends Controller
             'penyewaan_aktif' => Penyewaan::where('status', 'aktif')
                 ->whereHas('properti', $kelolaan)
                 ->count(),
+            'chart' => $this->monthlyChart(
+                fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $kelolaan),
+                fn ($q) => $q->whereHas('penyewaan.properti', $kelolaan),
+            ),
             'pembayarans' => $pembayarans->map(fn (Pembayaran $p) => [
                 'id' => $p->id,
                 'anak_kos_nama' => $p->anakKos?->nama ?? '-',
                 'periode' => $p->tagihan?->periode,
                 'jumlah' => (float) $p->jumlah,
                 'metode' => $p->metode,
-                'bukti' => $p->bukti ? asset('storage/' . $p->bukti) : null,
+                'bukti' => $p->bukti ? '/storage/'.$p->bukti : null,
                 'status' => $p->status,
                 'created_at' => $p->created_at,
             ])->values(),
@@ -293,12 +307,16 @@ class DashboardController extends Controller
             ->get();
 
         return response()->json([
-            'total_user' => \App\Models\User::count(),
+            'total_user' => User::count(),
             'total_properti' => Properti::count(),
-            'total_kamar' => \App\Models\Kamar::count(),
-            'kamar_terisi' => \App\Models\Kamar::where('status', 'terisi')->count(),
+            'total_kamar' => Kamar::count(),
+            'kamar_terisi' => Kamar::where('status', 'terisi')->count(),
             'penyewaan_aktif' => Penyewaan::where('status', 'aktif')->count(),
             'pendapatan' => (int) Pembayaran::where('status', 'diverifikasi')->sum('jumlah'),
+            'chart' => $this->monthlyChart(
+                fn ($q) => $q->where('status', 'diverifikasi'),
+                fn ($q) => $q,
+            ),
             'propertis' => $propertis->map(fn (Properti $p) => [
                 'id' => $p->id,
                 'nama' => $p->nama,
@@ -340,12 +358,48 @@ class DashboardController extends Controller
             }
 
             $nama = $pembayaran->anakKos?->nama ?? '-';
-            $pesan = "Pembayaran $nama sebesar Rp" . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.';
+            $pesan = "Pembayaran $nama sebesar Rp".number_format($pembayaran->jumlah, 0, ',', '.').' diverifikasi.';
         } else {
             $pesan = 'Pengajuan pembayaran ditolak.';
         }
 
         return response()->json(['message' => $pesan]);
+    }
+
+    /**
+     * Builds the last 6 months of chart data (labels, revenue, paid/unpaid bills)
+     * for a given role scope. $pembayaranScope filters Pembayaran, $tagihanScope filters Tagihan.
+     */
+    private function monthlyChart(callable $pembayaranScope, callable $tagihanScope): array
+    {
+        $labels = [];
+        $pendapatan = [];
+        $lunas = [];
+        $belum = [];
+
+        $start = now()->subMonths(5)->startOfMonth();
+
+        for ($i = 0; $i < 6; $i++) {
+            $month = $start->copy()->addMonths($i);
+            $key = $month->format('m/Y');
+            $labels[] = $month->translatedFormat('M Y');
+            $pendapatan[] = (int) Pembayaran::where('status', 'diverifikasi')
+                ->whereMonth('verified_at', $month->month)
+                ->whereYear('verified_at', $month->year)
+                ->where($pembayaranScope)
+                ->sum('jumlah');
+
+            $agtihan = Tagihan::whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->where($tagihanScope);
+            $totalLunas = (clone $agtihan)->where('status', 'lunas')->sum(DB::raw('jumlah + denda'));
+            $totalAll = (clone $agtihan)->sum(DB::raw('jumlah + denda'));
+
+            $lunas[] = (int) $totalLunas;
+            $belum[] = (int) max(0, $totalAll - $totalLunas);
+        }
+
+        return compact('labels', 'pendapatan', 'lunas', 'belum');
     }
 
     /**
@@ -381,7 +435,7 @@ class DashboardController extends Controller
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? asset('storage/' . $p->foto) : null,
+            'foto' => $p->foto ? '/storage/'.$p->foto : null,
             'total_kamar' => (int) $p->total_kamar,
             'kamar_terisi' => (int) $p->kamar_terisi,
             'kamars' => $p->kamars->map(fn (Kamar $k) => [
@@ -391,7 +445,7 @@ class DashboardController extends Controller
                 'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
                 'jenis_harga' => $k->jenis_harga,
                 'status' => $k->status,
-                'foto' => $k->foto ? asset('storage/' . $k->foto) : null,
+                'foto' => $k->foto ? '/storage/'.$k->foto : null,
             ])->values(),
         ];
     }

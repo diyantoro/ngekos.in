@@ -6,6 +6,7 @@ import '../../services/admin_dashboard_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/greeting_banner.dart';
 import '../../widgets/promo_ads_banner.dart';
+import '../../widgets/dashboard_line_chart.dart';
 
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -38,11 +39,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     try {
       await AdminDashboardService.verifyPayment(id, approve: approve);
       _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(approve ? 'Pembayaran diverifikasi' : 'Pembayaran ditolak'), backgroundColor: AppTheme.success),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(approve ? 'Pembayaran diverifikasi' : 'Pembayaran ditolak'), backgroundColor: AppTheme.success),
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+      }
     }
   }
 
@@ -85,6 +90,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       tone: 'amber',
                     ),
                     const SizedBox(height: 20),
+                    _buildChart(),
+                    const SizedBox(height: 20),
                     const Align(alignment: Alignment.centerLeft, child: Text('Verifikasi Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
                     const SizedBox(height: 12),
                     _buildPembayaranList(),
@@ -92,6 +99,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
       ),
+    );
+  }
+
+  Widget _buildChart() {
+    final chart = _dashboard?['chart'];
+    if (chart is! Map) return const SizedBox.shrink();
+
+    final labels = (chart['labels'] as List? ?? []).cast<String>();
+    final pendapatan = (chart['pendapatan'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+    final lunas = (chart['lunas'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+    final belum = (chart['belum'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
+
+    if (labels.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        DashboardLineChart(
+          title: 'Pendapatan 6 Bulan Terakhir',
+          labels: labels,
+          yCurrency: true,
+          series: [FlLineData(label: 'Pendapatan', values: pendapatan, color: AppTheme.primary)],
+        ),
+        const SizedBox(height: 12),
+        DashboardLineChart(
+          title: 'Tagihan: Lunas vs Belum Lunas',
+          labels: labels,
+          yCurrency: true,
+          series: [
+            FlLineData(label: 'Lunas', values: lunas, color: AppTheme.accent),
+            FlLineData(label: 'Belum Lunas', values: belum, color: AppTheme.rose),
+          ],
+        ),
+      ],
     );
   }
 

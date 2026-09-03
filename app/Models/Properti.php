@@ -13,7 +13,7 @@ class Properti extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'pemilik_id', 'nama', 'kota', 'alamat', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
+        'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
         'harga', 'jenis_harga', 'status', 'foto',
     ];
 
@@ -22,6 +22,8 @@ class Properti extends Model
         return [
             'denda_per_hari' => 'decimal:2',
             'harga' => 'decimal:2',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
         ];
     }
 

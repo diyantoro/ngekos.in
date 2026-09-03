@@ -24,9 +24,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       setState(() { _sent = true; _isLoading = false; });
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error),
+        );
+      }
     }
   }
 
@@ -90,9 +92,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () async {
-                          final auth = context.read<AuthProvider>();
-                          await auth.logout();
-                          if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
+                        final auth = context.read<AuthProvider>();
+                        await auth.logout();
+                        if (context.mounted) {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
+                        }
                         },
                         child: const Text('Keluar', style: TextStyle(color: AppTheme.textSecondary)),
                       ),

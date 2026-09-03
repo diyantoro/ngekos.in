@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 class Conversation {
   final int propertiId;
   final String? propertiNama;
@@ -25,7 +27,7 @@ class Conversation {
     return Conversation(
       propertiId: json['properti_id'],
       propertiNama: json['properti_nama'],
-      propertiFoto: json['properti_foto'],
+      propertiFoto: ApiConfig.resolveStorageUrl(json['properti_foto']),
       anakKosId: json['anak_kos_id'],
       lawan: json['lawan'] != null ? ChatUser.fromJson(json['lawan']) : null,
       lastMessage: json['last_message'],
@@ -49,7 +51,7 @@ class ChatUser {
     return ChatUser(
       id: json['id'],
       nama: json['nama'],
-      avatar: json['avatar'],
+      avatar: ApiConfig.resolveStorageUrl(json['avatar']),
     );
   }
 }

@@ -30,6 +30,7 @@ class FacilityChip extends StatelessWidget {
     'jemur': Icons.wb_sunny_rounded,
     'gym': Icons.fitness_center_rounded,
     'kolam': Icons.pool_rounded,
+    'kolam_renang': Icons.pool_rounded,
     'security': Icons.security_rounded,
     'cctv': Icons.videocam_rounded,
     'listrik': Icons.electrical_services_rounded,
@@ -40,13 +41,26 @@ class FacilityChip extends StatelessWidget {
     'rak_baju': Icons.checkroom_rounded,
   };
 
+  static IconData _iconFor(String label) {
+    final iconFromKey = iconForKey(label);
+    return iconFromKey ?? Icons.home_rounded;
+  }
+
+  static IconData? iconForKey(String label) {
+    // Sesuaikan format label ("Kamar Mandi Dalam") dengan kunci map
+    // ("kamar_mandi_dalam") — huruf kecil & spasi diganti underscore.
+    final key = label.trim().toLowerCase().replaceAll(' ', '_');
+    return facilityIcons[key] ?? facilityIcons[label.trim().toLowerCase()];
+  }
+
   @override
   Widget build(BuildContext context) {
     if (showCheckbox) {
       return GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -55,23 +69,52 @@ class FacilityChip extends StatelessWidget {
               width: isSelected ? 2 : 1,
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Icon(
-                icon ?? facilityIcons[label.toLowerCase()] ?? Icons.check_circle_outline_rounded,
-                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
-                size: 24,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
-                ),
-                textAlign: TextAlign.center,
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    children: [
+                      Icon(
+                        icon ?? _iconFor(label),
+                        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                        size: 26,
+                      ),
+                      if (isSelected)
+                        Positioned(
+                          right: -4,
+                          bottom: -4,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: AppTheme.primary,
+                              shape: BoxShape.circle,
+                              border: Border.fromBorderSide(
+                                BorderSide(color: Colors.white, width: 1.5),
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(1),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ],
           ),
@@ -79,6 +122,7 @@ class FacilityChip extends StatelessWidget {
       );
     }
 
+    final facIcon = iconForKey(label);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -88,9 +132,9 @@ class FacilityChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null || facilityIcons.containsKey(label.toLowerCase())) ...[
+          if (icon != null || facIcon != null) ...[
             Icon(
-              icon ?? facilityIcons[label.toLowerCase()]!,
+              icon ?? facIcon!,
               size: 14,
               color: AppTheme.primary,
             ),

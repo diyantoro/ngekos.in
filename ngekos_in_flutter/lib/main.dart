@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,7 +13,7 @@ import 'services/push_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id');
-  PushService.init();
+  if (!kIsWeb) PushService.init();
   runApp(const NgekosApp());
 }
 
@@ -74,8 +75,10 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     // Notifikasi push yang membuka app dari kondisi mati: proses navigasinya.
-    PushService.onForeground = () => auth.refreshUser();
-    PushService.processPendingTap();
+    if (!kIsWeb) {
+      PushService.onForeground = () => auth.refreshUser();
+      PushService.processPendingTap();
+    }
 
     Navigator.pushReplacement(
       context,

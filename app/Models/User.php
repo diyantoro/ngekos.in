@@ -110,7 +110,7 @@ class User extends Authenticatable
      */
     public function getAvatarUrlAttribute(): ?string
     {
-        return $this->avatar ? asset('storage/' . $this->avatar) : null;
+        return $this->avatar ? asset('storage/'.$this->avatar) : null;
     }
 
     /**
@@ -120,7 +120,7 @@ class User extends Authenticatable
     {
         $parts = explode(' ', trim($this->nama));
         if (count($parts) >= 2) {
-            return strtoupper(mb_substr($parts[0], 0, 1) . mb_substr(end($parts), 0, 1));
+            return strtoupper(mb_substr($parts[0], 0, 1).mb_substr(end($parts), 0, 1));
         }
 
         return strtoupper(mb_substr($this->nama, 0, 2));

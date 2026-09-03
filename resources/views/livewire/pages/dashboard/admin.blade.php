@@ -3,6 +3,7 @@
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
+use App\Models\Tagihan;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -47,6 +48,27 @@ new class extends Component
                 ->latest()
                 ->limit(15)
                 ->get(),
+            'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
+                ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
+                ->selectRaw('YEAR(verified_at) y, MONTH(verified_at) m, SUM(jumlah) total')
+                ->groupBy('y', 'm')
+                ->orderBy('y')
+                ->orderBy('m')
+                ->get()
+                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total])
+                ->keyBy('month')
+                ->all(),
+            'tagihanStatusPerBulan' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
+                ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
+                ->selectRaw('YEAR(created_at) y, MONTH(created_at) m, SUM(jumlah + denda) total, SUM(CASE WHEN status = \'lunas\' THEN jumlah + denda ELSE 0 END) lunas')
+                ->groupBy('y', 'm')
+                ->orderBy('y')
+                ->orderBy('m')
+                ->get()
+                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total, 'lunas' => (int) $r->lunas, 'belum' => (int) $r->total - (int) $r->lunas])
+                ->keyBy('month')
+                ->all(),
         ];
     }
 
@@ -100,6 +122,87 @@ new class extends Component
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
             <x-stat-card label="Penyewaan Aktif" :value="$penyewaanAktif" tone="emerald"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
+        </div>
+
+        @php
+            $months = collect();
+            $rangeStart = now()->subMonths(5)->startOfMonth();
+            for ($d = $rangeStart->copy(); $d->lte(now()->startOfMonth()); $d->addMonth()) {
+                $months->push($d->format('m/Y'));
+            }
+            $chartLabels = $months->map(fn ($m) => \Carbon\Carbon::createFromFormat('m/Y', $m)->translatedFormat('M Y'))->values()->toArray();
+            $pendapatanValues = $months->map(fn ($m) => $pendapatanPerBulan[$m]['total'] ?? 0)->values()->toArray();
+            $lunasValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['lunas'] ?? 0)->values()->toArray();
+            $belumValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['belum'] ?? 0)->values()->toArray();
+        @endphp
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
+                <x-dashboard-chart
+                    id="pendapatanChart"
+                    type="line"
+                    title="Pendapatan 6 Bulan Terakhir"
+                    height="h-56"
+                    :labels="$chartLabels"
+                    :datasets="[
+                        [
+                            'label' => 'Pendapatan',
+                            'data' => $pendapatanValues,
+                            'borderColor' => '#0d9488',
+                            'backgroundColor' => 'rgba(13,148,136,0.08)',
+                            'fill' => true,
+                            'tension' => 0.45,
+                            'pointRadius' => 0,
+                            'pointHoverRadius' => 6,
+                            'pointHoverBackgroundColor' => '#0d9488',
+                            'pointHoverBorderColor' => '#fff',
+                            'pointHoverBorderWidth' => 3,
+                            'borderWidth' => 2.5,
+                        ],
+                    ]"
+                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
+                />
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
+                <x-dashboard-chart
+                    id="tagihanChart"
+                    type="line"
+                    title="Tagihan: Lunas vs Belum Lunas"
+                    height="h-56"
+                    :labels="$chartLabels"
+                    :datasets="[
+                        [
+                            'label' => 'Lunas',
+                            'data' => $lunasValues,
+                            'borderColor' => '#10b981',
+                            'backgroundColor' => 'rgba(16,185,129,0.08)',
+                            'fill' => true,
+                            'tension' => 0.45,
+                            'pointRadius' => 0,
+                            'pointHoverRadius' => 6,
+                            'pointHoverBackgroundColor' => '#10b981',
+                            'pointHoverBorderColor' => '#fff',
+                            'pointHoverBorderWidth' => 3,
+                            'borderWidth' => 2.5,
+                        ],
+                        [
+                            'label' => 'Belum Lunas',
+                            'data' => $belumValues,
+                            'borderColor' => '#f87171',
+                            'backgroundColor' => 'rgba(248,113,113,0.08)',
+                            'fill' => true,
+                            'tension' => 0.45,
+                            'pointRadius' => 0,
+                            'pointHoverRadius' => 6,
+                            'pointHoverBackgroundColor' => '#f87171',
+                            'pointHoverBorderColor' => '#fff',
+                            'pointHoverBorderWidth' => 3,
+                            'borderWidth' => 2.5,
+                        ],
+                    ]"
+                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
+                />
+            </div>
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">

@@ -1,10 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../services/properti_manage_service.dart';
-import '../../widgets/facility_chip.dart';
+import '../../src/platform_file.dart';
+import '../../widgets/facility_icon.dart';
+import '../../widgets/kos_map.dart';
+import 'pilih_lokasi_screen.dart';
 
 class PropertiFormScreen extends StatefulWidget {
   final Properti? properti;
@@ -23,16 +26,47 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
   final _aturanController = TextEditingController();
   final _dendaController = TextEditingController(text: '0');
   final _hargaController = TextEditingController();
+  final ukuranKamarController = TextEditingController();
+  final depositController = TextEditingController();
   List<String> _selectedFasilitas = [];
+  double? _latitude;
+  double? _longitude;
+  bool _termasukListrik = true;
+  String _ukuranKamar = '';
+  String _deposit = '';
   String _jenisHarga = 'bulanan';
   String _status = 'aktif';
-  File? _foto;
+  PlatformFile? _foto;
   bool _isLoading = false;
 
-  static const List<String> _allFasilitas = [
-    'WiFi', 'AC', 'Kasur', 'Dapur', 'Kamar Mandi Dalam', 'Laundry', 'Parkir',
-    'CCTV', 'Security', 'Listrik', 'Air', 'TV', 'Rak Baju', 'Gym', 'Kolam Renang',
-  ];
+  // Kelompok fasilitas sesuai struktur referensi (Mamikos-like).
+  static const Map<String, List<String>> _kelompokFasilitas = {
+    'Fasilitas Kamar': [
+      'Kasur', 'Meja', 'Lemari / Storage', 'Ventilasi', 'Jendela',
+      'AC', 'Kursi', 'Bantal', 'Cermin',
+    ],
+    'Fasilitas Kamar Mandi': [
+      'K. Mandi Dalam', 'K. Mandi Luar', 'Kloset Duduk', 'Shower',
+      'Ember mandi', 'Air panas',
+    ],
+    'Fasilitas Umum': [
+      'WiFi', 'Kulkas', 'R. Tamu', 'Penjaga Kos', 'R. Jemur', 'Dapur',
+    ],
+    'Fasilitas Parkir': [
+      'Parkir Mobil', 'Parkir Motor & Sepeda',
+    ],
+    'Peraturan Khusus': [
+      'Tamu boleh menginap', 'Tamu menginap dikenakan biaya',
+      'Maks. 2 orang/kamar', 'Boleh pasutri',
+      'Wajib sertakan surat nikah saat pengajuan sewa',
+      'Tidak boleh bawa anak',
+      'Dilarang merokok di kamar', 'Lawan jenis dilarang ke kamar',
+    ],
+  };
+
+  // Normalisasi nama fasilitas agar "kamar_mandi_dalam" == "Kamar Mandi Dalam".
+  static String _normalizeFasilitas(String s) =>
+      s.trim().toLowerCase().replaceAll(RegExp(r'[ _-]'), '');
 
   bool get isEditing => widget.properti != null;
 
@@ -43,6 +77,8 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
       _namaController.text = widget.properti!.nama;
       _kotaController.text = widget.properti!.kota;
       _alamatController.text = widget.properti!.alamat;
+      _latitude = widget.properti!.latitude;
+      _longitude = widget.properti!.longitude;
       _deskripsiController.text = widget.properti!.deskripsi ?? '';
       _aturanController.text = widget.properti!.aturan ?? '';
       _dendaController.text = (widget.properti!.dendaPerHari ?? 0).toString();
@@ -50,9 +86,37 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
         _hargaController.text = widget.properti!.harga.toString();
       }
       _selectedFasilitas = List.from(widget.properti!.fasilitas ?? []);
+      _parseFasilitasTersimpan(_selectedFasilitas);
+      ukuranKamarController.text = _ukuranKamar;
+      depositController.text = _deposit;
       _jenisHarga = (widget.properti!.jenisHarga ?? 'bulanan').toLowerCase() == 'harian' ? 'harian' : 'bulanan';
       _status = widget.properti!.status.isEmpty ? 'aktif' : widget.properti!.status;
     }
+  }
+
+  // Pisahkan item khusus (listrik, spesifikasi, deposit) dari daftar fasilitas
+  // saat mode edit, lalu isi kembali ke state masing-masing.
+  void _parseFasilitasTersimpan(List<String> list) {
+    list.removeWhere((f) {
+      final n = _normalizeFasilitas(f);
+      if (n == 'tidaktermasuklistrik' || n == 'termasuklistrik') {
+        _termasukListrik = n == 'termasuklistrik';
+        return true;
+      }
+      if (f.contains(':')) {
+        if (f.trimLeft().toLowerCase().startsWith('spesifikasi')) {
+          _ukuranKamar = f.split(':').last.trim().replaceAll(RegExp(r' meter$', caseSensitive: false), '');
+          ukuranKamarController.text = _ukuranKamar;
+          return true;
+        }
+        if (f.trimLeft().toLowerCase().startsWith('deposit')) {
+          _deposit = f.split(':').last.trim();
+          depositController.text = _deposit;
+          return true;
+        }
+      }
+      return false;
+    });
   }
 
   @override
@@ -64,13 +128,156 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
     _aturanController.dispose();
     _dendaController.dispose();
     _hargaController.dispose();
+    ukuranKamarController.dispose();
+    depositController.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 80);
-    if (picked != null) setState(() => _foto = File(picked.path));
+    if (picked != null) {
+      final file = await PlatformFile.fromXFile(picked);
+      if (mounted) setState(() => _foto = file);
+    }
+  }
+
+  Future<void> _pilihLokasi() async {
+    final result = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PilihLokasiScreen(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _latitude = result.latitude;
+        _longitude = result.longitude;
+      });
+    }
+  }
+
+  // Gabungkan item checklist + info listrik/spesifikasi/deposit jadi satu daftar
+  // yang disimpan ke kolom "fasilitas" pada backend.
+  List<String> _buildFasilitasSubmit() {
+    final list = List<String>.from(_selectedFasilitas);
+    list.add(_termasukListrik ? 'Termasuk listrik' : 'Tidak termasuk listrik');
+    final ukuran = ukuranKamarController.text.trim();
+    if (ukuran.isNotEmpty) {
+      list.add('Spesifikasi: $ukuran meter');
+    }
+    final deposit = depositController.text.trim();
+    if (deposit.isNotEmpty) {
+      list.add('Deposit: $deposit');
+    }
+    return list.where((e) => e.trim().isNotEmpty).toList();
+  }
+
+  // Render satu kelompok fasilitas sebagai daftar bilah yang bisa diklik.
+  Widget _buildItemIcon(String label) {
+    final asset = FacilityIcon.assetFor(label);
+    if (asset != null) {
+      // Gambar PNG ditampilkan natural tanpa di-tint agar selaras dengan web.
+      return Image.asset(
+        asset,
+        width: 22,
+        height: 22,
+        errorBuilder: (_, _, _) => const SizedBox(width: 22, height: 22),
+      );
+    }
+    final material = FacilityIcon.materialFor(label);
+    return Icon(
+      material ?? Icons.help_outline_rounded,
+      size: 22,
+      color: _selectedFasilitas.any((s) => _normalizeFasilitas(s) == _normalizeFasilitas(label))
+          ? AppTheme.primary
+          : AppTheme.textSecondary,
+    );
+  }
+
+  // Render satu kelompok fasilitas sebagai daftar bilah yang bisa diklik.
+  Widget _buildFasilitasGroup(String judul, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(judul, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderLight),
+          ),
+          child: Column(
+            children: items.map((f) {
+              final selected = _selectedFasilitas.any(
+                (s) => _normalizeFasilitas(s) == _normalizeFasilitas(f),
+              );
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (selected) {
+                        _selectedFasilitas.removeWhere(
+                          (s) => _normalizeFasilitas(s) == _normalizeFasilitas(f),
+                        );
+                      } else {
+                        _selectedFasilitas.add(f);
+                      }
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: Checkbox(
+                            value: selected,
+                            onChanged: (_) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedFasilitas.removeWhere(
+                                    (s) => _normalizeFasilitas(s) == _normalizeFasilitas(f),
+                                  );
+                                } else {
+                                  _selectedFasilitas.add(f);
+                                }
+                              });
+                            },
+                            activeColor: AppTheme.primary,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _buildItemIcon(f),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            f,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   Future<void> _submit() async {
@@ -79,6 +286,8 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
 
     final hargaText = _hargaController.text.trim();
     final harga = hargaText.isEmpty ? null : int.tryParse(hargaText);
+    // Biarkan _selectedFasilitas utuh; fasilitas submit dihitung sekali saja.
+    final fasilitas = _buildFasilitasSubmit().isNotEmpty ? _buildFasilitasSubmit() : null;
 
     try {
       if (isEditing) {
@@ -87,8 +296,10 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
           nama: _namaController.text.trim(),
           kota: _kotaController.text.trim(),
           alamat: _alamatController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
           deskripsi: _deskripsiController.text.trim().isNotEmpty ? _deskripsiController.text.trim() : null,
-          fasilitas: _selectedFasilitas.isNotEmpty ? _selectedFasilitas : null,
+          fasilitas: fasilitas,
           aturan: _aturanController.text.trim().isNotEmpty ? _aturanController.text.trim() : null,
           dendaPerHari: int.tryParse(_dendaController.text),
           harga: harga,
@@ -101,8 +312,10 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
           nama: _namaController.text.trim(),
           kota: _kotaController.text.trim(),
           alamat: _alamatController.text.trim(),
+          latitude: _latitude,
+          longitude: _longitude,
           deskripsi: _deskripsiController.text.trim().isNotEmpty ? _deskripsiController.text.trim() : null,
-          fasilitas: _selectedFasilitas.isNotEmpty ? _selectedFasilitas : null,
+          fasilitas: fasilitas,
           aturan: _aturanController.text.trim().isNotEmpty ? _aturanController.text.trim() : null,
           dendaPerHari: int.tryParse(_dendaController.text),
           harga: harga,
@@ -145,7 +358,7 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
                     color: _foto != null ? null : const Color(0xFFCCFBF1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.border, style: BorderStyle.solid),
-                    image: _foto != null ? DecorationImage(image: FileImage(_foto!), fit: BoxFit.cover) : null,
+                    image: _foto != null ? DecorationImage(image: MemoryImage(_foto!.bytes), fit: BoxFit.cover) : null,
                   ),
                   child: _foto == null
                       ? const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -198,6 +411,59 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
               TextFormField(controller: _alamatController, decoration: const InputDecoration(hintText: 'Alamat lengkap'),
                 validator: (v) => (v == null || v.isEmpty) ? 'Wajib diisi' : null),
               const SizedBox(height: 16),
+              const Text('Lokasi di Peta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pilihLokasi,
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  children: [
+                    SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: KosMap(
+                        latitude: _latitude,
+                        longitude: _longitude,
+                        nama: _namaController.text,
+                        interactive: false,
+                      ),
+                    ),
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit_location_alt_rounded, size: 16, color: AppTheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              _latitude != null ? 'Ubah Lokasi' : 'Pilih Lokasi',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(child: Column(
@@ -240,29 +506,31 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
               const SizedBox(height: 6),
               TextFormField(controller: _aturanController, maxLines: 2, decoration: const InputDecoration(hintText: 'Contoh: Jam malam 22:00')),
               const SizedBox(height: 16),
+              const Text('Spesifikasi Tipe Kamar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: ukuranKamarController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(hintText: 'Ukuran kamar (m²), contoh: 10.5'),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Termasuk Listrik', style: TextStyle(fontSize: 14)),
+                value: _termasukListrik,
+                onChanged: (v) => setState(() => _termasukListrik = v),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: depositController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(hintText: 'Deposit (Rp), contoh: 500000'),
+              ),
+              const SizedBox(height: 16),
               const Text('Fasilitas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 8, crossAxisSpacing: 8),
-                itemCount: _allFasilitas.length,
-                itemBuilder: (context, index) {
-                  final f = _allFasilitas[index];
-                  final selected = _selectedFasilitas.contains(f);
-                  return FacilityChip(
-                    label: f,
-                    showCheckbox: true,
-                    isSelected: selected,
-                    onTap: () {
-                      setState(() {
-                        if (selected) _selectedFasilitas.remove(f);
-                        else _selectedFasilitas.add(f);
-                      });
-                    },
-                  );
-                },
-              ),
+              ..._kelompokFasilitas.entries.map((entry) => _buildFasilitasGroup(entry.key, entry.value)),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

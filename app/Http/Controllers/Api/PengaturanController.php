@@ -7,6 +7,7 @@ use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 
 class PengaturanController extends Controller
@@ -107,7 +108,7 @@ class PengaturanController extends Controller
         ]);
 
         $request->user()->update([
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
         ]);
 
         return response()->json(['message' => 'Password berhasil diubah.']);

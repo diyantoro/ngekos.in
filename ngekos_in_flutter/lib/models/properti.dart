@@ -1,3 +1,4 @@
+import '../config/api_config.dart';
 import '../utils/json.dart';
 import 'kamar.dart';
 
@@ -5,6 +6,8 @@ class Properti {
   final int id;
   final String nama;
   final String kota;
+  final double? latitude;
+  final double? longitude;
   final String alamat;
   final String? deskripsi;
   final List<String>? fasilitas;
@@ -23,6 +26,8 @@ class Properti {
     required this.id,
     required this.nama,
     required this.kota,
+    this.latitude,
+    this.longitude,
     required this.alamat,
     this.deskripsi,
     this.fasilitas,
@@ -47,6 +52,8 @@ class Properti {
       id: jsonInt(json['id'], 0),
       nama: json['nama'] ?? '',
       kota: json['kota'] ?? '',
+      latitude: _doubleOrNull(json['latitude']),
+      longitude: _doubleOrNull(json['longitude']),
       alamat: json['alamat'] ?? '',
       deskripsi: json['deskripsi'],
       fasilitas: json['fasilitas'] != null
@@ -57,7 +64,7 @@ class Properti {
       harga: jsonIntOrNull(json['harga']),
       jenisHarga: json['jenis_harga'],
       status: json['status'] ?? '',
-      foto: json['foto'],
+      foto: ApiConfig.resolveStorageUrl(json['foto']),
       totalKamar: totalKamar,
       kamarTersedia: kamarTersedia,
       pemilik: json['pemilik'] != null
@@ -84,4 +91,9 @@ class PemilikInfo {
       noHp: json['no_hp'],
     );
   }
+}
+
+double? _doubleOrNull(dynamic value) {
+  if (value == null) return null;
+  return double.parse(value.toString());
 }

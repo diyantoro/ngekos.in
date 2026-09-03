@@ -101,9 +101,9 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
   }
 
   Future<void> _simpanProfil() async {
+    final auth = context.read<AuthProvider>();
     try {
       await AuthService.updateProfile(nama: _namaController.text.trim(), noHp: _noHpController.text.trim());
-      final auth = context.read<AuthProvider>();
       await auth.init();
       if (mounted) NotifikasiPopup.show(context, message: 'Profil berhasil diperbarui.');
     } catch (e) {
@@ -259,7 +259,7 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
       children: [
         _buildLabel('Tanggal Jatuh Tempo'),
         DropdownButtonFormField<String>(
-          value: _jatuhTempo,
+          initialValue: _jatuhTempo,
           decoration: const InputDecoration(),
           items: [
             const DropdownMenuItem(value: 'akhir', child: Text('Akhir bulan')),
@@ -338,7 +338,7 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
           Switch(
             value: _notifikasi[key] ?? true,
             onChanged: (v) => setState(() => _notifikasi[key] = v),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
           ),
         ],
       ),

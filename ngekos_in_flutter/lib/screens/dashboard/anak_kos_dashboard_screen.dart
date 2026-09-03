@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/tagihan.dart';
 import '../../models/penyewaan.dart';
 import '../../models/pembayaran.dart';
 import '../../services/dashboard_service.dart';
+import '../../src/platform_file.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/greeting_banner.dart';
@@ -54,14 +54,15 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
       final s = await DashboardService.getPenyewaan();
       final t = await DashboardService.getTagihan();
       final p = await DashboardService.getPembayaran();
-      if (mounted) setState(() {
-        _dashboard = d;
-        _penyewaans = s;
-        _tagihans = t;
-        _pembayarans = p;
-        _isLoading = false;
-      });
-    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dashboard = d;
+          _penyewaans = s;
+          _tagihans = t;
+          _pembayarans = p;
+          _isLoading = false;
+        });
+      }    } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -171,7 +172,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                                 width: 56,
                                 height: 56,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.apartment_rounded, color: Colors.white, size: 28),
+                                errorBuilder: (_, _, _) => const Icon(Icons.apartment_rounded, color: Colors.white, size: 28),
                               ),
                             )
                           : const Icon(Icons.apartment_rounded, color: Colors.white, size: 28),
@@ -409,7 +410,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
 
   void _showBayarModal(Tagihan tagihan) {
     final total = tagihan.jumlah + tagihan.denda;
-    File? bukti;
+    PlatformFile? bukti;
     var uploading = false;
     showModalBottomSheet(
       context: context,
@@ -436,7 +437,10 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
               GestureDetector(
                 onTap: () async {
                   final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-                  if (picked != null) setSheetState(() => bukti = File(picked.path));
+                  if (picked != null) {
+                    final file = await PlatformFile.fromXFile(picked);
+                    setSheetState(() => bukti = file);
+                  }
                 },
                 child: Container(
                   width: double.infinity,
@@ -452,7 +456,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          bukti == null ? 'Pilih Bukti Transfer' : bukti!.path.split('/').last,
+                          bukti == null ? 'Pilih Bukti Transfer' : bukti!.name,
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: bukti == null ? AppTheme.primary : AppTheme.textPrimary),
                         ),
                       ),
@@ -473,7 +477,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                             jumlah: total,
                             bukti: bukti,
                           );
-                          Navigator.pop(ctx);
+                          if (ctx.mounted) Navigator.pop(ctx);
                           _load();
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

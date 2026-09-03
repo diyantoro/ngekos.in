@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ChatPesan;
 use App\Models\Properti;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,24 +31,24 @@ class ChatController extends Controller
             ->orderBy('last_message_at', 'desc')
             ->get();
 
-        $result = $conversations->map(function ($conv) use ($user, $adalahAnakKos) {
+        $result = $conversations->map(function ($conv) use ($adalahAnakKos) {
             $properti = Properti::select('id', 'nama', 'foto')->find($conv->properti_id);
 
             if ($adalahAnakKos) {
                 $lawan = Properti::select('id', 'pemilik_id')->find($conv->properti_id)?->pemilik;
             } else {
-                $lawan = \App\Models\User::select('id', 'nama', 'avatar')->find($conv->anak_kos_id);
+                $lawan = User::select('id', 'nama', 'avatar')->find($conv->anak_kos_id);
             }
 
             return [
                 'properti_id' => $conv->properti_id,
                 'properti_nama' => $properti?->nama,
-                'properti_foto' => $properti?->foto ? asset('storage/' . $properti->foto) : null,
+                'properti_foto' => $properti?->foto ? '/storage/'.$properti->foto : null,
                 'anak_kos_id' => $conv->anak_kos_id,
                 'lawan' => $lawan ? [
                     'id' => $lawan->id,
                     'nama' => $lawan->nama,
-                    'avatar' => $lawan->avatar ? asset('storage/' . $lawan->avatar) : null,
+                    'avatar' => $lawan->avatar ? '/storage/'.$lawan->avatar : null,
                 ] : null,
                 'last_message' => $conv->last_message,
                 'last_message_at' => $conv->last_message_at,

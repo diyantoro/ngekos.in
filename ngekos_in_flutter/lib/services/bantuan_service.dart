@@ -12,7 +12,7 @@ class BantuanService {
     await ApiService.post(ApiConfig.bantuan, body: {
       'nama': nama,
       'email': email,
-      if (subjek != null) 'subjek': subjek,
+      'subjek': ?subjek,
       'pesan': pesan,
     });
   }

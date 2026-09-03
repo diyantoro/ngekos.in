@@ -74,8 +74,13 @@ class KatalogController extends Controller
         return response()->json($propertis);
     }
 
-    public function show(Properti $properti): JsonResponse
+    public function show(Request $request, int $properti): JsonResponse
     {
+        $properti = Properti::where('id', $properti)
+            ->where('status', 'aktif')
+            ->with(['pemilik:id,nama'])
+            ->firstOrFail();
+
         $properti->loadCount([
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
@@ -98,9 +103,11 @@ class KatalogController extends Controller
             'id' => $p->id,
             'nama' => $p->nama,
             'kota' => $p->kota,
+            'latitude' => $p->latitude !== null ? (float) $p->latitude : null,
+            'longitude' => $p->longitude !== null ? (float) $p->longitude : null,
             'alamat' => $p->alamat,
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
-            'foto' => $p->foto ? asset('storage/' . $p->foto) : null,
+            'foto' => $p->foto ? '/storage/'.$p->foto : null,
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
@@ -118,6 +125,8 @@ class KatalogController extends Controller
             'id' => $p->id,
             'nama' => $p->nama,
             'kota' => $p->kota,
+            'latitude' => $p->latitude !== null ? (float) $p->latitude : null,
+            'longitude' => $p->longitude !== null ? (float) $p->longitude : null,
             'alamat' => $p->alamat,
             'deskripsi' => $p->deskripsi,
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
@@ -126,7 +135,7 @@ class KatalogController extends Controller
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? asset('storage/' . $p->foto) : null,
+            'foto' => $p->foto ? '/storage/'.$p->foto : null,
             'total_kamar' => (int) $p->total_kamar,
             'kamar_tersedia' => (int) $p->kamar_tersedia,
             'pemilik' => $p->pemilik ? [
@@ -141,7 +150,7 @@ class KatalogController extends Controller
                 'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
                 'jenis_harga' => $k->jenis_harga,
                 'status' => $k->status,
-                'foto' => $k->foto ? asset('storage/' . $k->foto) : null,
+                'foto' => $k->foto ? '/storage/'.$k->foto : null,
             ])->values(),
         ];
     }

@@ -8,6 +8,7 @@ use App\Services\PenyewaanService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class PenyewaanController extends Controller
 {
@@ -26,8 +27,8 @@ class PenyewaanController extends Controller
         $validated = $request->validate([
             'tanggal_masuk' => [
                 'required', 'date',
-                'after_or_equal:' . today()->toDateString(),
-                'before_or_equal:' . today()->addMonths(3)->toDateString(),
+                'after_or_equal:'.today()->toDateString(),
+                'before_or_equal:'.today()->addMonths(3)->toDateString(),
             ],
         ], [
             'tanggal_masuk.required' => 'Tanggal masuk wajib diisi.',
@@ -51,7 +52,7 @@ class PenyewaanController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $tanggalLabel = \Illuminate\Support\Carbon::parse($penyewaan->tanggal_masuk)->locale('id')->translatedFormat('d F Y');
+        $tanggalLabel = Carbon::parse($penyewaan->tanggal_masuk)->locale('id')->translatedFormat('d F Y');
 
         return response()->json([
             'message' => 'Kamar '.$kamar->nama.' berhasil dipesan. Rencana masuk: '.$tanggalLabel.'. Kamar langsung terkunci untukmu.',

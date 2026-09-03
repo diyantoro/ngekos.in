@@ -2,6 +2,7 @@
 
 use App\Models\Properti;
 use App\Models\User;
+use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -20,6 +21,12 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Validate('nullable|string|max:100')]
     public ?string $kota = null;
+
+    #[Validate('nullable|numeric|between:-90,90')]
+    public ?string $latitude = null;
+
+    #[Validate('nullable|numeric|between:-180,180')]
+    public ?string $longitude = null;
 
     #[Validate('nullable|string|max:500')]
     public ?string $alamat = null;
@@ -67,6 +74,8 @@ new #[Layout('layouts.app')] class extends Component
 
             $this->nama = $this->properti->nama;
             $this->kota = $this->properti->kota;
+            $this->latitude = $this->properti->latitude;
+            $this->longitude = $this->properti->longitude;
             $this->alamat = $this->properti->alamat;
             $this->deskripsi = $this->properti->deskripsi;
             $this->fasilitasTerpilih = $this->properti->fasilitas
@@ -112,6 +121,8 @@ new #[Layout('layouts.app')] class extends Component
         $this->validate([
             'nama' => 'required|string|max:255',
             'kota' => 'nullable|string|max:100',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string|max:500',
             'deskripsi' => 'nullable|string',
             'aturan' => 'nullable|string',
@@ -121,11 +132,15 @@ new #[Layout('layouts.app')] class extends Component
             'status' => 'required|in:aktif,nonaktif',
         ]);
 
-        $fasilitasString = ! empty($this->fasilitasTerpilih) ? implode(', ', $this->fasilitasTerpilih) : null;
+        $fasilitasString = FacilityHelper::normalizeString(
+            implode(', ', $this->fasilitasTerpilih)
+        );
 
         $data = [
             'nama' => $this->nama,
             'kota' => $this->kota,
+            'latitude' => $this->latitude !== null && $this->latitude !== '' ? (float) $this->latitude : null,
+            'longitude' => $this->longitude !== null && $this->longitude !== '' ? (float) $this->longitude : null,
             'alamat' => $this->alamat,
             'deskripsi' => $this->deskripsi,
             'fasilitas' => $fasilitasString,
@@ -157,7 +172,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function normalizeKosong(): void
     {
-        foreach (['kota', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga'] as $field) {
+        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga'] as $field) {
             if ($this->{$field} === '') {
                 $this->{$field} = null;
             }
@@ -173,6 +188,11 @@ new #[Layout('layouts.app')] class extends Component
         Storage::disk('public')->delete($this->properti->foto);
         $this->properti->update(['foto' => null]);
         $this->pesan = 'Foto kos berhasil dihapus.';
+    }
+
+    public function ambilLokasiSaya(): void
+    {
+        $this->dispatch('minta-lokasi');
     }
 }; ?>
 
@@ -278,6 +298,29 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('alamat')" class="mt-2" />
             </div>
 
+            <!-- Lokasi Peta -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="latitude" value="Latitude" />
+                    <x-text-input wire:model="latitude" id="latitude" class="mt-1 block w-full" type="number" step="any" min="-90" max="90" placeholder="-6.200000" />
+                    <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="longitude" value="Longitude" />
+                    <x-text-input wire:model="longitude" id="longitude" class="mt-1 block w-full" type="number" step="any" min="-180" max="180" placeholder="106.816666" />
+                    <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
+                </div>
+            </div>
+            <div>
+                <button type="button" wire:click="ambilLokasiSaya" class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-500">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                    Gunakan lokasi saya saat ini
+                </button>
+                @if ($latitude && $longitude)
+                    <p class="mt-1 text-xs text-gray-400">Koordinat: {{ $latitude }}, {{ $longitude }}</p>
+                @endif
+            </div>
+
             <div>
                 <x-input-label for="deskripsi" value="Deskripsi" />
                 <textarea wire:model="deskripsi" id="deskripsi" rows="3" placeholder="Ceritakan keunggulan kos Anda..."
@@ -306,7 +349,7 @@ new #[Layout('layouts.app')] class extends Component
             <div>
                 <x-input-label value="Fasilitas yang Tersedia" />
                 <p class="mt-0.5 text-xs text-gray-400">Pilih fasilitas yang tersedia di kos Anda.</p>
-                <div class="mt-3" x-data="{ selected: @entangle('fasilitasTerpilih') }">
+                <div class="mt-3">
                     <x-facility-icons :selected="$fasilitasTerpilih" :editable="true" />
                 </div>
                 @error('fasilitasTerpilih') <p class="mt-2 text-xs font-medium text-rose-600">{{ $message }}</p> @enderror
@@ -339,3 +382,24 @@ new #[Layout('layouts.app')] class extends Component
         </form>
     </div>
 </div>
+
+@script
+<script>
+    Livewire.on('minta-lokasi', () => {
+        function gunakan(wireId) {
+            if (!navigator.geolocation) {
+                alert('Geolocation tidak didukung oleh browser Anda.');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const comp = Livewire.find(wireId);
+                comp.set('latitude', Number(pos.coords.latitude.toFixed(7)));
+                comp.set('longitude', Number(pos.coords.longitude.toFixed(7)));
+            }, () => alert('Gagal mendapatkan lokasi. Pastikan izin lokasi diberikan.'));
+        }
+        const el = document.querySelector('[wire\\:id]');
+        el && gunakan(el.getAttribute('wire:id'));
+    });
+</script>
+@endscript
+

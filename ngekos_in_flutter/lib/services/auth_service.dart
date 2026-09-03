@@ -1,6 +1,6 @@
-import 'dart:io';
 import '../config/api_config.dart';
 import '../models/user.dart';
+import '../src/platform_file.dart';
 import 'api_service.dart';
 
 class AuthService {
@@ -21,7 +21,7 @@ class AuthService {
     required String peran,
     required String password,
     required String passwordConfirmation,
-    File? avatar,
+    PlatformFile? avatar,
   }) async {
     final fields = <String, String>{
       'nama': nama,
@@ -73,8 +73,8 @@ class AuthService {
 
   static Future<Map<String, dynamic>> updateProfile({String? nama, String? noHp}) async {
     return await ApiService.put(ApiConfig.userProfile, body: {
-      if (nama != null) 'nama': nama,
-      if (noHp != null) 'no_hp': noHp,
+      'nama': ?nama,
+      'no_hp': ?noHp,
     });
   }
 }

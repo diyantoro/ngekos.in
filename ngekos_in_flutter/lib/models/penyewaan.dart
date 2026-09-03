@@ -1,3 +1,4 @@
+import '../config/api_config.dart';
 import '../utils/json.dart';
 
 class Penyewaan {
@@ -26,7 +27,7 @@ class Penyewaan {
       id: jsonInt(json['id'], 0),
       kamar: json['kamar'],
       properti: json['properti'],
-      propertiFoto: json['properti_foto'],
+      propertiFoto: ApiConfig.resolveStorageUrl(json['properti_foto']),
       tanggalMasuk: json['tanggal_masuk'] != null
           ? DateTime.parse(json['tanggal_masuk'])
           : null,

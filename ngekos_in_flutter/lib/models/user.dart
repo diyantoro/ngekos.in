@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 class User {
   final int id;
   final String nama;
@@ -27,7 +29,7 @@ class User {
       nama: json['nama'],
       email: json['email'],
       noHp: json['no_hp'],
-      avatar: json['avatar'],
+      avatar: ApiConfig.resolveStorageUrl(json['avatar']),
       inisial: json['inisial'],
       peran: json['peran'],
       pesanBelumDibaca: json['pesan_belum_dibaca'],

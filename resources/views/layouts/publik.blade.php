@@ -26,6 +26,16 @@
         </style>
     </head>
     <body class="font-sans text-gray-900 antialiased bg-gray-50">
+        @auth
+            {{-- Logged-in: pakai sidebar kiri yang sama di semua halaman --}}
+            <livewire:layout.navigation />
+            <div class="min-h-screen lg:pl-64">
+                <main class="pb-20 sm:pb-0">
+                    {{ $slot }}
+                </main>
+                <x-bottom-nav />
+            </div>
+        @else
         <div class="min-h-screen flex flex-col">
 
             <!-- Top Header (Desktop + Mobile simplified) -->
@@ -189,6 +199,7 @@
             <!-- Bottom Navigation (Mobile only) -->
             <x-bottom-nav />
         </div>
+        @endif
 
         <livewire:chatbot />
     </body>

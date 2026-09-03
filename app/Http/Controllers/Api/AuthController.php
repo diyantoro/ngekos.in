@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PesanBantuan;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
@@ -84,7 +85,7 @@ class AuthController extends Controller
             'avatar' => 'nullable|image|max:2048',
         ]);
 
-        $validated['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
+        $validated['password'] = Hash::make($validated['password']);
 
         $data = collect($validated)->only(['nama', 'email', 'no_hp', 'password'])->toArray();
 
@@ -216,11 +217,11 @@ class AuthController extends Controller
             'nama' => $user->nama,
             'email' => $user->email,
             'no_hp' => $user->no_hp,
-            'avatar' => $user->avatar_url,
+            'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
             'inisial' => $user->inisial,
             'peran' => $user->getRoleNames()->first(),
             'pesan_belum_dibaca' => $user->pesanBelumDibaca(),
-            'bantuan_belum_dibaca' => \App\Models\PesanBantuan::where('user_id', $user->id)
+            'bantuan_belum_dibaca' => PesanBantuan::where('user_id', $user->id)
                 ->whereNotNull('balasan')
                 ->whereNull('dibaca_pada')
                 ->count(),

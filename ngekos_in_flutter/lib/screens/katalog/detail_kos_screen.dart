@@ -12,6 +12,8 @@ import '../../services/katalog_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/facility_icon.dart';
+import '../../widgets/kos_map.dart';
 import '../chat/chat_detail_screen.dart';
 import '../auth/pilih_peran_screen.dart';
 
@@ -83,7 +85,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                         ? CachedNetworkImage(
                             imageUrl: _properti!.foto!,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) =>
+                            errorWidget: (_, _, _) =>
                                 Container(color: Colors.grey[200]),
                           )
                         : Container(
@@ -118,6 +120,15 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 180,
+                        child: KosMap(
+                          latitude: _properti!.latitude,
+                          longitude: _properti!.longitude,
+                          nama: _properti!.nama,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -169,7 +180,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                             color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFFCD34D).withOpacity(0.5),
+                              color: const Color(0xFFFCD34D).withValues(alpha: 0.5),
                             ),
                           ),
                           child: Text(
@@ -193,23 +204,37 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _properti!.fasilitas!
-                              .map(
-                                (f) => Chip(
-                                  label: Text(
-                                    f,
-                                    style: const TextStyle(fontSize: 13),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Column(
+                            children: _properti!.fasilitas!
+                                .map(
+                                  (f) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        _buildDetailFacilityIcon(f),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            f,
+                                            style: const TextStyle(fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  backgroundColor: AppTheme.primary.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  side: BorderSide.none,
-                                ),
-                              )
-                              .toList(),
+                                )
+                                .toList(),
+                          ),
                         ),
                       ],
                       if (_properti!.kamars != null &&
@@ -265,7 +290,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                           child: CachedNetworkImage(
                                             imageUrl: kamar.foto!,
                                             fit: BoxFit.cover,
-                                            errorWidget: (_, __, ___) =>
+                                            errorWidget: (_, _, _) =>
                                                 const Center(
                                                   child: Icon(
                                                     Icons.king_bed_rounded,
@@ -763,6 +788,23 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
         SnackBar(content: Text(pesan), backgroundColor: AppTheme.error),
       );
     }
+  }
+
+  Widget _buildDetailFacilityIcon(String label) {
+    final asset = FacilityIcon.assetFor(label);
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        width: 22,
+        height: 22,
+        errorBuilder: (_, _, _) => const SizedBox(width: 22, height: 22),
+      );
+    }
+    return Icon(
+      FacilityIcon.materialFor(label) ?? Icons.check_circle_rounded,
+      size: 22,
+      color: AppTheme.primary,
+    );
   }
 
   Widget _buildInfoGrid() {

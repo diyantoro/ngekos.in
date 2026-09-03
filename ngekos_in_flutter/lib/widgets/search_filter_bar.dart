@@ -62,7 +62,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               const Text('Kota', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: kota,
+                initialValue: kota,
                 decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                 hint: const Text('Semua Kota'),
                 items: [
@@ -75,7 +75,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               const Text('Harga Maksimal', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(
-                value: hargaMax,
+                initialValue: hargaMax,
                 decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                 hint: const Text('Semua Harga'),
                 items: const [
@@ -91,7 +91,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               const Text('Kapasitas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(
-                value: kapasitas,
+                initialValue: kapasitas,
                 decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                 hint: const Text('Semua'),
                 items: const [

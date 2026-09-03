@@ -89,9 +89,11 @@ class _KamarScreenState extends State<KamarScreen> {
                             hargaSewaBulanan: int.tryParse(hargaController.text) ?? 0,
                           );
                         }
-                        _load();
+                        if (mounted) _load();
                       } catch (e) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+                        }
                       }
                     },
                     child: Text(isEdit ? 'Simpan' : 'Tambah'),
@@ -133,7 +135,7 @@ class _KamarScreenState extends State<KamarScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: _kamars.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final kamar = _kamars[index];
                       return Container(
@@ -161,9 +163,11 @@ class _KamarScreenState extends State<KamarScreen> {
                                   onTap: () async {
                                     try {
                                       await PropertiManageService.deleteKamar(widget.propertiId, kamar.id);
-                                      _load();
+                                      if (mounted) _load();
                                     } catch (e) {
-                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+                                      }
                                     }
                                   },
                                 ),

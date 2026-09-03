@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 class UserFull {
   final int id;
   final String nama;
@@ -27,7 +29,7 @@ class UserFull {
       nama: json['nama'] ?? '',
       email: json['email'] ?? '',
       noHp: json['no_hp'],
-      avatar: json['avatar'],
+      avatar: ApiConfig.resolveStorageUrl(json['avatar']),
       inisial: json['inisial'],
       peran: json['peran'] ?? '',
       aktif: json['dinonaktifkan_pada'] == null,

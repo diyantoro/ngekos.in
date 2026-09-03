@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../src/platform_file.dart';
 import '../../widgets/auth_scaffold.dart';
 import '../main_screen.dart';
 import 'login_screen.dart';
@@ -27,7 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   late String _peran;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  File? _avatar;
+  PlatformFile? _avatar;
 
   @override
   void initState() {
@@ -48,7 +48,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 85);
-    if (picked != null) setState(() => _avatar = File(picked.path));
+    if (picked != null) {
+      final file = await PlatformFile.fromXFile(picked);
+      if (mounted) setState(() => _avatar = file);
+    }
   }
 
   Future<void> _handleRegister() async {
@@ -113,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     border: Border.all(color: Colors.white, width: 3),
                   ),
                   child: _avatar != null
-                      ? ClipOval(child: Image.file(_avatar!, fit: BoxFit.cover))
+                      ? ClipOval(child: Image.memory(_avatar!.bytes, fit: BoxFit.cover))
                       : const Icon(Icons.person_rounded, color: Colors.white, size: 40),
                 ),
               ),
