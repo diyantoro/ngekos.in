@@ -119,7 +119,7 @@ new #[Layout('layouts.publik')] class extends Component
     <!-- Cover Image -->
     <div class="relative h-56 sm:h-72 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100">
         @if ($properti->foto)
-            <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover" loading="lazy">
+            <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover">
         @else
             <div class="h-full w-full flex items-center justify-center">
                 <svg class="h-20 w-20 text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
@@ -264,7 +264,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <div class="flex">
                             <div class="h-28 sm:h-36 w-24 sm:w-36 shrink-0 bg-gradient-to-br from-gray-100 to-gray-50">
                                 @if ($kamar->foto)
-                                    <img src="{{ asset('storage/' . $kamar->foto) }}" alt="Kamar {{ $kamar->nama }}" class="h-full w-full object-cover" loading="lazy">
+                                    <img src="{{ asset('storage/' . $kamar->foto) }}" alt="Kamar {{ $kamar->nama }}" class="h-full w-full object-cover">
                                 @else
                                     <div class="h-full w-full flex items-center justify-center">
                                         <svg class="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>

@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/properti.dart';
 import '../services/katalog_service.dart';
 import '../screens/katalog/detail_kos_screen.dart';
 import '../screens/katalog/katalog_screen.dart';
+import 'tap_feedback.dart';
 
 class TrendingKosSection extends StatefulWidget {
   const TrendingKosSection({super.key});
@@ -57,12 +59,12 @@ class _TrendingKosSectionState extends State<TrendingKosSection> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Column(
+                        Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Kos Trending', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-                SizedBox(height: 2),
-                Text('Kos paling laris & banyak dicari', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                Text('Kos Trending', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.txt)),
+                const SizedBox(height: 2),
+                Text('Kos paling laris & banyak dicari', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
               ],
             ),
             GestureDetector(
@@ -93,15 +95,16 @@ class _TrendingKosSectionState extends State<TrendingKosSection> {
   Widget _buildKosCard(Properti properti) {
     final kamarTersedia = properti.kamarTersedia;
     final kamarTerisi = properti.totalKamar - kamarTersedia;
-    return GestureDetector(
+    return TapFeedback(
+      borderRadius: BorderRadius.circular(16),
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosScreen(propertiId: properti.id))),
       child: Container(
         width: 200,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderLight),
+          border: Border.all(color: AppTheme.bdrLight),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(
@@ -120,6 +123,7 @@ class _TrendingKosSectionState extends State<TrendingKosSection> {
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           child: CachedNetworkImage(
                             imageUrl: properti.foto!,
+                            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                             width: double.infinity,
                             height: 132,
                             fit: BoxFit.cover,
@@ -169,14 +173,14 @@ class _TrendingKosSectionState extends State<TrendingKosSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(properti.nama, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(properti.nama, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       const Icon(Icons.location_on_rounded, size: 12, color: AppTheme.textSecondary),
                       const SizedBox(width: 3),
                       Expanded(
-                        child: Text('${properti.kota}${properti.alamat.isNotEmpty ? ', ${properti.alamat}' : ''}', style: const TextStyle(fontSize: 10.5, color: AppTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: Text('${properti.kota}${properti.alamat.isNotEmpty ? ', ${properti.alamat}' : ''}', style: TextStyle(fontSize: 10.5, color: AppTheme.txtSec), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),

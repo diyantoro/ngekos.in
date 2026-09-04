@@ -28,7 +28,7 @@ class _MainScreenState extends State<MainScreen> {
     final isPemilik = user?.isPemilik ?? false;
     final isAdmin = user?.peran == 'admin';
     final isSuperAdmin = user?.peran == 'super_admin';
-    final showKelola = isPemilik;
+    final showKelola = isPemilik || isAdmin || isSuperAdmin;
 
     final kelolaActive = showKelola ? _currentIndex == 3 : false;
 

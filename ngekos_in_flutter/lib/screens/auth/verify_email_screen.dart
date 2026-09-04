@@ -66,12 +66,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         const Icon(Icons.home_rounded, size: 48, color: AppTheme.primary),
                         const SizedBox(height: 16),
                       ],
-                      const Text('Verifikasi Email', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                      Text('Verifikasi Email', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Terima kasih sudah mendaftar! Sebelum mulai, silakan verifikasi alamat email kamu dengan mengklik tautan yang kami kirimkan. Jika belum menerima email, kami akan kirim ulang.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5),
+                        style: TextStyle(color: AppTheme.txtSec, fontSize: 14, height: 1.5),
                       ),
                       const SizedBox(height: 24),
                       if (_sent) ...[
@@ -98,7 +98,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
                         }
                         },
-                        child: const Text('Keluar', style: TextStyle(color: AppTheme.textSecondary)),
+                        child: Text('Keluar', style: TextStyle(color: AppTheme.txtSec)),
                       ),
                     ],
                   ),

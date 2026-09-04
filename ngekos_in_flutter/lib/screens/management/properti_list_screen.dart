@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../services/properti_manage_service.dart';
@@ -68,7 +69,6 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Kelola Properti', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
@@ -119,6 +119,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
             child: properti.foto != null
                 ? CachedNetworkImage(
                     imageUrl: properti.foto!,
+                    imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,

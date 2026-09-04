@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
@@ -45,7 +45,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
     final greeting = hour < 12 ? 'Selamat Pagi' : hour < 18 ? 'Selamat Siang' : 'Selamat Malam';
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: RefreshIndicator(
         onRefresh: _loadDashboard,
         child: CustomScrollView(

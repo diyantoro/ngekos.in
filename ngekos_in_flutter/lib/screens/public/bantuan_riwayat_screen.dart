@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
@@ -55,7 +55,6 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(title: const Text('Riwayat Bantuan', style: TextStyle(fontWeight: FontWeight.bold))),
       floatingActionButton: _messages.isNotEmpty
           ? FloatingActionButton.extended(
@@ -179,7 +178,7 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Balasan Admin — ${msg.dibalasOleh ?? 'Ngekos.in Admin'}',
+                    'Balasan Admin â€” ${msg.dibalasOleh ?? 'Ngekos.in Admin'}',
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primary),
                   ),
                   if (msg.dibalasAt != null) ...[

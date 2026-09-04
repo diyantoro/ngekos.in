@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -144,7 +144,6 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

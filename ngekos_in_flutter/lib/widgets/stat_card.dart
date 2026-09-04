@@ -20,12 +20,12 @@ class StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
         ],
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: AppTheme.bdrLight),
       ),
       child: Row(
         children: [
@@ -50,10 +50,10 @@ class StatCard extends StatelessWidget {
               children: [
                 Text(
                   label.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.txtSec,
                     letterSpacing: 0.5,
                   ),
                   maxLines: 1,
@@ -62,10 +62,10 @@ class StatCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.txt,
                   ),
                 ),
               ],

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/public/landing_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/push_service.dart';
@@ -26,14 +27,21 @@ class NgekosApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
       ],
-      child: MaterialApp(
-        title: 'Ngekos.in',
-        debugShowCheckedModeBanner: false,
-        scrollBehavior: const AppScrollBehavior(),
-        theme: AppTheme.lightTheme,
-        navigatorKey: PushService.navigatorKey,
-        home: const SplashScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Ngekos.in',
+            debugShowCheckedModeBanner: false,
+            scrollBehavior: const AppScrollBehavior(),
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.mode,
+            navigatorKey: PushService.navigatorKey,
+            home: const SplashScreen(),
+          );
+        },
       ),
     );
   }

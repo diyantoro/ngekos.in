@@ -10,13 +10,20 @@ use App\Http\Controllers\Api\PengaturanController;
 use App\Http\Controllers\Api\PenggunaController;
 use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PropertiManageController;
+use App\Http\Controllers\Api\StorageProxyController;
 use Illuminate\Support\Facades\Route;
+
+// Storage proxy (serve public files via API with CORS headers for Flutter web)
+Route::get('/storage/{path}', StorageProxyController::class)
+    ->where('path', '.*');
 
 // Public routes (dibatasi rate untuk mencegah brute-force & spam)
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
 Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+Route::post('/forgot-password/otp', [AuthController::class, 'forgotPasswordOtp'])->middleware('throttle:5,1');
+Route::post('/forgot-password/verify', [AuthController::class, 'verifyPasswordOtp'])->middleware('throttle:5,1');
 
 // Public katalog
 Route::get('/kos', [KatalogController::class, 'index']);
@@ -55,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik']);
     Route::get('/dashboard/pemilik/properti', [DashboardController::class, 'pemilikProperti']);
     Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans']);
+    Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap']);
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut']);
 
     // Dashboard - Admin & Super Admin

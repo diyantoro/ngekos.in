@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -18,7 +18,6 @@ class AkunScreen extends StatelessWidget {
     final user = auth.user;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -100,7 +99,7 @@ class AkunScreen extends StatelessWidget {
                   onTap: () {},
                 ),
               ],
-              if (user?.isPemilik == true) ...[
+              if (user?.isPemilik == true || user?.peran == 'admin' || user?.peran == 'super_admin') ...[
                 _MenuItem(
                   icon: Icons.apartment_outlined,
                   title: 'Properti Saya',
@@ -170,13 +169,13 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final itemColor = color ?? AppTheme.textPrimary;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        side: BorderSide(color: AppTheme.border),
       ),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         leading: Icon(icon, color: itemColor),
         title: Text(title, style: TextStyle(color: itemColor, fontWeight: FontWeight.w500)),
@@ -203,3 +202,4 @@ class _MenuItem extends StatelessWidget {
     );
   }
 }
+

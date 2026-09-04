@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/admin_dashboard_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/greeting_banner.dart';
-import '../../widgets/promo_ads_banner.dart';
 import '../../widgets/dashboard_line_chart.dart';
+import '../../widgets/status_badge.dart';
 
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -58,7 +58,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final greeting = hour < 12 ? 'Selamat Pagi' : hour < 18 ? 'Selamat Siang' : 'Selamat Malam';
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: RefreshIndicator(
         onRefresh: _load,
         child: _isLoading
@@ -73,8 +72,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 20),
                     ),
                     const SizedBox(height: 16),
-                    const PromoAdsBanner(),
-                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(child: StatCard(label: 'Properti Ditugaskan', value: '${_dashboard?['total_tugas'] ?? 0}', icon: const Icon(Icons.apartment_rounded), tone: 'teal')),
@@ -95,6 +92,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const Align(alignment: Alignment.centerLeft, child: Text('Verifikasi Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
                     const SizedBox(height: 12),
                     _buildPembayaranList(),
+                    const SizedBox(height: 20),
+                    const Align(alignment: Alignment.centerLeft, child: Text('Riwayat Check-out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                    const SizedBox(height: 12),
+                    _buildCheckoutList(),
                   ],
                 ),
               ),
@@ -138,16 +139,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildPembayaranList() {
     final pembayarans = _dashboard?['pembayarans'] as List? ?? [];
     if (pembayarans.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: Text('Tidak ada pembayaran pending', style: TextStyle(color: AppTheme.textSecondary))),
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(child: Text('Tidak ada pembayaran pending', style: TextStyle(color: AppTheme.txtSec))),
       );
     }
     return Column(
       children: pembayarans.map((p) => Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.borderLight)),
+        decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.bdrLight)),
         child: Row(
           children: [
             Expanded(
@@ -156,7 +157,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(p['anak_kos_nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                   const SizedBox(height: 2),
-                  Text('${p['periode'] ?? "-"} · ${p['metode'] ?? "-"}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('${p['periode'] ?? "-"} · ${p['metode'] ?? "-"}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                   Text(AppTheme.formatRupiah(p['jumlah'] ?? 0), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 ],
               ),
@@ -173,6 +174,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
+          ],
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildCheckoutList() {
+    final checkouts = _dashboard?['checkouts'] as List? ?? [];
+    if (checkouts.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(child: Text('Belum ada riwayat check-out', style: TextStyle(color: AppTheme.txtSec))),
+      );
+    }
+    return Column(
+      children: checkouts.map((c) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.bdrLight)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(c['anak_kos_nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                ),
+                StatusBadge(status: c['status'] ?? ''),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Kamar ${c['kamar_nama'] ?? "-"} · ${c['properti_nama'] ?? "-"}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
+              if (c['tanggal_keluar'] != null)
+                Text('Keluar: ${c['tanggal_keluar']}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
           ],
         ),
       )).toList(),

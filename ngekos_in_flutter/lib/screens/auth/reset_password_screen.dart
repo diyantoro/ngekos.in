@@ -87,9 +87,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           const Icon(Icons.home_rounded, size: 48, color: AppTheme.primary),
                           const SizedBox(height: 16),
                         ],
-                        const Text('Reset Password', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        Text('Reset Password', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                         const SizedBox(height: 8),
-                        const Text('Buat password baru untuk akun Anda.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
+                        Text('Buat password baru untuk akun Anda.', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.txtSec)),
                         const SizedBox(height: 32),
                         if (_error != null) ...[
                           Container(

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -98,7 +98,6 @@ class _BantuanScreenState extends State<BantuanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -258,7 +257,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
             children: [
               const Text('Info Bantuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              _buildInfoItem(Icons.chat_rounded, 'Chatbot siap 24 jam — jawaban instan.'),
+              _buildInfoItem(Icons.chat_rounded, 'Chatbot siap 24 jam â€” jawaban instan.'),
               const SizedBox(height: 8),
               _buildInfoItem(Icons.schedule_rounded, 'Admin membalas dalam 1x24 jam.'),
               const SizedBox(height: 8),

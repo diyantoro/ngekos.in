@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
@@ -74,7 +74,6 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
     final greeting = hour < 12 ? 'Selamat Pagi' : hour < 18 ? 'Selamat Siang' : 'Selamat Malam';
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: RefreshIndicator(
         onRefresh: _load,
         child: _isLoading
@@ -129,11 +128,11 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
     if (_penyewaans.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
-        child: const Column(
+        child: Column(
           children: [
             Icon(Icons.home_work_outlined, size: 48, color: Color(0xFFD1D5DB)),
             SizedBox(height: 12),
-            Text('Belum ada penyewaan aktif', style: TextStyle(color: AppTheme.textSecondary)),
+            Text('Belum ada penyewaan aktif', style: TextStyle(color: AppTheme.txtSec)),
           ],
         ),
       );
@@ -141,13 +140,12 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
     return Column(
       children: _penyewaans.map((s) {
         final isAktif = s.status == 'aktif';
-        final sudahAjukan = s.permintaanKeluarPada != null;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.card,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isAktif ? const Color(0xFF99F6E4) : AppTheme.borderLight),
+            border: Border.all(color: isAktif ? const Color(0xFF99F6E4) : AppTheme.bdrLight),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Column(
@@ -183,16 +181,16 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Kamar ${s.kamar ?? "-"} · ${s.properti ?? ""}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                            'Kamar ${s.kamar ?? "-"} Â· ${s.properti ?? ""}',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.txt),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Masuk: ${s.tanggalMasuk != null ? DateFormat('d MMM yyyy').format(s.tanggalMasuk!) : '-'}'
-                            '${s.tanggalKeluar != null ? ' · Keluar: ${DateFormat('d MMM yyyy').format(s.tanggalKeluar!)}' : ''}',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            '${s.tanggalKeluar != null ? ' Â· Keluar: ${DateFormat('d MMM yyyy').format(s.tanggalKeluar!)}' : ''}',
+                            style: TextStyle(fontSize: 12, color: AppTheme.txtSec),
                           ),
                         ],
                       ),
@@ -206,38 +204,25 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: AppTheme.borderLight)),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: AppTheme.bdrLight)),
                   ),
-                  child: sudahAjukan
-                      ? Row(
-                          children: [
-                            const Icon(Icons.schedule_rounded, size: 16, color: AppTheme.warning),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Menunggu konfirmasi keluar',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber[800]),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton(
-                              onPressed: () => _ajukanKeluar(s),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.rose,
-                                side: BorderSide(color: AppTheme.rose.withValues(alpha: 0.4)),
-                                backgroundColor: const Color(0xFFFFF1F2),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: const Text('Ajukan Check-out', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            ),
-                          ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => _ajukanKeluar(s),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.rose,
+                          side: BorderSide(color: AppTheme.rose.withValues(alpha: 0.4)),
+                          backgroundColor: const Color(0xFFFFF1F2),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
+                        child: const Text('Ajukan Check-out', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -250,11 +235,11 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
     if (_tagihans.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
-        child: const Column(
+        child: Column(
           children: [
             Icon(Icons.receipt_long_outlined, size: 48, color: Color(0xFFD1D5DB)),
             SizedBox(height: 12),
-            Text('Tidak ada tagihan', style: TextStyle(color: AppTheme.textSecondary)),
+            Text('Tidak ada tagihan', style: TextStyle(color: AppTheme.txtSec)),
           ],
         ),
       );
@@ -266,9 +251,9 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.card,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.borderLight),
+            border: Border.all(color: AppTheme.bdrLight),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Row(
@@ -280,21 +265,21 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(t.periode ?? '-', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+                          child: Text(t.periode ?? '-', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.txt)),
                         ),
                         StatusBadge(status: t.status),
                       ],
                     ),
                     const SizedBox(height: 6),
                     if (t.kamar != null)
-                      Text('Kamar ${t.kamar}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      Text('Kamar ${t.kamar}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                     const SizedBox(height: 2),
                     if (t.jatuhTempo != null)
-                      Text('Jatuh tempo: ${DateFormat('d MMM yyyy').format(t.jatuhTempo!)}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      Text('Jatuh tempo: ${DateFormat('d MMM yyyy').format(t.jatuhTempo!)}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                     const SizedBox(height: 8),
                     Text(
                       AppTheme.formatRupiah(total),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.txt),
                     ),
                     if (t.denda > 0)
                       Text('termasuk denda ${AppTheme.formatRupiah(t.denda)}', style: const TextStyle(fontSize: 11, color: AppTheme.rose)),
@@ -324,11 +309,11 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
     if (_pembayarans.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
-        child: const Column(
+        child: Column(
           children: [
             Icon(Icons.payments_outlined, size: 48, color: Color(0xFFD1D5DB)),
             SizedBox(height: 12),
-            Text('Belum ada pembayaran', style: TextStyle(color: AppTheme.textSecondary)),
+            Text('Belum ada pembayaran', style: TextStyle(color: AppTheme.txtSec)),
           ],
         ),
       );
@@ -338,9 +323,9 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderLight),
+          border: Border.all(color: AppTheme.bdrLight),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(
@@ -349,22 +334,22 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(p.periode ?? '-', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+                  child: Text(p.periode ?? '-', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.txt)),
                 ),
                 StatusBadge(status: p.status),
               ],
             ),
             const SizedBox(height: 8),
-            Text(p.formattedJumlah, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimary)),
+            Text(p.formattedJumlah, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.txt)),
             const SizedBox(height: 4),
             Row(
               children: [
                 if (p.metode != null)
-                  Text('Metode: ${p.metode}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('Metode: ${p.metode}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                 if (p.metode != null && p.diverifikasiOleh != null)
-                  const Text('  ·  ', style: TextStyle(fontSize: 12, color: AppTheme.border)),
+                  Text('  ·  ', style: TextStyle(fontSize: 12, color: AppTheme.bdr)),
                 if (p.diverifikasiOleh != null)
-                  Text('Verifikasi: ${p.diverifikasiOleh}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('Verifikasi: ${p.diverifikasiOleh}', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
               ],
             ),
           ],
@@ -379,7 +364,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Ajukan Check-out'),
-        content: Text('Ajukan check-out dari kamar ${s.kamar ?? ""}? Pemilik akan mengonfirmasi tanggal keluarmu.'),
+        content: Text('Ajukan check-out dari kamar ${s.kamar ?? ""}? Check-out akan langsung diproses dan kamar kembali tersedia.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -397,7 +382,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
       await DashboardService.ajukanKeluar(s.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pengajuan check-out terkirim. Pemilik akan mengonfirmasi.'), backgroundColor: AppTheme.success),
+          SnackBar(content: Text('Check-out berhasil. Kamar kembali tersedia.'), backgroundColor: AppTheme.success),
         );
         _load();
       }
@@ -423,15 +408,15 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.bdr, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 16),
               Text('Bayar Tagihan ${tagihan.periode ?? ""}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Total: ${AppTheme.formatRupiah(total)}', style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              Text('Total: ${AppTheme.formatRupiah(total)}', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Transfer tepat sesuai jumlah, lalu unggah bukti transfer (JPG/PNG/PDF, maks 2MB). Admin akan memverifikasi.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                style: TextStyle(fontSize: 12, color: AppTheme.txtMuted),
               ),
               const SizedBox(height: 12),
               GestureDetector(
@@ -457,7 +442,7 @@ class _AnakKosDashboardScreenState extends State<AnakKosDashboardScreen> {
                       Expanded(
                         child: Text(
                           bukti == null ? 'Pilih Bukti Transfer' : bukti!.name,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: bukti == null ? AppTheme.primary : AppTheme.textPrimary),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: bukti == null ? AppTheme.primary : AppTheme.txt),
                         ),
                       ),
                     ],

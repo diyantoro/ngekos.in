@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/user_full.dart';
 import '../../services/pengguna_service.dart';
@@ -36,7 +36,6 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(title: const Text('Kelola Pengguna', style: TextStyle(fontWeight: FontWeight.bold))),
       body: Column(
         children: [

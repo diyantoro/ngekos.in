@@ -90,15 +90,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Daftar Akun Baru',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.txt),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Bergabung dan mulai cari kos impianmu.',
-              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 14, color: AppTheme.txtSec),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -122,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text('Foto profil (opsional)', style: TextStyle(fontSize: 12, color: AppTheme.textMuted), textAlign: TextAlign.center),
+            Text('Foto profil (opsional)', style: TextStyle(fontSize: 12, color: AppTheme.txtMuted), textAlign: TextAlign.center),
             const SizedBox(height: 20),
             TextFormField(
               controller: _namaController,
@@ -159,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Daftar Sebagai', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+            Text('Daftar Sebagai', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.txt)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -314,18 +314,18 @@ class _RoleCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: selected ? selectedBg : Colors.white,
+              color: selected ? selectedBg : AppTheme.card,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: selected ? selectedBorder : const Color(0xFFE5E7EB), width: 2),
+              border: Border.all(color: selected ? selectedBorder : AppTheme.bdr, width: 2),
               boxShadow: selected ? [BoxShadow(color: selectedBorder.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))] : null,
             ),
             child: Column(
               children: [
                 SvgPicture.asset(imageAsset, height: 64, width: 64),
                 const SizedBox(height: 8),
-                Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: selected ? roleColor : AppTheme.textPrimary)),
+                Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: selected ? roleColor : AppTheme.txt)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: AppTheme.txtSec)),
               ],
             ),
           ),

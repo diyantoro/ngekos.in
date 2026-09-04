@@ -1,4 +1,6 @@
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
@@ -135,10 +137,45 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 80);
-    if (picked != null) {
-      final file = await PlatformFile.fromXFile(picked);
-      if (mounted) setState(() => _foto = file);
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    final cropped = await _cropImage(picked);
+    if (cropped == null) return;
+
+    final bytes = await cropped.readAsBytes();
+    if (!mounted) return;
+    setState(() => _foto = PlatformFile(name: 'foto.jpg', bytes: bytes));
+  }
+
+  Future<CroppedFile?> _cropImage(XFile picked) async {
+    try {
+      final cropper = ImageCropper();
+      return await cropper.cropImage(
+        sourcePath: picked.path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        uiSettings: [
+          if (kIsWeb)
+            WebUiSettings(
+              context: context,
+              presentStyle: WebPresentStyle.dialog,
+              size: const CropperSize(width: 600, height: 600),
+              checkCrossOrigin: false,
+              checkOrientation: false,
+            )
+          else
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Foto Properti',
+              toolbarColor: AppTheme.primary,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+            ),
+        ],
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -340,7 +377,6 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(title: Text(isEditing ? 'Ubah Properti' : 'Buat Properti', style: const TextStyle(fontWeight: FontWeight.bold))),
       body: Form(
         key: _formKey,
@@ -511,7 +547,7 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
               TextFormField(
                 controller: ukuranKamarController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'Ukuran kamar (m²), contoh: 10.5'),
+                decoration: const InputDecoration(hintText: 'Ukuran kamar (mÂ²), contoh: 10.5'),
               ),
               const SizedBox(height: 8),
               SwitchListTile(

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../services/katalog_service.dart';
 import '../../widgets/search_filter_bar.dart';
+import '../../widgets/tap_feedback.dart';
 import 'detail_kos_screen.dart';
 
 class KatalogScreen extends StatefulWidget {
@@ -93,7 +95,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -271,14 +273,15 @@ class _KosCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TapFeedback(
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.border),
+          border: Border.all(color: AppTheme.bdr),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,6 +291,7 @@ class _KosCard extends StatelessWidget {
               child: properti.foto != null
                   ? CachedNetworkImage(
                       imageUrl: properti.foto!,
+                      imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                       height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -329,7 +333,7 @@ class _KosCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '${properti.alamat}, ${properti.kota}',
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 13, color: AppTheme.txtSec),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

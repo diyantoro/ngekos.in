@@ -14,15 +14,15 @@ class PilihPeranScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Masuk sebagai',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.txt),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Pilih peran kamu untuk melanjutkan.',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 14, color: AppTheme.txtSec),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -47,11 +47,11 @@ class PilihPeranScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Belum punya akun?', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              Text('Belum punya akun?', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
               const SizedBox(width: 4),
               GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen(peran: 'anak_kos'))),
-                child: const Text('Daftar sekarang', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+                child: Text('Daftar sekarang', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.primary)),
               ),
             ],
           ),
@@ -85,31 +85,35 @@ class _PeranCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor.withValues(alpha: 0.5), width: 2),
-        ),
-        child: Row(
-          children: [
-            SvgPicture.asset(imageAsset, height: 80, width: 80),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                ],
+    return Material(
+      color: AppTheme.card,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor.withValues(alpha: 0.5), width: 2),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              SvgPicture.asset(imageAsset, height: 80, width: 80),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.txt)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
+                  ],
+                ),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
-          ],
+              Icon(Icons.chevron_right_rounded, color: AppTheme.txtMuted),
+            ],
+          ),
         ),
       ),
     );

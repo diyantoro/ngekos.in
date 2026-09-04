@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
@@ -100,7 +100,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final currentUserId = auth.user?.id;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Row(
           children: [

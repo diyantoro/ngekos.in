@@ -15,6 +15,7 @@ dependencies:
   provider: ^6.1.5
   intl: ^0.20.2
   cached_network_image: ^3.4.1
+  cached_network_image_platform_interface: ^4.1.1
   image_picker: ^1.1.2
   flutter_svg: ^2.0.10+1
   firebase_core: ^4.14.0
@@ -24,6 +25,13 @@ dependencies:
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
   fl_chart: ^1.2.0
+  image_cropper: ^12.2.1
+  path_provider: ^2.1.4
+  share_plus: ^10.0.2
+
+dependency_overrides:
+  image_cropper_for_web:
+    path: packages/image_cropper_for_web
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/bantuan.dart';
 import '../../services/bantuan_service.dart';
@@ -64,7 +64,6 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(title: const Text('Pesan Masuk', style: TextStyle(fontWeight: FontWeight.bold))),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))

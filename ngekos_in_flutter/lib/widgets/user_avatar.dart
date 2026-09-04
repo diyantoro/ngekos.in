@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import '../config/theme.dart';
 
 enum AvatarSize { xs, sm, md, lg, xl }
@@ -61,6 +62,7 @@ class UserAvatar extends StatelessWidget {
         child: ClipOval(
           child: CachedNetworkImage(
             imageUrl: avatar!,
+            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
             fit: BoxFit.cover,
             width: _dimension,
             height: _dimension,

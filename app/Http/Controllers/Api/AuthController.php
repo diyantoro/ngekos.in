@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Mail\Message;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 
@@ -195,6 +198,75 @@ class AuthController extends Controller
         return $status === Password::PASSWORD_RESET
             ? response()->json(['message' => 'Password berhasil direset. Silakan login.'])
             : response()->json(['message' => 'Token reset tidak valid atau sudah kedaluwarsa.'], 422);
+    }
+
+    public function forgotPasswordOtp(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+        if (! $user) {
+            return response()->json(['message' => 'Email tidak terdaftar.'], 422);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $cacheKey = 'password_reset_otp_'.$user->email;
+        Cache::put($cacheKey, $otp, now()->addMinutes(10));
+
+        try {
+            Mail::raw(
+                'Kode verifikasi reset password kamu adalah: '.$otp."\n\n".
+                'Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapa pun.',
+                function (Message $message) use ($user) {
+                    $message->to($user->email)
+                        ->subject('Kode Reset Password Ngekos.in');
+                }
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal mengirim email OTP: '.$e->getMessage());
+        }
+
+        $data = ['message' => 'Kode verifikasi telah dikirim ke email kamu.'];
+        if (app()->environment('local', 'testing')) {
+            $data['dev_otp'] = $otp;
+        }
+
+        return response()->json($data);
+    }
+
+    public function verifyPasswordOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password_confirmation' => ['required'],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        if (! $user) {
+            return response()->json(['message' => 'Email tidak terdaftar.'], 422);
+        }
+
+        $cacheKey = 'password_reset_otp_'.$user->email;
+        $stored = Cache::get($cacheKey);
+
+        if (! $stored || ! hash_equals((string) $stored, $request->otp)) {
+            return response()->json(['message' => 'Kode verifikasi salah atau sudah kedaluwarsa.'], 422);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        Cache::forget($cacheKey);
+
+        $user->tokens()->delete();
+
+        event(new PasswordReset($user));
+
+        return response()->json(['message' => 'Password berhasil direset. Silakan login.']);
     }
 
     public function sendVerificationEmail(Request $request): JsonResponse

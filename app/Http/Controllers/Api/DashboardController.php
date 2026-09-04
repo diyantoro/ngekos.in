@@ -138,6 +138,7 @@ class DashboardController extends Controller
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('anak_kos_id', $request->user()->id)
             ->where('status', 'aktif')
+            ->with(['kamar'])
             ->first();
 
         if (! $sewaan) {
@@ -148,9 +149,16 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Pengajuan check-out sudah pernah dikirim.'], 422);
         }
 
-        $sewaan->update(['permintaan_keluar_pada' => now()]);
+        DB::transaction(function () use ($sewaan) {
+            $sewaan->update([
+                'permintaan_keluar_pada' => now(),
+                'tanggal_keluar' => now()->toDateString(),
+                'status' => 'selesai',
+            ]);
+            optional($sewaan->kamar)->update(['status' => 'tersedia']);
+        });
 
-        return response()->json(['message' => 'Pengajuan check-out terkirim. Pemilik kos akan mengonfirmasi tanggal keluarmu.']);
+        return response()->json(['message' => 'Check-out berhasil. Kamar kembali tersedia.']);
     }
 
     public function pemilik(Request $request): JsonResponse
@@ -262,6 +270,83 @@ class DashboardController extends Controller
         return response()->json($propertis->map(fn (Properti $p) => $this->formatProperti($p))->values());
     }
 
+    public function rekap(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $bulan = $request->input('bulan');
+
+        try {
+            $periodeMulai = $bulan
+                ? \Carbon\Carbon::createFromFormat('Y-m', $bulan)->startOfMonth()
+                : now()->startOfMonth();
+            $periodeAkhir = (clone $periodeMulai)->endOfMonth();
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Format bulan tidak valid (contoh: 2026-03).'], 422);
+        }
+
+        $propertis = Properti::withCount([
+            'kamars as total_kamar',
+            'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+        ])->where('pemilik_id', $userId)
+            ->orderBy('nama')
+            ->get();
+
+        $sewaans = Penyewaan::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama'])
+            ->where('tanggal_masuk', '<=', $periodeAkhir->toDateString())
+            ->where(function ($q) use ($periodeMulai) {
+                $q->whereNull('tanggal_keluar')->orWhere('tanggal_keluar', '>=', $periodeMulai->toDateString());
+            })
+            ->orderBy('tanggal_masuk', 'desc')
+            ->get();
+
+        $transaksi = Pembayaran::where('status', 'diverifikasi')
+            ->whereBetween('verified_at', [$periodeMulai, $periodeAkhir])
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->with(['anakKos:id,nama', 'tagihan:id,periode'])
+            ->orderBy('verified_at', 'desc')
+            ->get();
+
+        $pendapatan = (int) $transaksi->sum(fn ($t) => (float) $t->jumlah);
+
+        return response()->json([
+            'periode' => $periodeMulai->translatedFormat('F Y'),
+            'bulan' => $periodeMulai->format('Y-m'),
+            'ringkasan' => [
+                'total_properti' => $propertis->count(),
+                'total_kamar' => (int) $propertis->sum('total_kamar'),
+                'kamar_terisi' => (int) $propertis->sum('kamar_terisi'),
+                'penyewaan_aktif' => $sewaans->where('status', 'aktif')->count(),
+                'pendapatan' => $pendapatan,
+                'jumlah_transaksi' => $transaksi->count(),
+            ],
+            'propertis' => $propertis->map(fn (Properti $p) => [
+                'id' => $p->id,
+                'nama' => $p->nama,
+                'alamat' => $p->alamat,
+                'status' => $p->status,
+                'total_kamar' => (int) $p->total_kamar,
+                'kamar_terisi' => (int) $p->kamar_terisi,
+            ])->values(),
+            'sewaans' => $sewaans->map(fn ($s) => [
+                'anak_kos_nama' => $s->anakKos?->nama ?? '-',
+                'kamar_nama' => $s->kamar?->nama,
+                'properti_nama' => $s->kamar?->properti?->nama ?? $s->properti?->nama,
+                'tanggal_masuk' => $s->tanggal_masuk,
+                'tanggal_keluar' => $s->tanggal_keluar,
+                'status' => $s->status,
+            ])->values(),
+            'transaksi' => $transaksi->map(fn (Pembayaran $p) => [
+                'anak_kos_nama' => $p->anakKos?->nama ?? '-',
+                'periode' => $p->tagihan?->periode,
+                'metode' => $p->metode,
+                'jumlah' => (float) $p->jumlah,
+                'status' => $p->status,
+                'verified_at' => $p->verified_at?->toDateTimeString(),
+            ])->values(),
+        ]);
+    }
+
     public function admin(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -271,6 +356,13 @@ class DashboardController extends Controller
             ->with(['anakKos:id,nama', 'tagihan:id,periode'])
             ->latest()
             ->limit(15)
+            ->get();
+
+        $checkouts = Penyewaan::whereHas('properti', $kelolaan)
+            ->where('status', 'selesai')
+            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama'])
+            ->latest('tanggal_keluar')
+            ->limit(20)
             ->get();
 
         return response()->json([
@@ -295,6 +387,7 @@ class DashboardController extends Controller
                 'status' => $p->status,
                 'created_at' => $p->created_at,
             ])->values(),
+            'checkouts' => $this->formatCheckouts($checkouts),
         ]);
     }
 
@@ -304,6 +397,12 @@ class DashboardController extends Controller
             ->withCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
             ->orderBy('nama')
             ->limit(100)
+            ->get();
+
+        $checkouts = Penyewaan::where('status', 'selesai')
+            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama', 'kamar.properti.pemilik:id,nama'])
+            ->latest('tanggal_keluar')
+            ->limit(20)
             ->get();
 
         return response()->json([
@@ -326,6 +425,7 @@ class DashboardController extends Controller
                 'kamar_terisi' => (int) $p->kamar_terisi,
                 'status' => $p->status,
             ])->values(),
+            'checkouts' => $this->formatCheckouts($checkouts),
         ]);
     }
 
@@ -421,9 +521,24 @@ class DashboardController extends Controller
         };
     }
 
-    private function formatProperti(Properti $p): array
+    private function formatCheckouts($checkouts): array
     {
-        return [
+        return $checkouts->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'anak_kos_nama' => $s->anakKos?->nama ?? '-',
+                'kamar_nama' => $s->kamar?->nama,
+                'properti_nama' => $s->kamar?->properti?->nama ?? $s->properti?->nama,
+                'pemilik_nama' => $s->kamar?->properti?->pemilik?->nama ?? $s->properti?->pemilik?->nama,
+                'tanggal_masuk' => $s->tanggal_masuk,
+                'tanggal_keluar' => $s->tanggal_keluar,
+                'status' => $s->status,
+            ];
+        })->values()->toArray();
+    }
+
+    private function formatProperti(Properti $p): array
+    {        return [
             'id' => $p->id,
             'nama' => $p->nama,
             'kota' => $p->kota,

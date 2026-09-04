@@ -33,7 +33,7 @@
                     class="group w-[280px] shrink-0 snap-start rounded-2xl bg-white ring-1 ring-gray-100 shadow-sm overflow-hidden hover:shadow-md transition">
                     <div class="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
                         @if ($p->foto)
-                            <img src="{{ Storage::url($p->foto) }}" alt="{{ $p->nama }}" loading="lazy"
+                            <img src="{{ Storage::url($p->foto) }}" alt="{{ $p->nama }}"
                                 class="h-full w-full object-cover">
                         @else
                             <div class="h-full w-full flex items-center justify-center">

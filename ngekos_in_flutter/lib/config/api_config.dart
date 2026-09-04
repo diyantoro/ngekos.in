@@ -24,6 +24,12 @@ class ApiConfig {
     if (raw == null || raw.isEmpty) return null;
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
 
+    // On web, route /storage/ through /api/storage/ to bypass CORS
+    // (Apache serves static files without CORS headers)
+    if (kIsWeb && raw.startsWith('/storage/')) {
+      return '$baseUrl$raw';
+    }
+
     var host = baseUrl;
     if (host.endsWith('/api')) host = host.substring(0, host.length - 4);
     if (host.endsWith('/')) host = host.substring(0, host.length - 1);
@@ -40,6 +46,8 @@ class ApiConfig {
   static String get userProfile => '$baseUrl/user/profile';
 
   static String get forgotPassword => '$baseUrl/forgot-password';
+  static String get forgotPasswordOtp => '$baseUrl/forgot-password/otp';
+  static String get verifyPasswordOtp => '$baseUrl/forgot-password/verify';
   static String resetPassword(String token) => '$baseUrl/reset-password/$token';
 
   static String get katalog => '$baseUrl/kos';
@@ -65,6 +73,8 @@ class ApiConfig {
       '$baseUrl/dashboard/pemilik/properti';
   static String get dashboardPemilikSewaans =>
       '$baseUrl/dashboard/pemilik/sewaan';
+  static String get dashboardPemilikRekap =>
+      '$baseUrl/dashboard/pemilik/rekap';
   static String pemilikCheckout(int sewaanId) =>
       '$baseUrl/dashboard/pemilik/sewaan/$sewaanId/checkout';
 

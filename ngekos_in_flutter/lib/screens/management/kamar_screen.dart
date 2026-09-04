@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/kamar.dart';
 import '../../services/properti_manage_service.dart';
@@ -110,7 +110,6 @@ class _KamarScreenState extends State<KamarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text('Kamar - ${widget.propertiNama}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         actions: [
@@ -149,7 +148,7 @@ class _KamarScreenState extends State<KamarScreen> {
                                 children: [
                                   Text(kamar.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                   const SizedBox(height: 4),
-                                  Text('${kamar.kapasitas} orang · ${kamar.formattedHarga}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                                  Text('${kamar.kapasitas} orang Â· ${kamar.formattedHarga}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                                 ],
                               ),
                             ),

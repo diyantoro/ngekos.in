@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -61,7 +62,6 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
     final auth = context.read<AuthProvider>();
     final bolehHubungi = auth.user == null || auth.user!.isAnakKos;
     return Scaffold(
-      backgroundColor: AppTheme.background,
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primary),
@@ -84,6 +84,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                     background: _properti!.foto != null
                         ? CachedNetworkImage(
                             imageUrl: _properti!.foto!,
+                            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                             fit: BoxFit.cover,
                             errorWidget: (_, _, _) =>
                                 Container(color: Colors.grey[200]),
@@ -113,9 +114,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                           Expanded(
                             child: Text(
                               '${_properti!.alamat}, ${_properti!.kota}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: AppTheme.textSecondary,
+                                color: AppTheme.txtSec,
                               ),
                             ),
                           ),
@@ -207,9 +208,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                         Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.card,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.borderLight),
+                            border: Border.all(color: AppTheme.bdrLight),
                           ),
                           child: Column(
                             children: _properti!.fasilitas!
@@ -252,9 +253,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                           (kamar) => Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppTheme.card,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppTheme.borderLight),
+                              border: Border.all(color: AppTheme.bdrLight),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.04),
@@ -289,13 +290,14 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                               ),
                                           child: CachedNetworkImage(
                                             imageUrl: kamar.foto!,
+                                            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                                             fit: BoxFit.cover,
                                             errorWidget: (_, _, _) =>
                                                 const Center(
                                                   child: Icon(
                                                     Icons.king_bed_rounded,
                                                     size: 32,
-                                                    color: AppTheme.border,
+                                                    color: Color(0xFFD1D5DB),
                                                   ),
                                                 ),
                                           ),
@@ -321,11 +323,11 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                             Expanded(
                                               child: Text(
                                                 kamar.nama,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: AppTheme.textPrimary,
-                                                ),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                    color: AppTheme.txt,
+                                                  ),
                                               ),
                                             ),
                                             StatusBadge(
@@ -336,9 +338,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                         const SizedBox(height: 2),
                                         Text(
                                           '${kamar.kapasitas} orang',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
-                                            color: AppTheme.textSecondary,
+                                            color: AppTheme.txtSec,
                                           ),
                                         ),
                                         const SizedBox(height: 8),
@@ -362,11 +364,11 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                                   TextSpan(
                                                     text:
                                                         '/${kamar.jenisHarga == 'harian' ? 'hari' : 'bln'}',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.w500,
-                                                      color: AppTheme.textMuted,
+                                                      color: AppTheme.txtMuted,
                                                     ),
                                                   ),
                                                 ],
@@ -443,9 +445,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.card,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppTheme.border),
+                            border: Border.all(color: AppTheme.bdr),
                           ),
                           child: Row(
                             children: [
@@ -475,9 +477,9 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                                     if (_properti!.pemilik!.noHp != null)
                                       Text(
                                         _properti!.pemilik!.noHp!,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 13,
-                                          color: AppTheme.textSecondary,
+                                          color: AppTheme.txtSec,
                                         ),
                                       ),
                                   ],
@@ -496,8 +498,8 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
       bottomNavigationBar: _properti != null && bolehHubungi
           ? Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: AppTheme.card,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black12,
@@ -607,7 +609,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.border,
+                    color: AppTheme.bdr,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -628,10 +630,10 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${_properti?.nama ?? ''} · ${AppTheme.formatRupiah(kamar.hargaSewaBulanan)}/${kamar.jenisHarga == 'harian' ? 'hari' : 'bln'}',
-                          style: const TextStyle(
+                          '${_properti?.nama ?? ''} Â· ${AppTheme.formatRupiah(kamar.hargaSewaBulanan)}/${kamar.jenisHarga == 'harian' ? 'hari' : 'bln'}',
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.txtSec,
                           ),
                         ),
                       ],
@@ -640,22 +642,22 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                   IconButton(
                     onPressed: () => Navigator.pop(ctx, false),
                     icon: const Icon(Icons.close_rounded),
-                    color: AppTheme.textMuted,
+                    color: AppTheme.txtMuted,
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 3 bulan ke depan).',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                style: TextStyle(fontSize: 12, color: AppTheme.txtMuted),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Tanggal Masuk',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.txtSec,
                 ),
               ),
               const SizedBox(height: 6),
@@ -709,10 +711,10 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                             : DateFormat('EEEE, d MMMM yyyy').format(
                                 awalnya!,
                               ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.txt,
                         ),
                       ),
                     ],
@@ -837,10 +839,10 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
           children: [
             Text(
               label.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textMuted,
+                color: AppTheme.txtMuted,
                 letterSpacing: 0.3,
               ),
             ),
@@ -855,16 +857,16 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: valueColor ?? AppTheme.textPrimary,
+                        color: valueColor ?? AppTheme.txt,
                       ),
                     ),
                     if (suffix != null)
                       TextSpan(
                         text: suffix,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: AppTheme.textMuted,
+                          color: AppTheme.txtMuted,
                         ),
                       ),
                   ],
@@ -889,7 +891,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
             suffix: termurah != null ? '/bln' : null,
             valueColor: termurah != null
                 ? AppTheme.primary
-                : AppTheme.textMuted,
+                : AppTheme.txtMuted,
           ),
         ),
         const SizedBox(width: 10),

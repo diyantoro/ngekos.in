@@ -25,6 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
+        $middleware->api(prepend: [
+            \Illuminate\Http\Middleware\HandleCors::class,
+        ]);
+
         $middleware->api(append: [
             \App\Http\Middleware\EnsureUserAktif::class,
             \App\Http\Middleware\SecurityHeaders::class,

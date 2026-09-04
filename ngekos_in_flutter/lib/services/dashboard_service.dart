@@ -65,6 +65,12 @@ class DashboardService {
     return [];
   }
 
+  static Future<Map<String, dynamic>> getPemilikRekap({required String bulan}) async {
+    final dynamic raw = await ApiService.get('${ApiConfig.dashboardPemilikRekap}?bulan=$bulan');
+    if (raw is Map<String, dynamic>) return raw;
+    return {};
+  }
+
   static Future<void> checkout(int sewaanId) async {
     await ApiService.post(
       ApiConfig.pemilikCheckout(sewaanId),

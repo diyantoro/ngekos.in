@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import '../config/theme.dart';
 
 class BottomNav extends StatelessWidget {
@@ -79,6 +80,7 @@ class BottomNav extends StatelessWidget {
       return ClipOval(
         child: CachedNetworkImage(
           imageUrl: avatar!,
+          imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
           width: 24,
           height: 24,
           fit: BoxFit.cover,

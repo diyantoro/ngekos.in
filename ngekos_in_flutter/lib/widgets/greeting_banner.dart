@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 
 class GreetingBanner extends StatelessWidget {
@@ -88,9 +90,35 @@ class GreetingBanner extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              _BannerThemeToggle(),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BannerThemeToggle extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    final isDark = theme.isDark;
+    return GestureDetector(
+      onTap: theme.toggle,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        ),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          size: 18,
+          color: Colors.white,
+        ),
       ),
     );
   }

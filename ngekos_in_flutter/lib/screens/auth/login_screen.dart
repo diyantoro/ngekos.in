@@ -66,12 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: Alignment.centerLeft,
               child: GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppTheme.textSecondary),
-                    SizedBox(width: 4),
-                    Text('Ganti peran', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                    Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppTheme.txtSec),
+                    const SizedBox(width: 4),
+                    Text('Ganti peran', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
                   ],
                 ),
               ),
@@ -91,16 +91,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Masuk',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.txt),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text.rich(
               TextSpan(
                 text: 'Sebagai ',
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 14, color: AppTheme.txtSec),
                 children: [
                   TextSpan(text: roleLabel, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: roleColor)),
                 ],
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   activeColor: AppTheme.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
-                const Text('Remember me', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                Text('Remember me', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
               ],
             ),
             Consumer<AuthProvider>(
@@ -188,12 +188,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            const Divider(color: AppTheme.border),
+            Divider(color: AppTheme.bdr),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Belum punya akun?', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                Text('Belum punya akun?', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () {

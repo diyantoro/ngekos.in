@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/katalog_service.dart';
 import '../../widgets/chatbot_widget.dart';
+import '../../widgets/tap_feedback.dart';
 import '../../widgets/promo_ads_banner.dart';
 import '../katalog/detail_kos_screen.dart';
 import '../auth/pilih_peran_screen.dart';
@@ -104,7 +108,7 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.bg,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -150,16 +154,23 @@ class _LandingScreenState extends State<LandingScreen> {
                       Text('Ngekos.in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _HeroToggle(),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text('Masuk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
+                        ),
                       ),
-                      child: const Text('Masuk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -396,18 +407,23 @@ class _LandingScreenState extends State<LandingScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Kos Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-                  SizedBox(height: 2),
-                  Text('Kos yang baru ditambahkan pemilik', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Kos Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.txt)),
+                    const SizedBox(height: 2),
+                    Text('Kos yang baru ditambahkan pemilik', style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('Lihat Semua', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primary)),
                     Icon(Icons.chevron_right_rounded, color: AppTheme.primary, size: 18),
@@ -448,15 +464,16 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   Widget _buildKosCard(Properti properti) {
-    return GestureDetector(
+    return TapFeedback(
+      borderRadius: BorderRadius.circular(16),
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosScreen(propertiId: properti.id))),
       child: Container(
         width: 220,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderLight),
+          border: Border.all(color: AppTheme.bdrLight),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(
@@ -475,6 +492,7 @@ class _LandingScreenState extends State<LandingScreen> {
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                           child: CachedNetworkImage(
                             imageUrl: properti.foto!,
+                            imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
                             width: double.infinity,
                             height: 140,
                             fit: BoxFit.cover,
@@ -505,7 +523,7 @@ class _LandingScreenState extends State<LandingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(properti.nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(properti.nama, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.txt), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -523,8 +541,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Mulai dari', style: TextStyle(fontSize: 10, color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
-                        Text('Lihat Detail', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+                        Text('Mulai dari', style: TextStyle(fontSize: 10, color: AppTheme.txtMuted, fontWeight: FontWeight.w500)),
+                        Text('Lihat Detail', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.primary)),
                       ],
                     ),
                   ),
@@ -549,24 +567,29 @@ class _LandingScreenState extends State<LandingScreen> {
       width: double.infinity,
       margin: const EdgeInsets.only(top: 32),
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(color: Colors.white, border: Border.symmetric(horizontal: BorderSide(color: AppTheme.borderLight))),
+      decoration: BoxDecoration(color: AppTheme.card, border: Border.symmetric(horizontal: BorderSide(color: AppTheme.bdrLight))),
       child: Column(
         children: [
-          const Text('Kenapa Pilih Ngekos.in?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+          Text('Kenapa Pilih Ngekos.in?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.txt)),
           const SizedBox(height: 4),
-          const Text('Solusi praktis untuk pencari kos dan pemilik kos', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          Text('Solusi praktis untuk pencari kos dan pemilik kos', style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
           const SizedBox(height: 24),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              mainAxisExtent: 190,
+            ),
             itemCount: features.length,
             itemBuilder: (context, index) {
               final f = features[index];
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.background,
+                  color: AppTheme.surfaceC,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -582,9 +605,9 @@ class _LandingScreenState extends State<LandingScreen> {
                       child: Icon(f['icon'] as IconData, color: Colors.white, size: 20),
                     ),
                     const SizedBox(height: 12),
-                    Text(f['title'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Text(f['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.txt)),
                     const SizedBox(height: 6),
-                    Text(f['desc'] as String, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, height: 1.4)),
+                    Text(f['desc'] as String, style: TextStyle(fontSize: 11, color: AppTheme.txtSec, height: 1.4)),
                   ],
                 ),
               );
@@ -644,6 +667,26 @@ class _LandingScreenState extends State<LandingScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HeroToggle extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    final isDark = theme.isDark;
+    return GestureDetector(
+      onTap: theme.toggle,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        ),
+        child: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, size: 18, color: Colors.white),
       ),
     );
   }
