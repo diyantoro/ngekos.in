@@ -30,7 +30,7 @@ class TabBarWidget extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primary : AppTheme.surfaceGray,
+                color: isSelected ? AppTheme.primary : AppTheme.surfaceGrey,
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: isSelected
                     ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))]
@@ -41,7 +41,7 @@ class TabBarWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
+                  color: isSelected ? Colors.white : AppTheme.txtSec,
                 ),
               ),
             ),

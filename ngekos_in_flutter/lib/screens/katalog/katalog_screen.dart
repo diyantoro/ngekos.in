@@ -6,12 +6,16 @@ import 'package:latlong2/latlong.dart';
 import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../services/katalog_service.dart';
+import '../../utils/koordinat.dart';
 import '../../widgets/search_filter_bar.dart';
 import '../../widgets/tap_feedback.dart';
 import 'detail_kos_screen.dart';
 
 class KatalogScreen extends StatefulWidget {
-  const KatalogScreen({super.key});
+  const KatalogScreen({super.key, this.initialKota, this.initialSearch});
+
+  final String? initialKota;
+  final String? initialSearch;
 
   @override
   State<KatalogScreen> createState() => _KatalogScreenState();
@@ -32,6 +36,8 @@ class _KatalogScreenState extends State<KatalogScreen> {
   @override
   void initState() {
     super.initState();
+    _search = widget.initialSearch;
+    _selectedKota = widget.initialKota;
     _loadKatalog();
     _scrollController.addListener(_onScroll);
   }
@@ -129,7 +135,7 @@ class _KatalogScreenState extends State<KatalogScreen> {
                     showCheckmark: false,
                     selectedColor: AppTheme.primary,
                     labelStyle: TextStyle(
-                      color: _showMap ? Colors.white : AppTheme.textPrimary,
+                      color: _showMap ? Colors.white : AppTheme.txt,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -194,8 +200,10 @@ class _MapKatalogView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final withLocation =
-        propertis.where((p) => p.latitude != null && p.longitude != null).toList();
+    final withLocation = propertis
+        .map((p) => MapEntry(p, koordinatProperti(p)))
+        .where((e) => e.value != null)
+        .toList();
 
     if (withLocation.isEmpty) {
       return const Center(
@@ -203,8 +211,8 @@ class _MapKatalogView extends StatelessWidget {
       );
     }
 
-    final latAvg = withLocation.map((p) => p.latitude!).reduce((a, b) => a + b) / withLocation.length;
-    final lngAvg = withLocation.map((p) => p.longitude!).reduce((a, b) => a + b) / withLocation.length;
+    final latAvg = withLocation.map((e) => e.value!.latitude).reduce((a, b) => a + b) / withLocation.length;
+    final lngAvg = withLocation.map((e) => e.value!.longitude).reduce((a, b) => a + b) / withLocation.length;
 
     return FlutterMap(
       options: MapOptions(
@@ -222,9 +230,11 @@ class _MapKatalogView extends StatelessWidget {
         ),
         MarkerLayer(
           markers: withLocation
-              .map(
-                (p) => Marker(
-                  point: LatLng(p.latitude!, p.longitude!),
+              .map((e) {
+                final p = e.key;
+                final titik = e.value!;
+                return Marker(
+                  point: titik,
                   width: 90,
                   height: 60,
                   child: GestureDetector(
@@ -236,7 +246,7 @@ class _MapKatalogView extends StatelessWidget {
                           constraints: const BoxConstraints(maxWidth: 80),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.card,
                             borderRadius: BorderRadius.circular(6),
                             boxShadow: const [
                               BoxShadow(color: Colors.black26, blurRadius: 4),
@@ -246,15 +256,15 @@ class _MapKatalogView extends StatelessWidget {
                             p.nama,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.txt),
                           ),
                         ),
                         const Icon(Icons.location_pin, color: AppTheme.primary, size: 32),
                       ],
                     ),
                   ),
-                ),
-              )
+                );
+              })
               .toList(),
         ),
         const RichAttributionWidget(
@@ -328,7 +338,7 @@ class _KosCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.location_on_rounded, size: 14, color: AppTheme.txtSec),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(

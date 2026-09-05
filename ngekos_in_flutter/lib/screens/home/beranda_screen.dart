@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/dashboard_service.dart';
+import '../chat/chat_list_screen.dart';
+import '../akun/akun_screen.dart';
 
 class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
@@ -53,10 +55,18 @@ class _BerandaScreenState extends State<BerandaScreen> {
               expandedHeight: 120,
               floating: true,
               pinned: true,
-              backgroundColor: Colors.white,
+              backgroundColor: AppTheme.card,
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
-                  color: Colors.white,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: Theme.of(context).brightness == Brightness.dark
+                          ? [AppTheme.darkSurface, AppTheme.darkBackground]
+                          : [Colors.white, const Color(0xFFFAFFFE)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
                   padding: const EdgeInsets.fromLTRB(20, 50, 20, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,11 +74,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
                     children: [
                       Text(
                         '$greeting,',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 14, color: AppTheme.txtMuted),
                       ),
                       Text(
                         user?.nama ?? 'User',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.txt),
                       ),
                     ],
                   ),
@@ -101,6 +111,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
               label: 'Penyewaan Aktif',
               value: '${_dashboard?['penyewaan_aktif'] ?? 0}',
               color: AppTheme.primary,
+              gradient: AppTheme.primaryGradient,
             ),
             const SizedBox(width: 12),
             _StatCard(
@@ -108,6 +119,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
               label: 'Tagihan',
               value: '${_dashboard?['tagihan_belum_bayar'] ?? 0}',
               color: AppTheme.warning,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ],
         ),
@@ -118,29 +134,49 @@ class _BerandaScreenState extends State<BerandaScreen> {
           value: NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0)
               .format(_dashboard?['total_dibayar'] ?? 0),
           color: AppTheme.success,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           fullWidth: true,
         ),
         const SizedBox(height: 24),
-        const Text('Aksi Cepat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text('Aksi Cepat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.txt)),
         const SizedBox(height: 12),
         Row(
           children: [
             _QuickAction(
               icon: Icons.search_rounded,
               label: 'Cari Kos',
-              onTap: () {},
+              gradient: AppTheme.primaryGradient,
+              onTap: () {
+                // Navigate to katalog - handled by parent MainScreen
+              },
             ),
             const SizedBox(width: 12),
             _QuickAction(
               icon: Icons.receipt_rounded,
               label: 'Tagihan',
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               onTap: () {},
             ),
             const SizedBox(width: 12),
             _QuickAction(
               icon: Icons.chat_rounded,
               label: 'Chat',
-              onTap: () {},
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3B82F6), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatListScreen()));
+              },
             ),
           ],
         ),
@@ -158,6 +194,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
               label: 'Properti',
               value: '${_dashboard?['total_properti'] ?? 0}',
               color: AppTheme.primary,
+              gradient: AppTheme.primaryGradient,
             ),
             const SizedBox(width: 12),
             _StatCard(
@@ -165,6 +202,11 @@ class _BerandaScreenState extends State<BerandaScreen> {
               label: 'Total Kamar',
               value: '${_dashboard?['total_kamar'] ?? 0}',
               color: AppTheme.accent,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF10B981), Color(0xFF059669)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ],
         ),
@@ -174,7 +216,51 @@ class _BerandaScreenState extends State<BerandaScreen> {
           label: 'Kamar Terisi',
           value: '${_dashboard?['kamar_terisi'] ?? 0}',
           color: AppTheme.success,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           fullWidth: true,
+        ),
+        const SizedBox(height: 24),
+        Text('Aksi Cepat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.txt)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _QuickAction(
+              icon: Icons.add_home_rounded,
+              label: 'Kelola Kos',
+              gradient: AppTheme.primaryGradient,
+              onTap: () {},
+            ),
+            const SizedBox(width: 12),
+            _QuickAction(
+              icon: Icons.chat_rounded,
+              label: 'Chat',
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3B82F6), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatListScreen()));
+              },
+            ),
+            const SizedBox(width: 12),
+            _QuickAction(
+              icon: Icons.person_rounded,
+              label: 'Akun',
+              gradient: const LinearGradient(
+                colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const AkunScreen()));
+              },
+            ),
+          ],
         ),
       ]),
     );
@@ -186,6 +272,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final LinearGradient gradient;
   final bool fullWidth;
 
   const _StatCard({
@@ -193,6 +280,7 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    required this.gradient,
     this.fullWidth = false,
   });
 
@@ -201,31 +289,44 @@ class _StatCard extends StatelessWidget {
     final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.bdr),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
           const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: fullWidth ? 24 : 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+          Text(value, style: TextStyle(fontSize: fullWidth ? 24 : 20, fontWeight: FontWeight.bold, color: AppTheme.txt)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
         ],
       ),
     );
 
     if (fullWidth) return card;
-
     return Expanded(flex: 1, child: card);
   }
 }
@@ -233,9 +334,15 @@ class _StatCard extends StatelessWidget {
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
+  final LinearGradient gradient;
   final VoidCallback onTap;
 
-  const _QuickAction({required this.icon, required this.label, required this.onTap});
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -245,15 +352,29 @@ class _QuickAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.bdr),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Icon(icon, color: AppTheme.primary, size: 28),
-              const SizedBox(height: 8),
-              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: gradient,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(height: 10),
+              Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.txt)),
             ],
           ),
         ),

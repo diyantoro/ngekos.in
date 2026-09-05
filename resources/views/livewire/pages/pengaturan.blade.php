@@ -130,25 +130,25 @@ new #[Layout('layouts.app')] class extends Component
             <x-notifikasi-popup :pesan="$pesan" judul="Berhasil!" />
         @endif
 
-        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex flex-wrap gap-2">
                     @if ($this->bolehKelola())
                         <button wire:click="$set('tab', 'situs')" wire:loading.attr="disabled"
-                            class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'situs' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                            class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'situs' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                             Situs
                         </button>
                         <button wire:click="$set('tab', 'kos')" wire:loading.attr="disabled"
-                            class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'kos' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                            class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'kos' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                             Kos
                         </button>
                     @endif
                     <button wire:click="$set('tab', 'profil')" wire:loading.attr="disabled"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'profil' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'profil' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Profil &amp; Keamanan
                     </button>
                     <button wire:click="$set('tab', 'notifikasi')" wire:loading.attr="disabled"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'notifikasi' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'notifikasi' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Notifikasi
                     </button>
                 </div>
@@ -158,92 +158,92 @@ new #[Layout('layouts.app')] class extends Component
                 @if ($tab === 'situs' && $this->bolehKelola())
                     <form wire:submit="simpanSitus" class="max-w-2xl space-y-5">
                         <div>
-                            <label for="situsNama" class="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
+                            <label for="situsNama" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Nama Aplikasi</label>
                             <input type="text" id="situsNama" wire:model="situsNama"
-                                class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
-                            @error('situsNama') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                            <p class="mt-1 text-xs text-gray-400">Tampil di judul browser, logo, dan footer.</p>
+                                class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
+                            @error('situsNama') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Tampil di judul browser, logo, dan footer.</p>
                         </div>
                         <div>
-                            <label for="situsDeskripsi" class="block text-sm font-medium text-gray-700">Deskripsi Singkat</label>
+                            <label for="situsDeskripsi" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Deskripsi Singkat</label>
                             <textarea id="situsDeskripsi" wire:model="situsDeskripsi" rows="2"
-                                class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500"></textarea>
-                            @error('situsDeskripsi') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                            <p class="mt-1 text-xs text-gray-400">Muncul di footer halaman publik.</p>
+                                class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors"></textarea>
+                            @error('situsDeskripsi') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Muncul di footer halaman publik.</p>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label for="situsEmail" class="block text-sm font-medium text-gray-700">Email Kontak</label>
+                                <label for="situsEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Email Kontak</label>
                                 <input type="email" id="situsEmail" wire:model="situsEmail"
-                                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
-                                @error('situsEmail') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                                    class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
+                                @error('situsEmail') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <label for="situsTelepon" class="block text-sm font-medium text-gray-700">No. Telepon</label>
+                                <label for="situsTelepon" class="block text-sm font-medium text-gray-700 dark:text-gray-200">No. Telepon</label>
                                 <input type="text" id="situsTelepon" wire:model="situsTelepon"
-                                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
-                                @error('situsTelepon') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                                    class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
+                                @error('situsTelepon') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             </div>
                         </div>
                         <div>
-                            <label for="situsAlamat" class="block text-sm font-medium text-gray-700">Alamat</label>
+                            <label for="situsAlamat" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Alamat</label>
                             <input type="text" id="situsAlamat" wire:model="situsAlamat"
-                                class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
-                            @error('situsAlamat') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                                    class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
+                            @error('situsAlamat') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                         </div>
-                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                             <button type="submit" wire:loading.attr="disabled"
                                 class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                                 Simpan Pengaturan Situs
                             </button>
-                            <span wire:loading.delay class="text-xs text-gray-400">Menyimpan...</span>
+                            <span wire:loading.delay class="text-xs text-gray-400 dark:text-gray-500">Menyimpan...</span>
                         </div>
                     </form>
                 @elseif ($tab === 'kos' && $this->bolehKelola())
                     <form wire:submit="simpanKos" class="max-w-2xl space-y-5">
                         <div>
-                            <label for="kosJatuhTempo" class="block text-sm font-medium text-gray-700">Tanggal Jatuh Tempo Tagihan</label>
+                            <label for="kosJatuhTempo" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Tanggal Jatuh Tempo Tagihan</label>
                             <select id="kosJatuhTempo" wire:model="kosJatuhTempo"
-                                class="mt-1 block w-full sm:w-64 rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
+                                class="mt-1 block w-full sm:w-64 rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
                                 <option value="akhir">Akhir bulan (default)</option>
                                 @foreach (range(1, 28) as $hari)
                                     <option value="{{ $hari }}">Tanggal {{ $hari }} setiap bulan</option>
                                 @endforeach
                             </select>
-                            @error('kosJatuhTempo') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                            <p class="mt-1 text-xs text-gray-400">Berlaku untuk tagihan baru yang dibuat sistem maupun saat check-in.</p>
+                            @error('kosJatuhTempo') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Berlaku untuk tagihan baru yang dibuat sistem maupun saat check-in.</p>
                         </div>
                         <div>
-                            <label for="kosDendaPerHari" class="block text-sm font-medium text-gray-700">Denda Keterlambatan Default (Rp/hari)</label>
+                            <label for="kosDendaPerHari" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Denda Keterlambatan Default (Rp/hari)</label>
                             <input type="number" id="kosDendaPerHari" wire:model="kosDendaPerHari" min="0" step="0.01"
-                                class="mt-1 block w-full sm:w-64 rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
-                            @error('kosDendaPerHari') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                            <p class="mt-1 text-xs text-gray-400">Dipakai bila properti tidak menetapkan denda sendiri (pengaturan per properti tetap diutamakan).</p>
+                                class="mt-1 block w-full sm:w-64 rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors">
+                            @error('kosDendaPerHari') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Dipakai bila properti tidak menetapkan denda sendiri (pengaturan per properti tetap diutamakan).</p>
                         </div>
-                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                             <button type="submit" wire:loading.attr="disabled"
                                 class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                                 Simpan Pengaturan Kos
                             </button>
-                            <span wire:loading.delay class="text-xs text-gray-400">Menyimpan...</span>
+                            <span wire:loading.delay class="text-xs text-gray-400 dark:text-gray-500">Menyimpan...</span>
                         </div>
                     </form>
                 @elseif ($tab === 'notifikasi')
                     <form wire:submit="simpanNotifikasi" class="max-w-2xl space-y-4">
                         @foreach (User::daftarNotifikasi() as $kunci => $label)
-                            <label class="flex items-start gap-3 rounded-xl ring-1 ring-gray-100 bg-gray-50/60 p-4 cursor-pointer hover:bg-gray-50 transition">
+                            <label class="flex items-start gap-3 rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 bg-gray-50/60 dark:bg-gray-800/60 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                                 <input type="checkbox" wire:model="notifikasi.{{ $kunci }}"
-                                    class="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500">
-                                <span class="text-sm text-gray-700">{{ $label }}</span>
+                                    class="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-teal-600 focus:ring-teal-500">
+                                <span class="text-sm text-gray-700 dark:text-gray-200">{{ $label }}</span>
                             </label>
                         @endforeach
-                        <p class="text-xs text-gray-400">Preferensi ini dipakai sebagai acuan pengiriman pemberitahuan aplikasi.</p>
-                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Preferensi ini dipakai sebagai acuan pengiriman pemberitahuan aplikasi.</p>
+                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                             <button type="submit" wire:loading.attr="disabled"
                                 class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                                 Simpan Preferensi
                             </button>
-                            <span wire:loading.delay class="text-xs text-gray-400">Menyimpan...</span>
+                            <span wire:loading.delay class="text-xs text-gray-400 dark:text-gray-500">Menyimpan...</span>
                         </div>
                     </form>
                 @else

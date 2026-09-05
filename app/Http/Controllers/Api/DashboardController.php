@@ -190,6 +190,8 @@ class DashboardController extends Controller
             fn ($q) => $q->whereHas('penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId)),
         );
 
+        $scopeTagihan = fn ($q) => $q->where('pemilik_id', $userId);
+
         return response()->json([
             'total_properti' => $totalProperti,
             'total_kamar' => $totalKamar,
@@ -197,6 +199,11 @@ class DashboardController extends Controller
             'pendapatan_bulan_ini' => $pendapatanBulanIni,
             'penyewaan_aktif' => $penyewaanAktif,
             'chart' => $chart,
+            'funnel' => $this->funnelStages(
+                Penyewaan::whereHas('properti', $scopeTagihan)->count(),
+                $penyewaanAktif,
+                $scopeTagihan,
+            ),
         ]);
     }
 
@@ -373,6 +380,11 @@ class DashboardController extends Controller
             'penyewaan_aktif' => Penyewaan::where('status', 'aktif')
                 ->whereHas('properti', $kelolaan)
                 ->count(),
+            'funnel' => $this->funnelStages(
+                Properti::whereHas('admins', fn ($q) => $q->where('users.id', $user->id))->count(),
+                Penyewaan::where('status', 'aktif')->whereHas('properti', $kelolaan)->count(),
+                $kelolaan,
+            ),
             'chart' => $this->monthlyChart(
                 fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $kelolaan),
                 fn ($q) => $q->whereHas('penyewaan.properti', $kelolaan),
@@ -412,6 +424,10 @@ class DashboardController extends Controller
             'kamar_terisi' => Kamar::where('status', 'terisi')->count(),
             'penyewaan_aktif' => Penyewaan::where('status', 'aktif')->count(),
             'pendapatan' => (int) Pembayaran::where('status', 'diverifikasi')->sum('jumlah'),
+            'funnel' => $this->funnelStages(
+                User::count(),
+                Penyewaan::where('status', 'aktif')->count(),
+            ),
             'chart' => $this->monthlyChart(
                 fn ($q) => $q->where('status', 'diverifikasi'),
                 fn ($q) => $q,
@@ -500,6 +516,26 @@ class DashboardController extends Controller
         }
 
         return compact('labels', 'pendapatan', 'lunas', 'belum');
+    }
+
+    /**
+     * Pipeline corong: Kunjungan → Penyewa → Tagihan → Lunas.
+     * $tagihanScope memfilter Tagihan bila role tidak mencari seluruh properti.
+     */
+    private function funnelStages(int $kunjungan, int $penyewa, ?callable $tagihanScope = null): array
+    {
+        $query = fn () => Tagihan::query()->when(
+            $tagihanScope,
+            fn ($q) => $q->whereHas('penyewaan.properti', $tagihanScope),
+            fn ($q) => $q,
+        );
+
+        return [
+            ['label' => 'Kunjungan', 'sub' => 'calon penyewa / properti', 'nilai' => $kunjungan],
+            ['label' => 'Penyewa', 'sub' => 'penyewaan aktif', 'nilai' => $penyewa],
+            ['label' => 'Tagihan', 'sub' => 'tagihan terbit', 'nilai' => (int) $query()->count()],
+            ['label' => 'Lunas', 'sub' => 'tagihan lunas', 'nilai' => (int) (clone $query())->where('status', 'lunas')->count()],
+        ];
     }
 
     /**

@@ -38,7 +38,9 @@ class AppTheme {
   static const Color darkSurfaceGray = Color(0xFF1E293B);
 
   // ---- Helper sadar-tema (untuk layar yang dipoles manual) ----
-  static bool get _dark => ThemeProvider.instance.isDark;
+  static bool get isDark => ThemeProvider.instance.isDark;
+
+  static bool get _dark => isDark;
 
   static Color get bg => _dark ? darkBackground : background;
   static Color get card => _dark ? darkCard : Colors.white;
@@ -57,7 +59,13 @@ class AppTheme {
   );
 
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFF059669), Color(0xFF0D9488), Color(0xFF0891B2)],
+    colors: [Color(0xFF047857), Color(0xFF0D9488), Color(0xFF06B6D4)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient cardGradient = LinearGradient(
+    colors: [Colors.white, Color(0xFFFAFFFE)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

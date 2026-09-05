@@ -60,7 +60,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pesan', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceC,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
@@ -121,10 +121,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
             const SizedBox(height: 16),
             const Text('Gagal memuat percakapan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Periksa koneksi internetmu, lalu coba lagi.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 13, color: AppTheme.txtSec),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
@@ -180,7 +180,7 @@ class _ConversationTile extends StatelessWidget {
               _formatTime(conversation.lastMessageAt!),
               style: TextStyle(
                 fontSize: 12,
-                color: conversation.unreadCount > 0 ? AppTheme.primary : AppTheme.textSecondary,
+                color: conversation.unreadCount > 0 ? AppTheme.primary : AppTheme.txtSec,
                 fontWeight: conversation.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -189,7 +189,7 @@ class _ConversationTile extends StatelessWidget {
       subtitle: Row(
         children: [
           if (isMe) ...[
-            const Text('Anda: ', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            Text('Anda: ', style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
           ],
           Expanded(
             child: Text(
@@ -198,7 +198,7 @@ class _ConversationTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13,
-                color: conversation.unreadCount > 0 ? AppTheme.textPrimary : AppTheme.textSecondary,
+                color: conversation.unreadCount > 0 ? AppTheme.txt : AppTheme.txtSec,
                 fontWeight: conversation.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
               ),
             ),

@@ -59,17 +59,17 @@ new #[Layout('layouts.publik')] class extends Component
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         <!-- FAQ -->
         <div>
-            <h2 class="text-lg font-bold text-gray-900">Pertanyaan yang Sering Diajukan</h2>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Pertanyaan yang Sering Diajukan</h2>
             <div class="mt-4 space-y-3">
                 @foreach (config('faq', []) as $index => $item)
-                    <div x-data="{ buka: false }" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
+                    <div x-data="{ buka: false }" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                         <button type="button" @click="buka = !buka"
                             class="w-full flex items-center justify-between gap-4 px-5 py-4 text-left">
-                            <span class="text-sm font-semibold text-gray-900">{{ ucfirst($item['kata_kunci'][0]) }}</span>
-                            <svg class="h-5 w-5 text-gray-400 transition-transform" :class="buka && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ ucfirst($item['kata_kunci'][0]) }}</span>
+                            <svg class="h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform" :class="buka && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                         </button>
                         <div x-show="buka" x-cloak class="px-5 pb-4">
-                            <p class="text-sm text-gray-600 leading-relaxed">{{ $item['jawaban'] }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ $item['jawaban'] }}</p>
                         </div>
                     </div>
                 @endforeach
@@ -78,9 +78,9 @@ new #[Layout('layouts.publik')] class extends Component
 
         <!-- Hubungi Admin -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6 sm:p-8">
-                <h2 class="text-lg font-bold text-gray-900">Hubungi Admin</h2>
-                <p class="mt-1 text-sm text-gray-500">Tidak menemukan jawaban? Kirim pesan, admin atau super admin akan membalasmu.</p>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 sm:p-8">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Hubungi Admin</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tidak menemukan jawaban? Kirim pesan, admin atau super admin akan membalasmu.</p>
 
                 @if ($sukses)
                     <x-notifikasi-popup :pesan="$sukses" judul="Terkirim!" properti="sukses" />
@@ -109,12 +109,12 @@ new #[Layout('layouts.publik')] class extends Component
                     <div>
                         <x-input-label for="pesan" value="Pesan" />
                         <textarea wire:model="pesan" id="pesan" rows="5" placeholder="Ceritakan masalah atau pertanyaanmu..."
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
+                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                         <x-input-error :messages="$errors->get('pesan')" class="mt-2" />
                     </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-xs text-gray-400">Balasan admin bisa dilihat di Riwayat Bantuan.</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Balasan admin bisa dilihat di Riwayat Bantuan.</p>
                         <x-primary-button wire:loading.attr="disabled">Kirim Pesan</x-primary-button>
                     </div>
                 </form>
@@ -137,24 +137,24 @@ new #[Layout('layouts.publik')] class extends Component
                     @endauth
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6 sm:p-8">
-                    <h3 class="text-base font-bold text-gray-900">Hubungi Admin</h3>
-                    <p class="mt-1 text-sm text-gray-500">Coba chatbot di pojok kanan bawah untuk jawaban instan, atau gunakan form di samping untuk pesan langsung ke admin.</p>
-                    <div class="mt-4 space-y-2 text-sm text-gray-600">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 sm:p-8">
+                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Hubungi Admin</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Coba chatbot di pojok kanan bawah untuk jawaban instan, atau gunakan form di samping untuk pesan langsung ke admin.</p>
+                    <div class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
                         <p class="flex items-center gap-2">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                             </span>
                             Chatbot siap 24 jam — jawaban instan untuk pertanyaan umum.
                         </p>
                         <p class="flex items-center gap-2">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </span>
                             Admin membalas pesan, biasanya dalam 1x24 jam.
                         </p>
                         <p class="flex items-center gap-2">
-                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                             </span>
                             Data pesanmu aman dan hanya dilihat admin.

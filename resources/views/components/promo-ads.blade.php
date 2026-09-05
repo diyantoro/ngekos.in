@@ -6,42 +6,48 @@
             'brand' => 'Biznet',
             'tagline' => 'Internet Cepat & Stabil',
             'desc' => 'Pasang Biznet Home, kuliah online dan streaming di kos makin lancar.',
-            'gradient' => 'from-blue-700 to-sky-500',
+            'gradient' => 'from-blue-700 via-sky-600 to-sky-500',
+            'accent' => 'text-sky-200',
             'icon' => 'wifi',
         ],
         [
             'brand' => 'Shopee',
             'tagline' => 'Belanja Online Murah',
             'desc' => 'Voucher gratis ongkir dan cashback untuk kebutuhan kos kamu.',
-            'gradient' => 'from-orange-600 to-orange-500',
+            'gradient' => 'from-orange-600 via-orange-500 to-amber-400',
+            'accent' => 'text-amber-200',
             'icon' => 'bag',
         ],
         [
             'brand' => 'GoFood',
             'tagline' => 'Lapar di Kos?',
             'desc' => 'Pesan makanan favorit, GoFood antar sampai depan kosmu.',
-            'gradient' => 'from-green-600 to-green-500',
+            'gradient' => 'from-green-600 via-emerald-500 to-teal-500',
+            'accent' => 'text-emerald-200',
             'icon' => 'scooter',
         ],
         [
             'brand' => 'DANA',
             'tagline' => 'Bayar Praktis',
             'desc' => 'Top up DANA untuk bayar tagihan kos dan jajan harian.',
-            'gradient' => 'from-sky-600 to-blue-400',
+            'gradient' => 'from-sky-600 via-blue-500 to-indigo-500',
+            'accent' => 'text-blue-200',
             'icon' => 'wallet',
         ],
         [
             'brand' => 'IndiHome',
             'tagline' => 'Internet + TV di Kos',
             'desc' => 'Pasang IndiHome, nonton dan internetan bareng teman kos.',
-            'gradient' => 'from-red-700 to-red-500',
+            'gradient' => 'from-red-700 via-rose-600 to-pink-500',
+            'accent' => 'text-rose-200',
             'icon' => 'tv',
         ],
         [
             'brand' => 'IKEA',
             'tagline' => 'Furnitur Kamar Kos',
             'desc' => 'Perabot IKEA harga bersahabat, kamar kos makin nyaman.',
-            'gradient' => 'from-blue-800 to-blue-600',
+            'gradient' => 'from-blue-800 via-blue-600 to-cyan-500',
+            'accent' => 'text-cyan-200',
             'icon' => 'chair',
         ],
     ];
@@ -57,35 +63,37 @@
     ];
 @endphp
 
-<div x-data="{ i: 0, n: {{ count($ads) }} }"
-    x-init="setInterval(() => { i = (i + 1) % n }, 4000)">
-    <div class="relative overflow-hidden rounded-2xl shadow-sm">
-        <div class="flex transition-transform duration-500 ease-out" :style="`transform: translateX(-${i * 100}%)`">
+<div class="relative group">
+    <div class="relative overflow-hidden rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15">
+        <div class="promo-track promo-auto">
             @foreach ($ads as $ad)
-                <div class="w-full shrink-0 bg-gradient-to-r {{ $ad['gradient'] }} px-5 sm:px-7 py-4 sm:py-5">
+                <div class="promo-slide relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} px-6 py-6 sm:px-9 sm:py-7">
+                    <div class="absolute inset-0"
+                         style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
+                    <div class="absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/25 blur-3xl"></div>
+                    <div class="absolute -left-10 bottom-0 h-28 w-40 rounded-full bg-white/10 blur-3xl"></div>
+                    <div class="absolute top-6 right-1/4 h-8 w-8 rounded-full border border-white/25"></div>
+                    <div class="absolute -bottom-6 right-1/3 h-12 w-12 rounded-full border border-white/20"></div>
+
                     <div class="relative flex items-center justify-between gap-4">
                         <div class="min-w-0 max-w-xl">
-                            <div class="flex items-center gap-2">
-                                <span class="text-white font-extrabold">{{ $ad['brand'] }}</span>
-                                <span class="inline-flex rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Iklan</span>
-                            </div>
-                            <p class="mt-0.5 text-sm font-bold text-white">{{ $ad['tagline'] }}</p>
-                            <p class="mt-0.5 text-xs leading-snug text-white/85 line-clamp-2">{{ $ad['desc'] }}</p>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
+                                <svg class="h-3 w-3 {{ $ad['accent'] }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+                                Iklan Partner
+                            </span>
+                            <p class="mt-2.5 text-xl sm:text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
+                            <p class="mt-0.5 text-sm font-bold text-white/95">{{ $ad['tagline'] }}</p>
+                            <p class="mt-1 text-xs leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
                         </div>
-                        <div class="shrink-0 flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-xl border border-white/30 bg-white/20">
-                            <svg class="h-6 w-6 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
+                        <div class="shrink-0 relative">
+                            <div class="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                <svg class="h-6 w-6 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
+                            </div>
+                            <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>
                         </div>
                     </div>
                 </div>
             @endforeach
         </div>
-    </div>
-
-    <div class="mt-2.5 flex justify-center gap-1.5">
-        @foreach ($ads as $key => $ad)
-            <button type="button"
-                :class="i === {{ $key }} ? 'w-5 bg-teal-600' : 'w-2 bg-teal-600/25'"
-                class="h-1.5 rounded-full transition-all" @click="i = {{ $key }}"></button>
-        @endforeach
     </div>
 </div>

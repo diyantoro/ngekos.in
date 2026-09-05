@@ -2,6 +2,7 @@
 
 use App\Models\Kamar;
 use App\Models\Properti;
+use App\Support\Koordinat;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -42,33 +43,63 @@ new #[Layout('layouts.publik')] class extends Component
                 ->distinct()
                 ->orderBy('kota')
                 ->pluck('kota'),
+            'kotaStatistik' => Properti::query()
+                ->where('status', 'aktif')
+                ->whereNotNull('kota')
+                ->where('kota', '!=', '')
+                ->selectRaw('kota, COUNT(*) as jumlah')
+                ->groupBy('kota')
+                ->orderByDesc('jumlah')
+                ->limit(6)
+                ->get(),
+            'markers' => Properti::where('status', 'aktif')
+                ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
+                ->map(function ($p) {
+                    $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
+
+                    return $titik ? [
+                        'nama' => $p->nama,
+                        'kota' => $p->kota,
+                        'alamat' => $p->alamat,
+                        'lat' => $titik[0],
+                        'lng' => $titik[1],
+                    ] : null;
+                })
+                ->filter()
+                ->values(),
         ];
     }
 }; ?>
 
 <div>
-    <!-- Hero Section - Mobile First -->
-    <section class="relative bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 overflow-hidden">
-        <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div>
+<!-- Hero Section - Mobile First -->
+    <section class="hero-gradient relative bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 overflow-hidden">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div>
+
+        <div class="animate-blob absolute -top-16 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+        <div class="animate-blob absolute top-32 -right-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl"></div>
+        <div class="animate-blob absolute top-10 left-1/3 h-48 w-48 rounded-full bg-fuchsia-300/20 blur-3xl" style="animation-delay:-5s"></div>
+        <div class="animate-float-slow absolute bottom-10 left-1/4 h-32 w-32 rounded-full bg-emerald-200/20 blur-2xl"></div>
+        <div class="animate-float-reverse absolute top-8 right-1/4 h-20 w-20 rounded-full bg-white/15 blur-xl"></div>
 
         <div class="relative max-w-7xl mx-auto px-4 py-10 sm:py-16">
             <div class="text-center max-w-2xl mx-auto">
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-3 py-1 text-xs font-semibold text-white">
+                <span class="fade-up inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
                     {{ $totalKamar }} kamar tersedia saat ini
                 </span>
-                <h1 class="mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
-                    Cari Kos<br class="sm:hidden"> <span class="text-teal-200">Gak Pake Ribet</span>
+                <h1 class="fade-up stagger-1 mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight drop-shadow-sm">
+                    Cari Kos<br class="sm:hidden"> <span class="text-gradient">Gak Pake Ribet</span>
                 </h1>
-                <p class="mt-3 text-sm sm:text-base text-teal-100 leading-relaxed">
+                <p class="fade-up stagger-2 mt-3 text-sm sm:text-base text-teal-100 leading-relaxed">
                     Temukan kamar kos impianmu, tanya pemilik langsung lewat chat, dan kelola semua dalam satu aplikasi.
                 </p>
             </div>
 
             <!-- Search Bar - Prominent like Mamikos -->
-            <div class="mt-6 max-w-2xl mx-auto">
+            <div class="fade-up stagger-3 mt-6 max-w-2xl mx-auto">
                 <form action="{{ route('kos.index') }}" method="GET" wire:navigate
-                      class="bg-white rounded-2xl shadow-xl shadow-teal-950/20 p-2 flex items-center gap-2">
+                      class="animate-shine bg-white rounded-2xl shadow-xl shadow-teal-950/25 p-2 flex items-center gap-2">
                     <div class="flex-1 flex items-center gap-2 px-3">
                         <svg class="h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                         <input type="text" name="cari" value="{{ $cari }}" placeholder="Ketik nama kos, kota, atau lokasi..."
@@ -99,71 +130,76 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
     </section>
 
-    <!-- Banner / Promo Section -->
-    <section class="max-w-7xl mx-auto px-4 -mt-5 relative z-10">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <!-- Banner 1 -->
-            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden">
-                <div class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10"></div>
-                <div class="absolute bottom-0 right-4 h-16 w-16 rounded-full bg-white/10"></div>
-                <div class="relative">
-                    <span class="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Promo</span>
-                    <h3 class="mt-2 text-sm sm:text-base font-bold">Daftar Gratis!</h3>
-                    <p class="mt-1 text-xs text-blue-100">Buat akun dan langsung cari kos impianmu tanpa biaya apapun.</p>
-                    <a href="{{ route('register') }}" wire:navigate class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-white hover:underline">
-                        Daftar Sekarang
-                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-                    </a>
-                </div>
-            </div>
-            <!-- Banner 2 -->
-            <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden">
-                <div class="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div class="relative">
-                    <span class="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Pemilik Kos</span>
-                    <h3 class="mt-2 text-sm sm:text-base font-bold">Promosikan Kos Anda</h3>
-                    <p class="mt-1 text-xs text-emerald-100">Daftarkan kos, kelola kamar, dan balas pertanyaan pencari kos lewat chat.</p>
-                    <a href="{{ route('register') }}" wire:navigate class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-white hover:underline">
-                        Mulai Gratis
-                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-                    </a>
-                </div>
-            </div>
-            <!-- Banner 3 - Stats -->
-            <div class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white relative overflow-hidden sm:col-span-2 lg:col-span-1">
-                <div class="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-white/10"></div>
-                <div class="relative">
-                    <span class="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Statistik</span>
-                    <div class="mt-2 flex items-baseline gap-3">
-                        <div>
-                            <p class="text-2xl font-extrabold">{{ $totalProperti }}</p>
-                            <p class="text-xs text-orange-100">Kos Aktif</p>
-                        </div>
-                        <div class="h-8 w-px bg-white/25"></div>
-                        <div>
-                            <p class="text-2xl font-extrabold">{{ $totalKamar }}</p>
-                            <p class="text-xs text-orange-100">Kamar Tersedia</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- Iklan Partner -->
     <section class="max-w-7xl mx-auto px-4 pt-8">
         <x-promo-ads />
+    </section>
+
+    <!-- Stats + CTA Strip -->
+    <section class="max-w-7xl mx-auto px-4 -mt-5 relative z-10">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <a href="{{ route('register') }}" wire:navigate
+               class="reveal group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div class="absolute -right-6 -top-8 h-20 w-20 rounded-full bg-emerald-100/60 dark:bg-emerald-500/10 blur-2xl"></div>
+                <div class="relative flex items-start gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Mulai Cari Kos Hari Ini</h3>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Tanpa biaya, langsung chat pemilik kos.</p>
+                        <span class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400">
+                            Daftar Gratis
+                            <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                        </span>
+                    </div>
+                </div>
+            </a>
+
+            <a href="{{ route('register') }}" wire:navigate
+               class="reveal group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div class="absolute -right-6 -top-8 h-20 w-20 rounded-full bg-violet-100/60 dark:bg-violet-500/10 blur-2xl"></div>
+                <div class="relative flex items-start gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm">
+                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Promosikan Kos Anda</h3>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Kelola kamar dan balas chat pencari kos.</p>
+                        <span class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400">
+                            Mulai Gratis
+                            <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                        </span>
+                    </div>
+                </div>
+            </a>
+
+            <div class="reveal rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <div class="flex items-center justify-center gap-6 py-1">
+                    <div class="text-center">
+                        <p class="text-3xl font-extrabold text-teal-600 dark:text-teal-400" x-data="statCounter(@js($totalProperti))" x-text="display">0</p>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Kos Aktif</p>
+                    </div>
+                    <div class="h-10 w-px bg-gray-200 dark:bg-gray-700"></div>
+                    <div class="text-center">
+                        <p class="text-3xl font-extrabold text-cyan-600 dark:text-cyan-400" x-data="statCounter(@js($totalKamar))" x-text="display">0</p>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Kamar Tersedia</p>
+                    </div>
+                </div>
+                <p class="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-3">Selalu ada kamar baru setiap minggu</p>
+            </div>
+        </div>
     </section>
 
     <!-- Daftar Kos Terbaru -->
     <section class="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-6">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-lg sm:text-xl font-extrabold text-gray-900">Kos Terbaru</h2>
-                <p class="text-xs sm:text-sm text-gray-500">Kos yang baru ditambahkan pemilik</p>
+                <h2 class="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100">Kos Terbaru</h2>
+                <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Kos yang baru ditambahkan pemilik</p>
             </div>
             <a href="{{ route('kos.index') }}" wire:navigate
-               class="text-xs sm:text-sm font-semibold text-teal-600 hover:text-teal-500 flex items-center gap-1">
+               class="text-xs sm:text-sm font-semibold text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 flex items-center gap-1">
                 Lihat Semua
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </a>
@@ -172,7 +208,7 @@ new #[Layout('layouts.publik')] class extends Component
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @forelse ($propertiList as $properti)
                 <a href="{{ route('kos.detail', $properti) }}" wire:navigate
-                   class="group bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden hover:shadow-md hover:ring-teal-200 transition-all duration-200">
+                   class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-teal-200 dark:hover:ring-teal-800 transition-all duration-200">
                     <div class="relative h-40 sm:h-44 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100">
                         @if ($properti->foto)
                             <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}"
@@ -193,18 +229,18 @@ new #[Layout('layouts.publik')] class extends Component
                         @endif
                     </div>
                     <div class="p-3.5 sm:p-4">
-                        <h3 class="text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-teal-600 transition">{{ $properti->nama }}</h3>
-                        <p class="mt-0.5 text-xs text-gray-500 flex items-center gap-1">
+                        <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">{{ $properti->nama }}</h3>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                             {{ $properti->kota ?? $properti->alamat ?? 'Lokasi belum diisi' }}
                         </p>
-                        <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex items-end justify-between">
-                            <span class="text-[10px] text-gray-400 font-medium">Mulai dari</span>
-                            <span class="text-base font-extrabold text-teal-600">
+                        <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between">
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
+                            <span class="text-base font-extrabold text-teal-600 dark:text-teal-400">
                                 @if ($properti->harga_termurah)
-                                    Rp{{ number_format($properti->harga_termurah, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400">/bln</span>
+                                    Rp{{ number_format($properti->harga_termurah, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/bln</span>
                                 @else
-                                    <span class="text-xs font-medium text-gray-400">Penuh</span>
+                                    <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                 @endif
                             </span>
                         </div>
@@ -212,21 +248,105 @@ new #[Layout('layouts.publik')] class extends Component
                 </a>
             @empty
                 <div class="col-span-full py-12 text-center">
-                    <div class="mx-auto h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <div class="mx-auto h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-3">
                         <svg class="h-7 w-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                     </div>
-                    <p class="text-sm text-gray-500 font-medium">Belum ada kos terdaftar.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Belum ada kos terdaftar.</p>
                 </div>
             @endforelse
         </div>
     </section>
 
+    <!-- Persebaran Kos -->
+    @if ($kotaStatistik->isNotEmpty())
+    <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10">
+        <div class="reveal relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6 shadow-sm">
+            <div class="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-teal-100/50 dark:bg-teal-500/10 blur-3xl"></div>
+            <div class="relative flex items-center gap-3 mb-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-sm">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/></svg>
+                </span>
+                <div>
+                    <h2 class="text-base font-extrabold text-gray-900 dark:text-gray-100">Persebaran Kos</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Jumlah kos aktif per kota</p>
+                </div>
+            </div>
+            <div class="relative space-y-3">
+                @php($jumlahMax = $kotaStatistik->max('jumlah') ? (int) $kotaStatistik->max('jumlah') : 1)
+                @foreach ($kotaStatistik as $stat)
+                    @php($pct = round(((int) $stat->jumlah / $jumlahMax) * 100, 1))
+                    <div class="flex items-center gap-3">
+                        <span class="w-28 shrink-0 truncate text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $stat->kota }}</span>
+                        <div class="flex-1 h-3 rounded-full bg-gray-100 dark:bg-gray-700/50 overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-teal-500 via-teal-400 to-cyan-500 transition-all duration-1000 ease-out"
+                                 style="width:0%"
+                                 x-data="{ sasaran: {{ $pct }} }"
+                                 x-init="requestAnimationFrame(() => { const io = new IntersectionObserver((e) => { e.forEach((x) => { if (x.isIntersecting) { $el.style.width = sasaran + '%'; io.disconnect(); } }); }, { threshold: 0.4 }); io.observe($el.closest('.reveal') || $el); })"></div>
+                        </div>
+                        <span class="w-6 shrink-0 text-right text-xs font-extrabold text-teal-600 dark:text-teal-400">{{ (int) $stat->jumlah }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    <!-- Peta Semua Kos -->
+    @if ($markers->isNotEmpty())
+    <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10" x-data="{ tampilkanPeta: false, initPeta() {
+        const el = document.getElementById('peta-kos-beranda');
+        if (!el || this._map) return;
+        if (typeof L === 'undefined') return;
+        const data = @js($markers);
+        const pts = data.map(m => [m.lat, m.lng]);
+        const sum = pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
+        const center = [sum[0] / pts.length, sum[1] / pts.length];
+        this._map = L.map('peta-kos-beranda').setView(center, pts.length <= 5 ? 8 : 6);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(this._map);
+        data.forEach((m) => L.marker([m.lat, m.lng], { title: m.nama })
+            .bindPopup('<strong>' + m.nama + '</strong><br>' + (m.alamat ? m.alamat + ', ' : '') + m.kota)
+            .addTo(this._map));
+        setTimeout(() => this._map.invalidateSize(), 120);
+    } }">
+        <div class="reveal relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6 shadow-sm">
+            <div class="absolute -left-10 -top-12 h-32 w-32 rounded-full bg-cyan-100/50 dark:bg-cyan-500/10 blur-3xl"></div>
+            <div class="relative flex items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-sm">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
+                    </span>
+                    <div>
+                        <h2 class="text-base font-extrabold text-gray-900 dark:text-gray-100">Peta Kos</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $markers->count() }} titik lokasi kos aktif</p>
+                    </div>
+                </div>
+                <button @click="tampilkanPeta = !tampilkanPeta; if (tampilkanPeta) initPeta()"
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ $markers->count() ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400' }}">
+                    <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                    <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
+                    <span x-text="tampilkanPeta ? 'Tutup Peta' : 'Lihat Peta'"></span>
+                </button>
+            </div>
+            <div x-show="tampilkanPeta" x-cloak
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="relative">
+                <div id="peta-kos-beranda" class="h-80 sm:h-96 w-full rounded-xl bg-gray-100 dark:bg-gray-800"></div>
+            </div>
+        </div>
+    </section>
+    @endif
+
     <!-- Kenapa Ngekos.in -->
-    <section class="bg-white border-y border-gray-100">
+    <section class="bg-white dark:bg-gray-800 border-y border-gray-100 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 py-10 sm:py-14">
-            <div class="text-center max-w-xl mx-auto mb-8">
-                <h2 class="text-lg sm:text-2xl font-extrabold text-gray-900">Kenapa Pilih Ngekos.in?</h2>
-                <p class="mt-2 text-xs sm:text-sm text-gray-500">Solusi praktis untuk pencari kos dan pemilik kos</p>
+            <div class="reveal text-center max-w-xl mx-auto mb-8">
+                <h2 class="text-lg sm:text-2xl font-extrabold text-gray-900 dark:text-gray-100">Kenapa Pilih Ngekos.in?</h2>
+                <p class="mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">Solusi praktis untuk pencari kos dan pemilik kos</p>
             </div>
 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
@@ -236,12 +356,12 @@ new #[Layout('layouts.publik')] class extends Component
                     ['Bayar Praktis', 'Tagihan bulanan otomatis, bayar lewat transfer.', 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z'],
                     ['Kelola Mudah', 'Pemilik kelola kamar, chat, dan pembayaran dari dashboard.', 'M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35'],
                 ] as [$judul, $deskripsi, $ikon])
-                    <div class="bg-gray-50 rounded-2xl p-4 sm:p-5 hover:bg-teal-50 transition-colors duration-200">
+                    <div class="reveal bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 sm:p-5 hover:bg-teal-50 dark:hover:bg-teal-500/10 transition-colors duration-200">
                         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 text-white shadow-sm">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon }}" /></svg>
                         </span>
-                        <h3 class="mt-3 text-sm sm:text-base font-bold text-gray-900">{{ $judul }}</h3>
-                        <p class="mt-1.5 text-xs text-gray-500 leading-relaxed">{{ $deskripsi }}</p>
+                        <h3 class="mt-3 text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">{{ $judul }}</h3>
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{{ $deskripsi }}</p>
                     </div>
                 @endforeach
             </div>
@@ -250,7 +370,7 @@ new #[Layout('layouts.publik')] class extends Component
 
     <!-- CTA Section -->
     <section class="max-w-7xl mx-auto px-4 py-10 sm:py-14">
-        <div class="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 sm:p-10 text-center relative overflow-hidden">
+        <div class="reveal bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 sm:p-10 text-center relative overflow-hidden">
             <div class="absolute -top-16 left-1/4 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl"></div>
             <div class="absolute -bottom-20 -right-8 h-48 w-48 rounded-full bg-cyan-200/20 blur-3xl"></div>
             <div class="relative">
@@ -269,4 +389,9 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
     </section>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </div>

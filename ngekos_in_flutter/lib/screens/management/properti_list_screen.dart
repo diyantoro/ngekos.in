@@ -87,7 +87,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
                     children: [
                       Icon(Icons.apartment_rounded, size: 64, color: Colors.grey[300]),
                       const SizedBox(height: 16),
-                      const Text('Belum ada properti', style: TextStyle(color: AppTheme.textSecondary)),
+                    Text('Belum ada properti', style: TextStyle(color: AppTheme.txtSec)),
                       const SizedBox(height: 12),
                       ElevatedButton.icon(
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PropertiFormScreen())).then((_) => _load()),
@@ -111,7 +111,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
 
   Widget _buildCard(Properti properti) {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderLight)),
+      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.bdrLight)),
       child: Column(
         children: [
           ClipRRect(
@@ -123,7 +123,7 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => Container(height: 140, color: AppTheme.surfaceGray, child: const Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
+                    errorWidget: (_, _, _) => Container(height: 140, color: AppTheme.surfaceGrey, child: const Icon(Icons.home_rounded, size: 40, color: AppTheme.primary)),
                   )
                 : Container(
                     height: 140,
@@ -145,13 +145,13 @@ class _PropertiListScreenState extends State<PropertiListScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.textSecondary),
+                    Icon(Icons.location_on_rounded, size: 14, color: AppTheme.txtSec),
                     const SizedBox(width: 4),
-                    Expanded(child: Text('${properti.alamat}, ${properti.kota}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Expanded(child: Text('${properti.alamat}, ${properti.kota}', style: TextStyle(fontSize: 13, color: AppTheme.txtSec), maxLines: 1, overflow: TextOverflow.ellipsis)),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('${properti.kamarTersedia} kamar tersedia / ${properti.totalKamar} total', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                Text('${properti.kamarTersedia} kamar tersedia / ${properti.totalKamar} total', style: TextStyle(fontSize: 12, color: AppTheme.txtMuted)),
                 const SizedBox(height: 12),
                 Row(
                   children: [

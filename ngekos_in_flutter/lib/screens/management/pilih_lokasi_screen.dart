@@ -100,8 +100,8 @@ class _PilihLokasiScreenState extends State<PilihLokasiScreen> {
             top: false,
             child: Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceC,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black12,
@@ -125,9 +125,9 @@ class _PilihLokasiScreenState extends State<PilihLokasiScreen> {
                       Expanded(
                         child: Text(
                           'Ketuk peta untuk menandai lokasi kos',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.txtSec,
                           ),
                         ),
                       ),
@@ -136,9 +136,9 @@ class _PilihLokasiScreenState extends State<PilihLokasiScreen> {
                   const SizedBox(height: 6),
                   Text(
                     '${_center.latitude.toStringAsFixed(6)}, ${_center.longitude.toStringAsFixed(6)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.textMuted,
+                      color: AppTheme.txtMuted,
                       fontFamily: 'monospace',
                     ),
                   ),

@@ -27,7 +27,7 @@ class NotifikasiPopup extends StatelessWidget {
         width: double.infinity,
         constraints: const BoxConstraints(maxWidth: 400),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8)),
@@ -58,9 +58,9 @@ class NotifikasiPopup extends StatelessWidget {
                     child: const Icon(Icons.check_rounded, color: AppTheme.success, size: 28),
                   ),
                   const SizedBox(height: 16),
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.txt)),
                   const SizedBox(height: 8),
-                  Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                  Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,

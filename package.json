@@ -17,5 +17,8 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "chart.js": "^4.5.1"
     }
 }

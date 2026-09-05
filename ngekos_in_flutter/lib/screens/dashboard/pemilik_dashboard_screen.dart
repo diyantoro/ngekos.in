@@ -13,7 +13,7 @@ import '../../widgets/tab_bar_widget.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/promo_ads_banner.dart';
 import '../../widgets/trending_kos_section.dart';
-import '../../widgets/dashboard_line_chart.dart';
+import '../../widgets/dashboard_funnel.dart';
 import '../../utils/csv_builder.dart';
 import '../../utils/csv_saver.dart';
 
@@ -194,7 +194,7 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
           clipBehavior: Clip.antiAlias,
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
+            color: AppTheme.surfaceGrey,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.bdrLight),
           ),
@@ -247,7 +247,7 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: persentase / 100,
-                        backgroundColor: AppTheme.surfaceGray,
+                        backgroundColor: AppTheme.surfaceGrey,
                         valueColor: const AlwaysStoppedAnimation(Color(0xFF14B8A6)),
                         minHeight: 8,
                       ),
@@ -392,11 +392,62 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('Keluar: ${DateFormat('d MMM yyyy').format(DateTime.parse(s['tanggal_keluar']))}', style: TextStyle(fontSize: 11, color: AppTheme.txtSec, fontStyle: FontStyle.italic)),
                 ),
+              if (s['status'] == 'aktif')
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _checkOut(s),
+                      icon: const Icon(Icons.logout_rounded, size: 16),
+                      label: const Text('Check-out', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.rose,
+                        side: BorderSide(color: AppTheme.rose.withValues(alpha: 0.4)),
+                        backgroundColor: const Color(0xFFFFF1F2),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         );
       }).toList(),
     );
+  }
+
+  Future<void> _checkOut(Map<String, dynamic> s) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Check-out Penyewa'),
+        content: Text('Check-out ${s['anak_kos_nama'] ?? ''} dari kamar ${s['kamar_nama'] ?? ''}? Kamar akan kembali tersedia.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Check-out', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.rose)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await DashboardService.checkout(s['id']);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Check-out berhasil. Kamar kembali tersedia.'), backgroundColor: AppTheme.success),
+        );
+        _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.error));
+      }
+    }
   }
 
   Future<void> _pilihPeriodeDanEkspor() async {
@@ -558,37 +609,28 @@ class _PemilikDashboardScreenState extends State<PemilikDashboardScreen> {
   }
 
   Widget _buildChartSection() {
-    final chart = _dashboard?['chart'];
-    if (chart is! Map) return const SizedBox.shrink();
+    final stages = _parseFunnel(_dashboard?['funnel']);
+    if (stages.isEmpty) return const SizedBox.shrink();
 
-    final labels = (chart['labels'] as List? ?? []).cast<String>();
-    final pendapatan = (chart['pendapatan'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-    final lunas = (chart['lunas'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-    final belum = (chart['belum'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-
-    if (labels.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      children: [
-        DashboardLineChart(
-          title: 'Pendapatan 6 Bulan Terakhir',
-          labels: labels,
-          yCurrency: true,
-          series: [
-            FlLineData(label: 'Pendapatan', values: pendapatan, color: AppTheme.primary),
-          ],
-        ),
-        const SizedBox(height: 12),
-        DashboardLineChart(
-          title: 'Tagihan: Lunas vs Belum Lunas',
-          labels: labels,
-          yCurrency: true,
-          series: [
-            FlLineData(label: 'Lunas', values: lunas, color: AppTheme.accent),
-            FlLineData(label: 'Belum Lunas', values: belum, color: AppTheme.rose),
-          ],
-        ),
-      ],
+    return DashboardFunnel(
+      title: 'Grafik Pipeline',
+      subtitle: 'Kunjungan → Penyewa → Tagihan → Lunas',
+      stages: stages,
     );
+  }
+
+  static List<FunnelStage> _parseFunnel(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((f) {
+      final label = f['label']?.toString() ?? '';
+      final nilaiRaw = f['nilai'];
+      return FunnelStage(
+        label: label,
+        sub: f['sub']?.toString(),
+        nilai: nilaiRaw is num
+            ? nilaiRaw.toInt()
+            : int.tryParse(nilaiRaw?.toString() ?? '') ?? 0,
+      );
+    }).where((s) => s.label.isNotEmpty).toList();
   }
 }

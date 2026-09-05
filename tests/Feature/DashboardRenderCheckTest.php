@@ -78,10 +78,13 @@ class DashboardRenderCheckTest extends TestCase
         $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
 
         $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
-        $component->call('ajukanKeluar', $sewaan->id)
-            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'check-out'));
+        $component->call('checkOut', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'check-out'));
 
-        $this->assertNotNull($sewaan->refresh()->permintaan_keluar_pada);
+        $sewaan->refresh();
+        $this->assertEquals('selesai', $sewaan->status);
+        $this->assertNotNull($sewaan->tanggal_keluar);
+        $this->assertEquals('tersedia', $sewaan->kamar->status);
     }
 
     public function test_anak_kos_dashboard_shows_penyewaan_and_tagihan(): void

@@ -112,7 +112,7 @@ new class extends Component
 
     <!-- Panel chat -->
     <div x-show="$wire.terbuka" x-cloak
-         class="absolute bottom-16 right-0 w-[calc(100vw-2.5rem)] max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-200 flex flex-col"
+         class="absolute bottom-16 right-0 w-[calc(100vw-2.5rem)] max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-gray-200 dark:ring-gray-600 flex flex-col"
          style="max-height: 70vh; height: 30rem;">
         <!-- Header -->
         <div class="flex items-center justify-between bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3">
@@ -138,14 +138,14 @@ new class extends Component
         </div>
 
         <!-- Riwayat -->
-        <div id="chat-riwayat" class="flex-1 overflow-y-auto space-y-3 bg-gray-50 px-4 py-4">
+        <div id="chat-riwayat" class="flex-1 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-900 px-4 py-4">
             @foreach ($percakapan as $index => $pesan)
                 <div wire:key="chat-{{ $index }}"
                      class="flex {{ $pesan['dari'] === 'user' ? 'justify-end' : 'justify-start' }}">
                     <div class="max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm
                         {{ $pesan['dari'] === 'user'
                             ? 'bg-teal-600 text-white rounded-br-sm'
-                            : 'bg-white text-gray-700 ring-1 ring-gray-100 rounded-bl-sm' }}">
+                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 ring-1 ring-gray-100 dark:ring-gray-600 rounded-bl-sm' }}">
                         {{ $pesan['teks'] }}
                     </div>
                 </div>
@@ -153,19 +153,19 @@ new class extends Component
         </div>
 
         <!-- Saran cepat -->
-        <div class="flex gap-2 overflow-x-auto px-4 py-2 bg-white border-t border-gray-100">
+        <div class="flex gap-2 overflow-x-auto px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
             @foreach (['Cara daftar akun', 'Cara chat pemilik kos', 'Cara pembayaran', 'Hubungi admin'] as $saran)
                 <button type="button" wire:click="kirim('{{ $saran }}')"
-                    class="shrink-0 rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-100 hover:bg-teal-100 transition">
+                    class="shrink-0 rounded-full bg-teal-50 dark:bg-teal-500/10 px-3 py-1 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-100 dark:ring-teal-500/30 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
                     {{ $saran }}
                 </button>
             @endforeach
         </div>
 
         <!-- Input -->
-        <form wire:submit="kirim" class="flex items-center gap-2 bg-white px-3 py-2.5 border-t border-gray-100">
+        <form wire:submit="kirim" class="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-2.5 border-t border-gray-100 dark:border-gray-700">
             <input type="text" wire:model="input" placeholder="Ketik pertanyaanmu..."
-                   class="flex-1 rounded-full border-gray-200 text-sm focus:border-teal-500 focus:ring-teal-500">
+                   class="flex-1 rounded-full border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
             <button type="submit" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white hover:bg-teal-500 transition" aria-label="Kirim">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
             </button>

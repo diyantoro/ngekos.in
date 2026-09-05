@@ -160,9 +160,9 @@ class _BantuanScreenState extends State<BantuanScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: AppTheme.bdrLight),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -171,7 +171,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           title: Text(item['title']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           children: [
-            Text(item['answer']!, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5)),
+            Text(item['answer']!, style: TextStyle(fontSize: 13, color: AppTheme.txtSec, height: 1.5)),
           ],
         ),
       ),
@@ -182,16 +182,16 @@ class _BantuanScreenState extends State<BantuanScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: AppTheme.bdrLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Hubungi Admin', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text('Tidak menemukan jawaban? Kirim pesan ke admin.', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          Text('Tidak menemukan jawaban? Kirim pesan ke admin.', style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
           const SizedBox(height: 20),
           TextField(controller: _namaController, decoration: const InputDecoration(labelText: 'Nama', hintText: 'Nama kamu')),
           const SizedBox(height: 12),
@@ -204,7 +204,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Balasan bisa dilihat di Riwayat Bantuan', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              Text('Balasan bisa dilihat di Riwayat Bantuan', style: TextStyle(fontSize: 11, color: AppTheme.txtMuted)),
               ElevatedButton(
                 onPressed: _isLoading ? null : _kirim,
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
@@ -251,7 +251,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderLight)),
+          decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.bdrLight)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -279,7 +279,7 @@ class _BantuanScreenState extends State<BantuanScreen> {
           child: Icon(icon, size: 16, color: AppTheme.primary),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 12, color: AppTheme.txtSec))),
       ],
     );
   }

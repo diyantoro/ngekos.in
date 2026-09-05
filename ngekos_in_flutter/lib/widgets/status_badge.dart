@@ -8,8 +8,8 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppTheme.statusColors[status] ?? AppTheme.textSecondary;
-    final bgColor = AppTheme.statusBgColors[status] ?? AppTheme.surfaceGray;
+    final color = AppTheme.statusColors[status] ?? AppTheme.txtSec;
+    final bgColor = AppTheme.statusBgColors[status] ?? AppTheme.surfaceGrey;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),

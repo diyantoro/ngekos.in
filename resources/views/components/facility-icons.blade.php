@@ -91,7 +91,7 @@
     <div class="space-y-7" x-data="{ selected: @entangle('fasilitasTerpilih').live }">
         @foreach ($kelompokFasilitas as $judul => $items)
             <div>
-                <h4 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
                     <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>
                     {{ $judul }}
                 </h4>
@@ -105,20 +105,20 @@
                         <label class="relative cursor-pointer select-none">
                             <input type="checkbox" value="{{ $nama }}" x-model="selected" {!! $checked ? 'checked' : '' !!}
                                 class="peer sr-only">
-                            <span :class="selected.includes('{{ $nama }}') ? 'border-teal-500 bg-teal-50 ring-teal-200' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'"
+                            <span :class="selected.includes('{{ $nama }}') ? 'border-teal-500 bg-teal-50 ring-teal-200 dark:border-teal-500 dark:bg-teal-500/10 dark:ring-teal-500/30' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700'"
                                 class="flex items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-200">
-                                <span :class="selected.includes('{{ $nama }}') ? 'bg-teal-600' : 'bg-gray-100'"
+                                <span :class="selected.includes('{{ $nama }}') ? 'bg-teal-600' : 'bg-gray-100 dark:bg-gray-700'"
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200">
                                     @if ($png)
                                         <img src="{{ asset('images/fasilitas/' . $png) }}" alt="{{ $nama }}"
                                             class="h-6 w-6 object-contain">
                                     @elseif ($svg)
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" :class="selected.includes('{{ $nama }}') ? 'text-white' : 'text-gray-400'">{!! $svg !!}</svg>
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" :class="selected.includes('{{ $nama }}') ? 'text-white' : 'text-gray-400 dark:text-gray-500'">{!! $svg !!}</svg>
                                     @else
-                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" :class="selected.includes('{{ $nama }}') ? 'text-white' : 'text-gray-400'"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" :class="selected.includes('{{ $nama }}') ? 'text-white' : 'text-gray-400 dark:text-gray-500'"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     @endif
                                 </span>
-                                <span class="text-xs font-semibold text-gray-700">{{ $nama }}</span>
+                                <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $nama }}</span>
                                 <span x-show="selected.includes('{{ $nama }}')" x-cloak
                                     class="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white">
                                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
@@ -134,18 +134,18 @@
     <div class="flex flex-wrap gap-2">
         @foreach (array_filter(array_map('trim', explode(',', $fasilitas))) as $f)
             @if (isset($ikonPng[$f]))
-                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-200">
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
                     <img src="{{ asset('images/fasilitas/' . $ikonPng[$f]) }}" class="h-4 w-4 object-contain" alt="">
                     {{ $f }}
                 </span>
             @elseif (isset($ikonSvg[$f]))
-                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 ring-1 ring-inset ring-teal-200">
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$f] !!}</svg>
                     {{ $f }}
                 </span>
             @else
-                <span class="inline-flex items-center gap-1 rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-200">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span class="inline-flex items-center gap-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-200 dark:ring-gray-700">
+                    <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {{ $f }}
                 </span>
             @endif

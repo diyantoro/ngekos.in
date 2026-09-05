@@ -120,10 +120,10 @@ class _ChatbotWidgetState extends State<ChatbotWidget> {
               constraints: const BoxConstraints(maxWidth: 380),
               margin: EdgeInsets.zero,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.card,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8))],
-                border: Border.all(color: AppTheme.borderLight),
+                border: Border.all(color: AppTheme.bdrLight),
               ),
               child: Column(
                 children: [
@@ -173,19 +173,19 @@ class _ChatbotWidgetState extends State<ChatbotWidget> {
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                             decoration: BoxDecoration(
-                              color: isBot ? Colors.white : AppTheme.primary,
+                              color: isBot ? AppTheme.card : AppTheme.primary,
                               borderRadius: BorderRadius.only(
                                 topLeft: const Radius.circular(16),
                                 topRight: const Radius.circular(16),
                                 bottomLeft: Radius.circular(isBot ? 4 : 16),
                                 bottomRight: Radius.circular(isBot ? 16 : 4),
                               ),
-                              border: isBot ? Border.all(color: AppTheme.borderLight) : null,
+                              border: isBot ? Border.all(color: AppTheme.bdrLight) : null,
                               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 1))],
                             ),
                             child: Text(
                               msg['text']!,
-                              style: TextStyle(fontSize: 13, color: isBot ? AppTheme.textPrimary : Colors.white, height: 1.4),
+                              style: TextStyle(fontSize: 13, color: isBot ? AppTheme.txt : Colors.white, height: 1.4),
                             ),
                           ),
                         );
@@ -214,9 +214,9 @@ class _ChatbotWidgetState extends State<ChatbotWidget> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(top: BorderSide(color: AppTheme.borderLight)),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      border: Border(top: BorderSide(color: AppTheme.bdrLight)),
                     ),
                     child: Row(
                       children: [
@@ -228,7 +228,7 @@ class _ChatbotWidgetState extends State<ChatbotWidget> {
                               hintStyle: const TextStyle(fontSize: 13),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                               filled: true,
-                              fillColor: AppTheme.surfaceGray,
+                              fillColor: AppTheme.surfaceGrey,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               isDense: true,
                             ),

@@ -5,7 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/admin_dashboard_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/greeting_banner.dart';
-import '../../widgets/dashboard_line_chart.dart';
+import '../../widgets/dashboard_funnel.dart';
 import '../../widgets/status_badge.dart';
 
 
@@ -104,36 +104,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildChart() {
-    final chart = _dashboard?['chart'];
-    if (chart is! Map) return const SizedBox.shrink();
+    final funnel = _dashboard?['funnel'];
+    final stages = _parseFunnel(funnel);
+    if (stages.isEmpty) return const SizedBox.shrink();
 
-    final labels = (chart['labels'] as List? ?? []).cast<String>();
-    final pendapatan = (chart['pendapatan'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-    final lunas = (chart['lunas'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-    final belum = (chart['belum'] as List? ?? []).cast<num>().map((e) => e.toDouble()).toList();
-
-    if (labels.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      children: [
-        DashboardLineChart(
-          title: 'Pendapatan 6 Bulan Terakhir',
-          labels: labels,
-          yCurrency: true,
-          series: [FlLineData(label: 'Pendapatan', values: pendapatan, color: AppTheme.primary)],
-        ),
-        const SizedBox(height: 12),
-        DashboardLineChart(
-          title: 'Tagihan: Lunas vs Belum Lunas',
-          labels: labels,
-          yCurrency: true,
-          series: [
-            FlLineData(label: 'Lunas', values: lunas, color: AppTheme.accent),
-            FlLineData(label: 'Belum Lunas', values: belum, color: AppTheme.rose),
-          ],
-        ),
-      ],
+    return DashboardFunnel(
+      title: 'Grafik Pipeline',
+      subtitle: 'Kunjungan → Penyewa → Tagihan → Lunas',
+      stages: stages,
     );
+  }
+
+  static List<FunnelStage> _parseFunnel(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((f) {
+      final label = f['label']?.toString() ?? '';
+      final nilaiRaw = f['nilai'];
+      return FunnelStage(
+        label: label,
+        sub: f['sub']?.toString(),
+        nilai: nilaiRaw is num
+            ? nilaiRaw.toInt()
+            : int.tryParse(nilaiRaw?.toString() ?? '') ?? 0,
+      );
+    }).where((s) => s.label.isNotEmpty).toList();
   }
 
   Widget _buildPembayaranList() {

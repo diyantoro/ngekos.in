@@ -70,7 +70,7 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
           : Column(
               children: [
                 Container(
-                  color: Colors.white,
+                  color: AppTheme.surfaceC,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: Row(
                     children: ['baru', 'dibaca', 'selesai'].map((tab) {
@@ -83,12 +83,12 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.primary : AppTheme.surfaceGray,
+                              color: isSelected ? AppTheme.primary : AppTheme.surfaceGrey,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${tab[0].toUpperCase()}${tab.substring(1)} ($count)',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isSelected ? Colors.white : AppTheme.textSecondary),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isSelected ? Colors.white : AppTheme.txtSec),
                             ),
                           ),
                         ),
@@ -104,7 +104,7 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
                             children: [
                               Icon(Icons.inbox_rounded, size: 64, color: Colors.grey[300]),
                               const SizedBox(height: 12),
-                              const Text('Tidak ada pesan', style: TextStyle(color: AppTheme.textSecondary)),
+                              Text('Tidak ada pesan', style: TextStyle(color: AppTheme.txtSec)),
                             ],
                           ),
                         )
@@ -126,7 +126,7 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
   Widget _buildCard(BantuanMessage msg) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.borderLight)),
+      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.bdrLight)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -143,7 +143,7 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(msg.nama, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    Text(msg.email, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    Text(msg.email, style: TextStyle(fontSize: 11, color: AppTheme.txtMuted)),
                   ],
                 ),
               ),
@@ -155,7 +155,7 @@ class _BantuanMasukScreenState extends State<BantuanMasukScreen> {
             Text(msg.subjek!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           ],
           const SizedBox(height: 6),
-          Text(msg.pesan, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5)),
+          Text(msg.pesan, style: TextStyle(fontSize: 13, color: AppTheme.txtSec, height: 1.5)),
           if (msg.balasan != null) ...[
             const SizedBox(height: 8),
             Container(

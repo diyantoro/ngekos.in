@@ -83,12 +83,12 @@ new #[Layout('layouts.app')] class extends Component
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">{{ $kelolaSemua ? 'Kelola Semua Kos' : 'Kelola Kos Saya' }}</h1>
-                <p class="mt-1 text-sm text-gray-500">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $kelolaSemua ? 'Kelola Semua Kos' : 'Kelola Kos Saya' }}</h1>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     @if ($kelolaSemua)
                         Sebagai admin, Anda dapat mengelola seluruh kos yang terdaftar di Ngekos.in.
                     @else
-                        Kos dengan status <span class="font-medium text-emerald-600">Aktif</span> akan tampil di halaman Cari Kos untuk dipromosikan.
+                        Kos dengan status <span class="font-medium text-emerald-600 dark:text-emerald-400">Aktif</span> akan tampil di halaman Cari Kos untuk dipromosikan.
                     @endif
                 </p>
             </div>
@@ -100,26 +100,26 @@ new #[Layout('layouts.app')] class extends Component
         </div>
 
         @forelse ($propertis as $properti)
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="p-5 sm:p-6">
                     <div class="flex flex-col sm:flex-row gap-5">
-                        <div class="h-36 sm:h-32 sm:w-48 shrink-0 rounded-xl bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 overflow-hidden">
+                        <div class="h-36 sm:h-32 sm:w-48 shrink-0 rounded-xl bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden">
                             @if ($properti->foto)
                                 <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover">
                             @else
                                 <div class="h-full w-full flex items-center justify-center">
-                                    <svg class="h-10 w-10 text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18-8.25V21m-1.5-8.25v-3.75a2.25 2.25 0 00-2.25-2.25h-1.5m-1.5 0V3.545c0-.621-.504-1.125-1.125-1.125H8.25c-.621 0-1.125.504-1.125 1.125v7.5" /></svg>
+                                    <svg class="h-10 w-10 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18-8.25V21m-1.5-8.25v-3.75a2.25 2.25 0 00-2.25-2.25h-1.5m-1.5 0V3.545c0-.621-.504-1.125-1.125-1.125H8.25c-.621 0-1.125.504-1.125 1.125v7.5" /></svg>
                                 </div>
                             @endif
                         </div>
 
                         <div class="flex-1 min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <h2 class="text-lg font-bold text-gray-900">{{ $properti->nama }}</h2>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $properti->nama }}</h2>
                                 <x-status-badge :status="$properti->status" />
                             </div>
-                            <p class="mt-1 text-sm text-gray-500 truncate">{{ $properti->alamat ?? $properti->kota ?? 'Lokasi belum diisi' }}</p>
-                            <p class="mt-3 text-sm text-gray-600">
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">{{ $properti->alamat ?? $properti->kota ?? 'Lokasi belum diisi' }}</p>
+                            <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
                                 {{ $properti->total_kamar }} kamar &middot; {{ $properti->kamar_terisi }} terisi
                             </p>
                         </div>
@@ -130,23 +130,23 @@ new #[Layout('layouts.app')] class extends Component
                                 Kelola Kamar
                             </a>
                             <a href="{{ route('pemilik.properti.ubah', $properti) }}" wire:navigate
-                               class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                               class="inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                 Ubah
                             </a>
                             @if ($properti->status === 'aktif')
                                 <button wire:click="ubahStatus({{ $properti->id }}, 'nonaktif')"
-                                    class="inline-flex items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition">
+                                    class="inline-flex items-center justify-center rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition">
                                     Sembunyikan
                                 </button>
                             @else
                                 <button wire:click="ubahStatus({{ $properti->id }}, 'aktif')"
-                                    class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition">
+                                    class="inline-flex items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition">
                                     Tampilkan
                                 </button>
                             @endif
                             <button wire:click="hapusProperti({{ $properti->id }})"
                                     wire:confirm="Hapus kos ini beserta datanya?"
-                                class="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 transition">
+                                class="inline-flex items-center justify-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
                                 Hapus
                             </button>
                         </div>
@@ -154,12 +154,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
         @empty
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 py-16 text-center">
-                <div class="mx-auto h-16 w-16 rounded-full bg-teal-50 flex items-center justify-center mb-4">
-                    <svg class="h-8 w-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18-8.25V21m-1.5-8.25v-3.75a2.25 2.25 0 00-2.25-2.25h-1.5m-1.5 0V3.545c0-.621-.504-1.125-1.125-1.125H8.25c-.621 0-1.125.504-1.125 1.125v7.5" /></svg>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 py-16 text-center">
+                <div class="mx-auto h-16 w-16 rounded-full bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-teal-400 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18-8.25V21m-1.5-8.25v-3.75a2.25 2.25 0 00-2.25-2.25h-1.5m-1.5 0V3.545c0-.621-.504-1.125-1.125-1.125H8.25c-.621 0-1.125.504-1.125 1.125v7.5" /></svg>
                 </div>
-                <p class="text-gray-500 font-medium">Belum ada kos terdaftar.</p>
-                <p class="mt-1 text-sm text-gray-400">Tambahkan kos pertamamu agar mulai dipromosikan di Ngekos.in.</p>
+                <p class="text-gray-500 dark:text-gray-400 font-medium">Belum ada kos terdaftar.</p>
+                <p class="mt-1 text-sm text-gray-400 dark:text-gray-500">Tambahkan kos pertamamu agar mulai dipromosikan di Ngekos.in.</p>
                 <a href="{{ route('pemilik.properti.buat') }}" wire:navigate
                    class="mt-5 inline-flex items-center rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
                     Tambah Kos Baru

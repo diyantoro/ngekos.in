@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ThemeProvider extends ChangeNotifier {
+class ThemeProvider extends ChangeNotifier with WidgetsBindingObserver {
   static ThemeProvider? _instance;
 
   static const String _prefsKey = 'theme_mode';
@@ -10,7 +10,20 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeMode get mode => _mode;
 
-  bool get isDark => _mode == ThemeMode.dark;
+  /// Mode efektif yang benar-benar dirender. Mode `system` di-resolve ke
+  /// kecerahan perangkat/browser sehingga UI polesan manual (`AppTheme.*`)
+  /// selalu selaras dengan tema yang dipakai `MaterialApp`.
+  bool get isDark {
+    switch (_mode) {
+      case ThemeMode.dark:
+        return true;
+      case ThemeMode.light:
+        return false;
+      case ThemeMode.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    }
+  }
 
   /// Instance global agar `AppTheme` (yang memakai konstanta desk) bisa
   /// membaca mode saat ini — dipakai sebagai sumber kebenaran tunggal.
@@ -18,16 +31,24 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeProvider() {
     _instance = this;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    if (_mode == ThemeMode.system) notifyListeners();
   }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefsKey);
-    _mode = saved == 'dark'
-        ? ThemeMode.dark
-        : saved == 'light'
-            ? ThemeMode.light
-            : ThemeMode.system;
+    // Default terang: aplikasi hanya gelap bila pengguna eksplisit
+    // men-toggle dark mode, tidak mengikuti kecerahan sistem diam-diam.
+    _mode = switch (saved) {
+      'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.light,
+    };
     notifyListeners();
   }
 

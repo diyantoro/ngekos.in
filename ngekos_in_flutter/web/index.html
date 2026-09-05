@@ -35,6 +35,25 @@
   <!-- Cropper.js for image_cropper web support -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+  <script>
+    // Bersihkan service worker & cache lama supaya build terbaru langsung tampil.
+    // Tanpa ini browser bisa terus menyajikan versi lama via service worker Flutter.
+    (function () {
+      try {
+        if ('caches' in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (key) { caches.delete(key); });
+          });
+        }
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
+          });
+        }
+      } catch (e) { /* abaikan */ }
+    })();
+  </script>
 </head>
 <body>
   <!--

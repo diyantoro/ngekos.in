@@ -128,6 +128,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
                         child: KosMap(
                           latitude: _properti!.latitude,
                           longitude: _properti!.longitude,
+                          kota: _properti!.kota,
                           nama: _properti!.nama,
                         ),
                       ),
@@ -832,7 +833,7 @@ class _DetailKosScreenState extends State<DetailKosScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceGray,
+          color: AppTheme.surfaceGrey,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(

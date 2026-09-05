@@ -203,38 +203,38 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         <div>
-            <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-teal-600 hover:text-teal-500 inline-flex items-center gap-1">
+            <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke daftar kos
             </a>
-            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900">
+            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {{ $properti ? 'Ubah Kos: ' . $properti->nama : 'Tambah Kos Baru' }}
             </h1>
-            <p class="mt-1 text-sm text-gray-500">Lengkapi informasi kos agar menarik bagi pencari kos.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lengkapi informasi kos agar menarik bagi pencari kos.</p>
         </div>
 
-        <form wire:submit="simpan" class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5 sm:p-8 space-y-5">
+        <form wire:submit="simpan" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-5 sm:p-8 space-y-5">
             <!-- Foto Cover -->
             <div>
                 <x-input-label for="fotoBaru" value="Foto Cover Kos" />
                 <div class="mt-2">
                     @if ($fotoBaru)
                         <div class="relative">
-                            <img src="{{ $fotoBaru->temporaryUrl() }}" class="h-48 w-full rounded-xl object-cover ring-1 ring-gray-200" alt="Pratinjau">
+                            <img src="{{ $fotoBaru->temporaryUrl() }}" class="h-48 w-full rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-600" alt="Pratinjau">
                             <button type="button" @click="$wire.set('fotoBaru', null)" class="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                     @elseif ($properti?->foto)
                         <div class="relative">
-                            <img src="{{ asset('storage/' . $properti->foto) }}" class="h-48 w-full rounded-xl object-cover ring-1 ring-gray-200" alt="Foto kos">
+                            <img src="{{ asset('storage/' . $properti->foto) }}" class="h-48 w-full rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-600" alt="Foto kos">
                             <button type="button" wire:click="hapusFoto" class="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                     @endif
                     <input wire:model="fotoBaru" id="fotoBaru" type="file" accept="image/*"
-                        class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 hover:file:bg-teal-100">
+                        class="mt-2 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
                 </div>
                 <x-input-error :messages="$errors->get('fotoBaru')" class="mt-2" />
                 <div wire:loading wire:target="fotoBaru" class="mt-2 flex items-center gap-2 text-sm font-medium text-teal-600">
@@ -254,7 +254,7 @@ new #[Layout('layouts.app')] class extends Component
                 <div>
                     <x-input-label for="pemilikId" value="Pemilik Kos" />
                     <select wire:model="pemilikId" id="pemilikId"
-                        class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500">
+                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="">-- Pilih pemilik kos --</option>
                         @foreach ($daftarPemilik as $p)
                             <option value="{{ $p->id }}">{{ $p->nama }} ({{ $p->email }})</option>
@@ -265,11 +265,11 @@ new #[Layout('layouts.app')] class extends Component
             @elseif ($properti && $pemilikProperti)
                 <div>
                     <x-input-label for="pemilikInfo" value="Pemilik Kos" />
-                    <div class="mt-1 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                    <div class="mt-1 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-3 py-2.5">
                         <x-user-avatar :user="$pemilikProperti" size="sm" />
                         <div>
-                            <p class="text-sm font-medium text-gray-900">{{ $pemilikProperti->nama }}</p>
-                            <p class="text-xs text-gray-500">{{ $pemilikProperti->email }}</p>
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pemilikProperti->nama }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $pemilikProperti->email }}</p>
                         </div>
                     </div>
                 </div>
@@ -284,7 +284,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div>
                     <x-input-label for="status" value="Status Tampil" />
-                    <select wire:model="status" id="status" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500">
+                    <select wire:model="status" id="status" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="aktif">Aktif -- tampil di Cari Kos</option>
                         <option value="nonaktif">Nonaktif -- disembunyikan</option>
                     </select>
@@ -312,19 +312,19 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
             <div>
-                <button type="button" wire:click="ambilLokasiSaya" class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-500">
+                <button type="button" wire:click="ambilLokasiSaya" class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     Gunakan lokasi saya saat ini
                 </button>
                 @if ($latitude && $longitude)
-                    <p class="mt-1 text-xs text-gray-400">Koordinat: {{ $latitude }}, {{ $longitude }}</p>
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Koordinat: {{ $latitude }}, {{ $longitude }}</p>
                 @endif
             </div>
 
             <div>
                 <x-input-label for="deskripsi" value="Deskripsi" />
                 <textarea wire:model="deskripsi" id="deskripsi" rows="3" placeholder="Ceritakan keunggulan kos Anda..."
-                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
+                    class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                 <x-input-error :messages="$errors->get('deskripsi')" class="mt-2" />
             </div>
 
@@ -332,7 +332,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="jenis_harga" value="Jenis Harga" />
-                    <select wire:model="jenis_harga" id="jenis_harga" class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500">
+                    <select wire:model="jenis_harga" id="jenis_harga" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="bulanan">Per Bulan</option>
                         <option value="harian">Per Hari</option>
                     </select>
@@ -348,11 +348,11 @@ new #[Layout('layouts.app')] class extends Component
             <!-- Fasilitas - Checkboxes dengan Ikon -->
             <div>
                 <x-input-label value="Fasilitas yang Tersedia" />
-                <p class="mt-0.5 text-xs text-gray-400">Pilih fasilitas yang tersedia di kos Anda.</p>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Pilih fasilitas yang tersedia di kos Anda.</p>
                 <div class="mt-3">
                     <x-facility-icons :selected="$fasilitasTerpilih" :editable="true" />
                 </div>
-                @error('fasilitasTerpilih') <p class="mt-2 text-xs font-medium text-rose-600">{{ $message }}</p> @enderror
+                @error('fasilitasTerpilih') <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
             </div>
 
             <!-- Denda -->
@@ -366,13 +366,13 @@ new #[Layout('layouts.app')] class extends Component
             <div>
                 <x-input-label for="aturan" value="Aturan Kos" />
                 <textarea wire:model="aturan" id="aturan" rows="3" placeholder="Contoh: Jam malam 23.00, dilarang membawa tamu menginap"
-                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
+                    class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                 <x-input-error :messages="$errors->get('aturan')" class="mt-2" />
             </div>
 
             <!-- Submit -->
-            <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-                <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-gray-600 hover:text-gray-900">
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
                     Batal
                 </a>
                 <x-primary-button wire:loading.attr="disabled">

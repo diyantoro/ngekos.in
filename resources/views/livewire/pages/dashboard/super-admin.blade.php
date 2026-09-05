@@ -39,23 +39,33 @@ new class extends Component
                 ->latest()
                 ->limit(15)
                 ->get(),
+            'funnelStages' => [
+                ['label' => 'Kunjungan', 'sub' => 'pengguna terdaftar di platform', 'nilai' => User::count()],
+                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->count()],
+                ['label' => 'Tagihan', 'sub' => 'total tagihan yang terbit', 'nilai' => Tagihan::count()],
+                ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->count()],
+            ],
             'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
                 ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw('YEAR(verified_at) y, MONTH(verified_at) m, SUM(jumlah) total')
-                ->groupBy('y', 'm')
-                ->orderBy('y')
-                ->orderBy('m')
-                ->get()
-                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total])
+                ->get(['verified_at', 'jumlah'])
+                ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
+                ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
                 ->keyBy('month')
                 ->all(),
             'tagihanStatusPerBulan' => Tagihan::where('created_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw('YEAR(created_at) y, MONTH(created_at) m, SUM(jumlah + denda) total, SUM(CASE WHEN status = \'lunas\' THEN jumlah + denda ELSE 0 END) lunas')
-                ->groupBy('y', 'm')
-                ->orderBy('y')
-                ->orderBy('m')
-                ->get()
-                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total, 'lunas' => (int) $r->lunas, 'belum' => (int) $r->total - (int) $r->lunas])
+                ->get(['created_at', 'jumlah', 'denda', 'status'])
+                ->groupBy(fn ($t) => $t->created_at->format('m/Y'))
+                ->map(function ($rows) {
+                    $total = $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+                    $lunas = $rows->where('status', 'lunas')->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+
+                    return [
+                        'month' => $rows->first()->created_at->format('m/Y'),
+                        'total' => (int) round($total),
+                        'lunas' => (int) round($lunas),
+                        'belum' => (int) round($total - $lunas),
+                    ];
+                })
                 ->keyBy('month')
                 ->all(),
         ];
@@ -93,8 +103,6 @@ new class extends Component
             icon='<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>'
         />
 
-        <x-promo-ads />
-
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <x-stat-card label="Total Pengguna" :value="$totalUser" tone="teal"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>' />
@@ -108,197 +116,122 @@ new class extends Component
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>' />
         </div>
 
-        @php
-            $months = collect();
-            $rangeStart = now()->subMonths(5)->startOfMonth();
-            for ($d = $rangeStart->copy(); $d->lte(now()->startOfMonth()); $d->addMonth()) {
-                $months->push($d->format('m/Y'));
-            }
-            $chartLabels = $months->map(fn ($m) => \Carbon\Carbon::createFromFormat('m/Y', $m)->translatedFormat('M Y'))->values()->toArray();
-            $pendapatanValues = $months->map(fn ($m) => $pendapatanPerBulan[$m]['total'] ?? 0)->values()->toArray();
-            $lunasValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['lunas'] ?? 0)->values()->toArray();
-            $belumValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['belum'] ?? 0)->values()->toArray();
-        @endphp
+        <x-dashboard-funnel
+            :stages="$funnelStages"
+            title="Grafik Pipeline"
+            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti"
+        />
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
-                <x-dashboard-chart
-                    id="pendapatanChart"
-                    type="line"
-                    title="Pendapatan 6 Bulan Terakhir"
-                    height="h-56"
-                    :labels="$chartLabels"
-                    :datasets="[
-                        [
-                            'label' => 'Pendapatan',
-                            'data' => $pendapatanValues,
-                            'borderColor' => '#0d9488',
-                            'backgroundColor' => 'rgba(13,148,136,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#0d9488',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                    ]"
-                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
-                />
-            </div>
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
-                <x-dashboard-chart
-                    id="tagihanChart"
-                    type="line"
-                    title="Tagihan: Lunas vs Belum Lunas"
-                    height="h-56"
-                    :labels="$chartLabels"
-                    :datasets="[
-                        [
-                            'label' => 'Lunas',
-                            'data' => $lunasValues,
-                            'borderColor' => '#10b981',
-                            'backgroundColor' => 'rgba(16,185,129,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#10b981',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                        [
-                            'label' => 'Belum Lunas',
-                            'data' => $belumValues,
-                            'borderColor' => '#f87171',
-                            'backgroundColor' => 'rgba(248,113,113,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#f87171',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                    ]"
-                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
-                />
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1">
                     <button wire:click="$set('tab', 'properti')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'properti' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'properti' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Properti
                     </button>
                     <button wire:click="$set('tab', 'pengguna')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pengguna' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pengguna' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Pengguna
                     </button>
                     <button wire:click="$set('tab', 'pembayaran')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Pembayaran
                     </button>
                 </div>
                 <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari data..."
-                    class="rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
+                    class="rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
             </div>
 
             <div class="overflow-x-auto">
                 @if ($tab === 'properti')
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Properti</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Pemilik</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alamat</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Okupansi</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Nama Properti</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pemilik</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Alamat</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Okupansi</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($propertis as $properti)
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $properti->nama }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $properti->pemilik?->nama ?? '-' }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $properti->alamat ?? '-' }}</td>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $properti->nama }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $properti->pemilik?->nama ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $properti->alamat ?? '-' }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="h-2 w-24 rounded-full bg-gray-100 overflow-hidden">
+                                            <div class="h-2 w-24 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
                                                 <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"
                                                     style="width: {{ $properti->total_kamar > 0 ? round($properti->kamar_terisi / $properti->total_kamar * 100) : 0 }}%"></div>
                                             </div>
-                                            <span class="text-xs font-medium text-gray-500">{{ $properti->kamar_terisi }}/{{ $properti->total_kamar }}</span>
+                                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $properti->kamar_terisi }}/{{ $properti->total_kamar }}</span>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4"><x-status-badge :status="$properti->status" /></td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="px-6 py-10 text-center text-sm text-gray-400">Belum ada data properti.</td></tr>
+                                <tr><td colspan="5" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada data properti.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 @elseif ($tab === 'pengguna')
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">No. HP</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Nama</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">No. HP</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Role</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($penggunas as $pengguna)
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pengguna->nama }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pengguna->email }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pengguna->no_hp ?? '-' }}</td>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pengguna->nama }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pengguna->email }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pengguna->no_hp ?? '-' }}</td>
                                     <td class="px-6 py-4">
                                         @php
                                             $roleMap = [
-                                                'super_admin' => 'bg-rose-50 text-rose-700 ring-rose-200',
-                                                'pemilik' => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-                                                'admin' => 'bg-sky-50 text-sky-700 ring-sky-200',
-                                                'anak_kos' => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+                                                'super_admin' => 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:ring-rose-800',
+                                                'pemilik' => 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800',
+                                                'admin' => 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-300 dark:ring-sky-800',
+                                                'anak_kos' => 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800',
                                             ];
                                             $role = $pengguna->roles->first()?->name;
                                         @endphp
-                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {{ $roleMap[$role] ?? 'bg-gray-100 text-gray-600 ring-gray-200' }}">
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {{ $roleMap[$role] ?? 'bg-gray-100 text-gray-600 ring-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600' }}">
                                             {{ str($role ?? '-')->replace('_', ' ')->title() }}
                                         </span>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-6 py-10 text-center text-sm text-gray-400">Tidak ada pengguna yang cocok.</td></tr>
+                                <tr><td colspan="4" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Tidak ada pengguna yang cocok.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 @else
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anak Kos</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Metode</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bukti</th>
-                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Anak Kos</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Periode</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Metode</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bukti</th>
+                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($pembayarans as $pembayaran)
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->metode }}</td>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode }}</td>
                                     <td class="px-6 py-4 text-sm">
                                         @if ($pembayaran->bukti)
                                             <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
@@ -307,7 +240,7 @@ new class extends Component
                                                 Lihat
                                             </a>
                                         @else
-                                            <span class="text-xs text-gray-400 italic">Tidak ada</span>
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic">Tidak ada</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4"><x-status-badge :status="$pembayaran->status" /></td>
@@ -320,12 +253,12 @@ new class extends Component
                                                 </button>
                                             </div>
                                         @else
-                                            <span class="block text-right text-xs text-gray-400">-</span>
+                                            <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
                                         @endif
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-400">Belum ada pembayaran.</td></tr>
+                                <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

@@ -48,7 +48,7 @@ class _KamarScreenState extends State<KamarScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.bdr, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
             Text(isEdit ? 'Ubah Kamar' : 'Tambah Kamar', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
@@ -125,7 +125,7 @@ class _KamarScreenState extends State<KamarScreen> {
                     children: [
                       Icon(Icons.king_bed_rounded, size: 64, color: Colors.grey[300]),
                       const SizedBox(height: 12),
-                      const Text('Belum ada kamar', style: TextStyle(color: AppTheme.textSecondary)),
+                      Text('Belum ada kamar', style: TextStyle(color: AppTheme.txtSec)),
                     ],
                   ),
                 )
@@ -139,7 +139,7 @@ class _KamarScreenState extends State<KamarScreen> {
                       final kamar = _kamars[index];
                       return Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.borderLight)),
+                        decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.bdrLight)),
                         child: Row(
                           children: [
                             Expanded(
@@ -148,7 +148,7 @@ class _KamarScreenState extends State<KamarScreen> {
                                 children: [
                                   Text(kamar.nama, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                   const SizedBox(height: 4),
-                                  Text('${kamar.kapasitas} orang Â· ${kamar.formattedHarga}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                                   Text('${kamar.kapasitas} orang Â· ${kamar.formattedHarga}', style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
                                 ],
                               ),
                             ),

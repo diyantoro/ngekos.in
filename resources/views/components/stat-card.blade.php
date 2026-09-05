@@ -2,21 +2,37 @@
 
 @php
     $tones = [
-        'teal' => 'bg-teal-50 text-teal-600',
-        'cyan' => 'bg-cyan-50 text-cyan-600',
-        'emerald' => 'bg-emerald-50 text-emerald-600',
-        'sky' => 'bg-sky-50 text-sky-600',
-        'amber' => 'bg-amber-50 text-amber-600',
-        'rose' => 'bg-rose-50 text-rose-600',
+        'teal' => 'from-teal-500 to-emerald-500',
+        'cyan' => 'from-cyan-500 to-sky-500',
+        'emerald' => 'from-emerald-500 to-green-500',
+        'sky' => 'from-sky-500 to-blue-500',
+        'amber' => 'from-amber-500 to-orange-500',
+        'rose' => 'from-rose-500 to-pink-500',
+    ];
+    $shadows = [
+        'teal' => 'shadow-teal-500/20',
+        'cyan' => 'shadow-cyan-500/20',
+        'sky' => 'shadow-sky-500/20',
+        'emerald' => 'shadow-emerald-500/20',
+        'amber' => 'shadow-amber-500/20',
+        'rose' => 'shadow-rose-500/20',
+    ];
+    $bgTones = [
+        'teal' => 'bg-teal-50 text-teal-600 dark:bg-teal-900/40 dark:text-teal-300',
+        'cyan' => 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-300',
+        'emerald' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300',
+        'sky' => 'bg-sky-50 text-sky-600 dark:bg-sky-900/40 dark:text-sky-300',
+        'amber' => 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
+        'rose' => 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300',
     ];
 @endphp
 
-<div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5 flex items-center gap-4 transition hover:shadow-md">
-    <div class="shrink-0 h-12 w-12 rounded-xl flex items-center justify-center {{ $tones[$tone] }}">
+<div class="card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4">
+    <div class="shrink-0 h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br {{ $tones[$tone] }} text-white shadow-lg {{ $shadows[$tone] ?? 'shadow-teal-500/20' }} transition-transform duration-300 group-hover:scale-110">
         {!! $icon !!}
     </div>
     <div class="min-w-0">
-        <p class="truncate text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $label }}</p>
-        <p class="mt-0.5 text-2xl font-bold text-gray-900">{{ $value }}</p>
+        <p class="truncate text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ $label }}</p>
+        <p class="mt-0.5 text-2xl font-extrabold text-gray-900 dark:text-gray-100">{{ $value }}</p>
     </div>
 </div>

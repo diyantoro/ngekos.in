@@ -156,7 +156,7 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderLight)),
+              decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.bdrLight)),
               child: Column(
                 children: [
                   UserAvatar(
@@ -168,13 +168,13 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
                   const SizedBox(height: 12),
                   Text(auth.user?.nama ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(auth.user?.email ?? '', style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                  Text(auth.user?.email ?? '', style: TextStyle(fontSize: 14, color: AppTheme.txtSec)),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             Container(
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.borderLight)),
+              decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.bdrLight)),
               child: Column(
                 children: [
                   Padding(
@@ -330,7 +330,7 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppTheme.bg, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),

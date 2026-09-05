@@ -25,7 +25,9 @@ class BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.darkSurface
+            : Colors.white,
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, -2)),
         ],
@@ -132,6 +134,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.darkTextMuted
+        : AppTheme.textMuted;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -150,7 +155,7 @@ class _NavItem extends StatelessWidget {
                     child: ColorFiltered(
                       colorFilter: isSelected
                           ? const ColorFilter.mode(AppTheme.primary, BlendMode.srcIn)
-                          : const ColorFilter.mode(AppTheme.textMuted, BlendMode.srcIn),
+                          : ColorFilter.mode(muted, BlendMode.srcIn),
                       child: iconWidget!,
                     ),
                   )
@@ -158,7 +163,7 @@ class _NavItem extends StatelessWidget {
                   Icon(
                     icon,
                     size: 24,
-                    color: isSelected ? AppTheme.primary : AppTheme.textMuted,
+                    color: isSelected ? AppTheme.primary : muted,
                   ),
                 if (badge > 0)
                   Positioned(
@@ -186,7 +191,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppTheme.primary : AppTheme.textMuted,
+                color: isSelected ? AppTheme.primary : muted,
               ),
             ),
           ],

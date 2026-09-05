@@ -3,14 +3,16 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../config/theme.dart';
+import '../utils/koordinat.dart';
 
 /// Peta reusable untuk menampilkan lokasi sebuah kos.
 ///
 /// - Jika `latitude` & `longitude` tersedia, pin lokasi ditampilkan.
-/// - Jika tidak, fallback ke koordinat default kota Indonesia (-2.5, 118.0).
+/// - Jika tidak, fallback ke koordinat pusat kota lewat `kota`.
 class KosMap extends StatelessWidget {
   final double? latitude;
   final double? longitude;
+  final String? kota;
   final String nama;
   final bool interactive;
 
@@ -18,6 +20,7 @@ class KosMap extends StatelessWidget {
     super.key,
     this.latitude,
     this.longitude,
+    this.kota,
     this.nama = '',
     this.interactive = false,
   });
@@ -26,13 +29,37 @@ class KosMap extends StatelessWidget {
     if (latitude != null && longitude != null) {
       return LatLng(latitude!, longitude!);
     }
-    return null;
+    return koordinatKota(kota);
   }
 
   @override
   Widget build(BuildContext context) {
-    final center = _center ?? const LatLng(-2.548926, 118.0148634);
-    final hasLocation = _center != null;
+    final center = _center ??
+        (interactive ? const LatLng(-2.0, 117.0) : null);
+    final hasLocation = center != null;
+
+    if (!hasLocation) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: AppTheme.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.bdrLight),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.map_rounded, size: 34),
+              const SizedBox(height: 8),
+              Text('Lokasi belum diisi',
+                  style: TextStyle(
+                      fontSize: 12, color: AppTheme.txtMuted)),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),

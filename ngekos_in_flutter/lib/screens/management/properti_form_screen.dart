@@ -226,12 +226,12 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
       );
     }
     final material = FacilityIcon.materialFor(label);
-    return Icon(
+    return     Icon(
       material ?? Icons.help_outline_rounded,
       size: 22,
       color: _selectedFasilitas.any((s) => _normalizeFasilitas(s) == _normalizeFasilitas(label))
           ? AppTheme.primary
-          : AppTheme.textSecondary,
+          : AppTheme.txtSec,
     );
   }
 
@@ -240,13 +240,13 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(judul, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+        Text(judul, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.txtSec)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.card,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderLight),
+            border: Border.all(color: AppTheme.bdrLight),
           ),
           child: Column(
             children: items.map((f) {
@@ -299,7 +299,7 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
                             f,
                             style: TextStyle(
                               fontSize: 13,
-                              color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                              color: selected ? AppTheme.primary : AppTheme.txt,
                               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                             ),
                           ),
@@ -393,7 +393,7 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
                   decoration: BoxDecoration(
                     color: _foto != null ? null : const Color(0xFFCCFBF1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.border, style: BorderStyle.solid),
+                    border: Border.all(color: AppTheme.bdr, style: BorderStyle.solid),
                     image: _foto != null ? DecorationImage(image: MemoryImage(_foto!.bytes), fit: BoxFit.cover) : null,
                   ),
                   child: _foto == null
@@ -470,7 +470,7 @@ class _PropertiFormScreenState extends State<PropertiFormScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.card,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: const [
                             BoxShadow(

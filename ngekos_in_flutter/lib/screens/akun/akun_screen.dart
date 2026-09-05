@@ -25,8 +25,8 @@ class AkunScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: AppTheme.card,
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),
                     bottomRight: Radius.circular(20),
@@ -48,7 +48,7 @@ class AkunScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       user?.email ?? '',
-                      style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 14, color: AppTheme.txtSec),
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -168,12 +168,12 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemColor = color ?? AppTheme.textPrimary;
+    final itemColor = color ?? AppTheme.txt;
     return Material(
-      color: Colors.white,
+      color: AppTheme.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppTheme.border),
+        side: BorderSide(color: AppTheme.bdr),
       ),
       clipBehavior: Clip.antiAlias,
       child: ListTile(
@@ -192,10 +192,10 @@ class _MenuItem extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Icon(Icons.chevron_right_rounded, color: color != null ? itemColor : AppTheme.textSecondary),
+                  Icon(Icons.chevron_right_rounded, color: color != null ? itemColor : AppTheme.txtSec),
                 ],
               )
-            : Icon(Icons.chevron_right_rounded, color: color != null ? itemColor : AppTheme.textSecondary),
+            : Icon(Icons.chevron_right_rounded, color: color != null ? itemColor : AppTheme.txtSec),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

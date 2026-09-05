@@ -54,7 +54,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.bdr, borderRadius: BorderRadius.circular(2))),
               ),
               const SizedBox(height: 16),
               const Text('Filter Pencarian', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -137,7 +137,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: AppTheme.card,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
@@ -146,7 +146,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               controller: _controller,
               decoration: InputDecoration(
                 hintText: 'Cari kos...',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
+                prefixIcon: Icon(Icons.search_rounded, color: AppTheme.txtSec),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
@@ -158,7 +158,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppTheme.background,
+                fillColor: AppTheme.bg,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
@@ -174,10 +174,10 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceGray,
+                  color: AppTheme.surfaceGrey,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.tune_rounded, color: AppTheme.textSecondary, size: 20),
+                child: Icon(Icons.tune_rounded, color: AppTheme.txtSec, size: 20),
               ),
             ),
           ],

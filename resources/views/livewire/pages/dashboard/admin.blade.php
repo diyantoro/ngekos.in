@@ -48,25 +48,35 @@ new class extends Component
                 ->latest()
                 ->limit(15)
                 ->get(),
+            'funnelStages' => [
+                ['label' => 'Kunjungan', 'sub' => 'properti yang Anda kelola', 'nilai' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count()],
+                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->whereHas('properti', $this->kelolaan())->count()],
+                ['label' => 'Tagihan', 'sub' => 'total tagihan yang terbit', 'nilai' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())->count()],
+                ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->whereHas('penyewaan.properti', $this->kelolaan())->count()],
+            ],
             'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
                 ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
                 ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw('YEAR(verified_at) y, MONTH(verified_at) m, SUM(jumlah) total')
-                ->groupBy('y', 'm')
-                ->orderBy('y')
-                ->orderBy('m')
-                ->get()
-                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total])
+                ->get(['verified_at', 'jumlah'])
+                ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
+                ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
                 ->keyBy('month')
                 ->all(),
             'tagihanStatusPerBulan' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
                 ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw('YEAR(created_at) y, MONTH(created_at) m, SUM(jumlah + denda) total, SUM(CASE WHEN status = \'lunas\' THEN jumlah + denda ELSE 0 END) lunas')
-                ->groupBy('y', 'm')
-                ->orderBy('y')
-                ->orderBy('m')
-                ->get()
-                ->map(fn ($r) => ['month' => str()->padLeft($r->m, 2, '0') . '/' . $r->y, 'total' => (int) $r->total, 'lunas' => (int) $r->lunas, 'belum' => (int) $r->total - (int) $r->lunas])
+                ->get(['created_at', 'jumlah', 'denda', 'status'])
+                ->groupBy(fn ($t) => $t->created_at->format('m/Y'))
+                ->map(function ($rows) {
+                    $total = $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+                    $lunas = $rows->where('status', 'lunas')->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+
+                    return [
+                        'month' => $rows->first()->created_at->format('m/Y'),
+                        'total' => (int) round($total),
+                        'lunas' => (int) round($lunas),
+                        'belum' => (int) round($total - $lunas),
+                    ];
+                })
                 ->keyBy('month')
                 ->all(),
         ];
@@ -109,8 +119,6 @@ new class extends Component
             icon='<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" /></svg>'
         />
 
-        <x-promo-ads />
-
         @if ($pesan)
             <x-notifikasi-popup :pesan="$pesan" judul="Berhasil!" />
         @endif
@@ -124,119 +132,44 @@ new class extends Component
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
         </div>
 
-        @php
-            $months = collect();
-            $rangeStart = now()->subMonths(5)->startOfMonth();
-            for ($d = $rangeStart->copy(); $d->lte(now()->startOfMonth()); $d->addMonth()) {
-                $months->push($d->format('m/Y'));
-            }
-            $chartLabels = $months->map(fn ($m) => \Carbon\Carbon::createFromFormat('m/Y', $m)->translatedFormat('M Y'))->values()->toArray();
-            $pendapatanValues = $months->map(fn ($m) => $pendapatanPerBulan[$m]['total'] ?? 0)->values()->toArray();
-            $lunasValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['lunas'] ?? 0)->values()->toArray();
-            $belumValues = $months->map(fn ($m) => $tagihanStatusPerBulan[$m]['belum'] ?? 0)->values()->toArray();
-        @endphp
+        <x-dashboard-funnel
+            :stages="$funnelStages"
+            title="Grafik Pipeline"
+            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti yang Anda kelola"
+        />
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
-                <x-dashboard-chart
-                    id="pendapatanChart"
-                    type="line"
-                    title="Pendapatan 6 Bulan Terakhir"
-                    height="h-56"
-                    :labels="$chartLabels"
-                    :datasets="[
-                        [
-                            'label' => 'Pendapatan',
-                            'data' => $pendapatanValues,
-                            'borderColor' => '#0d9488',
-                            'backgroundColor' => 'rgba(13,148,136,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#0d9488',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                    ]"
-                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
-                />
-            </div>
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-5">
-                <x-dashboard-chart
-                    id="tagihanChart"
-                    type="line"
-                    title="Tagihan: Lunas vs Belum Lunas"
-                    height="h-56"
-                    :labels="$chartLabels"
-                    :datasets="[
-                        [
-                            'label' => 'Lunas',
-                            'data' => $lunasValues,
-                            'borderColor' => '#10b981',
-                            'backgroundColor' => 'rgba(16,185,129,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#10b981',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                        [
-                            'label' => 'Belum Lunas',
-                            'data' => $belumValues,
-                            'borderColor' => '#f87171',
-                            'backgroundColor' => 'rgba(248,113,113,0.08)',
-                            'fill' => true,
-                            'tension' => 0.45,
-                            'pointRadius' => 0,
-                            'pointHoverRadius' => 6,
-                            'pointHoverBackgroundColor' => '#f87171',
-                            'pointHoverBorderColor' => '#fff',
-                            'pointHoverBorderWidth' => 3,
-                            'borderWidth' => 2.5,
-                        ],
-                    ]"
-                    yCallback="val => 'Rp' + val.toLocaleString('id-ID')"
-                />
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1">
                     <button wire:click="$set('tab', 'pembayaran')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                         Pembayaran
                     </button>
                 </div>
                 <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama anak kos..."
-                    class="rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500">
+                    class="rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anak Kos</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Periode</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Metode</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bukti</th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Anak Kos</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Periode</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Jumlah</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Metode</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bukti</th>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @forelse ($pembayarans as $pembayaran)
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ $pembayaran->metode }}</td>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode }}</td>
                                 <td class="px-6 py-4 text-sm">
                                     @if ($pembayaran->bukti)
                                         <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
@@ -245,7 +178,7 @@ new class extends Component
                                             Lihat
                                         </a>
                                     @else
-                                        <span class="text-xs text-gray-400 italic">Tidak ada</span>
+                                        <span class="text-xs text-gray-400 dark:text-gray-500 italic">Tidak ada</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4"><x-status-badge :status="$pembayaran->status" /></td>
@@ -258,12 +191,12 @@ new class extends Component
                                             </button>
                                         </div>
                                     @else
-                                        <span class="block text-right text-xs text-gray-400">-</span>
+                                        <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
                                     @endif
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-400">Belum ada pembayaran.</td></tr>
+                            <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

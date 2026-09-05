@@ -40,7 +40,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
       body: Column(
         children: [
           Container(
-            color: Colors.white,
+            color: AppTheme.surfaceC,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
@@ -51,7 +51,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                       prefixIcon: const Icon(Icons.search_rounded, size: 20),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       filled: true,
-                      fillColor: AppTheme.surfaceGray,
+                      fillColor: AppTheme.surfaceGrey,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       isDense: true,
                     ),
@@ -61,7 +61,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: AppTheme.surfaceGray, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: AppTheme.surfaceGrey, borderRadius: BorderRadius.circular(10)),
                   child: DropdownButton<String>(
                     value: _peran,
                     underline: const SizedBox(),
@@ -101,7 +101,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
   Widget _buildUserCard(UserFull user) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.borderLight)),
+      decoration: BoxDecoration(color: AppTheme.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.bdrLight)),
       child: Row(
         children: [
           UserAvatar(avatar: user.avatar, inisial: user.inisial, nama: user.nama, size: AvatarSize.md),
@@ -111,7 +111,7 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(user.nama, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(user.email, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                Text(user.email, style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -119,8 +119,8 @@ class _PenggunaScreenState extends State<PenggunaScreen> {
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppTheme.surfaceGray, borderRadius: BorderRadius.circular(4)),
-                      child: Text(user.roleLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                      decoration: BoxDecoration(color: AppTheme.surfaceGrey, borderRadius: BorderRadius.circular(4)),
+                      child: Text(user.roleLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.txtSec)),
                     ),
                   ],
                 ),

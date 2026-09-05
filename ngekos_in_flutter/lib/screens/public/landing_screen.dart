@@ -1,5 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
@@ -7,10 +8,12 @@ import '../../config/theme.dart';
 import '../../models/properti.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/katalog_service.dart';
+import '../../utils/koordinat.dart';
 import '../../widgets/chatbot_widget.dart';
 import '../../widgets/tap_feedback.dart';
 import '../../widgets/promo_ads_banner.dart';
 import '../katalog/detail_kos_screen.dart';
+import '../katalog/katalog_screen.dart';
 import '../auth/pilih_peran_screen.dart';
 
 
@@ -21,72 +24,29 @@ class LandingScreen extends StatefulWidget {
   State<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends State<LandingScreen> {
+class _LandingScreenState extends State<LandingScreen> with SingleTickerProviderStateMixin {
   List<Properti> _propertis = [];
   List<String> _kotaList = [];
   int _totalProperti = 0;
   int _totalKamar = 0;
   bool _isLoading = true;
   final _searchController = TextEditingController();
-  final PageController _bannerController = PageController();
-  Timer? _bannerTimer;
-  int _currentBanner = 0;
+  late final AnimationController _gradientCtrl;
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _startBannerAutoScroll();
+    _gradientCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 9))
+      ..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _bannerTimer?.cancel();
-    _bannerController.dispose();
+    _gradientCtrl.dispose();
     _searchController.dispose();
     super.dispose();
   }
-
-  void _startBannerAutoScroll() {
-    _bannerTimer?.cancel();
-    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!mounted || !_bannerController.hasClients) return;
-      final total = _bannerSlides().length;
-      final next = (_currentBanner + 1) % total;
-      _bannerController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  List<Map<String, dynamic>> _bannerSlides() {
-    return [
-      {
-        'gradient': const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF6366F1)]),
-        'badge': 'Promo',
-        'title': 'Daftar Gratis!',
-        'subtitle': 'Buat akun dan langsung cari kos impianmu.',
-        'action': 'Daftar Sekarang',
-      },
-      {
-        'gradient': const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF0D9488)]),
-        'badge': 'Pemilik Kos',
-        'title': 'Promosikan Kos Anda',
-        'subtitle': 'Daftarkan kos, kelola kamar, dan balas pertanyaan pencari kos lewat chat.',
-        'action': 'Mulai Gratis',
-      },
-      {
-        'gradient': const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFF97316)]),
-        'badge': 'Statistik',
-        'title': '$_totalProperti Kos Aktif',
-        'subtitle': '$_totalKamar Kamar Tersedia di Ngekos.in',
-        'action': '',
-      },
-    ];
-  }
-
 
   Future<void> _loadData() async {
     try {
@@ -107,17 +67,21 @@ class _LandingScreenState extends State<LandingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeProvider>();
     return Scaffold(
       backgroundColor: AppTheme.bg,
       body: SingleChildScrollView(
         child: Column(
           children: [
             _buildHero(),
-            _buildBanners(),
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: PromoAdsBanner(),
             ),
+            _buildPromoCTACards(),
+            _buildStatsRow(),
+            _buildKotaChips(),
+            _buildLandingMap(),
             _buildKosTerbaru(),
             _buildKenapa(),
             _buildCTA(),
@@ -130,132 +94,148 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   Widget _buildHero() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF059669), Color(0xFF0D9488), Color(0xFF0891B2)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: Column(
+    return AnimatedBuilder(
+      animation: _gradientCtrl,
+      builder: (context, _) {
+        final t = _gradientCtrl.value;
+        return Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: const [Color(0xFF059669), Color(0xFF0D9488), Color(0xFF0891B2)],
+              begin: Alignment(-0.4 + t * 0.8, -1),
+              end: Alignment(0.4 - t * 0.8, 1),
+            ),
+          ),
+          child: Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
+              Positioned(
+                right: -40 + t * 16,
+                top: -54,
+                child: _glowBlob(190, Colors.white, 0.16),
+              ),
+              Positioned(
+                left: -56 - t * 14,
+                bottom: 36,
+                child: _glowBlob(170, const Color(0xFF99F6E4), 0.18),
+              ),
+              Positioned(
+                right: -10,
+                top: 128,
+                child: _glowBlob(110, const Color(0xFFF0ABFC), 0.15),
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                  child: Column(
                     children: [
-                      Icon(Icons.home_rounded, color: Colors.white, size: 24),
-                      SizedBox(width: 8),
-                      Text('Ngekos.in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _HeroToggle(),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.home_rounded, color: Colors.white, size: 24),
+                              SizedBox(width: 8),
+                              Text('Ngekos.in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                            ],
                           ),
-                          child: const Text('Masuk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _HeroToggle(),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen())),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(color: const Color(0xFF0F766E).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
+                                    ],
+                                  ),
+                                  child: const Text('Masuk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0D9488))),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF6EE7B7), shape: BoxShape.circle)),
+                            const SizedBox(width: 8),
+                            Text('$_totalKamar kamar tersedia saat ini', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Cari Kos',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1),
+                      ),
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          begin: Alignment(-1.0 + t * 2.0, 0),
+                          end: Alignment(-0.2 + t * 2.0, 0),
+                          colors: const [Colors.white, Color(0xFF99F6E4), Color(0xFF67E8F9), Colors.white],
+                        ).createShader(bounds),
+                        blendMode: BlendMode.srcIn,
+                        child: const Text(
+                          'Gak Pake Ribet',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Temukan kamar kos impianmu, tanya pemilik langsung lewat chat, dan kelola semua dalam satu aplikasi.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildHeroSearch(),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          _buildFilterChip('Semua Kos', Icons.home_work_rounded, null),
+                          ..._kotaList.take(4).map((kota) => _buildFilterChip(kota, Icons.location_on_rounded, kota)),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF6EE7B7), shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Text('$_totalKamar kamar tersedia saat ini', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Cari Kos\nGak Pake Ribet',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Temukan kamar kos impianmu, tanya pemilik langsung lewat chat, dan kelola semua dalam satu aplikasi.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.white70, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))],
-                ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(left: 12),
-                      child: Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 20),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          hintText: 'Ketik nama kos, kota, atau lokasi...',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          hintStyle: TextStyle(fontSize: 14),
-                        ),
-                        onSubmitted: (v) => Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => const PilihPeranScreen(),
-                        )),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF0D9488)]),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text('Cari Kos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildFilterChip('Semua Kos', Icons.home_work_rounded, null),
-                  ..._kotaList.take(4).map((kota) => _buildFilterChip(kota, Icons.location_on_rounded, kota)),
-                ],
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _glowBlob(double size, Color color, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withValues(alpha: opacity), color.withValues(alpha: 0)],
         ),
       ),
     );
@@ -283,53 +263,306 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  Widget _buildBanners() {
-    final slides = _bannerSlides();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      child: Transform.translate(
-        offset: const Offset(0, -20),
-        child: Column(
+  void _goSearch() {
+    final q = _searchController.text.trim();
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => KatalogScreen(initialSearch: q.isEmpty ? null : q),
+    ));
+    if (q.isNotEmpty) _searchController.clear();
+  }
+
+  Widget _buildHeroSearch() {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(color: Colors.white.withValues(alpha: 0.45), blurRadius: 26, offset: const Offset(0, 10)),
+          BoxShadow(color: const Color(0xFF0F766E).withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: Row(
           children: [
-            SizedBox(
-              height: 150,
-              child: PageView.builder(
-                controller: _bannerController,
-                itemCount: slides.length,
-                onPageChanged: (i) => setState(() => _currentBanner = i),
-                itemBuilder: (context, index) {
-                  final slide = slides[index];
-                  return _buildBannerItem(
-                    gradient: slide['gradient'] as Gradient,
-                    badge: slide['badge'] as String,
-                    title: slide['title'] as String,
-                    subtitle: slide['subtitle'] as String,
-                    action: slide['action'] as String,
-                    onTap: () {
-                      if (slide['badge'] == 'Promo' || slide['badge'] == 'Pemilik Kos') {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
-                      }
-                    },
-                  );
-                },
+            const Padding(
+              padding: EdgeInsets.only(left: 14),
+              child: Icon(Icons.search_rounded, color: Color(0xFF0D9488), size: 22),
+            ),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+                textInputAction: TextInputAction.search,
+                decoration: const InputDecoration(
+                  hintText: 'Ketik nama kos, kota, atau lokasi...',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                ),
+                onSubmitted: (_) => _goSearch(),
               ),
             ),
-            const SizedBox(height: 12),
+            TapFeedback(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _goSearch,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF0D9488)]),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(color: const Color(0xFF14B8A6).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Cari', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _glassStat(Icons.home_work_rounded, _totalProperti, 'Kos Aktif'),
+          const SizedBox(width: 12),
+          _glassStat(Icons.bed_rounded, _totalKamar, 'Kamar Tersedia'),
+        ],
+      ),
+    );
+  }
+
+  Widget _glassStat(IconData icon, int value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.bdr),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: AppTheme.primary),
+            const SizedBox(height: 6),
+            _AnimatedCounter(target: value, fontSize: 20),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 11, color: AppTheme.txtMuted)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromoCTACards() {
+    Widget card({
+      required IconData icon,
+      required String title,
+      required String desc,
+      required List<Color> colors,
+      required String buttonLabel,
+    }) {
+      return Expanded(
+        child: TapFeedback(
+          borderRadius: BorderRadius.circular(16),
+          onTap: _goRegister,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 196),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: colors.first.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  desc,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.9), height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(buttonLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_rounded, size: 14, color: Colors.white),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          card(
+            icon: Icons.search_rounded,
+            title: 'Mulai Cari Kos Hari Ini',
+            desc: 'Tanpa biaya, langsung chat pemilik kos.',
+            colors: const [Color(0xFF0D9488), Color(0xFF059669)],
+            buttonLabel: 'Daftar Gratis',
+          ),
+          const SizedBox(width: 12),
+          card(
+            icon: Icons.campaign_rounded,
+            title: 'Promosikan Kos Anda',
+            desc: 'Kelola kamar dan balas chat pencari kos.',
+            colors: const [Color(0xFF7C3AED), Color(0xFFD946EF)],
+            buttonLabel: 'Mulai Gratis',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _goRegister() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const PilihPeranScreen()));
+  }
+
+  Widget _buildKotaChips() {
+    final counts = <String, int>{};
+    for (final p in _propertis) {
+      final kota = p.kota.trim().isEmpty ? 'Lainnya' : p.kota.trim();
+      counts[kota] = (counts[kota] ?? 0) + 1;
+    }
+    final sorted = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final data = sorted.take(8).toList();
+    final noData = data.isEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.bdrLight),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(slides.length, (i) {
-                final active = i == _currentBanner;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: active ? 18 : 6,
-                  height: 6,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: active ? AppTheme.primary : AppTheme.primary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(3),
+                    gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.accent]),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                );
-              }),
+                  child: const Icon(Icons.location_city_rounded, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Cari per Kota', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.txt)),
+                      Text(noData ? 'Kos akan muncul setelah ada yang terdaftar' : 'Pilih kota untuk lihat kos yang tersedia', style: TextStyle(fontSize: 11.5, color: AppTheme.txtSec)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (noData)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 26),
+                decoration: BoxDecoration(
+                  color: AppTheme.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.bdrLight),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.donut_large_rounded, size: 40, color: AppTheme.txtMuted.withValues(alpha: 0.5)),
+                    const SizedBox(height: 8),
+                    Text('Belum ada data kota', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.txtSec)),
+                  ],
+                ),
+              )
+            else
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: data.map((e) => _kotaChip(e.key, e.value)).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kotaChip(String kota, int jumlah) {
+    return TapFeedback(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => KatalogScreen(initialKota: kota),
+        ));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.accent], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.location_on_rounded, color: Colors.white, size: 16),
+            const SizedBox(width: 6),
+            Text(kota, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(20)),
+              child: Text('$jumlah kos', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -337,63 +570,101 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  Widget _buildBannerItem({
-    required Gradient gradient,
-    required String badge,
-    required String title,
-    required String subtitle,
-    required String action,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildLandingMap() {
+    final bertitik = _propertis
+        .map((p) => MapEntry(p, koordinatProperti(p)))
+        .where((e) => e.value != null)
+        .toList();
+    if (bertitik.isEmpty) return const SizedBox.shrink();
+
+    final latAvg = bertitik.map((e) => e.value!.latitude).reduce((a, b) => a + b) / bertitik.length;
+    final lngAvg = bertitik.map((e) => e.value!.longitude).reduce((a, b) => a + b) / bertitik.length;
+    final zoom = bertitik.length <= 1
+        ? 13.0
+        : bertitik.length <= 4
+            ? 10.0
+            : 8.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -12,
-                right: -12,
-                child: Container(width: 60, height: 60, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle)),
-              ),
-              Positioned(
-                bottom: -20,
-                left: -10,
-                child: Container(width: 70, height: 70, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), shape: BoxShape.circle)),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                    child: Text(badge, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.bdrLight),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.accent]),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                  const SizedBox(height: 8),
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.85), height: 1.3)),
-                  if (action.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(action, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                        const Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
-                      ],
+                  child: const Icon(Icons.map_rounded, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Peta Kos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.txt)),
+                      Text('${bertitik.length} kos di peta · titik mengikuti koordinat atau pusat kota', style: TextStyle(fontSize: 11.5, color: AppTheme.txtSec)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                height: 240,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(latAvg, lngAvg),
+                    initialZoom: zoom,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'id.ngekosin.app',
+                      maxNativeZoom: 19,
+                    ),
+                    MarkerLayer(
+                      markers: bertitik.map((e) {
+                        final p = e.key;
+                        return Marker(
+                          point: e.value!,
+                          width: 34,
+                          height: 34,
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => DetailKosScreen(propertiId: p.id),
+                            )),
+                            child: const Icon(Icons.location_pin, color: AppTheme.primary, size: 34),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const RichAttributionWidget(
+                      attributions: [TextSourceAttribution('OpenStreetMap contributors')],
                     ),
                   ],
-                ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -443,7 +714,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   children: [
                     Icon(Icons.home_work_outlined, size: 48, color: Colors.grey[300]),
                     const SizedBox(height: 12),
-                    const Text('Belum ada kos terdaftar', style: TextStyle(color: AppTheme.textSecondary)),
+                    Text('Belum ada kos terdaftar', style: TextStyle(color: AppTheme.txtSec)),
                   ],
                 ),
               ),
@@ -527,17 +798,17 @@ class _LandingScreenState extends State<LandingScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 12, color: AppTheme.textSecondary),
+                      Icon(Icons.location_on_rounded, size: 12, color: AppTheme.txtSec),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text('${properti.kota}, ${properti.alamat}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        child: Text('${properti.kota}, ${properti.alamat}', style: TextStyle(fontSize: 11, color: AppTheme.txtSec), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.only(top: 8),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.borderLight))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: AppTheme.bdrLight))),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -574,42 +845,47 @@ class _LandingScreenState extends State<LandingScreen> {
           const SizedBox(height: 4),
           Text('Solusi praktis untuk pencari kos dan pemilik kos', style: TextStyle(fontSize: 13, color: AppTheme.txtSec)),
           const SizedBox(height: 24),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              mainAxisExtent: 190,
-            ),
-            itemCount: features.length,
-            itemBuilder: (context, index) {
-              final f = features[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceC,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.accent]),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(f['icon'] as IconData, color: Colors.white, size: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : 360.0;
+              final itemWidth = ((maxW - 12) / 2).clamp(120.0, 600.0).toDouble();
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: features.map((f) {
+                  return Container(
+                    width: itemWidth,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceC,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 12),
-                    Text(f['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.txt)),
-                    const SizedBox(height: 6),
-                    Text(f['desc'] as String, style: TextStyle(fontSize: 11, color: AppTheme.txtSec, height: 1.4)),
-                  ],
-                ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [AppTheme.primary, AppTheme.accent]),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(f['icon'] as IconData, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(f['title'] as String, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.txt)),
+                        const SizedBox(height: 6),
+                        Text(
+                          f['desc'] as String,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, color: AppTheme.txtSec, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               );
             },
           ),
@@ -667,6 +943,25 @@ class _LandingScreenState extends State<LandingScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AnimatedCounter extends StatelessWidget {
+  final int target;
+  final double fontSize;
+  const _AnimatedCounter({required this.target, this.fontSize = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: target.toDouble()),
+      duration: const Duration(milliseconds: 1200),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => Text(
+        value.round().toString(),
+        style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800, color: AppTheme.txt),
       ),
     );
   }

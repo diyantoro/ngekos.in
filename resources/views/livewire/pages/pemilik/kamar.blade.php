@@ -142,12 +142,12 @@ new #[Layout('layouts.app')] class extends Component
 <div class="py-10">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-            <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-teal-600 hover:text-teal-500 inline-flex items-center gap-1">
+            <a href="{{ route('pemilik.properti') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke daftar kos
             </a>
-            <h1 class="mt-2 text-2xl font-bold text-gray-900">Kelola Kamar — {{ $properti->nama }}</h1>
-            <p class="mt-1 text-sm text-gray-500">Tambahkan, ubah, atau hapus kamar kos Anda.</p>
+            <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">Kelola Kamar — {{ $properti->nama }}</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tambahkan, ubah, atau hapus kamar kos Anda.</p>
         </div>
 
         @if ($pesan)
@@ -155,18 +155,18 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         @if ($galat)
-            <div class="flex items-center justify-between gap-3 rounded-xl bg-rose-50 ring-1 ring-rose-200 px-4 py-3 text-sm text-rose-800">
+            <div class="flex items-center justify-between gap-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
                 <span>{{ $galat }}</span>
-                <button wire:click="$set('galat', null)" class="text-rose-500 hover:text-rose-700 font-bold">&times;</button>
+                <button wire:click="$set('galat', null)" class="text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold">&times;</button>
             </div>
         @endif
 
         <!-- Form Kamar -->
-        <form wire:submit="simpanKamar" class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 p-6 space-y-5">
+        <form wire:submit="simpanKamar" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 space-y-5">
             <div class="flex items-center justify-between">
-                <h2 class="text-base font-bold text-gray-900">{{ $mode === 'ubah' ? 'Ubah Kamar' : 'Tambah Kamar' }}</h2>
+                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">{{ $mode === 'ubah' ? 'Ubah Kamar' : 'Tambah Kamar' }}</h2>
                 @if ($mode === 'ubah')
-                    <button type="button" wire:click="resetForm" class="text-sm font-medium text-gray-500 hover:text-gray-700">Batal ubah</button>
+                    <button type="button" wire:click="resetForm" class="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Batal ubah</button>
                 @endif
             </div>
 
@@ -188,7 +188,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div>
                     <x-input-label for="jenis_harga" value="Periode Harga" />
-                    <select wire:model="jenis_harga" id="jenis_harga" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                    <select wire:model="jenis_harga" id="jenis_harga" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="bulanan">Per Bulan</option>
                         <option value="harian">Per Hari</option>
                     </select>
@@ -196,7 +196,7 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <div>
                     <x-input-label for="status" value="Status" />
-                    <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                    <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="tersedia">Tersedia</option>
                         <option value="terisi">Terisi</option>
                     </select>
@@ -207,7 +207,7 @@ new #[Layout('layouts.app')] class extends Component
             <div>
                 <x-input-label for="fotoBaru" value="Foto Kamar" />
                 <input wire:model="fotoBaru" id="fotoBaru" type="file" accept="image/*"
-                    class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 hover:file:bg-teal-100">
+                    class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
                 <x-input-error :messages="$errors->get('fotoBaru')" class="mt-2" />
 
                 <div wire:loading wire:target="fotoBaru" class="mt-3 flex items-center gap-2 text-sm font-medium text-teal-600">
@@ -217,13 +217,13 @@ new #[Layout('layouts.app')] class extends Component
 
                 @if ($fotoBaru)
                     <div class="mt-3">
-                        <p class="text-xs font-semibold text-gray-500 mb-1">Pratinjau foto baru:</p>
-                        <img src="{{ $fotoBaru->temporaryUrl() }}" class="h-40 w-full sm:w-72 rounded-xl object-cover ring-1 ring-gray-200" alt="Pratinjau foto kamar">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Pratinjau foto baru:</p>
+                        <img src="{{ $fotoBaru->temporaryUrl() }}" class="h-40 w-full sm:w-72 rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-600" alt="Pratinjau foto kamar">
                     </div>
                 @elseif ($kamarEdit?->foto)
                     <div class="mt-3">
-                        <p class="text-xs font-semibold text-gray-500 mb-1">Foto saat ini:</p>
-                        <img src="{{ asset('storage/' . $kamarEdit->foto) }}" class="h-40 w-full sm:w-72 rounded-xl object-cover ring-1 ring-gray-200" alt="Foto kamar saat ini">
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto saat ini:</p>
+                        <img src="{{ asset('storage/' . $kamarEdit->foto) }}" class="h-40 w-full sm:w-72 rounded-xl object-cover ring-1 ring-gray-200 dark:ring-gray-600" alt="Foto kamar saat ini">
                     </div>
                 @endif
             </div>
@@ -236,43 +236,43 @@ new #[Layout('layouts.app')] class extends Component
         </form>
 
         <!-- Daftar Kamar -->
-        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h2 class="text-base font-bold text-gray-900">Daftar Kamar ({{ $kamars->count() }})</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Daftar Kamar ({{ $kamars->count() }})</h2>
             </div>
-            <div class="divide-y divide-gray-100">
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse ($kamars as $kamar)
                     <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                        <div class="h-14 w-20 shrink-0 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
+                        <div class="h-14 w-20 shrink-0 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800 overflow-hidden">
                             @if ($kamar->foto)
                                 <img src="{{ asset('storage/' . $kamar->foto) }}" alt="Kamar {{ $kamar->nama }}" class="h-full w-full object-cover">
                             @else
                                 <div class="h-full w-full flex items-center justify-center">
-                                    <svg class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+                                    <svg class="h-6 w-6 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
                                 </div>
                             @endif
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
-                                <h3 class="text-sm font-bold text-gray-900">Kamar {{ $kamar->nama }}</h3>
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kamar {{ $kamar->nama }}</h3>
                                 <x-status-badge :status="$kamar->status" />
                             </div>
-                            <p class="mt-0.5 text-sm text-gray-500">{{ $kamar->kapasitas }} orang &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}</p>
+                            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}</p>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             <button wire:click="editKamar({{ $kamar->id }})"
-                                class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
+                                class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                 Ubah
                             </button>
                             <button wire:click="hapusKamar({{ $kamar->id }})"
                                     wire:confirm="Hapus kamar ini?"
-                                class="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 transition">
+                                class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
                                 Hapus
                             </button>
                         </div>
                     </div>
                 @empty
-                    <p class="px-6 py-10 text-center text-sm text-gray-400">Belum ada kamar. Tambahkan kamar pertama lewat form di atas.</p>
+                    <p class="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada kamar. Tambahkan kamar pertama lewat form di atas.</p>
                 @endforelse
             </div>
         </div>

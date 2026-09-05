@@ -71,8 +71,8 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-900">Reset Password</h2>
-        <p class="mt-1 text-sm text-gray-500">Buat password baru untuk akun Anda.</p>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reset Password</h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Buat password baru untuk akun Anda.</p>
     </div>
 
     <form wire:submit="resetPassword" class="space-y-5">
@@ -80,7 +80,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="email" :value="__('Email')" />
             <div class="relative mt-1">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                 </span>
                 <x-text-input wire:model="email" id="email" class="block w-full pl-10" type="email" name="email" required autofocus autocomplete="username" placeholder="nama@email.com" />
@@ -92,7 +92,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="password" :value="__('Password')" />
             <div class="relative mt-1">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                 </span>
                 <x-text-input wire:model="password" id="password" class="block w-full pl-10" type="password" name="password" required autocomplete="new-password" placeholder="Password baru" />
@@ -104,7 +104,7 @@ new #[Layout('layouts.guest')] class extends Component
         <div>
             <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
             <div class="relative mt-1">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                 </span>
                 <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block w-full pl-10"

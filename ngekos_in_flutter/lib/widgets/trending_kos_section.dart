@@ -177,7 +177,7 @@ class _TrendingKosSectionState extends State<TrendingKosSection> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, size: 12, color: AppTheme.textSecondary),
+                      Icon(Icons.location_on_rounded, size: 12, color: AppTheme.txtSec),
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text('${properti.kota}${properti.alamat.isNotEmpty ? ', ${properti.alamat}' : ''}', style: TextStyle(fontSize: 10.5, color: AppTheme.txtSec), maxLines: 1, overflow: TextOverflow.ellipsis),

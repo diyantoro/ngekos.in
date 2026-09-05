@@ -122,13 +122,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(widget.lawan?.nama ?? '', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text(widget.propertiNama, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(widget.propertiNama, style: TextStyle(fontSize: 12, color: AppTheme.txtSec)),
                 ],
               ),
             ),
           ],
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceC,
         elevation: 0.5,
       ),
       body: _isLoading
@@ -149,8 +149,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceC,
                     boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -1))],
                   ),
                   child: Row(
@@ -165,7 +165,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: AppTheme.background,
+                            fillColor: AppTheme.bg,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),
                           maxLines: null,
@@ -208,14 +208,14 @@ class _ChatBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isMe ? AppTheme.primary : Colors.white,
+          color: isMe ? AppTheme.primary : AppTheme.card,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(isMe ? 16 : 4),
             bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
-          border: isMe ? null : Border.all(color: AppTheme.border),
+          border: isMe ? null : Border.all(color: AppTheme.bdr),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -223,7 +223,7 @@ class _ChatBubble extends StatelessWidget {
             Text(
               message.isi,
               style: TextStyle(
-                color: isMe ? Colors.white : AppTheme.textPrimary,
+                color: isMe ? Colors.white : AppTheme.txt,
                 fontSize: 14,
               ),
             ),
@@ -232,7 +232,7 @@ class _ChatBubble extends StatelessWidget {
               DateFormat('HH:mm').format(message.createdAt),
               style: TextStyle(
                 fontSize: 11,
-                color: isMe ? Colors.white70 : AppTheme.textSecondary,
+                color: isMe ? Colors.white70 : AppTheme.txtSec,
               ),
             ),
           ],

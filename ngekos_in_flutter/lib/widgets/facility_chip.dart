@@ -62,10 +62,10 @@ class FacilityChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
+            color: isSelected ? const Color(0xFFF0FDFA) : AppTheme.card,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppTheme.primary : AppTheme.border,
+              color: isSelected ? AppTheme.primary : AppTheme.bdr,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -79,7 +79,7 @@ class FacilityChip extends StatelessWidget {
                     children: [
                       Icon(
                         icon ?? _iconFor(label),
-                        color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                        color: isSelected ? AppTheme.primary : AppTheme.txtSec,
                         size: 26,
                       ),
                       if (isSelected)
@@ -110,7 +110,7 @@ class FacilityChip extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                      color: isSelected ? AppTheme.primary : AppTheme.txtSec,
                     ),
                     textAlign: TextAlign.center,
                   ),

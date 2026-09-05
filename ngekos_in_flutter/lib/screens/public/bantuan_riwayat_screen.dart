@@ -91,9 +91,9 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
           children: [
             Icon(Icons.help_outline_rounded, size: 64, color: Colors.grey[300]),
             const SizedBox(height: 16),
-            const Text('Belum ada riwayat bantuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+            Text('Belum ada riwayat bantuan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.txtSec)),
             const SizedBox(height: 8),
-            const Text('Kirim pesan ke admin untuk mendapatkan bantuan.', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            Text('Kirim pesan ke admin untuk mendapatkan bantuan.', style: TextStyle(fontSize: 13, color: AppTheme.txtMuted)),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _openKirimPesan,
@@ -120,11 +120,11 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
             Text(
               'Tidak dapat terhubung ke server. Periksa koneksi internetmu, lalu coba lagi.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 13, color: AppTheme.txtSec),
             ),
             if (_error != null && _error!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              Text(_error!, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.txtMuted)),
             ],
             const SizedBox(height: 20),
             ElevatedButton.icon(
@@ -142,9 +142,9 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(color: AppTheme.bdrLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,10 +164,10 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
           if (msg.createdAt != null)
             Text(
               DateFormat('d MMM yyyy, HH:mm', 'id').format(msg.createdAt!),
-              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                      style: TextStyle(fontSize: 11, color: AppTheme.txtMuted),
             ),
           const SizedBox(height: 8),
-          Text(msg.pesan, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5)),
+          Text(msg.pesan, style: TextStyle(fontSize: 13, color: AppTheme.txtSec, height: 1.5)),
           if (msg.balasan != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -185,11 +185,11 @@ class _BantuanRiwayatScreenState extends State<BantuanRiwayatScreen> {
                     const SizedBox(height: 2),
                     Text(
                       DateFormat('d MMM yyyy, HH:mm', 'id').format(msg.dibalasAt!),
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+              style: TextStyle(fontSize: 11, color: AppTheme.txtMuted),
                     ),
                   ],
                   const SizedBox(height: 6),
-                  Text(msg.balasan!, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, height: 1.5)),
+                  Text(msg.balasan!, style: TextStyle(fontSize: 13, color: AppTheme.txt, height: 1.5)),
                 ],
               ),
             ),

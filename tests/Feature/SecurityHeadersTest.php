@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SecurityHeadersTest extends TestCase
 {
+    use RefreshDatabase;
     public function test_respon_web_mengirim_headers_keamanan(): void
     {
         $response = $this->get('/login');
@@ -14,7 +16,7 @@ class SecurityHeadersTest extends TestCase
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
     }
 
     public function test_respon_api_mengirim_headers_keamanan(): void
