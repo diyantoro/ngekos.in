@@ -219,10 +219,6 @@ new #[Layout('layouts.app')] class extends Component
                 cropper: null,
                 showCrop: false,
                 tempUrl: null,
-                get wire() {
-                    const el = document.querySelector('[wire\\\\:id]');
-                    return el ? window.Livewire.find(el.getAttribute('wire:id')) : null;
-                },
                 onSelect(event) {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -231,8 +227,11 @@ new #[Layout('layouts.app')] class extends Component
                     this.$nextTick(() => {
                         if (this.cropper) this.cropper.destroy();
                         const img = document.getElementById('cropFoto');
+                        img.onload = () => {
+                            if (this.cropper) this.cropper.destroy();
+                            this.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 0.9 });
+                        };
                         img.src = this.tempUrl;
-                        this.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 0.9 });
                     });
                 },
                 batalCrop() {
@@ -246,10 +245,11 @@ new #[Layout('layouts.app')] class extends Component
                 terapkanCrop() {
                     if (!this.cropper) return;
                     const canvas = this.cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1080, imageSmoothingQuality: 'high' });
+                    const wire = this.$wire || null;
                     canvas.toBlob((blob) => {
                         if (!blob) return;
                         const file = new File([blob], 'foto-properti.jpg', { type: 'image/jpeg' });
-                        if (this.wire) this.wire.upload('fotoBaru', file, () => this.batalCrop());
+                        if (wire) wire.upload('fotoBaru', file, () => this.batalCrop());
                     }, 'image/jpeg', 0.92);
                 }
             }">
