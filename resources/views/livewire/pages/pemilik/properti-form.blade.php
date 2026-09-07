@@ -215,7 +215,44 @@ new #[Layout('layouts.app')] class extends Component
 
         <form wire:submit="simpan" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-5 sm:p-8 space-y-5">
             <!-- Foto Cover -->
-            <div>
+            <div x-data="{
+                cropper: null,
+                showCrop: false,
+                tempUrl: null,
+                get wire() {
+                    const el = document.querySelector('[wire\\\\:id]');
+                    return el ? window.Livewire.find(el.getAttribute('wire:id')) : null;
+                },
+                onSelect(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    this.tempUrl = URL.createObjectURL(file);
+                    this.showCrop = true;
+                    this.$nextTick(() => {
+                        if (this.cropper) this.cropper.destroy();
+                        const img = document.getElementById('cropFoto');
+                        img.src = this.tempUrl;
+                        this.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 0.9 });
+                    });
+                },
+                batalCrop() {
+                    if (this.tempUrl) URL.revokeObjectURL(this.tempUrl);
+                    this.tempUrl = null;
+                    this.showCrop = false;
+                    if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
+                    const input = document.getElementById('fotoBaru');
+                    if (input) input.value = '';
+                },
+                terapkanCrop() {
+                    if (!this.cropper) return;
+                    const canvas = this.cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1080, imageSmoothingQuality: 'high' });
+                    canvas.toBlob((blob) => {
+                        if (!blob) return;
+                        const file = new File([blob], 'foto-properti.jpg', { type: 'image/jpeg' });
+                        if (this.wire) this.wire.upload('fotoBaru', file, () => this.batalCrop());
+                    }, 'image/jpeg', 0.92);
+                }
+            }">
                 <x-input-label for="fotoBaru" value="Foto Cover Kos" />
                 <div class="mt-2">
                     @if ($fotoBaru)
@@ -233,13 +270,32 @@ new #[Layout('layouts.app')] class extends Component
                             </button>
                         </div>
                     @endif
-                    <input wire:model="fotoBaru" id="fotoBaru" type="file" accept="image/*"
+                    <input x-ref="fileInput" type="file" id="fotoBaru" accept="image/*" @change="onSelect($event)"
                         class="mt-2 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
                 </div>
                 <x-input-error :messages="$errors->get('fotoBaru')" class="mt-2" />
                 <div wire:loading wire:target="fotoBaru" class="mt-2 flex items-center gap-2 text-sm font-medium text-teal-600">
                     <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
                     Mengunggah foto...
+                </div>
+
+                {{-- Modal Crop --}}
+                <div x-show="showCrop" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70">
+                    <div class="w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                            <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Potong Foto Cover</h3>
+                            <button type="button" @click="batalCrop" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
+                            <img id="cropFoto" src="" alt="Pratinjau crop" class="block max-h-[60vh] w-full">
+                        </div>
+                        <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-3">
+                            <button type="button" @click="batalCrop" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">Batal</button>
+                            <button type="button" @click="terapkanCrop" class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition">Terapkan</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

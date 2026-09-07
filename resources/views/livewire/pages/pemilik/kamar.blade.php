@@ -30,7 +30,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|in:bulanan,harian')]
     public string $jenis_harga = 'bulanan';
 
-    #[Validate('required|in:tersedia,terisi')]
+    #[Validate('required|in:tersedia,terisi,perbaikan')]
     public string $status = 'tersedia';
 
     #[Validate('nullable|image|max:2048')]
@@ -199,6 +199,7 @@ new #[Layout('layouts.app')] class extends Component
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
                         <option value="tersedia">Tersedia</option>
                         <option value="terisi">Terisi</option>
+                        <option value="perbaikan">Perbaikan</option>
                     </select>
                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                 </div>

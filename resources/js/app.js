@@ -1,3 +1,188 @@
+import 'cropperjs/dist/cropper.min.css';
+import Cropper from 'cropperjs';
+window.Cropper = Cropper;
+
+window.renderPendapatanChart = async (elementId, pendapatan, tagihan) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const { default: Chart } = await import('chart.js/auto');
+    const labels = Object.keys(pendapatan).length ? Object.keys(pendapatan) : Object.keys(tagihan);
+    if (!labels.length) return;
+    new Chart(el, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Pendapatan', data: labels.map(m => pendapatan[m]?.total ?? 0), backgroundColor: 'rgba(20, 184, 166, .8)', borderRadius: 8 },
+                { label: 'Tagihan Lunas', data: labels.map(m => tagihan[m]?.lunas ?? 0), backgroundColor: 'rgba(16, 185, 129, .8)', borderRadius: 8 },
+                { label: 'Tagihan Belum', data: labels.map(m => tagihan[m]?.belum ?? 0), backgroundColor: 'rgba(244, 63, 94, .8)', borderRadius: 8 },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+            scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + v.toLocaleString('id-ID') } } },
+        },
+    });
+};
+
+const chartRegistry = new Map();
+
+window.destroyChart = (elementId) => {
+    const chart = chartRegistry.get(elementId);
+    if (chart) {
+        chart.destroy();
+        chartRegistry.delete(elementId);
+    }
+};
+
+window.renderChart = async (elementId, config) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const { default: Chart } = await import('chart.js/auto');
+    window.destroyChart(elementId);
+    chartRegistry.set(elementId, new Chart(el, config));
+};
+
+// Grafik keuangan: line Pendapatan vs Pengeluaran vs Laba Bersih per bulan.
+window.rekapKeuanganChart = (elementId, labels, pendapatan, pengeluaran, laba) => window.renderChart(elementId, {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [
+            { label: 'Pendapatan', data: pendapatan, borderColor: '#0d9488', backgroundColor: 'rgba(13, 148, 136, .1)', fill: true, tension: .4, borderWidth: 2, pointBackgroundColor: '#0d9488' },
+            { label: 'Pengeluaran', data: pengeluaran, borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, .1)', fill: true, tension: .4, borderWidth: 2, pointBackgroundColor: '#f43f5e' },
+            { label: 'Laba Bersih', data: laba, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, .1)', fill: true, tension: .4, borderWidth: 2, pointBackgroundColor: '#6366f1', borderDash: [6, 3] },
+        ],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } } },
+    },
+});
+
+// Bar chart nilai nominal Rupiah (transaksi, revenue, dst).
+window.rupiahBarChart = (elementId, labels, values, label = 'Nilai') => window.renderChart(elementId, {
+    type: 'bar',
+    data: {
+        labels,
+        datasets: [{ label, data: values, backgroundColor: 'rgba(14, 165, 233, .85)', borderRadius: 6 }],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } } },
+    },
+});
+
+// Tren transaksi: bar jumlah transaksi + line total nilai (dual axis).
+window.transactionTrendChart = (elementId, labels, counts, values) => window.renderChart(elementId, {
+    data: {
+        labels,
+        datasets: [
+            { type: 'bar', label: 'Jumlah Transaksi', data: counts, backgroundColor: 'rgba(20, 184, 166, .85)', borderRadius: 6, yAxisID: 'y' },
+            { type: 'line', label: 'Nilai Transaksi', data: values, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, .1)', fill: true, tension: .4, borderWidth: 2, pointBackgroundColor: '#f59e0b', yAxisID: 'y1' },
+        ],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } },
+        },
+    },
+});
+
+// Donut distribusi status (penyewaan/pembayaran) — warna fungsional kategori.
+window.distributionDonutChart = (elementId, labels, values) => window.renderChart(elementId, {
+    type: 'doughnut',
+    data: {
+        labels,
+        datasets: [{
+            data: values,
+            backgroundColor: ['#0d9488', '#6366f1', '#f59e0b', '#f43f5e', '#0ea5e9', '#22c55e', '#8b5cf6', '#64748b'],
+            borderWidth: 2,
+        }],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } },
+    },
+});
+
+// Grafik okupansi: tren tingkat hunian (%) per bulan.
+window.rekapOkupansiChart = (elementId, labels, values) => window.renderChart(elementId, {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [{
+            label: 'Okupansi (%)',
+            data: values,
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14, 165, 233, .15)',
+            fill: true,
+            tension: .4,
+            pointBackgroundColor: '#0ea5e9',
+            borderWidth: 2,
+        }],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+    },
+});
+
+// Grafik pengeluaran by kategori (donut).
+window.rekapKategoriChart = (elementId, labels, values) => window.renderChart(elementId, {
+    type: 'doughnut',
+    data: {
+        labels,
+        datasets: [{
+            data: values,
+            backgroundColor: ['#0d9488', '#f43f5e', '#6366f1', '#f59e0b', '#0ea5e9', '#8b5cf6', '#22c55e', '#64748b'],
+            borderWidth: 2,
+        }],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } },
+    },
+});
+
+// Grafik pertumbuhan (multi-series, untuk admin & super admin).
+window.growthLineChart = (elementId, labels, datasets) => window.renderChart(elementId, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+});
+
+window.growthBarChart = (elementId, labels, datasets) => window.renderChart(elementId, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+    },
+});
+
 document.addEventListener('alpine:init', () => {
     Alpine.store('theme', {
         dark: localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches),

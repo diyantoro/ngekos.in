@@ -174,7 +174,7 @@ class PropertiManageController extends Controller
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
-            'status' => 'required|in:tersedia,terisi',
+            'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
         ]);
 
@@ -218,7 +218,7 @@ class PropertiManageController extends Controller
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
-            'status' => 'required|in:tersedia,terisi',
+            'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
         ]);
 

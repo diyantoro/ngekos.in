@@ -3,23 +3,29 @@
 use App\Models\Properti;
 use App\Support\Koordinat;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.publik')] class extends Component
 {
+    #[Url(history: true)]
     public string $cari = '';
 
+    #[Url(history: true)]
     public string $kota = '';
 
+    #[Url(history: true)]
     public ?int $hargaMax = null;
 
+    #[Url(history: true)]
     public int $kapasitas = 1;
 
     public function with(): array
     {
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia')])
+            ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
+            ->withAvg('ulasans as rating_ulasan', 'rating')
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
 
         if ($this->cari) {
@@ -42,9 +48,13 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         return [
-            'propertis' => $query->orderBy('nama')->get(),
-            'daftarKota' => Properti::where('status', 'aktif')->whereNotNull('kota')->distinct()->orderBy('kota')->pluck('kota'),
-            'markers' => Properti::where('status', 'aktif')
+            'propertis' => $query->orderBy('nama')->paginate(12),
+            'daftarKota' => cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
+                ->whereNotNull('kota')
+                ->distinct()
+                ->orderBy('kota')
+                ->pluck('kota')),
+            'markers' => cache()->remember('katalog.markers', 3600, fn () => Properti::where('status', 'aktif')
                 ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
                     $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
@@ -58,7 +68,7 @@ new #[Layout('layouts.publik')] class extends Component
                     ] : null;
                 })
                 ->filter()
-                ->values(),
+                ->values()),
         ];
     }
 }; ?>
@@ -177,7 +187,7 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
 
         <!-- Cards - Mobile-first list layout -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div wire:loading.remove class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @forelse ($propertis as $properti)
                 <a href="{{ route('kos.detail', $properti) }}" wire:navigate
                    class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-teal-200 dark:hover:ring-teal-800 transition-all duration-200">
@@ -203,6 +213,13 @@ new #[Layout('layouts.publik')] class extends Component
                         <div class="flex-1 p-3 sm:p-4 flex flex-col justify-between">
                             <div>
                                 <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition line-clamp-1">{{ $properti->nama }}</h3>
+                                @if ($properti->total_ulasan > 0)
+                                    <p class="mt-0.5 flex items-center gap-1 text-xs">
+                                        <x-star-rating :rating="round($properti->rating_ulasan)" size="h-3 w-3" />
+                                        <span class="font-semibold text-gray-700 dark:text-gray-300">{{ number_format($properti->rating_ulasan, 1, ',', '.') }}</span>
+                                        <span class="text-gray-400 dark:text-gray-500">({{ $properti->total_ulasan }})</span>
+                                    </p>
+                                @endif
                                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                     <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                                     {{ $properti->kota ?? $properti->alamat ?? 'Lokasi belum diisi' }}
@@ -240,11 +257,24 @@ new #[Layout('layouts.publik')] class extends Component
                     <div class="mx-auto h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
                         <svg class="h-8 w-8 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 font-medium text-sm">Belum ada kos yang cocok.</p>
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Coba ubah kata kunci atau filter pencarian.</p>
+                    <p class="text-gray-500 dark:text-gray-400 font-medium text-sm">Tidak menemukan kos?</p>
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500 max-w-sm mx-auto">Coba ubah kata kunci, pilih kota lain, atau perbesar budget pencarian Anda.</p>
+                    <button wire:click="$set('cari', ''); $set('kota', ''); $set('hargaMax', null); $set('kapasitas', 1)"
+                        class="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition shadow-sm">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                        Reset Semua Filter
+                    </button>
                 </div>
             @endforelse
         </div>
+
+        @if ($propertis->hasPages())
+            <div wire:loading.remove class="mt-6">
+                {{ $propertis->links() }}
+            </div>
+        @endif
+
+        <x-skeleton type="card" count="6" target="cari, kota, hargaMax, kapasitas" class="sm:grid-cols-2 lg:grid-cols-3" />
 
         <!-- CTA untuk pemilik -->
         @guest

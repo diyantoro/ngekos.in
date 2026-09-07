@@ -86,6 +86,26 @@ class KatalogDetailSewaTest extends TestCase
         $this->assertSame('tersedia', $kamar->status);
     }
 
+    public function test_double_booking_kamar_yang_sama_ditolak(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+
+        $service = app(\App\Services\PenyewaanService::class);
+
+        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString());
+        $this->assertNotNull($sewaanPertama);
+
+        $this->expectException(\DomainException::class);
+
+        try {
+            $service->sewaKamar($user, $kamar, today()->toDateString());
+        } finally {
+            $this->assertSame(1, \App\Models\Penyewaan::where('kamar_id', $kamar->id)->count());
+        }
+    }
+
     public function test_pemilik_tidak_bisa_sewa_kamar_dari_detail(): void
     {
         $user = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();

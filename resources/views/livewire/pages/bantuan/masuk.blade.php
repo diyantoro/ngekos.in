@@ -13,17 +13,22 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $query = PesanBantuan::query();
+        $query = PesanBantuan::with(['user', 'pembalas']);
 
         if ($this->tab !== 'semua') {
             $query->where('status', $this->tab);
         }
 
+        $jumlahStatus = PesanBantuan::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         return [
-            'pesans' => $query->latest()->get(),
-            'jumlahBaru' => PesanBantuan::where('status', 'baru')->count(),
-            'jumlahDibaca' => PesanBantuan::where('status', 'dibaca')->count(),
-            'jumlahSelesai' => PesanBantuan::where('status', 'selesai')->count(),
+            'pesans' => $query->latest()->limit(100)->get(),
+            'jumlahBaru' => (int) ($jumlahStatus['baru'] ?? 0),
+            'jumlahDibaca' => (int) ($jumlahStatus['dibaca'] ?? 0),
+            'jumlahSelesai' => (int) ($jumlahStatus['selesai'] ?? 0),
         ];
     }
 

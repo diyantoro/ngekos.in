@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
+use App\Models\User;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -13,6 +15,15 @@ new class extends Component
     public string $tab = 'pembayaran';
 
     public ?string $pesan = null;
+
+    public ?string $galat = null;
+
+    public string $periode = '6';
+
+    public function updatedPeriode(): void
+    {
+        $this->dispatch('chart:data-updated');
+    }
 
     private function kelolaan()
     {
@@ -62,6 +73,15 @@ new class extends Component
                 ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
                 ->keyBy('month')
                 ->all(),
+            'needAttention' => [
+                'pembayaranMenunggu' => Pembayaran::where('status', 'menunggu_verifikasi')
+                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())->count(),
+                'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
+                    ->where('denda', '>', 0)
+                    ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
+                'propertiTanpaKamar' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))
+                    ->whereDoesntHave('kamars')->count(),
+            ],
             'tagihanStatusPerBulan' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
                 ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
                 ->get(['created_at', 'jumlah', 'denda', 'status'])
@@ -79,7 +99,106 @@ new class extends Component
                 })
                 ->keyBy('month')
                 ->all(),
+            'totalKamar' => Kamar::whereHas('properti', $this->kelolaan())->count(),
+            'kamarTerisi' => Kamar::where('status', 'terisi')->whereHas('properti', $this->kelolaan())->count(),
+            'tagihanBelum' => Tagihan::where('status', '!=', 'lunas')
+                ->whereHas('penyewaan.properti', $this->kelolaan())
+                ->with(['penyewaan.anakKos', 'penyewaan.properti'])
+                ->orderBy('jatuh_tempo')
+                ->limit(5)
+                ->get(),
+            'statusProperti' => Properti::where($this->kelolaan())
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            'bulanLabels' => collect(range(($bulanCount = max(1, min(24, (int) $this->periode))) - 1, 0))
+                ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->format('m/Y'))
+                ->all(),
+            'chartGrowthProperti' => $this->growthSeries(
+                Properti::where($this->kelolaan())
+                    ->where('created_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
+                    ->get(['id', 'created_at']),
+                max(1, min(24, (int) $this->periode))
+            ),
+            'chartGrowthPenyewaan' => $this->growthSeries(
+                Penyewaan::whereHas('properti', $this->kelolaan())
+                    ->where('created_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
+                    ->get(['id', 'created_at']),
+                max(1, min(24, (int) $this->periode))
+            ),
+            'chartGrowthPembayaran' => $this->growthSeries(
+                Pembayaran::where('status', 'diverifikasi')
+                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                    ->where('verified_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
+                    ->get(['id', 'verified_at']),
+                max(1, min(24, (int) $this->periode)),
+                'verified_at'
+            ),
+            'chartNilaiTransaksi' => $this->nilaiSeries(
+                Pembayaran::where('status', 'diverifikasi')
+                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                    ->where('verified_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
+                    ->get(['id', 'verified_at', 'jumlah']),
+                max(1, min(24, (int) $this->periode)),
+                'verified_at'
+            ),
+            'userGrowthMonth' => $this->userRoleSeries(max(1, min(24, (int) $this->periode))),
+            'statusPenyewaan' => Penyewaan::whereHas('properti', $this->kelolaan())
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            'statusPembayaran' => Pembayaran::whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
         ];
+    }
+
+    /**
+     * Total nilai (SUM) per bulan selama $bulanCount bulan terakhir.
+     * $rows menerima koleksi Pembayaran berisi atribut jumlah + kolom waktu.
+     */
+    private function nilaiSeries($rows, int $bulanCount, string $column = 'created_at'): array
+    {
+        $bulanCount = max(1, min(24, $bulanCount));
+        $grouped = collect($rows)->groupBy(fn ($r) => $r->{$column}?->format('m/Y'));
+
+        return collect(range($bulanCount - 1, 0))
+            ->map(fn ($i) => (int) round(($grouped[now()->startOfMonth()->subMonths($i)->format('m/Y')] ?? collect())->sum('jumlah')))
+            ->all();
+    }
+
+    /**
+     * Registrasi pengguna per bulan untuk periode, dipilah Anak Kos & Pemilik.
+     */
+    private function userRoleSeries(int $bulanCount): array
+    {
+        $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
+
+        $users = User::with('roles:id,name')
+            ->where('created_at', '>=', $monthStart)
+            ->get(['id', 'created_at'])
+            ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
+
+        $out = ['anak_kos' => [], 'pemilik' => []];
+
+        foreach (range($bulanCount - 1, 0) as $i) {
+            $key = now()->startOfMonth()->subMonths($i)->format('m/Y');
+            $rows = $users[$key] ?? collect();
+            $out['anak_kos'][] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('anak_kos'))->count();
+            $out['pemilik'][] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('pemilik'))->count();
+        }
+
+        return $out;
+    }
+
+    private function growthSeries($rows, int $bulanCount, string $column = 'created_at'): array
+    {
+        $grouped = collect($rows)->groupBy(fn ($r) => $r->{$column}?->format('m/Y'));
+
+        return collect(range(max(1, min(24, $bulanCount)) - 1, 0))
+            ->map(fn ($i) => ($grouped[now()->startOfMonth()->subMonths($i)->format('m/Y')] ?? collect())->count())
+            ->all();
     }
 
     public function verifikasiPembayaran(int $id): void
@@ -132,11 +251,188 @@ new class extends Component
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <x-stat-card label="Total Kamar Kelolaan" :value="$totalKamar" tone="sky"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>' />
+            <x-stat-card label="Kamar Terisi" :value="$kamarTerisi" tone="emerald"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
+            <x-stat-card label="Tagihan Belum Dibayar" :value="$tagihanBelum->count()" tone="rose"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @foreach (['aktif' => ['Aktif', 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300'], 'nonaktif' => ['Nonaktif', 'bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300']] as $status => [$label, $warna])
+                <div class="rounded-2xl {{ $warna }} px-4 py-3 flex items-center justify-between">
+                    <span class="text-sm font-semibold">Properti {{ $label }}</span>
+                    <span class="text-xl font-extrabold">{{ $statusProperti[$status] ?? 0 }}</span>
+                </div>
+            @endforeach
+        </div>
+
+        <div id="growth-data"
+            data-labels='{{ json_encode($bulanLabels) }}'
+            data-growth-properti='{{ json_encode($chartGrowthProperti) }}'
+            data-growth-penyewaan='{{ json_encode($chartGrowthPenyewaan) }}'
+            data-growth-pembayaran='{{ json_encode($chartGrowthPembayaran) }}'
+            class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pertumbuhan Kelolaan</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Properti &amp; penyewaan baru per bulan</p>
+                    </div>
+                    <select wire:model.live="periode"
+                        class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                        <option value="3">3 bulan</option>
+                        <option value="6">6 bulan</option>
+                        <option value="12">12 bulan</option>
+                    </select>
+                </div>
+                <canvas id="chart-growth-kelolaan" class="mt-4 max-h-64"></canvas>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Transaksi Terverifikasi</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Jumlah pembayaran diverifikasi per bulan</p>
+                <canvas id="chart-growth-transaksi" class="mt-4 max-h-64"></canvas>
+            </div>
+        </div>
+
+        <div id="analytics-data"
+            data-labels='{{ json_encode($bulanLabels) }}'
+            data-user-anak='{{ json_encode($userGrowthMonth['anak_kos']) }}'
+            data-user-pemilik='{{ json_encode($userGrowthMonth['pemilik']) }}'
+            data-nilai-transaksi='{{ json_encode($chartNilaiTransaksi) }}'
+            class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pertumbuhan Pengguna</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Pendaftaran baru Anak Kos &amp; Pemilik per bulan</p>
+                    </div>
+                    <select wire:model.live="periode"
+                        class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                        <option value="3">3 bulan</option>
+                        <option value="6">6 bulan</option>
+                        <option value="12">12 bulan</option>
+                    </select>
+                </div>
+                <canvas id="chart-user-growth-admin" class="mt-4 max-h-64"></canvas>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Nilai Transaksi Terverifikasi</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Total nilai pembayaran diverifikasi per bulan</p>
+                <canvas id="chart-nilai-transaksi" class="mt-4 max-h-64"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Distribusi Status Penyewaan</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Penyewaan aktif &amp; selesai pada properti kelolaan</p>
+                @if (count($statusPenyewaan) > 0)
+                    <canvas id="chart-status-penyewaan" class="mt-4 max-h-64"></canvas>
+                @else
+                    <p class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada penyewaan.</p>
+                @endif
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Distribusi Status Pembayaran</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Menunggu verifikasi, diverifikasi, dan ditolak</p>
+                @if (count($statusPembayaran) > 0)
+                    <canvas id="chart-status-pembayaran" class="mt-4 max-h-64"></canvas>
+                @else
+                    <p class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</p>
+                @endif
+            </div>
+        </div>
+
+        @if ($tagihanBelum->isNotEmpty())
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Tagihan Belum Dibayar</h3>
+                    <span class="text-xs text-rose-500 dark:text-rose-400">{{ $tagihanBelum->count() }} item</span>
+                </div>
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @foreach ($tagihanBelum as $tagihan)
+                        <div class="px-5 py-3.5 flex items-center gap-3">
+                            <div class="h-9 w-9 shrink-0 rounded-full bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 flex items-center justify-center">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $tagihan->penyewaan->anakKos?->nama ?? 'Penyewa' }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $tagihan->periode }} · {{ $tagihan->penyewaan->properti?->nama }}</p>
+                            </div>
+                            <div class="text-end shrink-0">
+                                <p class="text-sm font-bold text-rose-600 dark:text-rose-400">Rp{{ number_format($tagihan->jumlah + $tagihan->denda, 0, ',', '.') }}</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500">JT {{ $tagihan->jatuh_tempo?->translatedFormat('d M Y') }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        @if (array_sum($needAttention) > 0)
+            <div class="rounded-2xl bg-rose-50/60 dark:bg-rose-500/5 ring-1 ring-rose-200/60 dark:ring-rose-500/20 p-4 sm:p-5">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.008v.008H12v-.008z" /></svg>
+                    </span>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Perlu Perhatian</h3>
+                </div>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    @if ($needAttention['pembayaranMenunggu'] > 0)
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3.5 flex items-center gap-3">
+                            <span class="shrink-0 h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-lg font-extrabold text-gray-900 dark:text-gray-100">{{ $needAttention['pembayaranMenunggu'] }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Pembayaran menunggu verifikasi</p>
+                            </div>
+                        </div>
+                    @endif
+                    @if ($needAttention['tagihanTelat'] > 0)
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3.5 flex items-center gap-3">
+                            <span class="shrink-0 h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374H5.75c1.73 0 2.813-1.874 1.948-3.374L10.05 3.378c.866-1.5 3.032-1.5 3.898 0l8.354 12.748z" /></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-lg font-extrabold text-gray-900 dark:text-gray-100">{{ $needAttention['tagihanTelat'] }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Tagihan telat (kena denda)</p>
+                            </div>
+                        </div>
+                    @endif
+                    @if ($needAttention['propertiTanpaKamar'] > 0)
+                        <div class="rounded-xl bg-white dark:bg-gray-800 p-3.5 flex items-center gap-3">
+                            <span class="shrink-0 h-9 w-9 rounded-xl bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75" /></svg>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-lg font-extrabold text-gray-900 dark:text-gray-100">{{ $needAttention['propertiTanpaKamar'] }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Properti belum punya kamar</p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <x-dashboard-funnel
             :stages="$funnelStages"
             title="Grafik Pipeline"
             subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti yang Anda kelola"
         />
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pendapatan &amp; Status Tagihan</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">6 bulan terakhir, properti yang Anda kelola</p>
+                </div>
+            </div>
+            <canvas id="chart-pendapatan-admin" class="mt-4 max-h-72"></canvas>
+        </div>
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700">
@@ -204,3 +500,77 @@ new class extends Component
         </div>
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        function renderPendapatanAdmin() {
+            window.renderPendapatanChart('chart-pendapatan-admin', @json($pendapatanPerBulan), @json($tagihanStatusPerBulan));
+        }
+
+        function renderGrowthAdmin() {
+            const wrap = document.getElementById('growth-data');
+            if (!wrap) return;
+
+            const labels = JSON.parse(wrap.dataset.labels || '[]');
+            const properti = JSON.parse(wrap.dataset.growthProperti || '[]');
+            const penyewaan = JSON.parse(wrap.dataset.growthPenyewaan || '[]');
+            const pembayaran = JSON.parse(wrap.dataset.growthPembayaran || '[]');
+
+            window.growthBarChart('chart-growth-kelolaan', labels, [
+                { label: 'Properti', data: properti, backgroundColor: 'rgba(20,184,166,.85)', borderRadius: 6 },
+                { label: 'Penyewaan', data: penyewaan, backgroundColor: 'rgba(99,102,241,.85)', borderRadius: 6 },
+            ]);
+            window.growthBarChart('chart-growth-transaksi', labels, [
+                { label: 'Transaksi', data: pembayaran, backgroundColor: 'rgba(14,165,233,.85)', borderRadius: 6 },
+            ]);
+        }
+
+        function renderAnalyticsAdmin() {
+            const wrap = document.getElementById('analytics-data');
+            if (!wrap) return;
+
+            const labels = JSON.parse(wrap.dataset.labels || '[]');
+            const userAnak = JSON.parse(wrap.dataset.userAnak || '[]');
+            const userPemilik = JSON.parse(wrap.dataset.userPemilik || '[]');
+            const nilai = JSON.parse(wrap.dataset.nilaiTransaksi || '[]');
+
+            window.growthLineChart('chart-user-growth-admin', labels, [
+                { label: 'Anak Kos', data: userAnak, borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,.1)', tension: .4 },
+                { label: 'Pemilik', data: userPemilik, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.1)', tension: .4 },
+            ]);
+            window.rupiahBarChart('chart-nilai-transaksi', labels, nilai, 'Nilai Transaksi');
+        }
+
+        function renderStatusAdmin() {
+            const sewaanRaw = @json($statusPenyewaan);
+            const pembayaranRaw = @json($statusPembayaran);
+            const labelMap = {
+                aktif: 'Aktif', selesai: 'Selesai',
+                menunggu_verifikasi: 'Menunggu Verifikasi', diverifikasi: 'Diverifikasi', ditolak: 'Ditolak',
+            };
+            const toChart = (map) => {
+                const entries = Object.entries(map).map(([k, v]) => ({ label: labelMap[k] ?? k, value: Number(v) }));
+                return { labels: entries.map(e => e.label), values: entries.map(e => e.value) };
+            };
+            if (Object.keys(sewaanRaw).length) {
+                const d = toChart(sewaanRaw);
+                window.distributionDonutChart('chart-status-penyewaan', d.labels, d.values);
+            }
+            if (Object.keys(pembayaranRaw).length) {
+                const d = toChart(pembayaranRaw);
+                window.distributionDonutChart('chart-status-pembayaran', d.labels, d.values);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => { renderPendapatanAdmin(); renderGrowthAdmin(); renderAnalyticsAdmin(); renderStatusAdmin(); });
+        } else {
+            renderPendapatanAdmin();
+            renderGrowthAdmin();
+            renderAnalyticsAdmin();
+            renderStatusAdmin();
+        }
+        document.addEventListener('livewire:navigated', () => { renderPendapatanAdmin(); renderGrowthAdmin(); renderAnalyticsAdmin(); renderStatusAdmin(); });
+        Livewire.on('chart:data-updated', () => requestAnimationFrame(() => { renderGrowthAdmin(); renderAnalyticsAdmin(); }));
+    </script>
+@endpush

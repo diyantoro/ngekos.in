@@ -41,12 +41,12 @@
                             </div>
                         @endif
 
-                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">
+                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">
                             <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2l.967 4.602L15 6.5l-3.5 3.198L13.2 14 10 11.5 6.8 14l1.7-4.302L5 6.5l4.033-.898L10 2z" /></svg>
                             Trending
                         </span>
 
-                        <span class="absolute top-2 right-2 rounded-md px-2 py-1 text-[10px] font-bold text-white {{ $p->kamar_tersedia > 0 ? 'bg-emerald-600' : 'bg-gray-800' }}">
+                        <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white {{ $p->kamar_tersedia > 0 ? 'bg-emerald-600' : 'bg-gray-800' }}">
                             {{ $p->kamar_tersedia > 0 ? $p->kamar_tersedia . ' Kamar' : 'Penuh' }}
                         </span>
                     </div>
@@ -57,7 +57,7 @@
                             <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                             {{ $p->kota }}{{ $p->alamat ? ', ' . $p->alamat : '' }}
                         </p>
-                        <div class="mt-3 flex items-center justify-between rounded-lg bg-teal-50 dark:bg-teal-500/10 px-2.5 py-1.5">
+                        <div class="mt-3 flex items-center justify-between rounded-xl bg-teal-50 dark:bg-teal-500/10 px-2.5 py-1.5">
                             <span class="text-[11px] font-bold text-teal-700 dark:text-teal-300">{{ $p->kamar_terisi }}/{{ $p->total_kamar }} terisi</span>
                             <svg class="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
                         </div>

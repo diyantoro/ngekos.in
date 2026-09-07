@@ -16,6 +16,12 @@
         background-color: rgb(13 148 136 / 0.2);
         color: #0f766e;
     }
+
+    /* Focus visibility global untuk keyboard users */
+    :focus-visible {
+        outline: 2px solid rgb(20 184 166 / 0.6);
+        outline-offset: 2px;
+    }
 }
 
 @layer components {
@@ -24,15 +30,7 @@
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0;
-    }
-
-    .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white active:bg-gray-200;
-    }
-
-    .btn-danger {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-500/20 transition-all duration-200 hover:from-rose-400 hover:to-red-400 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0;
     }
 
     .card {
@@ -229,12 +227,6 @@
     transform: none;
 }
 
-.reveal:nth-child(2) { transition-delay: 0.10s; }
-.reveal:nth-child(3) { transition-delay: 0.20s; }
-.reveal:nth-child(4) { transition-delay: 0.30s; }
-.reveal:nth-child(5) { transition-delay: 0.40s; }
-.reveal:nth-child(6) { transition-delay: 0.50s; }
-
 /* ===== Promo carousel (pure CSS, auto-slide) ===== */
 
 .promo-track {
@@ -268,4 +260,22 @@
     64%  { transform: translateX(-400%); }
     70%  { transform: translateX(-500%); }
     100% { transform: translateX(-500%); }
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }

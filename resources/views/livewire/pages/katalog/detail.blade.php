@@ -2,6 +2,7 @@
 
 use App\Models\Kamar;
 use App\Models\Properti;
+use App\Models\Ulasan;
 use App\Services\PenyewaanService;
 use App\Support\Koordinat;
 use Illuminate\Support\Carbon;
@@ -20,6 +21,27 @@ new #[Layout('layouts.publik')] class extends Component
 
     public string $tanggalMasuk = '';
 
+    public int $langkahSewa = 1;
+
+    public bool $favorit = false;
+
+    public int $ratingUlasan = 0;
+
+    public string $komentarUlasan = '';
+
+    public ?array $statistikUlasan = null;
+
+    public function mount(): void
+    {
+        $this->favorit = auth()->check() && $this->properti->peminat()->where('user_id', auth()->id())->exists();
+
+        $this->statistikUlasan = [
+            'total' => $this->properti->ulasans()->count(),
+            'rata' => $this->properti->ulasans()->avg('rating'),
+            'distribusi' => $this->properti->ulasans()->selectRaw('rating, COUNT(*) as jumlah')->groupBy('rating')->pluck('jumlah', 'rating')->toArray(),
+        ];
+    }
+
     public function with(): array
     {
         $this->properti->loadCount([
@@ -30,6 +52,7 @@ new #[Layout('layouts.publik')] class extends Component
         return [
             'kamars' => Kamar::where('properti_id', $this->properti->id)->orderBy('nama')->get(),
             'titik' => Koordinat::titik($this->properti->kota, $this->properti->latitude, $this->properti->longitude),
+            'ulasans' => Ulasan::with('user')->where('properti_id', $this->properti->id)->latest()->get(),
         ];
     }
 
@@ -55,12 +78,34 @@ new #[Layout('layouts.publik')] class extends Component
         $this->pesan = null;
         $this->modalKamarId = $kamarId;
         $this->tanggalMasuk = today()->toDateString();
+        $this->langkahSewa = 1;
     }
 
     public function tutupModalSewa(): void
     {
         $this->modalKamarId = null;
         $this->tanggalMasuk = '';
+        $this->langkahSewa = 1;
+        $this->resetValidation();
+    }
+
+    public function lanjutReview(): void
+    {
+        $this->validate([
+            'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addMonths(3)->toDateString()],
+        ], [
+            'tanggalMasuk.required' => 'Pilih tanggal masuk terlebih dahulu.',
+            'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
+            'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
+            'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
+        ]);
+
+        $this->langkahSewa = 2;
+    }
+
+    public function kembaliKeTanggal(): void
+    {
+        $this->langkahSewa = 1;
         $this->resetValidation();
     }
 
@@ -109,10 +154,61 @@ new #[Layout('layouts.publik')] class extends Component
         $this->resetForm();
     }
 
+    public function toggleFavorit(): void
+    {
+        if (! auth()->check()) {
+            $this->redirectRoute('login');
+
+            return;
+        }
+
+        $user = auth()->user();
+        if ($this->favorit) {
+            $user->favorits()->detach($this->properti->id);
+            $this->favorit = false;
+        } else {
+            $user->favorits()->syncWithoutDetaching($this->properti->id);
+            $this->favorit = true;
+        }
+    }
+
+    public function simpanUlasan(): void
+    {
+        if (! auth()->user()?->hasRole('anak_kos')) {
+            $this->galat = 'Hanya akun pencari kos (anak kos) yang dapat memberi ulasan.';
+            $this->pesan = null;
+
+            return;
+        }
+
+        $this->validate([
+            'ratingUlasan' => ['required', 'integer', 'between:1,5'],
+        ], [
+            'ratingUlasan.required' => 'Pilih bintang rating terlebih dahulu.',
+        ]);
+
+        Ulasan::updateOrCreate(
+            ['user_id' => auth()->id(), 'properti_id' => $this->properti->id],
+            ['rating' => $this->ratingUlasan, 'komentar' => $this->komentarUlasan ?: null],
+        );
+
+        $this->statistikUlasan = [
+            'total' => $this->properti->ulasans()->count(),
+            'rata' => round($this->properti->ulasans()->avg('rating'), 1),
+            'distribusi' => $this->properti->ulasans()->selectRaw('rating, COUNT(*) as jumlah')->groupBy('rating')->pluck('jumlah', 'rating')->toArray(),
+        ];
+
+        $this->pesan = 'Terima kasih! Ulasanmu berhasil disimpan.';
+        $this->galat = null;
+        $this->ratingUlasan = 0;
+        $this->komentarUlasan = '';
+    }
+
     private function resetForm(): void
     {
         $this->modalKamarId = null;
         $this->tanggalMasuk = '';
+        $this->langkahSewa = 1;
         $this->resetValidation();
     }
 }; ?>
@@ -174,11 +270,30 @@ new #[Layout('layouts.publik')] class extends Component
                     @endif
                 </div>
                 <div class="flex items-center gap-2">
+                    <button wire:click="toggleFavorit"
+                        @class(['shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition h-10 w-10 border',
+                                'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20' => $favorit,
+                                'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-rose-500' => !$favorit])
+                        aria-label="{{ $favorit ? 'Hapus dari favorit' : 'Tambah ke favorit' }}">
+                        @if ($favorit)
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
+                        @else
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
+                        @endif
+                    </button>
                     <x-status-badge :status="$properti->status" />
                     <span class="inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-500/10 px-2.5 py-0.5 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
                         {{ $properti->kamar_tersedia }}/{{ $properti->total_kamar }} tersedia
                     </span>
                 </div>
+
+                @if ($statistikUlasan && $statistikUlasan['total'] > 0)
+                    <div class="mt-2 flex items-center gap-1.5">
+                        <x-star-rating :rating="round($statistikUlasan['rata'])" size="h-3.5 w-3.5" />
+                        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ number_format($statistikUlasan['rata'], 1, ',', '.') }}</span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">({{ $statistikUlasan['total'] }} ulasan)</span>
+                    </div>
+                @endif
             </div>
 
             <div class="mt-4 grid grid-cols-3 gap-3">
@@ -260,6 +375,36 @@ new #[Layout('layouts.publik')] class extends Component
         <div class="mt-6">
             <x-promo-ads />
         </div>
+
+        <!-- Informasi Pemilik -->
+        @if ($properti->pemilik)
+            <div class="mt-6 rounded-2xl bg-white dark:bg-gray-800 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5">
+                <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Informasi Pemilik</h2>
+                <div class="mt-3 flex items-center gap-3">
+                    <x-user-avatar :user="$properti->pemilik" size="md" />
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $properti->pemilik->nama }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            @if ($properti->pemilik->no_hp)
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
+                                {{ $properti->pemilik->no_hp }}
+                            @else
+                                Kontak belum diisi
+                            @endif
+                        </p>
+                    </div>
+                    @auth
+                        @if (! auth()->user()->hasRole('anak_kos') || auth()->user()->id !== $properti->pemilik_id)
+                            <a href="{{ route('chat.room', ['properti' => $properti->id]) }}" wire:navigate
+                               class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-3.5 py-2 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>
+                                Chat
+                            </a>
+                        @endif
+                    @endauth
+                </div>
+            </div>
+        @endif
         </div>
 
         <!-- Daftar Kamar -->
@@ -340,6 +485,108 @@ new #[Layout('layouts.publik')] class extends Component
                 @endforelse
             </div>
         </div>
+
+        <!-- Ulasan & Rating -->
+        <div class="mt-6">
+            <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">Ulasan &amp; Rating</h2>
+            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Penilaian dari penghuni kos.</p>
+
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {{-- Ringkasan statistik --}}
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5">
+                    @if ($statistikUlasan && $statistikUlasan['total'] > 0)
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-gray-100">{{ number_format($statistikUlasan['rata'], 1, ',', '.') }}</span>
+                            <div>
+                                <x-star-rating :rating="round($statistikUlasan['rata'])" size="h-4 w-4" />
+                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ $statistikUlasan['total'] }} ulasan</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 space-y-1.5">
+                            @for ($bintang = 5; $bintang >= 1; $bintang--)
+                                @php
+                                    $jumlah = $statistikUlasan['distribusi'][$bintang] ?? 0;
+                                    $persen = $statistikUlasan['total'] > 0 ? round(($jumlah / $statistikUlasan['total']) * 100) : 0;
+                                @endphp
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="w-8 font-semibold text-gray-500 dark:text-gray-400 shrink-0">{{ $bintang }}★</span>
+                                    <div class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                                        <div class="h-full rounded-full bg-amber-400" style="width: {{ $persen }}%"></div>
+                                    </div>
+                                    <span class="w-8 text-right text-gray-400 dark:text-gray-500">{{ $jumlah }}</span>
+                                </div>
+                            @endfor
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Belum ada ulasan untuk kos ini. Jadilah yang pertama memberi penilaian.</p>
+                    @endif
+                </div>
+
+                {{-- Form ulasan pengguna login --}}
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5 md:col-span-2">
+                    @auth
+                        @if (auth()->user()->hasRole('anak_kos'))
+                            <div x-data="{ nilai: {{ $ratingUlasan }}, hover: 0 }">
+                                <p class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Berikan Ulasan</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Klik bintang lalu tekan Kirim untuk menyimpan ulasanmu.</p>
+                                <div class="mt-2 flex items-center gap-1">
+                                    <template x-for="i in 5" :key="i">
+                                        <button type="button" x-on:mouseenter="hover = i" x-on:mouseleave="hover = 0"
+                                            x-on:click="nilai = i; $wire.set('ratingUlasan', i)"
+                                            class="p-0.5 transition-transform hover:scale-110 focus:outline-none"
+                                            :aria-label="'Beri rating ' + i + ' dari 5'">
+                                            <svg x-show="i <= (hover || nilai)" class="h-6 w-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.367 2.446a1 1 0 00-.363 1.118l1.286 3.958c.3.922-.755 1.688-1.539 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.784.57-1.838-.196-1.539-1.118l1.286-3.958a1 1 0 00-.363-1.118L2.126 9.385c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.958z"/></svg>
+                                            <svg x-show="i > (hover || nilai)" class="h-6 w-6 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.958a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.367 2.446a1 1 0 00-.363 1.118l1.286 3.958c.3.922-.755 1.688-1.539 1.118l-3.367-2.446a1 1 0 00-1.176 0l-3.367 2.446c-.784.57-1.838-.196-1.539-1.118l1.286-3.958a1 1 0 00-.363-1.118L2.126 9.385c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.958z"/></svg>
+                                        </button>
+                                    </template>
+                                    <span x-show="nilai > 0" x-text="nilai + ' dari 5'" class="ml-2 text-xs font-semibold text-gray-700 dark:text-gray-300"></span>
+                                </div>
+                                <textarea wire:model="komentarUlasan" rows="3"
+                                    class="mt-3 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm"
+                                    placeholder="Bagikan pengalamanmu tinggal di kos ini (opsional)"></textarea>
+                                <div class="mt-2 flex items-center justify-end gap-2">
+                                    <x-primary-button wire:click="simpanUlasan" wire:loading.attr="disabled" x-show="nilai > 0" class="text-xs px-3 py-1.5 disabled:opacity-60">
+                                        <span wire:loading.remove wire:target="simpanUlasan">Kirim Ulasan</span>
+                                        <span wire:loading wire:target="simpanUlasan" class="inline-flex items-center gap-1.5">
+                                            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                            Mengirim...
+                                        </span>
+                                    </x-primary-button>
+                                    <span x-show="nilai == 0" class="text-xs text-gray-400 dark:text-gray-500">Pilih bintang dulu untuk mengirim</span>
+                                </div>
+                            </div>
+                        @else
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Hanya pengguna dengan akun <strong>anak kos</strong> yang dapat memberikan ulasan.</p>
+                        @endif
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Silakan <a href="{{ route('login') }}" wire:navigate class="font-semibold text-teal-600 dark:text-teal-400 hover:underline">masuk</a> untuk memberikan ulasan.</p>
+                    @endauth
+
+                    {{-- Daftar ulasan --}}
+                    <div class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
+                        @forelse ($ulasans as $ulasan)
+                            <div class="py-3 first:pt-0 last:pb-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <x-user-avatar :user="$ulasan->user" size="sm" />
+                                        <div>
+                                            <p class="text-xs font-bold text-gray-900 dark:text-gray-100">{{ $ulasan->user->nama }}</p>
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">{{ $ulasan->created_at->locale('id')->diffForHumans() }}</p>
+                                        </div>
+                                    </div>
+                                    <x-star-rating :rating="$ulasan->rating" size="h-3 w-3" />
+                                </div>
+                                @if ($ulasan->komentar)
+                                    <p class="mt-1.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{{ $ulasan->komentar }}</p>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="py-3 text-xs text-gray-400 dark:text-gray-500 text-center">Belum ada ulasan yang ditulis.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     @if ($modalKamarId)
@@ -360,22 +607,73 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
 
                 <form wire:submit="konfirmasiSewa" class="p-5 space-y-4">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 3 bulan ke depan).</p>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Masuk</label>
-                        <input type="date" wire:model="tanggalMasuk" min="{{ today()->toDateString() }}" max="{{ today()->addMonths(3)->toDateString() }}"
-                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
-                        @error('tanggalMasuk') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                    {{-- Step 1: Pilih tanggal --}}
+                    <div wire:key="langkah-1" @if ($langkahSewa !== 1) class="hidden" @endif>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 3 bulan ke depan).</p>
+                        <div class="mt-4">
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Masuk</label>
+                            <input type="date" wire:model="tanggalMasuk" min="{{ today()->toDateString() }}" max="{{ today()->addMonths(3)->toDateString() }}"
+                                class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
+                            @error('tanggalMasuk') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
+                            <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
+                                class="flex-1 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                Batal
+                            </button>
+                            <button type="button" wire:click="lanjutReview" wire:loading.attr="disabled" wire:target="lanjutReview"
+                                class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                Lanjut ke Review
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
-                        <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
-                            class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            Batal
-                        </button>
-                        <button type="submit" wire:loading.attr="disabled" wire:target="konfirmasiSewa"
-                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
-                            Sewa Sekarang
-                        </button>
+
+                    {{-- Step 2: Review ringkasan --}}
+                    <div wire:key="langkah-2" @if ($langkahSewa !== 2) class="hidden" @endif>
+                        <div class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 bg-gray-50 dark:bg-gray-700/30 divide-y divide-gray-100 dark:divide-gray-600 overflow-hidden">
+                            @php
+                                $harga = $kamarModal?->harga_sewa_bulanan ?? 0;
+                                $periode = $kamarModal?->jenis_harga === 'harian' ? 'hari' : 'bulan';
+                            @endphp
+                            <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">Kos</span>
+                                <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">{{ $properti->nama }}</span>
+                            </div>
+                            <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">Kamar</span>
+                                <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">{{ $kamarModal?->nama }} &middot; {{ $kamarModal?->kapasitas }} org</span>
+                            </div>
+                            <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">Harga Sewa</span>
+                                <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">Rp{{ number_format($harga, 0, ',', '.') }}/{{ $periode }}</span>
+                            </div>
+                            <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">Tanggal Masuk</span>
+                                <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">{{ Carbon::parse($tanggalMasuk)->locale('id')->translatedFormat('d F Y') }}</span>
+                            </div>
+                            <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                <span class="text-gray-500 dark:text-gray-400">Sistem Pembayaran</span>
+                                <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">Transfer</span>
+                            </div>
+                        </div>
+
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu. Kamu akan melihat tagihan sewa di dashboard.</p>
+
+                        <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
+                            <button type="button" wire:click="kembaliKeTanggal" wire:loading.attr="disabled"
+                                class="flex-1 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                Kembali
+                            </button>
+                            <button type="submit" wire:loading.attr="disabled" wire:target="konfirmasiSewa"
+                                class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                <span wire:loading.remove wire:target="konfirmasiSewa">Booking Sekarang</span>
+                                <span wire:loading wire:target="konfirmasiSewa" class="inline-flex items-center gap-1.5">
+                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                    Memproses...
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

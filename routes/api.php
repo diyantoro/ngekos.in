@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\KatalogController;
 use App\Http\Controllers\Api\PengaturanController;
+use App\Http\Controllers\Api\PengeluaranController;
 use App\Http\Controllers\Api\PenggunaController;
 use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PropertiManageController;
@@ -118,5 +119,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/pemilik/properti/{propertiId}/kamar/{kamarId}', [PropertiManageController::class, 'updateKamar'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::delete('/pemilik/properti/{propertiId}/kamar/{kamarId}', [PropertiManageController::class, 'destroyKamar'])
+        ->middleware('role:pemilik|admin|super_admin');
+
+    // Pengeluaran operasional kos (pemilik / admin / super admin)
+    Route::get('/pemilik/pengeluaran', [PengeluaranController::class, 'index'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/pemilik/pengeluaran', [PengeluaranController::class, 'store'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/pemilik/pengeluaran/{id}', [PengeluaranController::class, 'handlePengeluaran'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::put('/pemilik/pengeluaran/{id}', [PengeluaranController::class, 'update'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::delete('/pemilik/pengeluaran/{id}', [PengeluaranController::class, 'destroy'])
         ->middleware('role:pemilik|admin|super_admin');
 });

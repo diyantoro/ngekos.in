@@ -41,4 +41,14 @@ class Properti extends Model
     {
         return $this->hasMany(Kamar::class);
     }
+
+    public function peminat(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'properti_favorits', 'properti_id', 'user_id')->withTimestamps();
+    }
+
+    public function ulasans(): HasMany
+    {
+        return $this->hasMany(Ulasan::class);
+    }
 }

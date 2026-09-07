@@ -1,4 +1,4 @@
-@props(['label', 'value', 'icon', 'tone' => 'teal'])
+@props(['label', 'value', 'icon', 'tone' => 'teal', 'hint' => null, 'href' => null])
 
 @php
     $tones = [
@@ -27,12 +27,26 @@
     ];
 @endphp
 
-<div class="card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4">
+@if ($href)
+    <a href="{{ $href }}" wire:navigate class="block card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4 transition cursor-pointer">
+@else
+    <div class="card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4">
+@endif
     <div class="shrink-0 h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br {{ $tones[$tone] }} text-white shadow-lg {{ $shadows[$tone] ?? 'shadow-teal-500/20' }} transition-transform duration-300 group-hover:scale-110">
         {!! $icon !!}
     </div>
     <div class="min-w-0">
-        <p class="truncate text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ $label }}</p>
+        <p class="truncate text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $label }}</p>
         <p class="mt-0.5 text-2xl font-extrabold text-gray-900 dark:text-gray-100">{{ $value }}</p>
+        @if ($hint)
+            <p class="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">{!! $hint !!}</p>
+        @endif
     </div>
+    @if ($href)
+        <svg class="ml-auto h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+    @endif
+@if ($href)
+    </a>
+@else
 </div>
+@endif

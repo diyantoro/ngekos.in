@@ -41,17 +41,17 @@ new class extends Component
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-            {{ __('Update Password') }}
+            Perbarui Password
         </h2>
 
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {{ __('Ensure your account is using a long, random password to stay secure.') }}
+            Pastikan akun Anda menggunakan password yang panjang dan acak agar tetap aman.
         </p>
     </header>
 
     <form wire:submit="updatePassword" class="mt-6 space-y-6">
         <div>
-            <x-input-label for="update_password_current_password" :value="__('Current Password')" />
+            <x-input-label for="update_password_current_password" value="Password Saat Ini" />
             <div x-data="{ show: false }" class="relative mt-1">
                 <x-text-input wire:model="current_password" id="update_password_current_password" name="current_password"
                     x-bind:type="show ? 'text' : 'password'"
@@ -68,7 +68,7 @@ new class extends Component
         </div>
 
         <div>
-            <x-input-label for="update_password_password" :value="__('New Password')" />
+            <x-input-label for="update_password_password" value="Password Baru" />
             <div x-data="{ show: false }" class="relative mt-1">
                 <x-text-input wire:model="password" id="update_password_password" name="password"
                     x-bind:type="show ? 'text' : 'password'"
@@ -85,7 +85,7 @@ new class extends Component
         </div>
 
         <div>
-            <x-input-label for="update_password_password_confirmation" :value="__('Confirm Password')" />
+            <x-input-label for="update_password_password_confirmation" value="Konfirmasi Password" />
             <div x-data="{ show: false }" class="relative mt-1">
                 <x-text-input wire:model="password_confirmation" id="update_password_password_confirmation" name="password_confirmation"
                     x-bind:type="show ? 'text' : 'password'"
@@ -102,10 +102,10 @@ new class extends Component
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <x-primary-button>Simpan</x-primary-button>
 
             <x-action-message class="me-3" on="password-updated">
-                {{ __('Saved.') }}
+                Tersimpan.
             </x-action-message>
         </div>
     </form>

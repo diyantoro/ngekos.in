@@ -2,6 +2,7 @@
 
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
+use App\Models\Properti;
 use App\Models\Tagihan;
 use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Component;
@@ -25,6 +26,19 @@ new class extends Component
     {
         $id = auth()->id();
 
+        $sewaanAktif = Penyewaan::where('anak_kos_id', $id)
+            ->where('status', 'aktif')
+            ->with('properti')
+            ->get();
+
+        $kotaAktif = $sewaanAktif->first()?->properti?->kota;
+
+        $propertiTerpakai = Penyewaan::where('anak_kos_id', $id)
+            ->where('status', 'aktif')
+            ->pluck('properti_id');
+
+        $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
+
         return [
             'penyewaanAktif' => Penyewaan::where('anak_kos_id', $id)->where('status', 'aktif')->count(),
             'tagihanBelumBayar' => Tagihan::where('status', '!=', 'lunas')
@@ -44,6 +58,26 @@ new class extends Component
                 ->orderByDesc('status')
                 ->latest()
                 ->get(),
+            'jumlahFavorit' => $idFavorit->count(),
+            'pesanBelumDibaca' => auth()->user()->pesanBelumDibaca(),
+            'tagihanBerikutnya' => Tagihan::where('status', '!=', 'lunas')
+                ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
+                ->with(['penyewaan.kamar.properti'])
+                ->orderBy('jatuh_tempo')
+                ->first(),
+            'rekomendasi' => Properti::query()
+                ->where('status', 'aktif')
+                ->whereNotIn('id', $propertiTerpakai)
+                ->whereNotIn('id', $idFavorit)
+                ->when($kotaAktif, fn ($q) => $q->where('kota', $kotaAktif))
+                ->withCount([
+                    'kamars as total_kamar',
+                    'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+                ])
+                ->orderByDesc('kamar_terisi')
+                ->limit(4)
+                ->get()
+                ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi),
         ];
     }
 
@@ -187,7 +221,88 @@ new class extends Component
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>' />
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <x-stat-card label="Favorit" :value="$jumlahFavorit" tone="rose"
+                href="{{ route('favorit') }}"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>' />
+            <x-stat-card label="Pesan Belum Dibaca" :value="$pesanBelumDibaca" tone="sky"
+                href="{{ route('chat.index') }}"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.13.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>' />
+        </div>
+
+        @if ($tagihanBerikutnya)
+            <div class="rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-700 dark:to-emerald-700 p-5 text-white shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <span class="shrink-0 h-11 w-11 rounded-2xl bg-white/15 text-white flex items-center justify-center">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </span>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-teal-100">Tagihan Berikutnya</p>
+                            <p class="text-sm font-bold text-white mt-0.5">
+                                {{ $tagihanBerikutnya->periode }} &middot; {{ $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama }}
+                                {{ $tagihanBerikutnya->penyewaan?->kamar ? '- Kamar ' . $tagihanBerikutnya->penyewaan->kamar->nama : '' }}
+                            </p>
+                            <p class="text-xs text-teal-100 mt-0.5">
+                                Jatuh tempo {{ $tagihanBerikutnya->jatuh_tempo?->translatedFormat('d M Y') }}
+                                @if ($tagihanBerikutnya->jatuh_tempo)
+                                    &middot; {{ $tagihanBerikutnya->jatuh_tempo->isPast() ? 'terlambat ' . $tagihanBerikutnya->jatuh_tempo->diffForHumans() : 'sisa ' . $tagihanBerikutnya->jatuh_tempo->diffForHumans() }}
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 text-end">
+                        <p class="text-2xl font-extrabold text-white">Rp{{ number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.') }}</p>
+                        <button wire:click="bayarTagihan({{ $tagihanBerikutnya->id }})" wire:loading.attr="disabled"
+                            class="mt-1.5 inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-white/25 transition">
+                            Bayar Sekarang
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <x-kos-trending />
+
+        @if ($rekomendasi->isNotEmpty())
+            <div>
+                <div class="flex items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Rekomendasi untukmu</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kos lain di area yang sedang kamu tempati</p>
+                    </div>
+                    <a href="{{ route('kos.index') }}" wire:navigate
+                        class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300">
+                        Lihat Semua
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </a>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    @foreach ($rekomendasi as $k)
+                        <a href="{{ route('kos.detail', $k) }}" wire:navigate
+                            class="group rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
+                            <div class="relative h-28 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-500/10 dark:to-cyan-500/10 overflow-hidden">
+                                @if ($k->foto)
+                                    <img src="{{ Storage::url($k->foto) }}" alt="{{ $k->nama }}" class="h-full w-full object-cover">
+                                @else
+                                    <div class="h-full w-full flex items-center justify-center">
+                                        <svg class="h-8 w-8 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                                    </div>
+                                @endif
+                                <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white {{ $k->kamar_terisi < $k->total_kamar ? 'bg-emerald-600' : 'bg-gray-800' }}">
+                                    {{ $k->kamar_terisi < $k->total_kamar ? ($k->total_kamar - $k->kamar_terisi) . ' Kamar' : 'Penuh' }}
+                                </span>
+                            </div>
+                            <div class="p-3">
+                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-teal-700 dark:group-hover:text-teal-300 transition">{{ $k->nama }}</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $k->kota }}{{ $k->alamat ? ', ' . $k->alamat : '' }}</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">

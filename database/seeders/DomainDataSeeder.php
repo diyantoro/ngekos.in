@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Kamar;
 use App\Models\Pembayaran;
+use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
@@ -140,5 +141,46 @@ class DomainDataSeeder extends Seeder
             'jumlah' => 850000,
             'status' => 'menunggu_verifikasi',
         ]);
+
+        $budgetBulananMelati = [
+            ['listrik', 'Tagihan listrik bulanan', 250000],
+            ['internet', 'Langganan WiFi bulanan', 100000],
+            ['air', 'PDAM bulanan', 80000],
+        ];
+        foreach (range(0, 5) as $i) {
+            $tanggal = now()->startOfMonth()->subMonths($i)->addDays(10);
+            foreach ($budgetBulananMelati as [$kategori, $keterangan, $jumlah]) {
+                Pengeluaran::firstOrCreate([
+                    'properti_id' => $melati->id,
+                    'kategori' => $kategori,
+                    'keterangan' => $keterangan.' '.now()->startOfMonth()->subMonths($i)->translatedFormat('F Y'),
+                    'tanggal' => $tanggal,
+                ], [
+                    'jumlah' => $jumlah,
+                    'dibuat_oleh' => $pemilikBudi->id,
+                ]);
+            }
+        }
+
+        Pengeluaran::firstOrCreate([
+            'properti_id' => $melati->id,
+            'kategori' => 'maintenance',
+            'keterangan' => 'Servis AC kamar A2',
+            'tanggal' => now()->startOfMonth()->subMonths(3)->addDays(18),
+        ], ['jumlah' => 150000, 'dibuat_oleh' => $pemilikBudi->id]);
+
+        Pengeluaran::firstOrCreate([
+            'properti_id' => $mawar->id,
+            'kategori' => 'maintenance',
+            'keterangan' => 'Ganti kunci kamar B1',
+            'tanggal' => now()->startOfMonth()->subMonths(2)->addDays(12),
+        ], ['jumlah' => 90000, 'dibuat_oleh' => $pemilikBudi->id]);
+
+        Pengeluaran::firstOrCreate([
+            'properti_id' => $anggrek->id,
+            'kategori' => 'gaji',
+            'keterangan' => 'Gaji pengurus kos bulanan',
+            'tanggal' => now()->startOfMonth()->subMonths(1)->addDays(5),
+        ], ['jumlah' => 500000, 'dibuat_oleh' => $pemilikSiti->id]);
     }
 }

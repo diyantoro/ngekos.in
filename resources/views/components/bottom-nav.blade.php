@@ -1,9 +1,10 @@
 @php
     $isHome = request()->routeIs('home') || request()->routeIs('dashboard*');
 @endphp
-<div class="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200/80 dark:border-gray-800 pb-safe sm:hidden safe-bottom">
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200/80 dark:border-gray-800 sm:hidden safe-bottom">
     <nav class="flex items-center justify-around h-16">
         <a href="{{ route('home') }}" wire:navigate
+           aria-current="{{ $isHome ? 'page' : 'false' }}"
            class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ $isHome ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
             @if ($isHome)
                 <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
@@ -13,6 +14,7 @@
         </a>
 
         <a href="{{ route('kos.index') }}" wire:navigate
+           aria-current="{{ request()->routeIs('kos.*') ? 'page' : 'false' }}"
            class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('kos.*') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
             @if (request()->routeIs('kos.*'))
                 <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
@@ -23,6 +25,7 @@
 
         @auth
             <a href="{{ route('chat.index') }}" wire:navigate
+               aria-current="{{ request()->routeIs('chat.*') ? 'page' : 'false' }}"
                class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('chat.*') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
                 @if (request()->routeIs('chat.*'))
                     <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
@@ -37,6 +40,7 @@
 
             @if (auth()->user()->hasAnyRole(['pemilik', 'admin', 'super_admin']))
                 <a href="{{ route('pemilik.properti') }}" wire:navigate
+                   aria-current="{{ request()->routeIs('pemilik.*') ? 'page' : 'false' }}"
                    class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('pemilik.*') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
                     @if (request()->routeIs('pemilik.*'))
                         <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
@@ -47,6 +51,7 @@
             @endif
 
             <a href="{{ route('pengaturan') }}" wire:navigate
+               aria-current="{{ request()->routeIs('pengaturan') ? 'page' : 'false' }}"
                class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('pengaturan') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
                 @if (request()->routeIs('pengaturan'))
                     <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>

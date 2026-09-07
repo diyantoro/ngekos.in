@@ -108,7 +108,7 @@
                             <span :class="selected.includes('{{ $nama }}') ? 'border-teal-500 bg-teal-50 ring-teal-200 dark:border-teal-500 dark:bg-teal-500/10 dark:ring-teal-500/30' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700'"
                                 class="flex items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-200">
                                 <span :class="selected.includes('{{ $nama }}') ? 'bg-teal-600' : 'bg-gray-100 dark:bg-gray-700'"
-                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200">
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-200">
                                     @if ($png)
                                         <img src="{{ asset('images/fasilitas/' . $png) }}" alt="{{ $nama }}"
                                             class="h-6 w-6 object-contain">
@@ -134,17 +134,17 @@
     <div class="flex flex-wrap gap-2">
         @foreach (array_filter(array_map('trim', explode(',', $fasilitas))) as $f)
             @if (isset($ikonPng[$f]))
-                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
                     <img src="{{ asset('images/fasilitas/' . $ikonPng[$f]) }}" class="h-4 w-4 object-contain" alt="">
                     {{ $f }}
                 </span>
             @elseif (isset($ikonSvg[$f]))
-                <span class="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
                     <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$f] !!}</svg>
                     {{ $f }}
                 </span>
             @else
-                <span class="inline-flex items-center gap-1 rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-200 dark:ring-gray-700">
+                <span class="inline-flex items-center gap-1 rounded-xl bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-200 dark:ring-gray-700">
                     <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {{ $f }}
                 </span>

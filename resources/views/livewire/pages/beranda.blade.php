@@ -35,7 +35,7 @@ new #[Layout('layouts.publik')] class extends Component
             'totalProperti' => Properti::where('status', 'aktif')->count(),
             'totalKamar' => Kamar::where('status', 'tersedia')->count(),
             'propertiList' => $query
-                ->orderByDesc('kamar_tersedia')
+                ->latest('created_at')
                 ->take(6)
                 ->get(),
             'daftarKota' => Properti::where('status', 'aktif')
@@ -293,24 +293,7 @@ new #[Layout('layouts.publik')] class extends Component
 
     <!-- Peta Semua Kos -->
     @if ($markers->isNotEmpty())
-    <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10" x-data="{ tampilkanPeta: false, initPeta() {
-        const el = document.getElementById('peta-kos-beranda');
-        if (!el || this._map) return;
-        if (typeof L === 'undefined') return;
-        const data = @js($markers);
-        const pts = data.map(m => [m.lat, m.lng]);
-        const sum = pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
-        const center = [sum[0] / pts.length, sum[1] / pts.length];
-        this._map = L.map('peta-kos-beranda').setView(center, pts.length <= 5 ? 8 : 6);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(this._map);
-        data.forEach((m) => L.marker([m.lat, m.lng], { title: m.nama })
-            .bindPopup('<strong>' + m.nama + '</strong><br>' + (m.alamat ? m.alamat + ', ' : '') + m.kota)
-            .addTo(this._map));
-        setTimeout(() => this._map.invalidateSize(), 120);
-    } }">
+    <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10" x-data="{ tampilkanPeta: false }">
         <div class="reveal relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6 shadow-sm">
             <div class="absolute -left-10 -top-12 h-32 w-32 rounded-full bg-cyan-100/50 dark:bg-cyan-500/10 blur-3xl"></div>
             <div class="relative flex items-center justify-between gap-3 mb-4">
@@ -323,7 +306,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $markers->count() }} titik lokasi kos aktif</p>
                     </div>
                 </div>
-                <button @click="tampilkanPeta = !tampilkanPeta; if (tampilkanPeta) initPeta()"
+                <button @click="tampilkanPeta = !tampilkanPeta; if (tampilkanPeta) initPetaBeranda()"
                     class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ $markers->count() ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400' }}">
                     <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
@@ -394,4 +377,34 @@ new #[Layout('layouts.publik')] class extends Component
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    @push('scripts')
+        <script>
+            let _mapBeranda = null;
+
+            window.initPetaBeranda = function () {
+                const el = document.getElementById('peta-kos-beranda');
+                if (!el || _mapBeranda) return;
+                if (typeof L === 'undefined') return;
+
+                const data = @js($markers);
+                const pts = data.map(m => [m.lat, m.lng]);
+                const sum = pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
+                const center = [sum[0] / pts.length, sum[1] / pts.length];
+
+                _mapBeranda = L.map('peta-kos-beranda').setView(center, pts.length <= 5 ? 8 : 6);
+
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(_mapBeranda);
+
+                data.forEach((m) => L.marker([m.lat, m.lng], { title: m.nama })
+                    .bindPopup('<strong>' + m.nama + '</strong><br>' + (m.alamat ? m.alamat + ', ' : '') + m.kota)
+                    .addTo(_mapBeranda));
+
+                setTimeout(() => _mapBeranda.invalidateSize(), 120);
+            };
+        </script>
+    @endpush
 </div>

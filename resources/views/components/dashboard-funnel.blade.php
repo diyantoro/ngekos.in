@@ -33,7 +33,7 @@
             <div class="group">
                 <div class="flex items-center justify-between gap-3 mb-1.5">
                     <div class="flex items-center gap-2 min-w-0">
-                        <span class="flex items-center justify-center h-6 w-6 shrink-0 rounded-lg bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-extrabold">{{ $i + 1 }}</span>
+                        <span class="flex items-center justify-center h-6 w-6 shrink-0 rounded-full bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 text-[10px] font-extrabold">{{ $i + 1 }}</span>
                         <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{{ $s['label'] }}</span>
                         @if (! empty($s['sub']))
                             <span class="hidden md:inline text-[10px] text-gray-400 dark:text-gray-500 truncate">{{ $s['sub'] }}</span>

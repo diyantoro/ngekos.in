@@ -19,31 +19,39 @@ class PenyewaanService
 {
     public function sewaKamar(User $user, Kamar $kamar, string $tanggalMasuk): Penyewaan
     {
-        if ($kamar->status !== 'tersedia') {
-            throw new DomainException('Kamar ini sudah terisi dan tidak dapat dipesan.');
-        }
-
         $tanggalLabel = Carbon::parse($tanggalMasuk)->locale('id')->translatedFormat('d F Y');
 
         $penyewaan = null;
 
         DB::transaction(function () use ($user, $kamar, $tanggalMasuk, $tanggalLabel, &$penyewaan) {
-            $kamar->update(['status' => 'terisi']);
+            // Kunci baris kamar (SELECT ... FOR UPDATE) sebelum dicek agar dua
+            // booking bersamaan pada kamar yang sama tidak saling menimpa
+            // (double-booking protection). Transaksi kedua menunggu pemilik lock.
+            $kamarTerkunci = Kamar::with('properti')
+                ->whereKey($kamar->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $kamarTerkunci || $kamarTerkunci->status !== 'tersedia') {
+                throw new DomainException('Kamar ini sudah terisi dan tidak dapat dipesan.');
+            }
+
+            $kamarTerkunci->update(['status' => 'terisi']);
 
             $penyewaan = Penyewaan::create([
                 'anak_kos_id' => $user->id,
-                'kamar_id' => $kamar->id,
-                'properti_id' => $kamar->properti_id,
+                'kamar_id' => $kamarTerkunci->id,
+                'properti_id' => $kamarTerkunci->properti_id,
                 'tanggal_masuk' => $tanggalMasuk,
                 'status' => 'aktif',
             ]);
 
             ChatPesan::create([
-                'properti_id' => $kamar->properti_id,
+                'properti_id' => $kamarTerkunci->properti_id,
                 'anak_kos_id' => $user->id,
                 'pengirim_id' => $user->id,
-                'isi' => 'Saya sudah memesan kamar '.$kamar->nama.' di '.$kamar->properti->nama
-                    .' (Rp'.number_format((float) $kamar->harga_sewa_bulanan, 0, ',', '.').'/bulan)'
+                'isi' => 'Saya sudah memesan kamar '.$kamarTerkunci->nama.' di '.$kamarTerkunci->properti->nama
+                    .' (Rp'.number_format((float) $kamarTerkunci->harga_sewa_bulanan, 0, ',', '.').'/bulan)'
                     .' dan rencana masuk tanggal '.$tanggalLabel.'. Terima kasih.',
             ]);
         });

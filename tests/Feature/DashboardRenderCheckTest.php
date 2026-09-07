@@ -42,7 +42,9 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.pemilik'))
             ->assertOk()
             ->assertSeeVolt('pages.dashboard.pemilik')
-            ->assertSee('Kos Melati');
+            ->assertSee('Kos Melati')
+            ->assertSee('Paket Premium Kos')
+            ->assertSee('Segera hadir');
     }
 
     public function test_admin_dashboard_renders_component_and_can_verify_payment(): void
@@ -96,6 +98,92 @@ class DashboardRenderCheckTest extends TestCase
             ->assertOk()
             ->assertSee('Penyewaan Aktif')
             ->assertSee('Tagihan Belum Bayar');
+    }
+
+    public function test_pemilik_dashboard_menampilkan_rekap_keuangan_dan_okupansi(): void
+    {
+        $user = User::where('email', 'pemilik1@ngekos.test')->first();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.pemilik');
+
+        $component->assertViewHas('okupansiSekarang')
+            ->assertViewHas('kamarTersedia')
+            ->assertViewHas('pengeluaranBulanIni')
+            ->assertViewHas('labaBersihBulanIni')
+            ->assertViewHas('tagihanBelumCount')
+            ->assertViewHas('chartKategori')
+            ->assertViewHas('chartOkupansi')
+            ->assertSet('periode', '6');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.pemilik'))
+            ->assertOk()
+            ->assertSee('Tingkat Okupansi')
+            ->assertSee('Laba Bersih Bulan Ini')
+            ->assertSee('Pengeluaran per Kategori');
+    }
+
+    public function test_super_admin_dashboard_menampilkan_pertumbuhan(): void
+    {
+        $user = User::where('email', 'superadmin.ngekos@gmail.com')->first();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.super-admin');
+
+        $component->assertViewHas('totalPemilik')
+            ->assertViewHas('totalAnakKos')
+            ->assertViewHas('bulanLabels')
+            ->assertViewHas('chartGrowthTotal')
+            ->assertViewHas('chartGrowthProperti')
+            ->assertViewHas('chartGrowthPenyewaan')
+            ->assertSet('periode', '6');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.super-admin'))
+            ->assertOk()
+            ->assertSee('Pertumbuhan Pengguna')
+            ->assertSee('Pertumbuhan Bisnis');
+    }
+
+    public function test_admin_dashboard_menampilkan_pertumbuhan_kelolaan(): void
+    {
+        $user = User::where('email', 'admin.ngekos@gmail.com')->first();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.admin');
+
+        $component->assertViewHas('totalKamar')
+            ->assertViewHas('kamarTerisi')
+            ->assertViewHas('tagihanBelum')
+            ->assertViewHas('statusProperti')
+            ->assertViewHas('bulanLabels')
+            ->assertViewHas('chartGrowthProperti')
+            ->assertViewHas('chartGrowthPenyewaan')
+            ->assertViewHas('chartGrowthPembayaran')
+            ->assertSet('periode', '6');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.admin'))
+            ->assertOk()
+            ->assertSee('Total Kamar Kelolaan')
+            ->assertSee('Pertumbuhan Kelolaan')
+            ->assertSee('Transaksi Terverifikasi');
+    }
+
+    public function test_anak_kos_dashboard_menampilkan_favorit_pesan_dan_rekomendasi(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->first();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
+
+        $component->assertViewHas('jumlahFavorit')
+            ->assertViewHas('pesanBelumDibaca')
+            ->assertViewHas('tagihanBerikutnya')
+            ->assertViewHas('rekomendasi');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.anak-kos'))
+            ->assertOk()
+            ->assertSee('Pesan Belum Dibaca')
+            ->assertSee('Rekomendasi untukmu');
     }
 
     public function test_dashboard_route_blocked_for_wrong_role(): void

@@ -91,7 +91,7 @@ new class extends Component
 }; ?>
 
 <div x-data="{ scroll() { $nextTick(() => { let el = document.getElementById('chat-riwayat'); if (el) el.scrollTop = el.scrollHeight; }); } }"
-     x-init="$wire.$watch('percakapan', () => scroll())" class="fixed bottom-5 right-5 z-50 {{ $tampil ? '' : 'hidden' }}">
+     x-init="$wire.$watch('percakapan', () => scroll())" class="fixed right-5 z-50 bottom-24 sm:bottom-5 {{ $tampil ? '' : 'hidden' }}">
     <!-- Tombol chat -->
     <button type="button" wire:click="$toggle('terbuka')"
             class="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 via-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-300/60 ring-2 ring-white/60 hover:scale-105 hover:shadow-xl hover:shadow-emerald-300/70 transition"

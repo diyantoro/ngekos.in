@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PemilikRekapExportController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -51,6 +52,17 @@ Volt::route('pemilik/properti/{properti}/ubah', 'pages.pemilik.properti-form')
 Volt::route('pemilik/properti/{properti}/kamar', 'pages.pemilik.kamar')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
     ->name('pemilik.kamar');
+Volt::route('pemilik/pengeluaran', 'pages.pemilik.pengeluaran')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.pengeluaran');
+
+// Ekspor rekap bulanan pemilik (PDF & Excel).
+Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
+    Route::get('pemilik/rekap/pdf', [PemilikRekapExportController::class, 'pdf'])
+        ->name('pemilik.rekap.pdf');
+    Route::get('pemilik/rekap/excel', [PemilikRekapExportController::class, 'excel'])
+        ->name('pemilik.rekap.excel');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Entry point: arahkan ke dashboard sesuai role.
@@ -74,6 +86,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Volt::route('pengaturan', 'pages.pengaturan')
     ->middleware(['auth', 'verified'])
     ->name('pengaturan');
+
+// Daftar kos favorit (khusus anak kos).
+Volt::route('favorit', 'pages.favorit')
+    ->middleware(['auth', 'verified', 'role:anak_kos'])
+    ->name('favorit');
 
 // Halaman profile lama diarahkan ke pengaturan agar tautan lama tetap jalan.
 Route::redirect('profile', '/pengaturan')

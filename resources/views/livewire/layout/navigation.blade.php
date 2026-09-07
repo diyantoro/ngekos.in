@@ -34,11 +34,20 @@ new class extends Component
         $user = auth()->user();
 
         if ($user->hasAnyRole(['anak_kos', 'pemilik'])) {
+            $belumDibaca = $user->pesanBelumDibaca();
             $links[] = [
                 'label' => 'Pesan', 'route' => 'chat.index', 'active' => 'chat.*',
                 'routeName' => route('chat.index', absolute: false),
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />',
-                'badge' => fn () => $user->pesanBelumDibaca(),
+                'belum_dibaca' => $belumDibaca,
+            ];
+        }
+
+        if ($user->hasRole('anak_kos')) {
+            $links[] = [
+                'label' => 'Kos Favorit', 'route' => 'favorit', 'active' => 'favorit',
+                'routeName' => route('favorit', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />',
             ];
         }
 
@@ -47,6 +56,14 @@ new class extends Component
                 'label' => 'Kelola Kos', 'route' => 'pemilik.properti', 'active' => 'pemilik.properti*',
                 'routeName' => route('pemilik.properti', absolute: false),
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" />',
+            ];
+        }
+
+        if ($user->hasAnyRole(['pemilik', 'admin', 'super_admin'])) {
+            $links[] = [
+                'label' => 'Pengeluaran', 'route' => 'pemilik.pengeluaran', 'active' => 'pemilik.pengeluaran',
+                'routeName' => route('pemilik.pengeluaran', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v1.5A2.25 2.25 0 006 21zm12-8.25v-6.5A2.25 2.25 0 0015.75 4H8.25A2.25 2.25 0 006 6.25v6.5m18 0h-18" />',
             ];
         }
 
@@ -96,9 +113,9 @@ new class extends Component
                 <x-sidebar-link :href="$link['routeName']" :active="request()->routeIs($link['active'])" wire:navigate>
                     <svg class="h-5 w-5 shrink-0 transition-transform duration-200 {{ request()->routeIs($link['active']) ? 'scale-110' : '' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $link['icon'] !!}</svg>
                     <span class="flex-1 truncate">{{ $link['label'] }}</span>
-                    @if (isset($link['badge']) && ($link['badge'])() > 0)
+                    @if (isset($link['belum_dibaca']) && $link['belum_dibaca'] > 0)
                         <span class="ms-auto inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[10px] font-bold text-white shadow-sm shadow-rose-500/20 animate-bounce-gentle">
-                            {{ ($link['badge'])() > 9 ? '9+' : ($link['badge'])() }}
+                            {{ $link['belum_dibaca'] > 9 ? '9+' : $link['belum_dibaca'] }}
                         </span>
                     @endif
                 </x-sidebar-link>
@@ -143,7 +160,7 @@ new class extends Component
                 </x-dropdown-link>
                 <button wire:click="logout" class="w-full text-start">
                     <x-dropdown-link>
-                        {{ __('Log Out') }}
+                        Keluar
                     </x-dropdown-link>
                 </button>
             </div>
@@ -187,9 +204,9 @@ new class extends Component
                             <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $link['icon'] !!}</svg>
                             <span>{{ $link['label'] }}</span>
                         </span>
-                        @if (isset($link['badge']) && ($link['badge'])() > 0)
+                        @if (isset($link['belum_dibaca']) && $link['belum_dibaca'] > 0)
                             <span class="ms-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                                {{ ($link['badge'])() > 9 ? '9+' : ($link['badge'])() }}
+                                {{ $link['belum_dibaca'] > 9 ? '9+' : $link['belum_dibaca'] }}
                             </span>
                         @endif
                     </x-responsive-nav-link>
@@ -207,7 +224,7 @@ new class extends Component
                 <div class="mt-3 px-4 space-y-1">
                     <button wire:click="logout" class="w-full text-start">
                         <x-responsive-nav-link>
-                            {{ __('Log Out') }}
+                            Keluar
                         </x-responsive-nav-link>
                     </button>
                 </div>

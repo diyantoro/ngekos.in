@@ -9,7 +9,11 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         return [
-            'pesans' => PesanBantuan::where('user_id', auth()->id())->latest()->get(),
+            'pesans' => PesanBantuan::with('pembalas')
+                ->where('user_id', auth()->id())
+                ->latest()
+                ->limit(100)
+                ->get(),
         ];
     }
 }; ?>

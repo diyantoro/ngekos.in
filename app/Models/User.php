@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,6 +19,8 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
+
+    private ?int $pesanBelumDibacaCache = null;
 
     /**
      * Get the attributes that should be cast.
@@ -74,6 +77,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Properti yang ditandai (favorit) user ini.
+     */
+    public function favorits(): BelongsToMany
+    {
+        return $this->belongsToMany(Properti::class, 'properti_favorits', 'user_id', 'properti_id')->withTimestamps();
+    }
+
+    /**
+     * Ulasan yang ditulis user ini.
+     */
+    public function ulasans(): HasMany
+    {
+        return $this->hasMany(Ulasan::class);
+    }
+
+    /**
      * Token perangkat (FCM) untuk notifikasi push.
      */
     public function deviceTokens(): HasMany
@@ -87,7 +106,7 @@ class User extends Authenticatable
      */
     public function pesanBelumDibaca(): int
     {
-        return ChatPesan::query()
+        return $this->pesanBelumDibacaCache ??= ChatPesan::query()
             ->where('pengirim_id', '!=', $this->id)
             ->whereNull('dibaca_pada')
             ->where(function ($q) {

@@ -64,7 +64,7 @@ new #[Layout('layouts.guest')] class extends Component
             </a>
 
             <x-primary-button>
-                {{ __('Email Password Reset Link') }}
+                Kirim Tautan Reset
             </x-primary-button>
         </div>
     </form>
