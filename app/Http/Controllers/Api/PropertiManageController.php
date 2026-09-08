@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\User;
+use App\Support\FacilityHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -173,7 +174,9 @@ class PropertiManageController extends Controller
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
+            'harga_sewa_harian' => 'nullable|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
+            'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
         ]);
@@ -183,7 +186,9 @@ class PropertiManageController extends Controller
             'nama' => $validated['nama'],
             'kapasitas' => $validated['kapasitas'],
             'harga_sewa_bulanan' => $validated['harga_sewa_bulanan'],
+            'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
             'jenis_harga' => $validated['jenis_harga'],
+            'harga_asli' => $validated['harga_asli'] ?? null,
             'status' => $validated['status'],
         ];
 
@@ -217,7 +222,9 @@ class PropertiManageController extends Controller
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
+            'harga_sewa_harian' => 'nullable|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
+            'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
         ]);
@@ -226,7 +233,9 @@ class PropertiManageController extends Controller
             'nama' => $validated['nama'],
             'kapasitas' => $validated['kapasitas'],
             'harga_sewa_bulanan' => $validated['harga_sewa_bulanan'],
+            'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
             'jenis_harga' => $validated['jenis_harga'],
+            'harga_asli' => $validated['harga_asli'] ?? null,
             'status' => $validated['status'],
         ];
 
@@ -288,6 +297,8 @@ class PropertiManageController extends Controller
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
             'harga' => 'nullable|numeric|min:0',
+            'harga_harian' => 'nullable|numeric|min:0',
+            'harga_asli' => 'nullable|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
             'status' => 'required|in:aktif,nonaktif',
             'foto' => 'nullable|image|max:2048',
@@ -307,11 +318,13 @@ class PropertiManageController extends Controller
             'aturan' => $validated['aturan'] ?? null,
             'denda_per_hari' => $validated['denda_per_hari'] ?? null,
             'harga' => $validated['harga'] ?? null,
+            'harga_harian' => $validated['harga_harian'] ?? null,
+            'harga_asli' => $validated['harga_asli'] ?? null,
             'jenis_harga' => $validated['jenis_harga'],
         ];
 
         if (! blank($validated['fasilitas'] ?? null)) {
-            $data['fasilitas'] = \App\Support\FacilityHelper::normalizeString($validated['fasilitas']);
+            $data['fasilitas'] = FacilityHelper::normalizeString($validated['fasilitas']);
         } else {
             $data['fasilitas'] = null;
         }
@@ -337,6 +350,8 @@ class PropertiManageController extends Controller
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
             'harga' => $p->harga !== null ? (float) $p->harga : null,
+            'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
+            'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
             'foto' => $p->foto ? '/storage/'.$p->foto : null,
@@ -353,7 +368,9 @@ class PropertiManageController extends Controller
             'nama' => $k->nama,
             'kapasitas' => (int) $k->kapasitas,
             'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
+            'harga_sewa_harian' => $k->harga_sewa_harian !== null ? (float) $k->harga_sewa_harian : null,
             'jenis_harga' => $k->jenis_harga,
+            'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
             'status' => $k->status,
             'foto' => $k->foto ? '/storage/'.$k->foto : null,
         ];

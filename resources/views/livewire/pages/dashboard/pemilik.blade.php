@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChatPesan;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Pengeluaran;
@@ -152,6 +153,13 @@ new class extends Component
             ->limit(6)
             ->get();
 
+        $pembayaranMenunggu = Pembayaran::where('status', 'menunggu_verifikasi')
+            ->whereHas('tagihan.penyewaan.properti', $scope)
+            ->with(['anakKos', 'tagihan.penyewaan.kamar', 'tagihan.penyewaan.properti'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return [
             'totalProperti' => Properti::where('pemilik_id', $id)->count(),
             'totalKamar' => $totalKamar,
@@ -172,6 +180,8 @@ new class extends Component
             'tagihanTelat' => $tagihanTelat,
             'tagihanBelumList' => $tagihanBelumList,
             'pembayaranTerbaru' => $pembayaranTerbaru,
+            'pembayaranMenunggu' => $pembayaranMenunggu,
+            'pembayaranMenungguCount' => $pembayaranMenunggu->count(),
             'propertis' => Properti::where('pemilik_id', $id)
                 ->with('kamars')
                 ->withCount(['kamars', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
@@ -229,6 +239,41 @@ new class extends Component
             : '';
 
         $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil. Kamar kembali tersedia.{$catatan}";
+    }
+
+    public function verifikasiPembayaran(int $pembayaranId): void
+    {
+        $pembayaran = Pembayaran::where('id', $pembayaranId)
+            ->where('status', 'menunggu_verifikasi')
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', auth()->id()))
+            ->with('anakKos', 'tagihan')
+            ->first();
+
+        if (! $pembayaran) {
+            $this->galat = 'Pembayaran tidak ditemukan atau sudah diproses.';
+
+            return;
+        }
+
+        $pembayaran->update([
+            'status' => 'diverifikasi',
+            'diverifikasi_oleh' => auth()->id(),
+            'verified_at' => now(),
+        ]);
+
+        $tagihan = $pembayaran->tagihan;
+        $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
+
+        if ($total >= $tagihan->jumlah + $tagihan->denda) {
+            $tagihan->update(['status' => 'lunas']);
+        }
+
+        ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, auth()->id());
+
+        $nama = $pembayaran->anakKos?->nama ?? 'Penyewa';
+
+        $this->pesan = "Pembayaran {$nama} sebesar Rp".number_format((float) $pembayaran->jumlah, 0, ',', '.')
+            ." telah diverifikasi.";
     }
 }; ?>
 
@@ -416,6 +461,38 @@ new class extends Component
                 </div>
             </div>
         </div>
+
+        @if ($pembayaranMenungguCount > 0)
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Pembayaran Menunggu Verifikasi</h3>
+                    <span class="text-xs font-medium text-amber-600 dark:text-amber-400">{{ $pembayaranMenungguCount }} item</span>
+                </div>
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @forelse ($pembayaranMenunggu as $pembayaran)
+                        <div class="px-5 py-3.5 flex items-center gap-3">
+                            <div class="h-9 w-9 shrink-0 rounded-full bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 flex items-center justify-center">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $pembayaran->anakKos?->nama ?? 'Penyewa' }} · {{ $pembayaran->tagihan->penyewaan->kamar?->nama }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $pembayaran->tagihan->penyewaan->properti?->nama }} · {{ $pembayaran->tagihan->periode }} · {{ $pembayaran->labelMetode() }}</p>
+                            </div>
+                            <div class="text-end shrink-0">
+                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</p>
+                                <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:confirm="Verifikasi pembayaran ini?"
+                                    class="mt-1 inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    Verifikasi
+                                </button>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Tidak ada pembayaran menunggu verifikasi.</p>
+                    @endforelse
+                </div>
+            </div>
+        @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">

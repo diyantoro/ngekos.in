@@ -37,10 +37,16 @@ class ProsesTagihan extends Command
     /**
      * Pastikan setiap bulan sejak tanggal masuk punya satu tagihan
      * (periode bulan kalender, jatuh tempo akhir bulan).
+     * Penyewaan harian (tanggal_keluar sudah terisi & ditagih sekaligus saat
+     * booking) dilewati agar tagihannya tidak dobel dibuat.
      */
     private function buatTagihanKurang(Penyewaan $sewaan, Carbon $hariIni): int
     {
         if (! $sewaan->kamar) {
+            return 0;
+        }
+
+        if ($sewaan->tanggal_keluar !== null) {
             return 0;
         }
 

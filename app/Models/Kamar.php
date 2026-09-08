@@ -11,13 +11,15 @@ class Kamar extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'jenis_harga', 'status', 'foto',
+        'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
     ];
 
     protected function casts(): array
     {
         return [
             'harga_sewa_bulanan' => 'decimal:2',
+            'harga_sewa_harian' => 'decimal:2',
+            'harga_asli' => 'decimal:2',
         ];
     }
 

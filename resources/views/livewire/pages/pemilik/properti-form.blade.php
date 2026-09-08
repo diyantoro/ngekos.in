@@ -45,6 +45,12 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|numeric|min:0')]
     public ?string $harga = null;
 
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $harga_harian = null;
+
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $harga_asli = null;
+
     #[Validate('required|in:bulanan,harian')]
     public string $jenis_harga = 'bulanan';
 
@@ -84,6 +90,8 @@ new #[Layout('layouts.app')] class extends Component
             $this->aturan = $this->properti->aturan;
             $this->denda_per_hari = $this->properti->denda_per_hari;
             $this->harga = $this->properti->harga;
+            $this->harga_harian = $this->properti->harga_harian;
+            $this->harga_asli = $this->properti->harga_asli;
             $this->jenis_harga = $this->properti->jenis_harga ?? 'bulanan';
             $this->status = $this->properti->status;
         }
@@ -128,6 +136,8 @@ new #[Layout('layouts.app')] class extends Component
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
             'harga' => 'nullable|numeric|min:0',
+            'harga_harian' => 'nullable|numeric|min:0',
+            'harga_asli' => 'nullable|numeric|min:0',
             'jenis_harga' => 'required|in:bulanan,harian',
             'status' => 'required|in:aktif,nonaktif',
         ]);
@@ -147,6 +157,8 @@ new #[Layout('layouts.app')] class extends Component
             'aturan' => $this->aturan,
             'denda_per_hari' => $this->denda_per_hari,
             'harga' => $this->harga,
+            'harga_harian' => $this->harga_harian,
+            'harga_asli' => $this->harga_asli,
             'jenis_harga' => $this->jenis_harga,
             'status' => $this->status,
         ];
@@ -172,7 +184,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function normalizeKosong(): void
     {
-        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga'] as $field) {
+        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga', 'harga_harian', 'harga_asli'] as $field) {
             if ($this->{$field} === '') {
                 $this->{$field} = null;
             }
@@ -367,14 +379,29 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
                 </div>
             </div>
-            <div>
-                <button type="button" wire:click="ambilLokasiSaya" class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
+
+            @php
+                $titikAwal = \App\Support\Koordinat::titik($kota, $latitude, $longitude) ?? [-6.9175, 107.6191];
+            @endphp
+
+            <div id="peta-properti-form"
+                wire:ignore
+                data-lat="{{ $latitude }}"
+                data-lng="{{ $longitude }}"
+                data-default-lat="{{ $titikAwal[0] }}"
+                data-default-lng="{{ $titikAwal[1] }}"
+                class="mt-3 h-72 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
+
+            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+                <button type="button" id="peta-cari-alamat" class="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
+                    Cari dari Alamat
+                </button>
+                <button type="button" wire:click="ambilLokasiSaya" class="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     Gunakan lokasi saya saat ini
                 </button>
-                @if ($latitude && $longitude)
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Koordinat: {{ $latitude }}, {{ $longitude }}</p>
-                @endif
+                <span id="peta-status">Klik pada peta untuk menandai lokasi kos.</span>
             </div>
 
             <div>
@@ -395,9 +422,19 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('jenis_harga')" class="mt-2" />
                 </div>
                 <div>
-                    <x-input-label for="harga" value="Harga (Rp)" />
+                    <x-input-label for="harga" value="Harga Sewa (Rp)" />
                     <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 750000" />
                     <x-input-error :messages="$errors->get('harga')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="harga_harian" value="Harga Harian (Rp) — opsional" />
+                    <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 40000" />
+                    <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp)" />
+                    <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 900000 (dicoret)" />
+                    <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
                 </div>
             </div>
 
@@ -441,21 +478,205 @@ new #[Layout('layouts.app')] class extends Component
 
 @script
 <script>
-    Livewire.on('minta-lokasi', () => {
-        function gunakan(wireId) {
-            if (!navigator.geolocation) {
-                alert('Geolocation tidak didukung oleh browser Anda.');
+    let petaForm = null;
+    let markerForm = null;
+    let statusPeta = null;
+    let geocoderForm = null;
+    let modePeta = '';
+
+    function geocoderFormDapat() {
+        if (!geocoderForm) geocoderForm = new google.maps.Geocoder();
+        return geocoderForm;
+    }
+
+    function tulisStatusForm(t) {
+        if (statusPeta) statusPeta.textContent = t;
+    }
+
+    function setKoordinatForm(lat, lng) {
+        const latStr = Number(lat.toFixed(7));
+        const lngStr = Number(lng.toFixed(7));
+
+        const el = document.getElementById('peta-properti-form');
+        if (el) { el.dataset.lat = lat; el.dataset.lng = lng; }
+
+        if (modePeta === 'js') {
+            if (markerForm) markerForm.setPosition({ lat: latStr, lng: lngStr });
+            if (petaForm) petaForm.panTo({ lat: latStr, lng: lngStr });
+        } else if (modePeta === 'embed' && typeof window.pasangGoogleEmbed === 'function') {
+            window.pasangGoogleEmbed(el, latStr, lngStr, 15);
+        }
+
+        $wire.set('latitude', latStr);
+        $wire.set('longitude', lngStr);
+        tulisStatusForm('Koordinat: ' + lat.toFixed(5) + ', ' + lng.toFixed(5));
+    }
+
+    function alamatSaatIni() {
+        const input = document.getElementById('alamat');
+        return input ? input.value.trim() : ($wire.alamat || '').trim();
+    }
+
+    function isiAlamatDariPeta(lat, lng) {
+        if (alamatSaatIni() !== '') return;
+
+        if (typeof google !== 'undefined' && google.maps) {
+            geocoderFormDapat().geocode({ location: { lat, lng } }, (hasil, status) => {
+                if (status === 'OK' && hasil && hasil.length && alamatSaatIni() === '') {
+                    $wire.set('alamat', hasil[0].formatted_address);
+                }
+            });
+            return;
+        }
+
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=id&lat=' + lat + '&lon=' + lng)
+            .then(r => r.json())
+            .then(j => {
+                if (j && j.display_name && alamatSaatIni() === '') {
+                    $wire.set('alamat', j.display_name);
+                }
+            })
+            .catch(() => {});
+    }
+
+    function pasangCariAlamatForm() {
+        const tombol = document.getElementById('peta-cari-alamat');
+        if (!tombol) return;
+
+        tombol.addEventListener('click', () => {
+            const alamat = alamatSaatIni();
+            const kota = (document.getElementById('kota')?.value || '').trim();
+            const q = [alamat, kota].filter(Boolean).join(', ');
+
+            if (!q) {
+                tulisStatusForm('Isi alamat atau kota terlebih dahulu.');
                 return;
             }
-            navigator.geolocation.getCurrentPosition((pos) => {
-                const comp = Livewire.find(wireId);
-                comp.set('latitude', Number(pos.coords.latitude.toFixed(7)));
-                comp.set('longitude', Number(pos.coords.longitude.toFixed(7)));
-            }, () => alert('Gagal mendapatkan lokasi. Pastikan izin lokasi diberikan.'));
+
+            tulisStatusForm('Mencari alamat…');
+
+            if (typeof google !== 'undefined' && google.maps) {
+                geocoderFormDapat().geocode({ address: q }, (hasil, status) => {
+                    if (status === 'OK' && hasil && hasil.length) {
+                        const pos = hasil[0].geometry.location;
+                        setKoordinatForm(pos.lat(), pos.lng());
+                        if (alamatSaatIni() === '') {
+                            $wire.set('alamat', hasil[0].formatted_address);
+                        }
+                        tulisStatusForm('Lokasi ditemukan.');
+                    } else {
+                        tulisStatusForm('Lokasi tidak ditemukan. Coba perbaiki alamat.');
+                    }
+                });
+                return;
+            }
+
+            fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&accept-language=id&limit=1&q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(hasil => {
+                    if (!hasil || !hasil.length) {
+                        tulisStatusForm('Lokasi tidak ditemukan. Coba perbaiki alamat.');
+                        return;
+                    }
+                    const hit = hasil[0];
+                    setKoordinatForm(parseFloat(hit.lat), parseFloat(hit.lon));
+                    if (alamatSaatIni() === '') {
+                        $wire.set('alamat', hit.display_name);
+                    }
+                    tulisStatusForm('Lokasi ditemukan.');
+                })
+                .catch(() => tulisStatusForm('Gagal mencari alamat. Coba lagi.'));
+        });
+    }
+
+    function cariDariKoordinatKiri() {
+        if (!navigator.geolocation) {
+            tulisStatusForm('Geolocation tidak didukung oleh browser Anda.');
+            return;
         }
-        const el = document.querySelector('[wire\\:id]');
-        el && gunakan(el.getAttribute('wire:id'));
-    });
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            setKoordinatForm(pos.coords.latitude, pos.coords.longitude);
+            isiAlamatDariPeta(pos.coords.latitude, pos.coords.longitude);
+        }, () => tulisStatusForm('Gagal mendapatkan lokasi. Pastikan izin lokasi diberikan.'));
+    }
+
+    function pasangToggleLokasiForm() {
+        if (typeof Livewire === 'undefined') return;
+        Livewire.on('minta-lokasi', cariDariKoordinatKiri);
+    }
+
+    function koordinatAwalForm() {
+        const el = document.getElementById('peta-properti-form');
+        const lat = parseFloat(el?.dataset.lat);
+        const lng = parseFloat(el?.dataset.lng);
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) return { lat, lng };
+        return {
+            lat: parseFloat(el?.dataset['defaultLat']),
+            lng: parseFloat(el?.dataset['defaultLng']),
+        };
+    }
+
+    function initPetaForm() {
+        const el = document.getElementById('peta-properti-form');
+        if (!el || el.dataset.terpasang) return;
+        el.dataset.terpasang = '1';
+
+        statusPeta = document.getElementById('peta-status');
+
+        const awal = koordinatAwalForm();
+        if (Number.isNaN(awal.lat) || Number.isNaN(awal.lng)) {
+            tulisStatusForm('Koordinat belum diketahui.');
+            return;
+        }
+
+        if (typeof google === 'undefined' || !google.maps) {
+            modePeta = 'embed';
+            if (typeof window.pasangGoogleEmbed === 'function') {
+                window.pasangGoogleEmbed(el, awal.lat, awal.lng, 15);
+                tulisStatusForm("Peta Google (pratinjau tanpa API key). Untuk menandai titik, isi alamat lalu tekan 'Cari dari Alamat', atau isi Latitude/Longitude.");
+            } else {
+                el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta belum dikonfigurasi.</div>';
+            }
+            pasangCariAlamatForm();
+            pasangToggleLokasiForm();
+            return;
+        }
+
+        modePeta = 'js';
+        petaForm = new google.maps.Map(el, {
+            center: awal,
+            zoom: Number.isNaN(parseFloat(el.dataset.lat)) ? 12 : 16,
+            mapTypeId: 'roadmap',
+        });
+
+        markerForm = new google.maps.Marker({
+            position: awal,
+            map: petaForm,
+            draggable: true,
+            title: 'Geser untuk memindahkan lokasi',
+        });
+
+        markerForm.addListener('dragend', () => {
+            const p = markerForm.getPosition();
+            setKoordinatForm(p.lat(), p.lng());
+            isiAlamatDariPeta(p.lat(), p.lng());
+        });
+
+        petaForm.addListener('click', (e) => {
+            setKoordinatForm(e.latLng.lat(), e.latLng.lng());
+            isiAlamatDariPeta(e.latLng.lat(), e.latLng.lng());
+        });
+
+        pasangCariAlamatForm();
+        pasangToggleLokasiForm();
+    }
+
+    if (typeof window.loadNgekosMaps === 'function') {
+        window.loadNgekosMaps(initPetaForm);
+    } else {
+        initPetaForm();
+    }
 </script>
 @endscript
 

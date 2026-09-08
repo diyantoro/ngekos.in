@@ -74,7 +74,7 @@
                 <div class="w-full max-w-md animate-fade-in">
                     <a href="/" wire:navigate class="lg:hidden flex items-center justify-center gap-2.5 mb-8 group">
                         <x-application-logo class="h-12 w-12 transition-transform duration-300 group-hover:scale-110" />
-                        <span class="text-2xl font-extrabold text-gray-800 dark:text-gray-100">Ngekos<span class="gradient-text">.in</span></span>
+                        <span class="text-2xl font-extrabold text-gray-900 dark:text-gray-100">Ngekos<span class="gradient-text">.in</span></span>
                     </a>
 
                     <button @click="$store.theme.toggle()" type="button" aria-label="Ganti tema"

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
+use App\Models\Tagihan;
 use App\Models\User;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -43,6 +45,7 @@ class DashboardRenderCheckTest extends TestCase
             ->assertOk()
             ->assertSeeVolt('pages.dashboard.pemilik')
             ->assertSee('Kos Melati')
+            ->assertSee('Pembayaran Menunggu Verifikasi')
             ->assertSee('Paket Premium Kos')
             ->assertSee('Segera hadir');
     }
@@ -98,6 +101,66 @@ class DashboardRenderCheckTest extends TestCase
             ->assertOk()
             ->assertSee('Penyewaan Aktif')
             ->assertSee('Tagihan Belum Bayar');
+    }
+
+    public function test_anak_kos_bisa_bayar_tunai_tanpa_bukti(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->first();
+        $tagihan = Tagihan::where('status', '!=', 'lunas')
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $user->id))
+            ->firstOrFail();
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
+        $component->call('bayarTagihan', $tagihan->id)
+            ->assertSet('modalBayarId', $tagihan->id)
+            ->assertSet('metodeBayar', 'transfer');
+
+        $component->call('ubahMetodeBayar', 'cash')
+            ->assertSet('metodeBayar', 'cash')
+            ->call('konfirmasiBayar')
+            ->assertHasNoErrors()
+            ->assertSet('modalBayarId', null)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'tunai'));
+
+        $pembayaran = Pembayaran::where('tagihan_id', $tagihan->id)->firstOrFail();
+        $this->assertSame('cash', $pembayaran->metode);
+        $this->assertNull($pembayaran->bukti);
+        $this->assertSame('menunggu_verifikasi', $pembayaran->status);
+
+        $chat = ChatPesan::where('properti_id', $tagihan->penyewaan->properti_id)
+            ->where('anak_kos_id', $user->id)
+            ->where('pengirim_id', $user->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($chat, 'Pemilik harus mendapat chat notifikasi pembayaran.');
+        $this->assertStringContainsString('Mohon diverifikasi', $chat->isi);
+    }
+
+    public function test_pemilik_bisa_verifikasi_pembayaran_dan_membalas_chat(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
+        $anakId = $pembayaran->anak_kos_id;
+
+        $component = Volt::actingAs($pemilik)->test('pages.dashboard.pemilik');
+        $component->assertViewHas('pembayaranMenunggu')
+            ->call('verifikasiPembayaran', $pembayaran->id)
+            ->assertHasNoErrors()
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'diverifikasi'));
+
+        $pembayaran->refresh();
+        $this->assertSame('diverifikasi', $pembayaran->status);
+        $this->assertSame($pemilik->id, $pembayaran->diverifikasi_oleh);
+
+        $pembayaran->tagihan->refresh();
+        $this->assertSame('lunas', $pembayaran->tagihan->status);
+
+        $chat = ChatPesan::where('anak_kos_id', $anakId)
+            ->where('pengirim_id', $pemilik->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($chat, 'Anak kos harus mendapat chat balasan verifikasi.');
+        $this->assertStringContainsString('telah saya verifikasi', $chat->isi);
     }
 
     public function test_pemilik_dashboard_menampilkan_rekap_keuangan_dan_okupansi(): void

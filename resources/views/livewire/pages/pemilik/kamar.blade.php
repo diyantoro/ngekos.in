@@ -27,6 +27,12 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|numeric|min:0')]
     public string $harga = '';
 
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $harga_harian = null;
+
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $harga_asli = null;
+
     #[Validate('required|in:bulanan,harian')]
     public string $jenis_harga = 'bulanan';
 
@@ -64,6 +70,20 @@ new #[Layout('layouts.app')] class extends Component
         unset($data['fotoBaru']);
         $data['harga_sewa_bulanan'] = $data['harga'];
         unset($data['harga']);
+
+        if ($this->harga_harian === '' || $this->harga_harian === null) {
+            $data['harga_sewa_harian'] = null;
+        } else {
+            $data['harga_sewa_harian'] = $this->harga_harian;
+        }
+        unset($data['harga_harian']);
+
+        if ($this->harga_asli === '' || $this->harga_asli === null) {
+            $data['harga_asli'] = null;
+        } else {
+            $data['harga_asli'] = $this->harga_asli;
+        }
+        unset($data['harga_asli']);
 
         if ($this->fotoBaru) {
             $data['foto'] = $this->fotoBaru->store('kamar', 'public');
@@ -104,6 +124,8 @@ new #[Layout('layouts.app')] class extends Component
         $this->nama = $kamar->nama;
         $this->kapasitas = (int) $kamar->kapasitas;
         $this->harga = $kamar->harga_sewa_bulanan;
+        $this->harga_harian = $kamar->harga_sewa_harian ?? null;
+        $this->harga_asli = $kamar->harga_asli ?? null;
         $this->jenis_harga = $kamar->jenis_harga ?? 'bulanan';
         $this->status = $kamar->status;
         $this->fotoBaru = null;
@@ -116,6 +138,8 @@ new #[Layout('layouts.app')] class extends Component
         $this->nama = '';
         $this->kapasitas = 1;
         $this->harga = '';
+        $this->harga_harian = null;
+        $this->harga_asli = null;
         $this->jenis_harga = 'bulanan';
         $this->status = 'tersedia';
         $this->fotoBaru = null;
@@ -170,7 +194,7 @@ new #[Layout('layouts.app')] class extends Component
                 @endif
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                     <x-input-label for="nama" value="Nama Kamar" />
                     <x-text-input wire:model="nama" id="nama" class="mt-1 block w-full" placeholder="Contoh: A1" />
@@ -182,9 +206,19 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('kapasitas')" class="mt-2" />
                 </div>
                 <div>
-                    <x-input-label for="harga" value="Harga (Rp)" />
+                    <x-input-label for="harga" value="Harga Sewa (Rp)" />
                     <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 1000000" />
                     <x-input-error :messages="$errors->get('harga')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="harga_harian" value="Harga Harian (Rp) — opsional" />
+                    <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 50000" />
+                    <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp)" />
+                    <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 1200000 (dicoret)" />
+                    <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
                 </div>
                 <div>
                     <x-input-label for="jenis_harga" value="Periode Harga" />
@@ -243,7 +277,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse ($kamars as $kamar)
-                    <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div wire:key="kamar-{{ $kamar->id }}" class="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
                         <div class="h-14 w-20 shrink-0 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800 overflow-hidden">
                             @if ($kamar->foto)
                                 <img src="{{ asset('storage/' . $kamar->foto) }}" alt="Kamar {{ $kamar->nama }}" class="h-full w-full object-cover">
@@ -258,7 +292,16 @@ new #[Layout('layouts.app')] class extends Component
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kamar {{ $kamar->nama }}</h3>
                                 <x-status-badge :status="$kamar->status" />
                             </div>
-                            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}</p>
+                            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $kamar->kapasitas }} orang
+                                @if ($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan)
+                                    <span class="line-through text-gray-400 dark:text-gray-500">Rp{{ number_format($kamar->harga_asli, 0, ',', '.') }}</span>
+                                @endif
+                                &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}
+                                @if ($kamar->harga_sewa_harian)
+                                    <span class="text-teal-600 dark:text-teal-400">| Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</span>
+                                @endif
+                            </p>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
                             <button wire:click="editKamar({{ $kamar->id }})"

@@ -105,7 +105,7 @@ new class extends Component
     <aside class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:flex-col lg:w-64 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-100/80 dark:border-gray-800">
         <a href="{{ route('dashboard') }}" wire:navigate class="flex h-16 shrink-0 items-center gap-2.5 border-b border-gray-100/80 dark:border-gray-800 px-5 group">
             <x-application-logo class="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
-            <x-brand-name class="text-lg font-extrabold text-gray-800 dark:text-gray-100" />
+            <x-brand-name class="text-lg font-extrabold text-gray-900 dark:text-gray-100" />
         </a>
 
         <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
@@ -174,7 +174,7 @@ new class extends Component
                 <div class="flex items-center gap-2">
                     <a href="{{ route('dashboard') }}" wire:navigate class="flex items-center gap-2">
                         <x-application-logo class="h-7 w-7" />
-                        <x-brand-name class="hidden sm:block text-lg font-bold text-gray-800 dark:text-gray-100" />
+                        <x-brand-name class="hidden sm:block text-lg font-bold text-gray-900 dark:text-gray-100" />
                     </a>
                 </div>
 

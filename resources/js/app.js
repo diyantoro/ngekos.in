@@ -2,6 +2,51 @@ import 'cropperjs/dist/cropper.min.css';
 import Cropper from 'cropperjs';
 window.Cropper = Cropper;
 
+// Loader Google Maps — key dibaca dari <meta name="gmaps-key">.
+// Skrip Maps JS dimuat sekali (lazy) dan callback antrean dipanggil saat siap.
+window.loadNgekosMaps = (() => {
+    const key = (document.querySelector('meta[name="gmaps-key"]') || {}).content || '';
+    let booted = false;
+    const antre = [];
+
+    window.ngekosMapsBoot = () => {
+        booted = true;
+        antre.splice(0).forEach((fn) => {
+            try { fn(); } catch (e) { console.error('Inisialisasi peta gagal:', e); }
+        });
+    };
+
+    return function loadNgekosMaps(fn) {
+        if (!key) return;
+        if (booted && window.google && window.google.maps) { fn(); return; }
+        antre.push(fn);
+        if (document.getElementById('ngekos-gmaps-js')) return;
+        const s = document.createElement('script');
+        s.id = 'ngekos-gmaps-js';
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
+            + '&v=weekly&libraries=places,geocoding&loading=async&callback=ngekosMapsBoot';
+        s.async = true;
+        s.defer = true;
+        document.head.appendChild(s);
+    };
+})();
+
+// Embed Google Maps tanpa API key: <iframe src="...maps.google.com/maps?q=...&output=embed">.
+// Dipakai saat GOOGLE_MAPS_API_KEY belum diisi agar peta tetap tampil.
+window.pasangGoogleEmbed = function (el, lat, lng, zoom) {
+    if (!el) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    el.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.className = 'h-full w-full border-0';
+    iframe.loading = 'lazy';
+    iframe.allowFullscreen = true;
+    iframe.referrerPolicy = 'no-referrer-when-downgrade';
+    iframe.src = 'https://maps.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng)
+        + '&z=' + (zoom || 15) + '&hl=id&output=embed';
+    el.appendChild(iframe);
+};
+
 window.renderPendapatanChart = async (elementId, pendapatan, tagihan) => {
     const el = document.getElementById(elementId);
     if (!el) return;

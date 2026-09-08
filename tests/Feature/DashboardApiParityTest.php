@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\ChatPesan;
+use App\Models\Pembayaran;
 use App\Models\User;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -65,8 +67,9 @@ class DashboardApiParityTest extends TestCase
                 'penyewaan_aktif',
                 'chart' => ['labels', 'pendapatan', 'lunas', 'belum'],
                 'rekap' => ['labels', 'pendapatan', 'pengeluaran', 'laba', 'okupansi'],
-                'pembayaran_terbaru',
-                'tagihan_list',
+'pembayaran_terbaru',
+            'pembayaran_menunggu',
+            'tagihan_list',
                 'funnel',
             ])
             ->json();
@@ -173,6 +176,32 @@ class DashboardApiParityTest extends TestCase
         $this->assertNotEmpty($response['top_propertis']);
         $this->assertNull($response['platform_revenue']);
         $this->assertNull($response['premium_conversion']);
+    }
+
+    public function test_api_pemilik_bisa_verifikasi_pembayaran_dan_membalas_chat(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
+        $anakId = $pembayaran->anak_kos_id;
+
+        Sanctum::actingAs($pemilik, ['*']);
+
+        $this->postJson("/api/dashboard/pemilik/pembayaran/{$pembayaran->id}/verifikasi", ['status' => 'diverifikasi'])
+            ->assertOk();
+
+        $pembayaran->refresh();
+        $this->assertSame('diverifikasi', $pembayaran->status);
+        $this->assertSame($pemilik->id, $pembayaran->diverifikasi_oleh);
+
+        $pembayaran->tagihan->refresh();
+        $this->assertSame('lunas', $pembayaran->tagihan->status);
+
+        $chat = ChatPesan::where('anak_kos_id', $anakId)
+            ->where('pengirim_id', $pemilik->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($chat, 'Anak kos harus mendapat chat balasan verifikasi via API.');
+        $this->assertStringContainsString('telah saya verifikasi', $chat->isi);
     }
 
     public function test_api_admin_dashboard_ditolak_untuk_anak_kos(): void

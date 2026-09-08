@@ -15,11 +15,12 @@ class StorageProxyController extends \App\Http\Controllers\Controller
 
         $mime = Storage::disk('public')->mimeType($path);
 
-        return response()->streamDownload(function () use ($path) {
-            echo Storage::disk('public')->get($path);
-        }, basename($path), [
+        return response()->stream(function () use ($path) {
+            fpassthru(Storage::disk('public')->readStream($path));
+        }, 200, [
             'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=86400',
+            'Content-Disposition' => 'inline',
+            'Cache-Control' => 'public, max-age=86400, immutable',
         ]);
     }
 }

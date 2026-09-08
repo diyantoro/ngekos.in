@@ -33,4 +33,12 @@ class Pembayaran extends Model
     {
         return $this->belongsTo(User::class, 'diverifikasi_oleh');
     }
+
+    public function labelMetode(): string
+    {
+        return match ($this->metode) {
+            'cash' => 'Tunai (Cash)',
+            default => 'Transfer',
+        };
+    }
 }

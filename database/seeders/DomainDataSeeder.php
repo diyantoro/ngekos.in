@@ -33,9 +33,12 @@ class DomainDataSeeder extends Seeder
             'kota' => 'Bandung',
             'alamat' => 'Jl. Melati No. 12, Bandung',
             'deskripsi' => 'Kos bersih dekat kampus, tersedia kamar AC.',
-            'fasilitas' => 'WiFi, Kamar mandi dalam, Kasur, Lemari',
+            'fasilitas' => 'WiFi, Kamar mandi dalam, Kasur, Lemari, Kipas Angin',
             'aturan' => 'Jam malam 23.00, dilarang membawa tamu menginap.',
             'denda_per_hari' => 5000,
+            'harga' => 1000000,
+            'harga_harian' => 50000,
+            'harga_asli' => 1200000,
             'status' => 'aktif',
         ]);
         $melati->admins()->syncWithoutDetaching([$admin->id]);
@@ -65,27 +68,27 @@ class DomainDataSeeder extends Seeder
         $anggrek->admins()->syncWithoutDetaching([$admin->id]);
 
         $a1 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A1'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'status' => 'tersedia',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'harga_sewa_harian' => 50000, 'harga_asli' => 1200000, 'status' => 'tersedia',
         ]);
         $a2 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A2'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'status' => 'terisi',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1000000, 'harga_sewa_harian' => 50000, 'harga_asli' => 1200000, 'status' => 'terisi',
         ]);
         $a3 = Kamar::firstOrCreate(['properti_id' => $melati->id, 'nama' => 'A3'], [
-            'kapasitas' => 2, 'harga_sewa_bulanan' => 1200000, 'status' => 'tersedia',
+            'kapasitas' => 2, 'harga_sewa_bulanan' => 1200000, 'harga_sewa_harian' => 60000, 'harga_asli' => 1400000, 'status' => 'tersedia',
         ]);
 
         $b1 = Kamar::firstOrCreate(['properti_id' => $mawar->id, 'nama' => 'B1'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'status' => 'terisi',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'harga_sewa_harian' => 40000, 'harga_asli' => 950000, 'status' => 'terisi',
         ]);
         $b2 = Kamar::firstOrCreate(['properti_id' => $mawar->id, 'nama' => 'B2'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'status' => 'tersedia',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 850000, 'harga_sewa_harian' => 40000, 'harga_asli' => 950000, 'status' => 'tersedia',
         ]);
 
         $c1 = Kamar::firstOrCreate(['properti_id' => $anggrek->id, 'nama' => 'C1'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'status' => 'tersedia',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'harga_sewa_harian' => 75000, 'status' => 'tersedia',
         ]);
         $c2 = Kamar::firstOrCreate(['properti_id' => $anggrek->id, 'nama' => 'C2'], [
-            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'status' => 'terisi',
+            'kapasitas' => 1, 'harga_sewa_bulanan' => 1500000, 'harga_sewa_harian' => 75000, 'status' => 'terisi',
         ]);
 
         $sewaRina = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a2->id], [

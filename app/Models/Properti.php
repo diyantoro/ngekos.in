@@ -14,7 +14,7 @@ class Properti extends Model
 
     protected $fillable = [
         'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
-        'harga', 'jenis_harga', 'status', 'foto',
+        'harga', 'harga_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
     ];
 
     protected function casts(): array
@@ -22,6 +22,8 @@ class Properti extends Model
         return [
             'denda_per_hari' => 'decimal:2',
             'harga' => 'decimal:2',
+            'harga_harian' => 'decimal:2',
+            'harga_asli' => 'decimal:2',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
         ];

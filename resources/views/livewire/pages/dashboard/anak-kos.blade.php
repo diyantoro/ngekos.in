@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
@@ -19,6 +20,8 @@ new class extends Component
     public ?string $galat = null;
 
     public ?int $modalBayarId = null;
+
+    public string $metodeBayar = 'transfer';
 
     public $bukti = null;
 
@@ -116,6 +119,7 @@ new class extends Component
         $this->resetValidation();
         $this->pesan = null;
         $this->galat = null;
+        $this->metodeBayar = 'transfer';
         $this->bukti = null;
 
         $tagihan = Tagihan::where('id', $tagihanId)
@@ -131,7 +135,7 @@ new class extends Component
         $sudahAda = $tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists();
 
         if ($sudahAda) {
-            $this->galat = 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin.';
+            $this->galat = 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin/pemilik.';
 
             return;
         }
@@ -142,8 +146,16 @@ new class extends Component
     public function tutupModalBayar(): void
     {
         $this->modalBayarId = null;
+        $this->metodeBayar = 'transfer';
         $this->bukti = null;
         $this->resetValidation();
+    }
+
+    public function ubahMetodeBayar(string $metode): void
+    {
+        $this->metodeBayar = $metode;
+        $this->bukti = null;
+        $this->clearValidation('bukti');
     }
 
     public function konfirmasiBayar(): void
@@ -163,31 +175,46 @@ new class extends Component
 
         if ($sudahAda) {
             $this->tutupModalBayar();
-            $this->galat = 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin.';
+            $this->galat = 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin/pemilik.';
 
             return;
         }
 
         $this->validate([
-            'bukti' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048'],
+            'metodeBayar' => ['required', 'in:transfer,cash'],
+            'bukti' => $this->metodeBayar === 'transfer'
+                ? ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048']
+                : ['nullable'],
         ], [
+            'metodeBayar.required' => 'Pilih metode pembayaran terlebih dahulu.',
+            'metodeBayar.in' => 'Metode pembayaran tidak valid.',
             'bukti.required' => 'Lampirkan bukti transfer terlebih dahulu.',
             'bukti.mimes' => 'Bukti transfer harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
             'bukti.max' => 'Ukuran bukti transfer maksimal 2MB.',
         ]);
 
-        Pembayaran::create([
+        $buktiPath = null;
+        if ($this->metodeBayar === 'transfer' && $this->bukti) {
+            $buktiPath = $this->bukti->store('bukti-pembayaran', 'public');
+        }
+
+        $pembayaran = Pembayaran::create([
             'tagihan_id' => $tagihan->id,
             'anak_kos_id' => auth()->id(),
-            'metode' => 'transfer',
+            'metode' => $this->metodeBayar,
             'jumlah' => $tagihan->jumlah + $tagihan->denda,
-            'bukti' => $this->bukti->store('bukti-pembayaran', 'public'),
+            'bukti' => $buktiPath,
             'status' => 'menunggu_verifikasi',
         ]);
 
+        ChatPesan::notifikasiPembayaranDiajukan($pembayaran);
+
+        $metodeLabel = $this->metodeBayar === 'cash' ? 'tunai' : 'transfer';
         $this->tutupModalBayar();
 
-        $this->pesan = 'Pembayaran beserta bukti transfer terkirim dan sedang menunggu verifikasi admin.';
+        $this->pesan = $metodeLabel === 'tunai'
+            ? 'Pembayaran tunai tercatat dan sedang menunggu verifikasi admin/pemilik.'
+            : 'Pembayaran beserta bukti transfer terkirim dan sedang menunggu verifikasi admin/pemilik.';
     }
 }; ?>
 
@@ -430,7 +457,7 @@ new class extends Component
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                     <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
                                     <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode }}</td>
+                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode === 'cash' ? 'Tunai (Cash)' : 'Transfer' }}</td>
                                     <td class="px-4 py-4 text-sm">
                                         @if ($pembayaran->bukti)
                                             <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
@@ -475,17 +502,47 @@ new class extends Component
                 </div>
 
                 <form wire:submit="konfirmasiBayar" class="p-5 space-y-4">
-                    <p class="text-xs text-gray-400 dark:text-gray-500">Transfer tepat sesuai jumlah tagihan di atas, lalu unggah bukti transfer. Admin akan memverifikasi pembayaranmu.</p>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Bukti Transfer (JPG/PNG/WEBP/PDF, maks 2MB)</label>
-                        <input type="file" wire:model="bukti" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
-                        @error('bukti') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
-                        <div wire:loading wire:target="bukti" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
-                            <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Mengunggah bukti...
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Metode Pembayaran</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" wire:click="ubahMetodeBayar('transfer')"
+                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition {{ $metodeBayar === 'transfer' ? 'border-teal-600 bg-teal-50 text-teal-700 ring-1 ring-teal-600 dark:bg-teal-500/10 dark:text-teal-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                                <span class="block text-xs font-bold">Transfer</span>
+                                <span class="block text-[11px] font-normal opacity-70">Unggah bukti transfer</span>
+                            </button>
+                            <button type="button" wire:click="ubahMetodeBayar('cash')"
+                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition {{ $metodeBayar === 'cash' ? 'border-teal-600 bg-teal-50 text-teal-700 ring-1 ring-teal-600 dark:bg-teal-500/10 dark:text-teal-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                                <span class="block text-xs font-bold">Tunai (Cash)</span>
+                                <span class="block text-[11px] font-normal opacity-70">Bayar langsung ke admin/pemilik</span>
+                            </button>
                         </div>
+                        @error('metodeBayar') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                     </div>
+
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
+                        @if ($metodeBayar === 'cash')
+                            Kamu memilih pembayaran <strong class="text-gray-600 dark:text-gray-300">tunai</strong>. Bayarkan langsung total di atas kepada admin/pemilik kos; mereka akan memverifikasi bahwa pembayaran sudah diterima.
+                        @else
+                            Transfer tepat sesuai jumlah tagihan di atas, lalu unggah bukti transfer. Admin akan memverifikasi pembayaranmu.
+                        @endif
+                    </p>
+
+                    @if ($metodeBayar === 'transfer')
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Bukti Transfer (JPG/PNG/WEBP/PDF, maks 2MB)</label>
+                            <input type="file" wire:model="bukti" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                            @error('bukti') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <div wire:loading wire:target="bukti" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
+                                <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Mengunggah bukti...
+                            </div>
+                        </div>
+                    @else
+                        <p class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-100 dark:ring-teal-500/20 px-4 py-3 text-xs text-teal-800 dark:text-teal-200">
+                            Tidak perlu unggah bukti. Status pembayaran menunggu konfirmasi admin/pemilik setelah tunai diterima.
+                        </p>
+                    @endif
                     <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
                         <button type="button" wire:click="tutupModalBayar" wire:loading.attr="disabled"
                             class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">

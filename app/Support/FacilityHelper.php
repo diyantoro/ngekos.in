@@ -14,6 +14,7 @@ class FacilityHelper
      */
     public const CANONICAL = [
         'AC',
+        'Kipas Angin',
         'Kulkas',
         'Kasur',
         'Lemari',
@@ -56,6 +57,8 @@ class FacilityHelper
      */
     private const ALIAS = [
         'ac' => 'AC',
+        'kipas' => 'Kipas Angin',
+        'kipasangin' => 'Kipas Angin',
         'wifi' => 'WiFi',
         'kulkas' => 'Kulkas',
         'kasur' => 'Kasur',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChatPesan;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
@@ -220,6 +221,8 @@ new class extends Component
         if ($total >= $tagihan->jumlah + $tagihan->denda) {
             $tagihan->update(['status' => 'lunas']);
         }
+
+        ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, auth()->id());
     }
 }; ?>
 
@@ -525,7 +528,7 @@ new class extends Component
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pembayaran->anakKos?->nama ?? '-' }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode === 'cash' ? 'Tunai (Cash)' : 'Transfer' }}</td>
                                     <td class="px-6 py-4 text-sm">
                                         @if ($pembayaran->bukti)
                                             <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"

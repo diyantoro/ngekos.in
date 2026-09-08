@@ -90,15 +90,24 @@ new #[Layout('layouts.app')] class extends Component
                                 @php
                                     $hargaTampil = $properti->harga ?? $properti->harga_termurah;
                                     $periode = $properti->jenis_harga ?? 'bulanan';
+                                    $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
                                 @endphp
                                 <div class="mt-3 flex items-center justify-between gap-2">
-                                    <span class="text-sm font-extrabold text-teal-600 dark:text-teal-400">
+                                    <div class="text-end">
                                         @if ($hargaTampil)
-                                            Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
+                                            @if ($adaDiskon)
+                                                <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
+                                            @endif
+                                            <span class="text-sm font-extrabold text-teal-600 dark:text-teal-400">
+                                                Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
+                                            </span>
+                                            @if ($properti->harga_harian)
+                                                <span class="block text-[10px] font-medium text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
+                                            @endif
                                         @else
                                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                         @endif
-                                    </span>
+                                    </div>
                                     <button wire:click="hapusFavorit({{ $properti->id }})" wire:target="hapusFavorit({{ $properti->id }})" wire:loading.attr="disabled"
                                         class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition" aria-label="Hapus dari favorit {{ $properti->nama }}">
                                         <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>

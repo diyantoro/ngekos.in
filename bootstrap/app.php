@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            \Illuminate\Http\Middleware\HandleCors::class,
             \App\Http\Middleware\EnsureUserAktif::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);

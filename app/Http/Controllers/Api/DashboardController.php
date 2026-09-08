@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kamar;
+use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
@@ -181,7 +182,7 @@ class DashboardController extends Controller
             $buktiPath = $request->file('bukti')->store('bukti', 'public');
         }
 
-        Pembayaran::create([
+        $pembayaran = Pembayaran::create([
             'tagihan_id' => $validated['tagihan_id'],
             'anak_kos_id' => $request->user()->id,
             'metode' => $validated['metode'],
@@ -189,6 +190,8 @@ class DashboardController extends Controller
             'bukti' => $buktiPath,
             'status' => 'menunggu_verifikasi',
         ]);
+
+        ChatPesan::notifikasiPembayaranDiajukan($pembayaran);
 
         return response()->json(['message' => 'Pembayaran berhasil diajukan.'], 201);
     }
@@ -302,6 +305,13 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
+        $pembayaranMenunggu = Pembayaran::where('status', 'menunggu_verifikasi')
+            ->where($scopePembayaranTerbaru)
+            ->with(['anakKos:id,nama', 'tagihan.penyewaan.kamar:id,nama', 'tagihan.penyewaan.properti:id,nama'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return response()->json([
             'total_properti' => $totalProperti,
             'total_kamar' => $totalKamar,
@@ -328,6 +338,15 @@ class DashboardController extends Controller
                 'periode' => $p->tagihan?->periode,
                 'jumlah' => (float) $p->jumlah,
                 'verified_at' => $p->verified_at?->toDateString(),
+            ])->values(),
+            'pembayaran_menunggu' => $pembayaranMenunggu->map(fn (Pembayaran $p) => [
+                'id' => $p->id,
+                'anak_kos_nama' => $p->anakKos?->nama ?? 'Penyewa',
+                'properti_nama' => $p->tagihan?->penyewaan?->properti?->nama,
+                'kamar_nama' => $p->tagihan?->penyewaan?->kamar?->nama,
+                'periode' => $p->tagihan?->periode,
+                'metode' => $p->metode,
+                'jumlah' => (float) $p->jumlah,
             ])->values(),
             'tagihan_list' => $tagihanBelum->take(6)->map(fn (Tagihan $t) => [
                 'anak_kos_nama' => $t->penyewaan?->anakKos?->nama ?? 'Penyewa',
@@ -736,7 +755,7 @@ class DashboardController extends Controller
 
         $pembayaran = Pembayaran::where('id', $pembayaranId)
             ->where('status', 'menunggu_verifikasi')
-            ->when(! $request->user()->hasRole('super_admin'), fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $this->kelolaan($request->user())))
+            ->when(! $request->user()->hasRole('super_admin'), fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $this->kelolaanAtauPemilik($request->user())))
             ->with('anakKos', 'tagihan')
             ->first();
 
@@ -757,6 +776,8 @@ class DashboardController extends Controller
             if ($total >= $tagihan->jumlah + $tagihan->denda) {
                 $tagihan->update(['status' => 'lunas']);
             }
+
+            ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, $request->user()->id);
 
             $nama = $pembayaran->anakKos?->nama ?? '-';
             $pesan = "Pembayaran $nama sebesar Rp".number_format($pembayaran->jumlah, 0, ',', '.').' diverifikasi.';
@@ -882,6 +903,19 @@ class DashboardController extends Controller
                     ->orWhereDoesntHave('admins');
             });
         };
+    }
+
+    /**
+     * Scope properti untuk verifikasi pembayaran: super admin semua,
+     * pemilik propertinya sendiri, admin sesuai tugas kelolaan.
+     */
+    private function kelolaanAtauPemilik($user)
+    {
+        if ($user->hasRole('pemilik')) {
+            return fn ($query) => $query->where('pemilik_id', $user->id);
+        }
+
+        return $this->kelolaan($user);
     }
 
     private function formatCheckouts($checkouts): array

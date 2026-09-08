@@ -65,6 +65,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans']);
     Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap']);
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut']);
+    Route::post('/dashboard/pemilik/pembayaran/{pembayaranId}/verifikasi', [DashboardController::class, 'verifikasiPembayaran'])
+        ->middleware('role:pemilik|admin|super_admin');
 
     // Dashboard - Admin & Super Admin
     Route::get('/dashboard/admin', [DashboardController::class, 'admin'])

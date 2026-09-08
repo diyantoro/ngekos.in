@@ -39,4 +39,8 @@ return [
         'server_key' => env('FCM_SERVER_KEY'),
     ],
 
+    'google_maps' => [
+        'key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+
 ];

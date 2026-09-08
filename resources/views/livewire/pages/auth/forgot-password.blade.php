@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -17,9 +20,34 @@ new #[Layout('layouts.guest')] class extends Component
             'email' => ['required', 'string', 'email'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
+        if (app()->environment('local', 'testing')) {
+            $user = User::query()->where('email', $this->email)->first();
+
+            if ($user) {
+                // Mode pengembangan: mail tidak benar-benar terkirim, jadi tautan
+                // reset & kode OTP ditampilkan langsung di layar untuk pengujian.
+                $token = Password::broker()->createToken($user);
+
+                $user->notify(new ResetPassword($token));
+
+                $otp = (string) random_int(100000, 999999);
+                Cache::put('password_reset_otp_'.$user->email, $otp, now()->addMinutes(10));
+
+                session()->flash('dev_reset_link', route('password.reset', [
+                    'token' => $token,
+                    'email' => $user->email,
+                ]));
+                session()->flash('dev_otp', $otp);
+                session()->flash('dev_email', $user->email);
+
+                $this->reset('email');
+
+                session()->flash('status', __('Kami telah mengirim tautan reset password ke email Anda.'));
+
+                return;
+            }
+        }
+
         $status = Password::sendResetLink(
             $this->only('email')
         );
@@ -44,6 +72,18 @@ new #[Layout('layouts.guest')] class extends Component
 
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
+
+    @if (session('dev_reset_link'))
+        <div class="rounded-xl bg-teal-50 border border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/20 p-4 text-sm mb-4">
+            <p class="font-semibold text-teal-800 dark:text-teal-300 mb-1">Mode pengembangan — tautan reset & kode OTP</p>
+            <p class="text-teal-700 dark:text-teal-200/80 mb-2">Email: <span class="font-mono font-semibold">{{ session('dev_email') }}</span></p>
+            <p class="mb-1">
+                <a href="{{ session('dev_reset_link') }}" class="underline font-medium text-teal-700 dark:text-teal-200 hover:text-teal-500 break-all">Buka tautan reset (klik di sini)</a>
+            </p>
+            <p class="text-teal-700 dark:text-teal-200/80">Kode OTP: <span class="font-mono font-semibold tracking-widest">{{ session('dev_otp') }}</span> <span class="text-teal-600/70 dark:text-teal-300/60">(berlaku 10 menit, bisa dipakai di aplikasi mobile)</span></p>
+            <p class="mt-1 text-teal-600/70 dark:text-teal-300/60">Kotak ini hanya tampil di mode pengembangan.</p>
+        </div>
+    @endif
 
     <form wire:submit="sendPasswordResetLink" class="space-y-5">
         <!-- Email Address -->

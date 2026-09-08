@@ -35,9 +35,9 @@
     <div class="shrink-0 h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br {{ $tones[$tone] }} text-white shadow-lg {{ $shadows[$tone] ?? 'shadow-teal-500/20' }} transition-transform duration-300 group-hover:scale-110">
         {!! $icon !!}
     </div>
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
         <p class="truncate text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $label }}</p>
-        <p class="mt-0.5 text-2xl font-extrabold text-gray-900 dark:text-gray-100">{{ $value }}</p>
+        <p class="mt-0.5 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-gray-100 break-words leading-snug">{{ $value }}</p>
         @if ($hint)
             <p class="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">{!! $hint !!}</p>
         @endif

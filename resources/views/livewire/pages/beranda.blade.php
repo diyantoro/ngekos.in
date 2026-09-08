@@ -234,15 +234,27 @@ new #[Layout('layouts.publik')] class extends Component
                             <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                             {{ $properti->kota ?? $properti->alamat ?? 'Lokasi belum diisi' }}
                         </p>
-                        <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between">
+                        <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between gap-2">
                             <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
-                            <span class="text-base font-extrabold text-teal-600 dark:text-teal-400">
-                                @if ($properti->harga_termurah)
-                                    Rp{{ number_format($properti->harga_termurah, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/bln</span>
+                            <div class="text-end">
+                                @php
+                                    $hargaTampil = $properti->harga ?? $properti->harga_termurah;
+                                    $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
+                                @endphp
+                                @if ($hargaTampil)
+                                    @if ($adaDiskon)
+                                        <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
+                                    @endif
+                                    <span class="text-base font-extrabold text-teal-600 dark:text-teal-400">
+                                        Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/bln</span>
+                                    </span>
+                                    @if ($properti->harga_harian)
+                                        <span class="block text-[10px] font-medium text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
+                                    @endif
                                 @else
                                     <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                 @endif
-                            </span>
+                            </div>
                         </div>
                     </div>
                 </a>
@@ -373,38 +385,70 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
     </section>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
     @push('scripts')
         <script>
             let _mapBeranda = null;
 
-            window.initPetaBeranda = function () {
+            function berandaBuatPeta() {
+                if (typeof google === 'undefined' || !google.maps) return;
                 const el = document.getElementById('peta-kos-beranda');
                 if (!el || _mapBeranda) return;
-                if (typeof L === 'undefined') return;
 
                 const data = @js($markers);
-                const pts = data.map(m => [m.lat, m.lng]);
-                const sum = pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
-                const center = [sum[0] / pts.length, sum[1] / pts.length];
+                if (!data.length) return;
 
-                _mapBeranda = L.map('peta-kos-beranda').setView(center, pts.length <= 5 ? 8 : 6);
+                const bounds = new google.maps.LatLngBounds();
+                data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
 
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(_mapBeranda);
+                _mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
+                if (data.length === 1) {
+                    _mapBeranda.setCenter(bounds.getCenter());
+                    _mapBeranda.setZoom(14);
+                } else {
+                    _mapBeranda.fitBounds(bounds);
+                }
 
-                data.forEach((m) => L.marker([m.lat, m.lng], { title: m.nama })
-                    .bindPopup('<strong>' + m.nama + '</strong><br>' + (m.alamat ? m.alamat + ', ' : '') + m.kota)
-                    .addTo(_mapBeranda));
+                data.forEach((m) => {
+                    const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: _mapBeranda, title: m.nama });
+                    const info = new google.maps.InfoWindow();
+                    pemuat.addListener('click', () => {
+                        const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
+                            (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
+                            (m.kota ? String(m.kota).replace(/</g, '&lt;') : '');
+                        info.setContent(isi);
+                        info.open({ map: _mapBeranda, anchor: pemuat });
+                    });
+                });
+            }
 
-                setTimeout(() => _mapBeranda.invalidateSize(), 120);
+            window.initPetaBeranda = function () {
+                const el = document.getElementById('peta-kos-beranda');
+                if (!el) return;
+                if (typeof google === 'undefined' || !google.maps) {
+                    if (el.dataset.gagal) return;
+                    el.dataset.gagal = '1';
+                    const data = @js($markers);
+                    if (typeof window.pasangGoogleEmbed === 'function' && data.length) {
+                        const sum = data.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                        window.pasangGoogleEmbed(el, sum.lat / data.length, sum.lng / data.length, data.length <= 1 ? 14 : 10);
+                    } else {
+                        el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta belum dikonfigurasi. Tambahkan GOOGLE_MAPS_API_KEY.</div>';
+                    }
+                    return;
+                }
+                berandaBuatPeta();
             };
+
+            (() => {
+                const init = () => window.initPetaBeranda();
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', init);
+                } else {
+                    init();
+                }
+                document.addEventListener('livewire:navigated', init);
+                window.loadNgekosMaps(window.initPetaBeranda);
+            })();
         </script>
     @endpush
 </div>

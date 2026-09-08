@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="theme-color" content="#0d9488">
+        <meta name="gmaps-key" content="{{ config('services.google_maps.key') }}">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -49,7 +50,7 @@
                     <div class="flex items-center justify-between h-14">
                         <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2.5 shrink-0 group">
                             <x-application-logo class="h-8 w-8 transition-transform duration-300 group-hover:scale-110" />
-                            <span class="text-lg font-extrabold text-gray-800 dark:text-gray-100">Ngekos<span class="gradient-text">.in</span></span>
+                            <span class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Ngekos<span class="gradient-text">.in</span></span>
                         </a>
 
                         <!-- Desktop nav -->
@@ -224,10 +225,6 @@
 
         <livewire:chatbot />
 
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
         @stack('scripts')
     </body>
 </html>

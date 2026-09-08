@@ -44,4 +44,38 @@ class ChatPesan extends Model
             ->orderBy('created_at')
             ->orderBy('id');
     }
+
+    /**
+     * Beri tahu pemilik lewat chat bahwa anak kos sudah mengajukan pembayaran.
+     */
+    public static function notifikasiPembayaranDiajukan(Pembayaran $pembayaran): self
+    {
+        $tagihan = $pembayaran->tagihan;
+
+        return self::create([
+            'properti_id' => $tagihan->penyewaan->properti_id,
+            'anak_kos_id' => $pembayaran->anak_kos_id,
+            'pengirim_id' => $pembayaran->anak_kos_id,
+            'isi' => 'Saya sudah membayar tagihan '.$tagihan->periode
+                .' di '.$tagihan->penyewaan->properti->nama
+                .' sebesar Rp'.number_format((float) $pembayaran->jumlah, 0, ',', '.')
+                .' via '.$pembayaran->labelMetode().'. Mohon diverifikasi. Terima kasih.',
+        ]);
+    }
+
+    /**
+     * Balas ke anak kos bahwa pembayarannya telah diverifikasi.
+     * Verifikator bisa pemilik, admin, atau super admin.
+     */
+    public static function notifikasiPembayaranDiverifikasi(Pembayaran $pembayaran, int $verifikatorId): self
+    {
+        return self::create([
+            'properti_id' => $pembayaran->tagihan->penyewaan->properti_id,
+            'anak_kos_id' => $pembayaran->anak_kos_id,
+            'pengirim_id' => $verifikatorId,
+            'isi' => 'Pembayaran '.$pembayaran->tagihan->periode
+                .' sebesar Rp'.number_format((float) $pembayaran->jumlah, 0, ',', '.')
+                .' telah saya verifikasi. Terima kasih.',
+        ]);
+    }
 }

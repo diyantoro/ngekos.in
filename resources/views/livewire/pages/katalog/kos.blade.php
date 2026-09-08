@@ -53,7 +53,8 @@ new #[Layout('layouts.publik')] class extends Component
                 ->whereNotNull('kota')
                 ->distinct()
                 ->orderBy('kota')
-                ->pluck('kota')),
+                ->pluck('kota')
+                ->all()),
             'markers' => cache()->remember('katalog.markers', 3600, fn () => Properti::where('status', 'aktif')
                 ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
@@ -68,7 +69,8 @@ new #[Layout('layouts.publik')] class extends Component
                     ] : null;
                 })
                 ->filter()
-                ->values()),
+                ->values()
+                ->all()),
         ];
     }
 }; ?>
@@ -166,8 +168,8 @@ new #[Layout('layouts.publik')] class extends Component
                 @if ($kota) di <span class="font-semibold text-teal-600 dark:text-teal-400">{{ $kota }}</span> @endif
             </p>
             <button @click="tampilkanPeta = !tampilkanPeta; togglePetaNgekos(tampilkanPeta)"
-                class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ $markers->count() ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500' }}"
-                @if (! $markers->count()) disabled title="Belum ada koordinat" @endif>
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ count($markers) ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500' }}"
+                @if (! count($markers)) disabled title="Belum ada koordinat" @endif>
                 <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                 <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
                 <span x-text="tampilkanPeta ? 'Lihat Daftar' : 'Lihat Peta'"></span>
@@ -183,7 +185,7 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="rounded-2xl overflow-hidden shadow-card ring-1 ring-gray-100 dark:ring-gray-700">
                 <div id="peta-kos" class="h-96 w-full bg-gray-100 dark:bg-gray-800"></div>
             </div>
-            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota. Sumber petunjuk: OpenStreetMap.</p>
+            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota. Peta: Google Maps.</p>
         </div>
 
         <!-- Cards - Mobile-first list layout -->
@@ -235,19 +237,28 @@ new #[Layout('layouts.publik')] class extends Component
                                     </div>
                                 @endif
                             </div>
-                            <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between">
+                            <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between gap-2">
                                 <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
-                                @php
-                                    $hargaTampil = $properti->harga ?? $properti->harga_termurah;
-                                    $periode = $properti->jenis_harga ?? 'bulanan';
-                                @endphp
-                                <span class="text-sm sm:text-base font-extrabold text-teal-600 dark:text-teal-400">
+                                <div class="text-end">
+                                    @php
+                                        $hargaTampil = $properti->harga ?? $properti->harga_termurah;
+                                        $periode = $properti->jenis_harga ?? 'bulanan';
+                                        $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
+                                    @endphp
                                     @if ($hargaTampil)
-                                        Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
+                                        @if ($adaDiskon)
+                                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
+                                        @endif
+                                        <span class="text-sm sm:text-base font-extrabold text-teal-600 dark:text-teal-400">
+                                            Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
+                                        </span>
+                                        @if ($properti->harga_harian)
+                                            <span class="block text-[10px] text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
+                                        @endif
                                     @else
                                         <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                     @endif
-                                </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -294,34 +305,61 @@ new #[Layout('layouts.publik')] class extends Component
     @push('scripts')
         <script>
             let ngekosMap = null;
+
+            function inisialisasiPetaKos() {
+                const el = document.getElementById('peta-kos');
+                if (!el || ngekosMap) return;
+                if (typeof google === 'undefined' || !google.maps) {
+                    if (el.dataset.gagal) return;
+                    el.dataset.gagal = '1';
+                    const data = @json($markers);
+                    if (typeof window.pasangGoogleEmbed === 'function' && data.length) {
+                        const sum = data.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                        window.pasangGoogleEmbed(el, sum.lat / data.length, sum.lng / data.length, data.length <= 1 ? 14 : 10);
+                    } else {
+                        el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-sm text-gray-400">' +
+                            'Peta belum dikonfigurasi. Tambahkan GOOGLE_MAPS_API_KEY.</div>';
+                    }
+                    return;
+                }
+
+                const data = @json($markers);
+                if (!data.length) return;
+
+                const bounds = new google.maps.LatLngBounds();
+                data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+
+                ngekosMap = new google.maps.Map(el, { mapTypeId: 'roadmap' });
+                if (data.length === 1) {
+                    ngekosMap.setCenter(bounds.getCenter());
+                    ngekosMap.setZoom(14);
+                } else {
+                    ngekosMap.fitBounds(bounds);
+                }
+
+                data.forEach(function (m) {
+                    const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: ngekosMap, title: m.nama });
+                    const info = new google.maps.InfoWindow();
+                    pemuat.addListener('click', () => {
+                        const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
+                            (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
+                            (m.kota ? String(m.kota).replace(/</g, '&lt;') : '');
+                        info.setContent(isi);
+                        info.open({ map: ngekosMap, anchor: pemuat });
+                    });
+                });
+            }
+
             window.togglePetaNgekos = function (show) {
                 const el = document.getElementById('peta-kos');
                 if (!el) return;
                 if (!show) return;
-                if (typeof L === 'undefined') {
-                    el.innerHTML = '<div class="h-full w-full flex items-center justify-center text-sm text-gray-400">' +
-                        'Peta tidak dapat dimuat. <a class="underline text-teal-500 ml-1" target="_blank" rel="noopener" href="https://www.openstreetmap.org/search?query=' + encodeURIComponent('Indonesia') + '">Buka OpenStreetMap</a></div>';
-                    return;
-                }
                 if (ngekosMap) {
-                    setTimeout(() => ngekosMap.invalidateSize(), 60);
+                    google.maps.event.trigger(ngekosMap, 'resize');
                     return;
                 }
-                const data = @json($markers);
-                const pts = (data || []).map(m => [m.lat, m.lng]);
-                const sum = pts.reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
-                const center = pts.length ? [sum[0] / pts.length, sum[1] / pts.length] : [-7.7971, 110.3709];
-                ngekosMap = L.map('peta-kos').setView(center, pts.length <= 1 ? 12 : (pts.length <= 5 ? 8 : 6));
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(ngekosMap);
-                (data || []).forEach(function (m) {
-                    L.marker([m.lat, m.lng], { title: m.nama })
-                        .bindPopup('<strong>' + m.nama + '</strong><br>' + (m.alamat ? m.alamat + ', ' : '') + m.kota)
-                        .addTo(ngekosMap);
-                });
-                setTimeout(() => ngekosMap.invalidateSize(), 120);
+                window.loadNgekosMaps(inisialisasiPetaKos);
+                inisialisasiPetaKos();
             };
         </script>
     @endpush
