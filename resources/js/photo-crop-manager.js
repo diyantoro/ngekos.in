@@ -5,6 +5,7 @@ export function photoCropManager() {
         currentIndex: -1,
         cropper: null,
         showModal: false,
+        uploading: false,
 
         init() {
             this.$watch('showModal', value => {
@@ -149,39 +150,60 @@ export function photoCropManager() {
             if (input) input.value = '';
         },
 
-        // Upload all cropped files to Livewire
-        uploadAllFiles() {
+        // Upload all cropped files to Livewire - SEQUENTIAL UPLOAD
+        async uploadAllFiles() {
             const wire = this.$wire;
-            if (!wire) return;
-
-            const croppedFiles = this.files
-                .filter(f => f.cropped && f.croppedBlob)
-                .map((f, idx) => {
-                    const fileName = `foto-${Date.now()}-${idx}.jpg`;
-                    return new File([f.croppedBlob], fileName, { type: 'image/jpeg' });
-                });
-
-            if (croppedFiles.length === 0) {
+            if (!wire) {
+                console.error('Livewire wire not found');
                 this.cancelAll();
                 return;
             }
 
-            // Upload to Livewire wire:model
-            wire.uploadMultiple('galeriBaru', croppedFiles, 
-                () => {
-                    // Success callback
-                    this.files.forEach(f => {
-                        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+            this.uploading = true;
+
+            try {
+                // Get current galeriBaru value (might already have files)
+                const existingFiles = wire.get('galeriBaru') || [];
+                const newFiles = [];
+
+                // Upload one by one and collect uploaded files
+                for (let i = 0; i < this.files.length; i++) {
+                    const f = this.files[i];
+                    if (!f.cropped || !f.croppedBlob) continue;
+
+                    const fileName = `foto-${Date.now()}-${i}.jpg`;
+                    const file = new File([f.croppedBlob], fileName, { type: 'image/jpeg' });
+
+                    // Upload to Livewire temporary storage
+                    await new Promise((resolve, reject) => {
+                        wire.upload('galeriBaru', file, 
+                            (uploadedFilename) => {
+                                newFiles.push(uploadedFilename);
+                                resolve();
+                            },
+                            (error) => reject(error)
+                        );
                     });
-                    this.files = [];
-                    this.currentIndex = -1;
-                },
-                () => {
-                    // Error callback
-                    console.error('Upload failed');
-                    this.cancelAll();
                 }
-            );
+
+                // Cleanup
+                this.files.forEach(f => {
+                    if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+                });
+                this.files = [];
+                this.currentIndex = -1;
+                this.uploading = false;
+
+                // Reset input
+                const input = this.$refs.fileInput;
+                if (input) input.value = '';
+
+            } catch (error) {
+                console.error('Upload failed:', error);
+                this.uploading = false;
+                alert('Upload gagal. Silakan coba lagi.');
+                this.cancelAll();
+            }
         },
 
         // Remove a file from queue
