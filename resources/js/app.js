@@ -2,6 +2,9 @@ import 'cropperjs/dist/cropper.min.css';
 import Cropper from 'cropperjs';
 window.Cropper = Cropper;
 
+import { photoCropManager } from './photo-crop-manager.js';
+window.photoCropManager = photoCropManager;
+
 // Loader Google Maps — key dibaca dari <meta name="gmaps-key">.
 // Skrip Maps JS dimuat sekali (lazy) dan callback antrean dipanggil saat siap.
 window.loadNgekosMaps = (() => {

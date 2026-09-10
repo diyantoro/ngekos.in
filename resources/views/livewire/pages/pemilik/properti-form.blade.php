@@ -416,10 +416,10 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <!-- Galeri Foto (maks 10, bisa digeser di halaman detail) -->
-            <div>
+            <div x-data="photoCropManager()" x-init="init()">
                 <x-input-label for="galeriBaru" value="Galeri Foto (maks 10 foto)" />
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tambah beberapa foto sekaligus. Foto pertama menjadi cover; geser/ubah cover dari daftar di bawah. Foto tampil bisa digeser di halaman detail kos.</p>
-                <input wire:model="galeriBaru" id="galeriBaru" type="file" accept="image/*" multiple
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tambah beberapa foto sekaligus. Setiap foto bisa di-crop sebelum disimpan. Foto pertama menjadi cover.</p>
+                <input x-ref="fileInput" type="file" accept="image/*" multiple @change="onFilesSelected($event)"
                     class="mt-2 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
                 <x-input-error :messages="$errors->get('galeriBaru')" class="mt-2" />
                 <x-input-error :messages="$errors->get('galeriBaru.*')" class="mt-2" />
@@ -462,6 +462,42 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                     @endif
                 @endif
+
+                {{-- Modal Crop Multiple Photos --}}
+                <div x-show="showModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80">
+                    <div class="w-full max-w-4xl max-h-[95vh] flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Crop Foto Galeri</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Foto <span x-text="currentIndex + 1"></span> dari <span x-text="files.length"></span>
+                                </p>
+                            </div>
+                            <button type="button" @click="cancelAll" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+                            <img x-ref="cropImage" src="" alt="Crop" class="max-h-[60vh] max-w-full">
+                        </div>
+                        <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700">
+                            <div class="flex items-center justify-between gap-3">
+                                <button type="button" @click="prevImage" :disabled="!canGoPrev" :class="canGoPrev ? 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100' : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'" class="inline-flex items-center gap-1 text-sm font-medium">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                                    Sebelumnya
+                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="skipCrop" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+                                        Lewati
+                                    </button>
+                                    <button type="button" @click="applyCrop" class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition">
+                                        <span x-text="isLastImage ? 'Selesai' : 'Terapkan & Lanjut'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Nama Kos -->
