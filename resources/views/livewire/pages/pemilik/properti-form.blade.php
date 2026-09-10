@@ -815,13 +815,29 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         if (typeof google === 'undefined' || !google.maps) {
+            // Fallback: Gunakan OpenStreetMap dengan Leaflet (atau embed sederhana)
             modePeta = 'embed';
-            if (typeof window.pasangGoogleEmbed === 'function') {
-                window.pasangGoogleEmbed(el, awal.lat, awal.lng, 15);
-                tulisStatusForm("Peta Google (pratinjau tanpa API key). Untuk menandai titik, isi alamat lalu tekan 'Cari dari Alamat', atau isi Latitude/Longitude.");
-            } else {
-                el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta belum dikonfigurasi.</div>';
-            }
+            
+            // Buat iframe embed dari OpenStreetMap
+            el.innerHTML = `
+                <div class="h-full w-full relative">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=${awal.lng-0.01},${awal.lat-0.01},${awal.lng+0.01},${awal.lat+0.01}&layer=mapnik&marker=${awal.lat},${awal.lng}"
+                        style="border: 0">
+                    </iframe>
+                    <div class="absolute bottom-2 left-2 right-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                        <strong>Mode Pratinjau:</strong> Gunakan tombol "Cari dari Alamat" atau "Gunakan lokasi saya" untuk set koordinat.
+                    </div>
+                </div>
+            `;
+            
+            tulisStatusForm("Gunakan tombol di bawah untuk menandai lokasi.");
             pasangCariAlamatForm();
             pasangToggleLokasiForm();
             return;
