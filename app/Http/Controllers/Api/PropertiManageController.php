@@ -46,7 +46,7 @@ class PropertiManageController extends Controller
         $propertis = Properti::query()
             ->when(! $this->bolehKelolaSemua($request), fn ($q) => $q->where('pemilik_id', $request->user()->id))
             ->withCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
-            ->with(['kamars:id,nama,kapasitas,harga_sewa_bulanan,jenis_harga,status,foto,properti_id'])
+            ->with(['kamars:id,nama,kapasitas,harga_sewa_bulanan,harga_sewa_mingguan,harga_sewa_harian,status,foto,properti_id', 'kamars.fotos', 'fotos'])
             ->orderBy('nama')
             ->get();
 
@@ -81,9 +81,11 @@ class PropertiManageController extends Controller
             'status' => $validated['status'] ?? 'aktif',
         ]));
 
+        $this->simpanGaleriBaru($properti, $request->file('fotos'), 'properti_galeri', 'properti');
+
         return response()->json([
             'message' => "Kos \"{$properti->nama}\" berhasil dibuat.",
-            'properti' => $this->formatProperti($properti->loadCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])->load('kamars')),
+            'properti' => $this->formatProperti($properti->loadCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])->load(['kamars', 'kamars.fotos', 'fotos'])),
         ], 201);
     }
 
@@ -118,9 +120,12 @@ class PropertiManageController extends Controller
 
         $properti->update($data);
 
+        $this->simpanGaleriBaru($properti, $request->file('fotos'), 'properti_galeri', 'properti');
+        $this->hapusGaleri($properti, $request->input('hapus_foto_ids'), 'properti');
+
         return response()->json([
             'message' => "Kos \"{$properti->nama}\" berhasil diperbarui.",
-            'properti' => $this->formatProperti($properti->loadCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])->load('kamars')),
+            'properti' => $this->formatProperti($properti->loadCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])->load(['kamars', 'kamars.fotos', 'fotos'])),
         ]);
     }
 
@@ -138,9 +143,16 @@ class PropertiManageController extends Controller
             Storage::disk('public')->delete($properti->foto);
         }
 
+        foreach ($properti->fotos as $foto) {
+            Storage::disk('public')->delete($foto->path);
+        }
+
         foreach ($properti->kamars as $kamar) {
             if ($kamar->foto) {
                 Storage::disk('public')->delete($kamar->foto);
+            }
+            foreach ($kamar->fotos as $foto) {
+                Storage::disk('public')->delete($foto->path);
             }
         }
 
@@ -157,7 +169,7 @@ class PropertiManageController extends Controller
             return response()->json(['message' => 'Kos tidak ditemukan.'], 404);
         }
 
-        $kamars = Kamar::where('properti_id', $propertiId)->orderBy('nama')->get();
+        $kamars = Kamar::with('fotos')->where('properti_id', $propertiId)->orderBy('nama')->get();
 
         return response()->json($kamars->map(fn (Kamar $k) => $this->formatKamar($k))->values());
     }
@@ -174,11 +186,13 @@ class PropertiManageController extends Controller
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
+            'harga_sewa_mingguan' => 'nullable|numeric|min:0',
             'harga_sewa_harian' => 'nullable|numeric|min:0',
-            'jenis_harga' => 'required|in:bulanan,harian',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
+            'fotos' => 'nullable|array|max:10',
+            'fotos.*' => 'image|max:4096',
         ]);
 
         $data = [
@@ -186,8 +200,8 @@ class PropertiManageController extends Controller
             'nama' => $validated['nama'],
             'kapasitas' => $validated['kapasitas'],
             'harga_sewa_bulanan' => $validated['harga_sewa_bulanan'],
+            'harga_sewa_mingguan' => $validated['harga_sewa_mingguan'] ?? null,
             'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
-            'jenis_harga' => $validated['jenis_harga'],
             'harga_asli' => $validated['harga_asli'] ?? null,
             'status' => $validated['status'],
         ];
@@ -197,6 +211,8 @@ class PropertiManageController extends Controller
         }
 
         $kamar = Kamar::create($data);
+
+        $this->simpanGaleriBaru($kamar, $request->file('fotos'), 'kamar_galeri', 'kamar');
 
         return response()->json([
             'message' => "Kamar {$kamar->nama} berhasil ditambahkan.",
@@ -222,19 +238,21 @@ class PropertiManageController extends Controller
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|min:0',
+            'harga_sewa_mingguan' => 'nullable|numeric|min:0',
             'harga_sewa_harian' => 'nullable|numeric|min:0',
-            'jenis_harga' => 'required|in:bulanan,harian',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
+            'fotos' => 'nullable|array|max:10',
+            'fotos.*' => 'image|max:4096',
         ]);
 
         $data = [
             'nama' => $validated['nama'],
             'kapasitas' => $validated['kapasitas'],
             'harga_sewa_bulanan' => $validated['harga_sewa_bulanan'],
+            'harga_sewa_mingguan' => $validated['harga_sewa_mingguan'] ?? null,
             'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
-            'jenis_harga' => $validated['jenis_harga'],
             'harga_asli' => $validated['harga_asli'] ?? null,
             'status' => $validated['status'],
         ];
@@ -247,6 +265,9 @@ class PropertiManageController extends Controller
         }
 
         $kamar->update($data);
+
+        $this->simpanGaleriBaru($kamar, $request->file('fotos'), 'kamar_galeri', 'kamar');
+        $this->hapusGaleri($kamar, $request->input('hapus_foto_ids'), 'kamar');
 
         return response()->json([
             'message' => "Kamar {$kamar->nama} berhasil diperbarui.",
@@ -270,6 +291,10 @@ class PropertiManageController extends Controller
 
         if ($kamar->foto) {
             Storage::disk('public')->delete($kamar->foto);
+        }
+
+        foreach ($kamar->fotos as $foto) {
+            Storage::disk('public')->delete($foto->path);
         }
 
         $kamar->delete();
@@ -297,11 +322,15 @@ class PropertiManageController extends Controller
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
             'harga' => 'nullable|numeric|min:0',
+            'harga_mingguan' => 'nullable|numeric|min:0',
             'harga_harian' => 'nullable|numeric|min:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'jenis_harga' => 'required|in:bulanan,harian',
             'status' => 'required|in:aktif,nonaktif',
             'foto' => 'nullable|image|max:2048',
+            'fotos' => 'nullable|array|max:10',
+            'fotos.*' => 'image|max:4096',
+            'hapus_foto_ids' => 'nullable|array',
+            'hapus_foto_ids.*' => 'integer',
             'pemilik_id' => $properti === null ? ['nullable', 'integer', Rule::exists('users', 'id')] : ['nullable'],
         ]);
     }
@@ -318,9 +347,9 @@ class PropertiManageController extends Controller
             'aturan' => $validated['aturan'] ?? null,
             'denda_per_hari' => $validated['denda_per_hari'] ?? null,
             'harga' => $validated['harga'] ?? null,
+            'harga_mingguan' => $validated['harga_mingguan'] ?? null,
             'harga_harian' => $validated['harga_harian'] ?? null,
             'harga_asli' => $validated['harga_asli'] ?? null,
-            'jenis_harga' => $validated['jenis_harga'],
         ];
 
         if (! blank($validated['fasilitas'] ?? null)) {
@@ -338,6 +367,8 @@ class PropertiManageController extends Controller
 
     private function formatProperti(Properti $p): array
     {
+        $p->loadMissing(['fotos', 'kamars.fotos']);
+
         return [
             'id' => $p->id,
             'nama' => $p->nama,
@@ -350,11 +381,12 @@ class PropertiManageController extends Controller
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
             'harga' => $p->harga !== null ? (float) $p->harga : null,
+            'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
             'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
-            'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? '/storage/'.$p->foto : null,
+            'foto' => $p->fotoCover(),
+            'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) ($p->total_kamar ?? 0),
             'kamar_terisi' => (int) ($p->kamar_terisi ?? 0),
             'kamars' => $p->kamars->map(fn (Kamar $k) => $this->formatKamar($k))->values(),
@@ -363,17 +395,92 @@ class PropertiManageController extends Controller
 
     private function formatKamar(Kamar $k): array
     {
+        $k->loadMissing('fotos');
+
         return [
             'id' => $k->id,
             'nama' => $k->nama,
             'kapasitas' => (int) $k->kapasitas,
             'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
+            'harga_sewa_mingguan' => $k->harga_sewa_mingguan !== null ? (float) $k->harga_sewa_mingguan : null,
             'harga_sewa_harian' => $k->harga_sewa_harian !== null ? (float) $k->harga_sewa_harian : null,
-            'jenis_harga' => $k->jenis_harga,
             'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
             'status' => $k->status,
-            'foto' => $k->foto ? '/storage/'.$k->foto : null,
+            'foto' => $k->fotoCover(),
+            'fotos' => $k->galeriUrls(),
         ];
+    }
+
+    /**
+     * Simpan file galeri baru (maks total 10 per entitas).
+     *
+     * @param  \App\Models\Properti|\App\Models\Kamar  $model
+     */
+    private function simpanGaleriBaru($model, $files, string $folder, string $jenis): void
+    {
+        if (empty($files)) {
+            return;
+        }
+
+        $relasi = $model->fotos();
+        $maks = 10 - $relasi->count();
+
+        if ($maks <= 0) {
+            return;
+        }
+
+        $urutan = (int) ($relasi->max('urutan') ?? -1) + 1;
+
+        foreach (array_slice(is_array($files) ? $files : [$files], 0, $maks) as $file) {
+            if (! $file || ! $file->isValid()) {
+                continue;
+            }
+
+            $path = $file->store($folder, 'public');
+            $isCover = ! $relasi->exists();
+
+            $relasi->create([
+                $jenis === 'properti' ? 'properti_id' : 'kamar_id' => $model->id,
+                'path' => $path,
+                'urutan' => $urutan++,
+                'is_cover' => $isCover,
+            ]);
+
+            // Sinkronkan kolom foto lama ke cover galeri agar view lama tetap jalan.
+            if ($isCover) {
+                $model->update(['foto' => $path]);
+            }
+        }
+    }
+
+    /**
+     * @param  \App\Models\Properti|\App\Models\Kamar  $model
+     */
+    private function hapusGaleri($model, $ids, string $jenis): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        $ids = array_map('intval', is_array($ids) ? $ids : [$ids]);
+        $fotos = $model->fotos()->whereIn('id', $ids)->get();
+
+        foreach ($fotos as $foto) {
+            Storage::disk('public')->delete($foto->path);
+            $wasCover = $foto->is_cover;
+            $foto->delete();
+
+            if ($wasCover) {
+                $pengganti = $model->fotos()->orderBy('urutan')->first();
+
+                if ($pengganti) {
+                    $pengganti->update(['is_cover' => true]);
+                    $model->update(['foto' => $pengganti->path]);
+                } else {
+                    $model->update(['foto' => null]);
+                }
+            }
+        }
     }
 
     private function nullableCoord(mixed $value): ?string

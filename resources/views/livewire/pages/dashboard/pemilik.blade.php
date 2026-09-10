@@ -20,13 +20,6 @@ new class extends Component
 
     public ?string $galat = null;
 
-    public string $periode = '6';
-
-    public function updatedPeriode(): void
-    {
-        $this->dispatch('chart:data-updated');
-    }
-
     public function with(): array
     {
         $id = auth()->id();
@@ -80,72 +73,6 @@ new class extends Component
             ->limit(6)
             ->get();
 
-        $bulanCount = max(1, min(24, (int) $this->periode));
-
-        $pendapatanPerBulan = Pembayaran::where('status', 'diverifikasi')
-            ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->where('verified_at', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
-            ->get(['verified_at', 'jumlah'])
-            ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
-            ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
-            ->keyBy('month');
-
-        $pengeluaranPerBulan = Pengeluaran::whereHas('properti', $scope)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
-            ->get(['tanggal', 'jumlah'])
-            ->groupBy(fn ($p) => $p->tanggal->format('m/Y'))
-            ->map(fn ($rows) => ['month' => $rows->first()->tanggal->format('m/Y'), 'total' => (int) round($rows->sum('jumlah'))])
-            ->keyBy('month');
-
-        $bulanLabels = collect(range($bulanCount - 1, 0))
-            ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->format('m/Y'))
-            ->all();
-
-        $chartPendapatan = [];
-        $chartPengeluaran = [];
-        $chartLaba = [];
-        $chartOkupansi = [];
-
-        $bulanAwal = now()->startOfMonth()->subMonths($bulanCount - 1);
-        $bulanAkhir = now()->endOfMonth();
-
-        $sewaanOkupansi = Penyewaan::whereHas('properti', $scope)
-            ->where('tanggal_masuk', '<=', $bulanAkhir)
-            ->where(fn ($w) => $w->whereNull('tanggal_keluar')->orWhere('tanggal_keluar', '>=', $bulanAwal))
-            ->get(['kamar_id', 'tanggal_masuk', 'tanggal_keluar']);
-
-        foreach (range($bulanCount - 1, 0) as $i) {
-            $start = now()->startOfMonth()->subMonths($i);
-            $end = $start->copy()->endOfMonth();
-            $label = $start->format('m/Y');
-
-            $pendapatan = (int) ($pendapatanPerBulan[$label]['total'] ?? 0);
-            $pengeluaran = (int) ($pengeluaranPerBulan[$label]['total'] ?? 0);
-
-            $chartPendapatan[] = $pendapatan;
-            $chartPengeluaran[] = $pengeluaran;
-            $chartLaba[] = $pendapatan - $pengeluaran;
-
-            $kamarTerisiBulan = $sewaanOkupansi
-                ->filter(fn ($s) => $s->tanggal_masuk->lte($end) && ($s->tanggal_keluar === null || $s->tanggal_keluar->gte($start)))
-                ->pluck('kamar_id')
-                ->unique()
-                ->count();
-
-            $chartOkupansi[] = $totalKamar > 0 ? (int) round($kamarTerisiBulan / $totalKamar * 100) : 0;
-        }
-
-        $chartKategori = Pengeluaran::whereHas('properti', $scope)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
-            ->get(['kategori', 'jumlah'])
-            ->groupBy('kategori')
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')))
-            ->sortDesc()
-            ->take(7)
-            ->map(fn ($nilai, $kategori) => ['label' => str($kategori)->title(), 'value' => $nilai])
-            ->values()
-            ->all();
-
         $pembayaranTerbaru = Pembayaran::where('status', 'diverifikasi')
             ->whereHas('tagihan.penyewaan.properti', $scope)
             ->with(['tagihan.penyewaan.anakKos', 'tagihan.penyewaan.properti'])
@@ -191,23 +118,11 @@ new class extends Component
                 ->get(),
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->with(['anakKos', 'kamar.properti', 'tagihans'])
+                ->with(['anakKos', 'kamar.properti', 'tagihans', 'anggotas.user'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(50)
                 ->get(),
-            'funnelStages' => [
-                ['label' => 'Kunjungan', 'sub' => 'seluruh penyewaan dari properti Anda', 'nilai' => Penyewaan::whereHas('properti', $scope)->count()],
-                ['label' => 'Aktif', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->whereHas('properti', $scope)->count()],
-                ['label' => 'Tagihan', 'sub' => 'total tagihan yang terbit', 'nilai' => Tagihan::whereHas('penyewaan.properti', $scope)->count()],
-                ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->whereHas('penyewaan.properti', $scope)->count()],
-            ],
-            'bulanLabels' => $bulanLabels,
-            'chartPendapatan' => $chartPendapatan,
-            'chartPengeluaran' => $chartPengeluaran,
-            'chartLaba' => $chartLaba,
-            'chartOkupansi' => $chartOkupansi,
-            'chartKategori' => $chartKategori,
         ];
     }
 
@@ -216,29 +131,36 @@ new class extends Component
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
             ->whereHas('properti', fn ($q) => $q->where('pemilik_id', auth()->id()))
-            ->with(['anakKos', 'kamar', 'tagihans'])
+            ->with(['anakKos', 'kamar', 'tagihans', 'anggotas'])
             ->first();
 
         if (! $sewaan) {
             return;
         }
 
+        // Patungan + masih ada penghuni lain => jangan kosongkan kamar.
+        $adaPenghuniLain = $sewaan->anggotas->where('status', 'aktif')->isNotEmpty();
+
         $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas')->count();
 
-        DB::transaction(function () use ($sewaan) {
+        DB::transaction(function () use ($sewaan, $adaPenghuniLain) {
             $sewaan->update([
                 'tanggal_keluar' => now()->toDateString(),
                 'status' => 'selesai',
             ]);
 
-            optional($sewaan->kamar)->update(['status' => 'tersedia']);
+            if (! $adaPenghuniLain) {
+                optional($sewaan->kamar)->update(['status' => 'tersedia']);
+            }
         });
 
         $catatan = $belumLunas > 0
             ? " Perhatian: masih ada {$belumLunas} tagihan belum lunas milik penyewa ini."
             : '';
 
-        $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil. Kamar kembali tersedia.{$catatan}";
+        $tambahan = $adaPenghuniLain ? ' Kamar tetap terisi karena masih ada anggota patungan yang stay.' : ' Kamar kembali tersedia.';
+
+        $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}";
     }
 
     public function verifikasiPembayaran(int $pembayaranId): void
@@ -255,25 +177,20 @@ new class extends Component
             return;
         }
 
-        $pembayaran->update([
-            'status' => 'diverifikasi',
-            'diverifikasi_oleh' => auth()->id(),
-            'verified_at' => now(),
-        ]);
+        try {
+            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'diverifikasi');
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
 
-        $tagihan = $pembayaran->tagihan;
-        $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
-
-        if ($total >= $tagihan->jumlah + $tagihan->denda) {
-            $tagihan->update(['status' => 'lunas']);
+            return;
         }
-
-        ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, auth()->id());
 
         $nama = $pembayaran->anakKos?->nama ?? 'Penyewa';
 
         $this->pesan = "Pembayaran {$nama} sebesar Rp".number_format((float) $pembayaran->jumlah, 0, ',', '.')
-            ." telah diverifikasi.";
+            .' telah diverifikasi.'
+            .($hasil['tagihan_lunas'] ? ' Tagihan LUNAS.' : '')
+            .($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim (lihat di chat & unduh di bawah)." : '');
     }
 }; ?>
 
@@ -395,72 +312,23 @@ new class extends Component
             @endforeach
         </div>
 
-        {{-- Rekap keuangan & okupansi --}}
-        <div id="rekap-data"
-            data-labels='{{ json_encode($bulanLabels) }}'
-            data-chart-pendapatan='{{ json_encode($chartPendapatan) }}'
-            data-chart-pengeluaran='{{ json_encode($chartPengeluaran) }}'
-            data-chart-laba='{{ json_encode($chartLaba) }}'
-            data-chart-okupansi='{{ json_encode($chartOkupansi) }}'
-            data-chart-kategori='{{ json_encode($chartKategori) }}'
-            class="space-y-6">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {{-- Grafik & analitik pindah ke menu sendiri agar tidak membingungkan --}}
+        <a href="{{ route('pemilik.grafik') }}" wire:navigate
+            class="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-700 dark:to-emerald-700 p-5 sm:p-6 text-white shadow-sm hover:shadow-md transition">
+            <div class="flex items-center gap-4">
+                <span class="shrink-0 h-12 w-12 rounded-2xl bg-white/15 text-white flex items-center justify-center">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+                </span>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Ekspor Rekap Bulanan</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Unduh rekap ringkasan, properti, penyewaan & transaksi per bulan (PDF / Excel).</p>
-                </div>
-                <form method="GET" class="flex flex-wrap items-center gap-2" target="_blank" rel="noopener">
-                    <input type="month" name="bulan" value="{{ now()->format('Y-m') }}"
-                        class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
-                    <button type="submit" formaction="{{ route('pemilik.rekap.pdf') }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 transition">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                        PDF
-                    </button>
-                    <button type="submit" formaction="{{ route('pemilik.rekap.excel') }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                        Excel
-                    </button>
-                </form>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pendapatan vs Pengeluaran vs Laba</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Periode terpilih, properti milik Anda</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <label for="periode" class="text-xs font-semibold text-gray-500 dark:text-gray-400">Periode</label>
-                        <select wire:model.live="periode" id="periode"
-                            class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
-                            <option value="3">3 bulan</option>
-                            <option value="6">6 bulan</option>
-                            <option value="12">12 bulan</option>
-                        </select>
-                    </div>
-                </div>
-                <canvas id="chart-rekap-keuangan" class="mt-4 max-h-72"></canvas>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Okupansi</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Tingkat hunian (%) berdasarkan penyewaan tiap bulan</p>
-                    <canvas id="chart-rekap-okupansi" class="mt-4 max-h-64"></canvas>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pengeluaran per Kategori</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Komposisi biaya operasional pada periode terpilih</p>
-                    @if (count($chartKategori) > 0)
-                        <canvas id="chart-rekap-kategori" class="mt-4 max-h-64"></canvas>
-                    @else
-                        <p class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pengeluaran pada periode ini.</p>
-                    @endif
+                    <p class="text-base font-extrabold">Grafik & Analitik</p>
+                    <p class="mt-0.5 text-xs text-teal-100">Keuangan, okupansi, piutang & performa tiap properti — pindah ke menu Grafik di sidebar.</p>
                 </div>
             </div>
-        </div>
+            <span class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur group-hover:bg-white/25 transition">
+                Buka Grafik
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3" /></svg>
+            </span>
+        </a>
 
         @if ($pembayaranMenungguCount > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
@@ -513,6 +381,10 @@ new class extends Component
                             <div class="text-end shrink-0">
                                 <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400">+Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</p>
                                 <p class="text-xs text-gray-400 dark:text-gray-500">{{ $pembayaran->verified_at?->translatedFormat('d M Y') }}</p>
+                                <a href="{{ route('pembayaran.kwitansi', $pembayaran) }}" target="_blank" rel="noopener"
+                                    class="mt-1 inline-flex items-center gap-1 rounded-lg bg-teal-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-teal-500 transition">
+                                    Kwitansi{{ $pembayaran->nomor_kwitansi ? ' '.$pembayaran->nomor_kwitansi : '' }}
+                                </a>
                             </div>
                         </div>
                     @empty
@@ -549,12 +421,6 @@ new class extends Component
                 </div>
             </div>
         </div>
-
-        <x-dashboard-funnel
-            :stages="$funnelStages"
-            title="Grafik Pipeline"
-            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti milik Anda"
-        />
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700">
@@ -639,10 +505,25 @@ new class extends Component
                                         $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
                                         $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                                         $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
+                                        $anggotaAktifRow = $sewaan->anggotas->where('status', 'aktif');
+                                        $isPatunganRow = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktifRow->isNotEmpty();
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                         <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                                             {{ $sewaan->anakKos?->nama ?? '-' }}
+                                            @foreach ($anggotaAktifRow as $ag)
+                                                <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ {{ $ag->user?->nama }} ({{ (int) $ag->porsi_persen }}%)</span>
+                                            @endforeach
+                                            @if ($isPatunganRow)
+                                                <span class="mt-1 inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300">Patungan</span>
+                                            @endif
+                                            <span class="mt-1 block">
+                                                @if ($sewaan->ktp_path)
+                                                    <a href="{{ route('penyewaan.ktp', $sewaan) }}" target="_blank" rel="noopener" class="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline">Lihat KTP</a>
+                                                @else
+                                                    <span class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">KTP belum ada</span>
+                                                @endif
+                                            </span>
                                         </td>
                                         <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
                                             {{ $sewaan->kamar?->nama ?? '-' }}
@@ -684,32 +565,4 @@ new class extends Component
     </div>
 </div>
 
-@push('scripts')
-    <script>
-        function renderRekapPemilik() {
-            const wrap = document.getElementById('rekap-data');
-            if (!wrap) return;
-
-            const labels = JSON.parse(wrap.dataset.labels || '[]');
-            const pendapatan = JSON.parse(wrap.dataset.chartPendapatan || '[]');
-            const pengeluaran = JSON.parse(wrap.dataset.chartPengeluaran || '[]');
-            const laba = JSON.parse(wrap.dataset.chartLaba || '[]');
-            const okupansi = JSON.parse(wrap.dataset.chartOkupansi || '[]');
-            const kategori = JSON.parse(wrap.dataset.chartKategori || '[]');
-
-            window.rekapKeuanganChart('chart-rekap-keuangan', labels, pendapatan, pengeluaran, laba);
-            window.rekapOkupansiChart('chart-rekap-okupansi', labels, okupansi);
-            if (kategori.length) {
-                window.rekapKategoriChart('chart-rekap-kategori', kategori.map(k => k.label), kategori.map(k => k.value));
-            }
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', renderRekapPemilik);
-        } else {
-            renderRekapPemilik();
-        }
-        document.addEventListener('livewire:navigated', renderRekapPemilik);
-        Livewire.on('chart:data-updated', () => requestAnimationFrame(renderRekapPemilik));
-    </script>
-@endpush
+{{-- Grafik & analitik ditampilkan penuh di menu Grafik (pemilik.grafik) --}}

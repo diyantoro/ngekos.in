@@ -99,6 +99,8 @@ class KatalogController extends Controller
      */
     private function formatRingkas(Properti $p): array
     {
+        $p->loadMissing('fotos');
+
         return [
             'id' => $p->id,
             'nama' => $p->nama,
@@ -107,7 +109,8 @@ class KatalogController extends Controller
             'longitude' => $p->longitude !== null ? (float) $p->longitude : null,
             'alamat' => $p->alamat,
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
-            'foto' => $p->foto ? '/storage/'.$p->foto : null,
+            'foto' => $p->fotoCover(),
+            'fotos' => $p->galeriUrls(),
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
@@ -123,6 +126,8 @@ class KatalogController extends Controller
      */
     private function formatDetail(Properti $p): array
     {
+        $p->loadMissing(['fotos', 'kamars.fotos']);
+
         return [
             'id' => $p->id,
             'nama' => $p->nama,
@@ -139,7 +144,8 @@ class KatalogController extends Controller
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? '/storage/'.$p->foto : null,
+            'foto' => $p->fotoCover(),
+            'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) $p->total_kamar,
             'kamar_tersedia' => (int) $p->kamar_tersedia,
             'pemilik' => $p->pemilik ? [
@@ -156,7 +162,8 @@ class KatalogController extends Controller
                 'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
                 'jenis_harga' => $k->jenis_harga,
                 'status' => $k->status,
-                'foto' => $k->foto ? '/storage/'.$k->foto : null,
+                'foto' => $k->fotoCover(),
+                'fotos' => $k->galeriUrls(),
             ])->values(),
         ];
     }

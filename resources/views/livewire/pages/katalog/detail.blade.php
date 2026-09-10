@@ -8,9 +8,12 @@ use App\Support\Koordinat;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.publik')] class extends Component
 {
+    use WithFileUploads;
+
     public Properti $properti;
 
     public ?string $galat = null;
@@ -25,9 +28,13 @@ new #[Layout('layouts.publik')] class extends Component
 
     public int $durasiHari = 1;
 
+    public int $durasiMinggu = 1;
+
     public string $periodeSewa = 'bulanan';
 
     public int $langkahSewa = 1;
+
+    public $ktp = null;
 
     public bool $favorit = false;
 
@@ -54,9 +61,10 @@ new #[Layout('layouts.publik')] class extends Component
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
         ]);
+        $this->properti->loadMissing('fotos');
 
         return [
-            'kamars' => Kamar::where('properti_id', $this->properti->id)->orderBy('nama')->get(),
+            'kamars' => Kamar::with('fotos')->where('properti_id', $this->properti->id)->orderBy('nama')->get(),
             'titik' => Koordinat::titik($this->properti->kota, $this->properti->latitude, $this->properti->longitude),
             'ulasans' => Ulasan::with('user')->where('properti_id', $this->properti->id)->latest()->get(),
         ];
@@ -80,13 +88,22 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
+        $periodeTersedia = $kamar->periodeTersedia();
+        if (empty($periodeTersedia)) {
+            $this->galat = 'Kamar ini belum menetapkan harga sewa.';
+            $this->pesan = null;
+
+            return;
+        }
+
         $this->galat = null;
         $this->pesan = null;
         $this->modalKamarId = $kamarId;
         $this->tanggalMasuk = today()->toDateString();
         $this->durasiBulan = 1;
+        $this->durasiMinggu = 1;
         $this->durasiHari = 1;
-        $this->periodeSewa = $kamar->jenis_harga === 'harian' ? 'harian' : 'bulanan';
+        $this->periodeSewa = $periodeTersedia[0];
         $this->langkahSewa = 1;
     }
 
@@ -95,36 +112,64 @@ new #[Layout('layouts.publik')] class extends Component
         $this->modalKamarId = null;
         $this->tanggalMasuk = '';
         $this->durasiBulan = 1;
+        $this->durasiMinggu = 1;
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
+        $this->ktp = null;
         $this->resetValidation();
+    }
+
+    /**
+     * Aturan durasi per periode (dipakai lanjutReview + konfirmasiSewa).
+     */
+    private function aturanDurasi(): array
+    {
+        return match ($this->periodeSewa) {
+            'mingguan' => ['durasiMinggu' => ['required', 'integer', 'min:1', 'max:12']],
+            'harian' => ['durasiHari' => ['required', 'integer', 'min:1', 'max:90']],
+            default => ['durasiBulan' => ['required', 'integer', 'min:1', 'max:12']],
+        };
+    }
+
+    private function pesanDurasi(): array
+    {
+        return [
+            'durasiBulan.required' => 'Pilih lama sewa terlebih dahulu.',
+            'durasiBulan.min' => 'Lama sewa minimal 1 bulan.',
+            'durasiBulan.max' => 'Lama sewa maksimal 12 bulan.',
+            'durasiMinggu.required' => 'Pilih lama sewa mingguan terlebih dahulu.',
+            'durasiMinggu.min' => 'Lama sewa mingguan minimal 1 minggu.',
+            'durasiMinggu.max' => 'Lama sewa mingguan maksimal 12 minggu.',
+            'durasiHari.required' => 'Pilih lama sewa harian terlebih dahulu.',
+            'durasiHari.min' => 'Lama sewa harian minimal 1 hari.',
+            'durasiHari.max' => 'Lama sewa harian maksimal 90 hari.',
+        ];
     }
 
     public function lanjutReview(): void
     {
-        $rules = [
+        $rules = array_merge([
             'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addMonths(3)->toDateString()],
-        ];
+            'ktp' => PenyewaanService::ATURAN_KTP,
+        ], $this->aturanDurasi());
 
-        if ($this->periodeSewa === 'harian') {
-            $rules['durasiHari'] = ['required', 'integer', 'min:1', 'max:90'];
-        } else {
-            $rules['durasiBulan'] = ['required', 'integer', 'min:1', 'max:12'];
-        }
-
-        $this->validate($rules, [
+        $this->validate($rules, array_merge([
             'tanggalMasuk.required' => 'Pilih tanggal masuk terlebih dahulu.',
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
             'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
-            'durasiBulan.required' => 'Pilih lama sewa terlebih dahulu.',
-            'durasiBulan.min' => 'Lama sewa minimal 1 bulan.',
-            'durasiBulan.max' => 'Lama sewa maksimal 12 bulan.',
-            'durasiHari.required' => 'Pilih lama sewa harian terlebih dahulu.',
-            'durasiHari.min' => 'Lama sewa harian minimal 1 hari.',
-            'durasiHari.max' => 'Lama sewa harian maksimal 90 hari.',
-        ]);
+        ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
+
+        // Pastikan periode yang dipilih memang punya harga.
+        $kamar = Kamar::where('id', $this->modalKamarId)->where('properti_id', $this->properti->id)->first();
+
+        $hargaPeriode = $kamar ? $kamar->hargaUntuk($this->periodeSewa) : null;
+        if ($kamar && ($hargaPeriode === null || $hargaPeriode <= 0)) {
+            $this->addError('periodeSewa', 'Periode ini tidak tersedia untuk kamar tersebut.');
+
+            return;
+        }
 
         $this->langkahSewa = 2;
     }
@@ -144,28 +189,17 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
-        $rules = [
+        $rules = array_merge([
             'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addMonths(3)->toDateString()],
-        ];
+            'ktp' => PenyewaanService::ATURAN_KTP,
+        ], $this->aturanDurasi());
 
-        if ($this->periodeSewa === 'harian') {
-            $rules['durasiHari'] = ['required', 'integer', 'min:1', 'max:90'];
-        } else {
-            $rules['durasiBulan'] = ['required', 'integer', 'min:1', 'max:12'];
-        }
-
-        $this->validate($rules, [
+        $this->validate($rules, array_merge([
             'tanggalMasuk.required' => 'Pilih tanggal masuk terlebih dahulu.',
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
             'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
-            'durasiBulan.required' => 'Pilih lama sewa terlebih dahulu.',
-            'durasiBulan.min' => 'Lama sewa minimal 1 bulan.',
-            'durasiBulan.max' => 'Lama sewa maksimal 12 bulan.',
-            'durasiHari.required' => 'Pilih lama sewa harian terlebih dahulu.',
-            'durasiHari.min' => 'Lama sewa harian minimal 1 hari.',
-            'durasiHari.max' => 'Lama sewa harian maksimal 90 hari.',
-        ]);
+        ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
 
         $kamar = Kamar::with('properti')
             ->where('id', $this->modalKamarId)
@@ -179,6 +213,16 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
+        $periodeTersedia = $kamar->periodeTersedia();
+        if (! in_array($this->periodeSewa, $periodeTersedia, true)) {
+            $this->resetForm();
+            $this->galat = 'Periode sewa yang dipilih tidak tersedia untuk kamar ini.';
+
+            return;
+        }
+
+        $ktpPath = $this->ktp ? $this->ktp->store('ktp', 'public') : null;
+
         try {
             app(PenyewaanService::class)->sewaKamar(
                 auth()->user(),
@@ -186,17 +230,30 @@ new #[Layout('layouts.publik')] class extends Component
                 $this->tanggalMasuk,
                 $this->durasiBulan,
                 $this->periodeSewa === 'harian' ? $this->durasiHari : null,
+                $ktpPath,
+                $this->periodeSewa === 'mingguan' ? $this->durasiMinggu : null,
             );
         } catch (DomainException $e) {
+            if ($ktpPath) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($ktpPath);
+            }
             $this->resetForm();
             $this->galat = $e->getMessage();
 
             return;
         }
 
-        $harga = $this->periodeSewa === 'harian' ? $kamar->harga_sewa_harian : $kamar->harga_sewa_bulanan;
-        $durasi = $this->periodeSewa === 'harian' ? $this->durasiHari : $this->durasiBulan;
-        $satuan = $this->periodeSewa === 'harian' ? 'hari' : 'bulan';
+        $harga = $kamar->hargaUntuk($this->periodeSewa) ?? $kamar->harga_sewa_bulanan;
+        $durasi = match ($this->periodeSewa) {
+            'mingguan' => $this->durasiMinggu,
+            'harian' => $this->durasiHari,
+            default => $this->durasiBulan,
+        };
+        $satuan = match ($this->periodeSewa) {
+            'mingguan' => 'minggu',
+            'harian' => 'hari',
+            default => 'bulan',
+        };
         $totalTagihan = round((float) $harga * $durasi);
         $pesanBaru = 'Kamar '.$kamar->nama.' berhasil dipesan selama '.$durasi.' '.$satuan.'. '
             .'Rencana masuk: '.Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
@@ -261,9 +318,11 @@ new #[Layout('layouts.publik')] class extends Component
         $this->modalKamarId = null;
         $this->tanggalMasuk = '';
         $this->durasiBulan = 1;
+        $this->durasiMinggu = 1;
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
+        $this->ktp = null;
         $this->resetValidation();
     }
 }; ?>
@@ -292,14 +351,7 @@ new #[Layout('layouts.publik')] class extends Component
     </div>
 
     <!-- Cover Image -->
-    <div class="relative h-56 sm:h-72 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
-        @if ($properti->foto)
-            <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover">
-        @else
-            <div class="h-full w-full flex items-center justify-center">
-                <svg class="h-20 w-20 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
-            </div>
-        @endif
+    <x-galeri-kos :fotos="$properti->galeriUrls()" :nama="$properti->nama" kelas="relative h-56 sm:h-72">
         <a href="{{ route('kos.index') }}" wire:navigate
            class="absolute top-4 left-4 inline-flex items-center gap-1.5 rounded-xl bg-black/40 backdrop-blur-sm px-3 py-2 text-sm font-medium text-white hover:bg-black/60 transition">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
@@ -312,7 +364,7 @@ new #[Layout('layouts.publik')] class extends Component
                 Chat
             </a>
         @endauth
-    </div>
+    </x-galeri-kos>
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         @if ($galat)
@@ -385,22 +437,17 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
 
             <div class="mt-4 grid grid-cols-3 gap-3">
-                @php
-                    $termurah = $properti->kamars()->where('status', 'tersedia')->min('harga_sewa_bulanan');
-                    $periode = 'bulanan';
-                    $adaDiskonDetail = $properti->harga_asli && $termurah && $properti->harga_asli > $termurah;
-                @endphp
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Harga Mulai</p>
-                    <p class="mt-1 text-sm sm:text-base font-extrabold text-teal-600 dark:text-teal-400">
-                        @if ($termurah)
-                            @if ($adaDiskonDetail)
-                                <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
-                            @endif
-                            Rp{{ number_format($termurah, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
-                            @if ($properti->harga_harian)
-                                <span class="block text-[10px] font-medium text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
-                            @endif
+                    <p class="mt-1">
+                        @php
+                            $termurahBulan = $properti->kamars()->where('status', 'tersedia')->min('harga_sewa_bulanan');
+                            $termurahMinggu = $properti->kamars()->where('status', 'tersedia')->whereNotNull('harga_sewa_mingguan')->min('harga_sewa_mingguan');
+                            $termurahHari = $properti->kamars()->where('status', 'tersedia')->whereNotNull('harga_sewa_harian')->min('harga_sewa_harian');
+                            $adaDiskonDetail = $properti->harga_asli && $termurahBulan && $properti->harga_asli > $termurahBulan;
+                        @endphp
+                        @if ($termurahBulan)
+                            <x-harga-tiga-periode :bulanan="$termurahBulan" :mingguan="$termurahMinggu" :harian="$termurahHari" :asli="$adaDiskonDetail ? $properti->harga_asli : null" varian="baris" />
                         @else
                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                         @endif
@@ -511,15 +558,7 @@ new #[Layout('layouts.publik')] class extends Component
                 @forelse ($kamars as $kamar)
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                         <div class="flex">
-                            <div class="h-28 sm:h-36 w-24 sm:w-36 shrink-0 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800">
-                                @if ($kamar->foto)
-                                    <img src="{{ asset('storage/' . $kamar->foto) }}" alt="Kamar {{ $kamar->nama }}" class="h-full w-full object-cover">
-                                @else
-                                    <div class="h-full w-full flex items-center justify-center">
-                                        <svg class="h-10 w-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
-                                    </div>
-                                @endif
-                            </div>
+                            <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-28 sm:h-36 w-24 sm:w-36 shrink-0" ringkas />
 
                             <div class="flex-1 p-3 sm:p-4 flex flex-col justify-between">
                                 <div class="flex items-start justify-between gap-2">
@@ -532,16 +571,7 @@ new #[Layout('layouts.publik')] class extends Component
 
                                 <div class="mt-2 flex items-end justify-between">
                                     <div>
-                                        @if ($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan)
-                                            <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($kamar->harga_asli, 0, ',', '.') }}</p>
-                                        @endif
-                                        <p class="text-base sm:text-lg font-extrabold text-teal-600 dark:text-teal-400">
-                                            Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}
-                                            <span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}</span>
-                                        </p>
-                                        @if ($kamar->harga_sewa_harian)
-                                            <p class="text-[10px] font-medium text-gray-400 dark:text-gray-500">atau Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</p>
-                                        @endif
+                                        <x-harga-tiga-periode :bulanan="$kamar->harga_sewa_bulanan" :mingguan="$kamar->harga_sewa_mingguan" :harian="$kamar->harga_sewa_harian" :asli="($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan) ? $kamar->harga_asli : null" varian="rincian" />
                                     </div>
 
                                     @if ($kamar->status === 'tersedia')
@@ -703,7 +733,9 @@ new #[Layout('layouts.publik')] class extends Component
                 <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <div class="min-w-0">
                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Sewa Kamar {{ $kamarModal?->nama }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $properti->nama }} &middot; Rp{{ number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.') }}/bulan
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $properti->nama }}
+                            &middot; Rp{{ number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.') }}/bulan
+                            @if ($kamarModal?->harga_sewa_mingguan) &middot; Rp{{ number_format($kamarModal->harga_sewa_mingguan, 0, ',', '.') }}/minggu @endif
                             @if ($kamarModal?->harga_sewa_harian) &middot; Rp{{ number_format($kamarModal->harga_sewa_harian, 0, ',', '.') }}/hari @endif</p>
                     </div>
                     <button type="button" wire:click="tutupModalSewa"
@@ -720,28 +752,40 @@ new #[Layout('layouts.publik')] class extends Component
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
                             @error('tanggalMasuk') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                         </div>
-                        @if ($kamarModal?->harga_sewa_harian)
-                            <div class="mt-4">
-                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Periode Sewa</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button type="button" wire:click="$set('periodeSewa', 'bulanan')"
-                                        @class(['rounded-xl border px-4 py-2.5 text-sm font-semibold transition',
-                                                'bg-teal-600 border-teal-600 text-white' => $periodeSewa === 'bulanan',
-                                                'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' => $periodeSewa !== 'bulanan'])>
-                                        Per Bulan
+                        <div class="mt-4">
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Periode Sewa</label>
+                            @php
+                                $opsiPeriode = [
+                                    'bulanan' => ['label' => 'Per Bulan', 'harga' => $kamarModal?->harga_sewa_bulanan],
+                                    'mingguan' => ['label' => 'Per Minggu', 'harga' => $kamarModal?->harga_sewa_mingguan],
+                                    'harian' => ['label' => 'Per Hari', 'harga' => $kamarModal?->harga_sewa_harian],
+                                ];
+                            @endphp
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach ($opsiPeriode as $nilai => $opsi)
+                                    @php $tersedia = $opsi['harga'] !== null && (float) $opsi['harga'] > 0; @endphp
+                                    <button type="button" wire:click="$set('periodeSewa', '{{ $nilai }}')"
+                                        @if (! $tersedia) disabled title="Pemilik tidak membuka sewa {{ strtolower($opsi['label']) }}" @endif
+                                        @class(['rounded-xl border px-2 py-2.5 text-sm font-semibold transition',
+                                                'bg-teal-600 border-teal-600 text-white' => $periodeSewa === $nilai && $tersedia,
+                                                'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' => $periodeSewa !== $nilai && $tersedia,
+                                                'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-300 dark:text-gray-600 cursor-not-allowed' => ! $tersedia])>
+                                        {{ $opsi['label'] }}
+                                        <span class="block text-[10px] font-normal opacity-70">
+                                            @if ($tersedia)
+                                                Rp{{ number_format($opsi['harga'], 0, ',', '.') }}
+                                            @else
+                                                Tdk tersedia
+                                            @endif
+                                        </span>
                                     </button>
-                                    <button type="button" wire:click="$set('periodeSewa', 'harian')"
-                                        @class(['rounded-xl border px-4 py-2.5 text-sm font-semibold transition',
-                                                'bg-teal-600 border-teal-600 text-white' => $periodeSewa === 'harian',
-                                                'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' => $periodeSewa !== 'harian'])>
-                                        Per Hari
-                                    </button>
-                                </div>
+                                @endforeach
                             </div>
-                        @endif
+                            @error('periodeSewa') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                        </div>
                         <div class="mt-4">
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                                {{ $periodeSewa === 'harian' ? 'Lama Sewa (hari)' : 'Lama Sewa (bulan)' }}
+                                {{ $periodeSewa === 'harian' ? 'Lama Sewa (hari)' : ($periodeSewa === 'mingguan' ? 'Lama Sewa (minggu)' : 'Lama Sewa (bulan)') }}
                             </label>
                             @if ($periodeSewa === 'harian')
                                 <select wire:model="durasiHari"
@@ -751,6 +795,14 @@ new #[Layout('layouts.publik')] class extends Component
                                     @endforeach
                                 </select>
                                 @error('durasiHari') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            @elseif ($periodeSewa === 'mingguan')
+                                <select wire:model="durasiMinggu"
+                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
+                                    @foreach (range(1, 12) as $minggu)
+                                        <option value="{{ $minggu }}">{{ $minggu }} minggu</option>
+                                    @endforeach
+                                </select>
+                                @error('durasiMinggu') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             @else
                                 <select wire:model="durasiBulan"
                                     class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
@@ -760,6 +812,17 @@ new #[Layout('layouts.publik')] class extends Component
                                 </select>
                                 @error('durasiBulan') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             @endif
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto KTP <span class="text-rose-500">*</span></label>
+                            <input type="file" wire:model="ktp" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Wajib. JPG/PNG/WEBP/PDF, maks 2MB. Data hanya untuk verifikasi pemilik.</p>
+                            @error('ktp') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <div wire:loading wire:target="ktp" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
+                                <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Mengunggah KTP...
+                            </div>
                         </div>
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
@@ -778,11 +841,9 @@ new #[Layout('layouts.publik')] class extends Component
                     <div wire:key="langkah-2" @if ($langkahSewa !== 2) class="hidden" @endif>
                         <div class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 bg-gray-50 dark:bg-gray-700/30 divide-y divide-gray-100 dark:divide-gray-600 overflow-hidden">
                             @php
-                                $harga = $periodeSewa === 'harian'
-                                    ? ($kamarModal?->harga_sewa_harian ?? 0)
-                                    : ($kamarModal?->harga_sewa_bulanan ?? 0);
-                                $durasi = $periodeSewa === 'harian' ? $durasiHari : $durasiBulan;
-                                $periode = $periodeSewa === 'harian' ? 'hari' : 'bulan';
+                                $harga = $kamarModal?->hargaUntuk($periodeSewa) ?? $kamarModal?->harga_sewa_bulanan ?? 0;
+                                $durasi = $periodeSewa === 'harian' ? $durasiHari : ($periodeSewa === 'mingguan' ? $durasiMinggu : $durasiBulan);
+                                $periode = $periodeSewa === 'harian' ? 'hari' : ($periodeSewa === 'mingguan' ? 'minggu' : 'bulan');
                             @endphp
                             <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
                                 <span class="text-gray-500 dark:text-gray-400">Kos</span>

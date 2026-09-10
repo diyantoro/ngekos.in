@@ -6,6 +6,7 @@ use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
@@ -25,9 +26,22 @@ new class extends Component
 
     public $bukti = null;
 
+    public $ktpSusulan = null;
+
+    public ?int $modalKtpId = null;
+
+    public string $emailTeman = '';
+
+    public $ktpTeman = null;
+
+    public ?int $modalTemanId = null;
+
     public function with(): array
     {
         $id = auth()->id();
+
+        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id)
+            ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif'));
 
         $sewaanAktif = Penyewaan::where('anak_kos_id', $id)
             ->where('status', 'aktif')
@@ -43,28 +57,29 @@ new class extends Component
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
 
         return [
-            'penyewaanAktif' => Penyewaan::where('anak_kos_id', $id)->where('status', 'aktif')->count(),
+            'penyewaanAktif' => Penyewaan::where('anak_kos_id', $id)->where('status', 'aktif')->count()
+                + \App\Models\PenyewaanAnggota::where('user_id', $id)->where('status', 'aktif')->count(),
             'tagihanBelumBayar' => Tagihan::where('status', '!=', 'lunas')
-                ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
+                ->whereHas('penyewaan', $scopeSewa)
                 ->count(),
             'totalBayar' => (int) Pembayaran::where('anak_kos_id', $id)->where('status', 'diverifikasi')->sum('jumlah'),
-            'tagihans' => Tagihan::whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
-                ->with(['penyewaan.kamar', 'pembayarans'])
+            'tagihans' => Tagihan::whereHas('penyewaan', $scopeSewa)
+                ->with(['penyewaan.kamar', 'penyewaan.anggotas', 'pembayarans'])
                 ->orderByDesc('jatuh_tempo')
                 ->get(),
             'pembayarans' => Pembayaran::where('anak_kos_id', $id)
                 ->with(['tagihan', 'verifikator'])
                 ->latest()
                 ->get(),
-            'sewaans' => Penyewaan::where('anak_kos_id', $id)
-                ->with(['kamar.properti', 'tagihans'])
+            'sewaans' => Penyewaan::where($scopeSewa)
+                ->with(['kamar.properti', 'kamar', 'anakKos', 'anggotas.user', 'tagihans.pembayarans'])
                 ->orderByDesc('status')
                 ->latest()
                 ->get(),
             'jumlahFavorit' => $idFavorit->count(),
             'pesanBelumDibaca' => auth()->user()->pesanBelumDibaca(),
             'tagihanBerikutnya' => Tagihan::where('status', '!=', 'lunas')
-                ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
+                ->whereHas('penyewaan', $scopeSewa)
                 ->with(['penyewaan.kamar.properti'])
                 ->orderBy('jatuh_tempo')
                 ->first(),
@@ -73,6 +88,7 @@ new class extends Component
                 ->whereNotIn('id', $propertiTerpakai)
                 ->whereNotIn('id', $idFavorit)
                 ->when($kotaAktif, fn ($q) => $q->where('kota', $kotaAktif))
+                ->with('fotos')
                 ->withCount([
                     'kamars as total_kamar',
                     'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
@@ -86,13 +102,33 @@ new class extends Component
 
     public function checkOut(int $sewaanId): void
     {
+        $uid = auth()->id();
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('anak_kos_id', auth()->id())
             ->where('status', 'aktif')
-            ->with(['kamar', 'tagihans'])
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'tagihans.pembayarans', 'anggotas'])
             ->first();
 
         if (! $sewaan) {
+            return;
+        }
+
+        // Patungan + ada yang stay => keluar partial via PatunganService (wajib lunas porsi).
+        $adaYangStay = $sewaan->anggotas->where('status', 'aktif')->where('user_id', '!=', $uid)->isNotEmpty()
+            || ($sewaan->anak_kos_id !== $uid);
+
+        if ($adaYangStay) {
+            try {
+                \App\Services\PatunganService::keluarkan($sewaan, $uid);
+            } catch (DomainException $e) {
+                $this->galat = $e->getMessage();
+
+                return;
+            }
+
+            $this->pesan = 'Kamu sudah keluar dari kamar patungan. Porsi berikutnya menjadi tanggung jawab penghuni yang stay.';
+
             return;
         }
 
@@ -114,6 +150,135 @@ new class extends Component
         $this->pesan = "Check-out dari kamar {$sewaan->kamar?->nama} berhasil. Kamar kembali tersedia.{$catatan}";
     }
 
+    public function bukaModalKtp(int $sewaanId): void
+    {
+        $this->modalKtpId = $sewaanId;
+        $this->ktpSusulan = null;
+        $this->resetValidation();
+    }
+
+    public function tutupModalKtp(): void
+    {
+        $this->modalKtpId = null;
+        $this->ktpSusulan = null;
+        $this->resetValidation();
+    }
+
+    public function simpanKtpSusulan(): void
+    {
+        $uid = auth()->id();
+
+        $sewaan = Penyewaan::where('id', $this->modalKtpId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with('anggotas')
+            ->first();
+
+        if (! $sewaan) {
+            $this->tutupModalKtp();
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        $this->validate([
+            'ktpSusulan' => \App\Services\PenyewaanService::ATURAN_KTP,
+        ], \App\Services\PenyewaanService::pesanKtp());
+
+        $path = $this->ktpSusulan->store('ktp', 'public');
+
+        if ($sewaan->anak_kos_id === $uid) {
+            if ($sewaan->ktp_path) {
+                Storage::disk('public')->delete($sewaan->ktp_path);
+            }
+            $sewaan->update(['ktp_path' => $path]);
+        } else {
+            $anggota = $sewaan->anggotas()->where('user_id', $uid)->where('status', 'aktif')->first();
+
+            if (! $anggota) {
+                Storage::disk('public')->delete($path);
+                $this->tutupModalKtp();
+                $this->galat = 'Kamu bukan penghuni aktif kamar ini.';
+
+                return;
+            }
+
+            if ($anggota->ktp_path) {
+                Storage::disk('public')->delete($anggota->ktp_path);
+            }
+            $anggota->update(['ktp_path' => $path]);
+        }
+
+        $this->tutupModalKtp();
+        $this->pesan = 'Foto KTP berhasil dilengkapi. Terima kasih.';
+    }
+
+    public function bukaModalTeman(int $sewaanId): void
+    {
+        $this->modalTemanId = $sewaanId;
+        $this->emailTeman = '';
+        $this->ktpTeman = null;
+        $this->resetValidation();
+    }
+
+    public function tutupModalTeman(): void
+    {
+        $this->modalTemanId = null;
+        $this->emailTeman = '';
+        $this->ktpTeman = null;
+        $this->resetValidation();
+    }
+
+    public function simpanTeman(): void
+    {
+        $sewaan = Penyewaan::where('id', $this->modalTemanId)
+            ->where('status', 'aktif')
+            ->where('anak_kos_id', auth()->id())
+            ->with(['kamar', 'anggotas'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->tutupModalTeman();
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        $this->validate([
+            'emailTeman' => ['required', 'email', 'exists:users,email'],
+            'ktpTeman' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048'],
+        ], [
+            'emailTeman.required' => 'Email teman wajib diisi.',
+            'emailTeman.email' => 'Format email tidak valid.',
+            'emailTeman.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
+        ]);
+
+        $teman = \App\Models\User::where('email', $this->emailTeman)->first();
+
+        if (! $teman?->hasRole('anak_kos')) {
+            $this->addError('emailTeman', 'Hanya akun anak kos yang bisa jadi teman sekamar.');
+
+            return;
+        }
+
+        $ktpPath = $this->ktpTeman ? $this->ktpTeman->store('ktp', 'public') : null;
+
+        try {
+            \App\Services\PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
+        } catch (DomainException $e) {
+            if ($ktpPath) {
+                Storage::disk('public')->delete($ktpPath);
+            }
+            $this->addError('emailTeman', $e->getMessage());
+
+            return;
+        }
+
+        $this->tutupModalTeman();
+        $this->pesan = "Teman sekamar {$teman->nama} berhasil ditambahkan (patungan 50/50).";
+    }
+
     public function bayarTagihan(int $tagihanId): void
     {
         $this->resetValidation();
@@ -123,7 +288,8 @@ new class extends Component
         $this->bukti = null;
 
         $tagihan = Tagihan::where('id', $tagihanId)
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id()))
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id())
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', auth()->id())->where('status', 'aktif')))
             ->first();
 
         if (! $tagihan || $tagihan->status === 'lunas') {
@@ -161,7 +327,8 @@ new class extends Component
     public function konfirmasiBayar(): void
     {
         $tagihan = Tagihan::where('id', $this->modalBayarId)
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id()))
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id())
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', auth()->id())->where('status', 'aktif')))
             ->first();
 
         if (! $tagihan || $tagihan->status === 'lunas') {
@@ -310,12 +477,16 @@ new class extends Component
                         <a href="{{ route('kos.detail', $k) }}" wire:navigate
                             class="group rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
                             <div class="relative h-28 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-500/10 dark:to-cyan-500/10 overflow-hidden">
-                                @if ($k->foto)
-                                    <img src="{{ Storage::url($k->foto) }}" alt="{{ $k->nama }}" class="h-full w-full object-cover">
+                                @php $coverRekom = $k->fotoCover(); @endphp
+                                @if ($coverRekom)
+                                    <img src="{{ $coverRekom }}" alt="{{ $k->nama }}" class="h-full w-full object-cover">
                                 @else
                                     <div class="h-full w-full flex items-center justify-center">
                                         <svg class="h-8 w-8 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
                                     </div>
+                                @endif
+                                @if (count($k->galeriUrls()) > 1)
+                                    <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">{{ count($k->galeriUrls()) }} foto</span>
                                 @endif
                                 <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white {{ $k->kamar_terisi < $k->total_kamar ? 'bg-emerald-600' : 'bg-gray-800' }}">
                                     {{ $k->kamar_terisi < $k->total_kamar ? ($k->total_kamar - $k->kamar_terisi) . ' Kamar' : 'Penuh' }}
@@ -356,12 +527,23 @@ new class extends Component
                             @php
                                 $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
                                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
+                                $isUtama = $sewaan->anak_kos_id === auth()->id();
+                                $ktpSaya = $isUtama ? $sewaan->ktp_path : $sewaan->anggotas->firstWhere('user_id', auth()->id())?->ktp_path;
+                                $anggotaAktif = $sewaan->anggotas->where('status', 'aktif');
+                                $isPatungan = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktif->isNotEmpty();
+                                $bisaTambahTeman = $isUtama && $sewaan->status === 'aktif' && $anggotaAktif->count() < 1 && ($sewaan->kamar?->kapasitas ?? 1) >= 2;
                             @endphp
                             <div class="rounded-xl ring-1 {{ $sewaan->status === 'aktif' ? 'ring-teal-100 dark:ring-teal-500/30' : 'ring-gray-100 dark:ring-gray-700 opacity-75' }} p-4 sm:p-5">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100">
                                             Kamar {{ $sewaan->kamar?->nama }} &middot; {{ $sewaan->kamar?->properti?->nama }}
+                                            @if ($isPatungan)
+                                                <x-status-badge status="patungan" />
+                                            @endif
+                                            @if (! $isUtama)
+                                                <span class="ml-1 inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:text-gray-300">Anggota</span>
+                                            @endif
                                         </p>
                                         <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                                             Masuk: <span class="font-medium text-gray-700 dark:text-gray-200">{{ $sewaan->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}</span>
@@ -369,11 +551,35 @@ new class extends Component
                                                 &middot; Keluar: <span class="font-medium text-gray-700 dark:text-gray-200">{{ $sewaan->tanggal_keluar->translatedFormat('d M Y') }}</span>
                                             @endif
                                         </p>
+                                        @if ($isPatungan)
+                                            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                                                    <span class="h-4 w-4 rounded-full bg-teal-600 text-[9px] font-bold text-white flex items-center justify-center">{{ mb_substr($sewaan->anakKos?->nama ?? '?', 0, 1) }}</span>
+                                                    {{ $sewaan->anakKos?->nama ?? '-' }} · utama
+                                                </span>
+                                                @foreach ($anggotaAktif as $ag)
+                                                    <span class="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+                                                        <span class="h-4 w-4 rounded-full bg-sky-600 text-[9px] font-bold text-white flex items-center justify-center">{{ mb_substr($ag->user?->nama ?? '?', 0, 1) }}</span>
+                                                        {{ $ag->user?->nama ?? '-' }} · {{ (int) $ag->porsi_persen }}%
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <x-status-badge :status="$sewaan->status" />
                                     </div>
                                 </div>
+
+                                @if (! $ktpSaya && $sewaan->status === 'aktif')
+                                    <div class="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3">
+                                        <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">Foto KTP belum dilengkapi. Lengkapi agar sewa tetap valid.</p>
+                                        <button wire:click="bukaModalKtp({{ $sewaan->id }})"
+                                            class="shrink-0 inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 transition">
+                                            Lengkapi KTP
+                                        </button>
+                                    </div>
+                                @endif
 
                                 <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -384,11 +590,19 @@ new class extends Component
                                         @endif
                                     </p>
                                     @if ($sewaan->status === 'aktif')
-                                        <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                            wire:confirm="Check-out dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
-                                            class="shrink-0 inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
-                                            Check-out
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            @if ($bisaTambahTeman)
+                                                <button wire:click="bukaModalTeman({{ $sewaan->id }})"
+                                                    class="shrink-0 inline-flex items-center rounded-lg border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition">
+                                                    + Tambah Teman
+                                                </button>
+                                            @endif
+                                            <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                wire:confirm="{{ $isPatungan ? 'Keluar dari kamar patungan? Porsimu harus sudah lunas.' : 'Check-out dari kamar ' . $sewaan->kamar?->nama . '? Kamar akan kembali tersedia.' }}"
+                                                class="shrink-0 inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
+                                                {{ $isPatungan ? 'Keluar Patungan' : 'Check-out' }}
+                                            </button>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
@@ -414,10 +628,29 @@ new class extends Component
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($tagihans as $tagihan)
+                                @php
+                                    $isPatunganTagihan = ($tagihan->penyewaan?->mode_hunian ?? 'tunggal') === 'patungan';
+                                    $porsiSaya = null;
+                                    $sudahSaya = 0;
+                                    if ($tagihan->penyewaan) {
+                                        $porsiSaya = \App\Services\PatunganService::porsiTagihan($tagihan->penyewaan, $tagihan);
+                                        $sudahSaya = (float) $tagihan->pembayarans->where('status', 'diverifikasi')->where('anak_kos_id', auth()->id())->sum('jumlah');
+                                    }
+                                @endphp
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $tagihan->periode }}</td>
+                                    <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {{ $tagihan->periode }}
+                                        @if ($isPatunganTagihan)
+                                            <span class="block text-[10px] font-bold text-sky-600 dark:text-sky-400">Patungan · porsimu Rp{{ number_format($porsiSaya ?? 0, 0, ',', '.') }}</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $tagihan->penyewaan?->kamar?->nama ?? '-' }}</td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($tagihan->jumlah + $tagihan->denda, 0, ',', '.') }}</td>
+                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                        Rp{{ number_format($tagihan->jumlah + $tagihan->denda, 0, ',', '.') }}
+                                        @if ($isPatunganTagihan)
+                                            <span class="block text-[11px] text-gray-400">Sudah bayar: Rp{{ number_format($sudahSaya, 0, ',', '.') }} · Sisa porsi: Rp{{ number_format(max(0, ($porsiSaya ?? 0) - $sudahSaya), 0, ',', '.') }}</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $tagihan->jatuh_tempo?->translatedFormat('d M Y') }}</td>
                                     <td class="px-4 py-4"><x-status-badge :status="$tagihan->status" /></td>
                                     <td class="px-4 py-4">
@@ -450,6 +683,7 @@ new class extends Component
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bukti</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diverifikasi Oleh</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kwitansi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -471,9 +705,22 @@ new class extends Component
                                     </td>
                                     <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->verifikator?->nama ?? '-' }}</td>
                                     <td class="px-4 py-4"><x-status-badge :status="$pembayaran->status" /></td>
+                                    <td class="px-4 py-4">
+                                        @if ($pembayaran->status === 'diverifikasi')
+                                            <div class="flex justify-end">
+                                                <a href="{{ route('pembayaran.kwitansi', $pembayaran) }}" target="_blank" rel="noopener"
+                                                    class="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition">
+                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                                    {{ $pembayaran->nomor_kwitansi ?? 'Unduh' }}
+                                                </a>
+                                            </div>
+                                        @else
+                                            <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -487,6 +734,8 @@ new class extends Component
     @php
         $tagihanModal = $tagihans->firstWhere('id', $modalBayarId);
         $totalTagihan = ($tagihanModal?->jumlah ?? 0) + ($tagihanModal?->denda ?? 0);
+        $porsiModal = $tagihanModal?->penyewaan ? \App\Services\PatunganService::porsiTagihan($tagihanModal->penyewaan, $tagihanModal) : $totalTagihan;
+        $isPatunganModal = ($tagihanModal?->penyewaan?->mode_hunian ?? 'tunggal') === 'patungan';
     @endphp
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
         <button type="button" wire:click="tutupModalBayar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
@@ -495,7 +744,12 @@ new class extends Component
                 <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <div class="min-w-0">
                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Bayar Tagihan {{ $tagihanModal?->periode }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Total: Rp{{ number_format($totalTagihan, 0, ',', '.') }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            Total tagihan: Rp{{ number_format($totalTagihan, 0, ',', '.') }}
+                            @if ($isPatunganModal)
+                                · Porsimu (50%): <span class="font-bold text-sky-600 dark:text-sky-400">Rp{{ number_format($porsiModal, 0, ',', '.') }}</span>
+                            @endif
+                        </p>
                     </div>
                     <button type="button" wire:click="tutupModalBayar"
                         class="shrink-0 h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 flex items-center justify-center transition">&times;</button>
@@ -551,6 +805,76 @@ new class extends Component
                         <button type="submit" wire:loading.attr="disabled" wire:target="konfirmasiBayar"
                             class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
                             Kirim Pembayaran
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if ($modalKtpId)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+        <button type="button" wire:click="tutupModalKtp" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
+        <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
+            <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Lengkapi Foto KTP</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Wajib untuk validasi sewa. JPG/PNG/WEBP/PDF, maks 2MB.</p>
+                </div>
+                <form wire:submit="simpanKtpSusulan" class="p-5 space-y-4">
+                    <div>
+                        <input type="file" wire:model="ktpSusulan" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                        @error('ktpSusulan') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                        <div wire:loading wire:target="ktpSusulan" class="mt-2 text-xs font-medium text-teal-600">Mengunggah KTP...</div>
+                    </div>
+                    <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                        <button type="button" wire:click="tutupModalKtp"
+                            class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            Batal
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="simpanKtpSusulan"
+                            class="flex-1 inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                            Simpan KTP
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if ($modalTemanId)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+        <button type="button" wire:click="tutupModalTeman" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
+        <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
+            <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Tambah Teman Sekamar</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Patungan 50/50. Teman harus sudah punya akun anak kos.</p>
+                </div>
+                <form wire:submit="simpanTeman" class="p-5 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Email Teman</label>
+                        <input type="email" wire:model="emailTeman" placeholder="teman@email.com"
+                            class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
+                        @error('emailTeman') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto KTP Teman (opsional)</label>
+                        <input type="file" wire:model="ktpTeman" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                        @error('ktpTeman') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                        <button type="button" wire:click="tutupModalTeman"
+                            class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            Batal
+                        </button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="simpanTeman"
+                            class="flex-1 inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-500 transition disabled:opacity-50">
+                            Tambah
                         </button>
                     </div>
                 </form>

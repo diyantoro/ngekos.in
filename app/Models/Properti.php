@@ -14,7 +14,7 @@ class Properti extends Model
 
     protected $fillable = [
         'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
-        'harga', 'harga_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
+        'harga', 'harga_mingguan', 'harga_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class Properti extends Model
         return [
             'denda_per_hari' => 'decimal:2',
             'harga' => 'decimal:2',
+            'harga_mingguan' => 'decimal:2',
             'harga_harian' => 'decimal:2',
             'harga_asli' => 'decimal:2',
             'latitude' => 'decimal:7',
@@ -42,6 +43,74 @@ class Properti extends Model
     public function kamars(): HasMany
     {
         return $this->hasMany(Kamar::class);
+    }
+
+    public function fotos(): HasMany
+    {
+        return $this->hasMany(PropertiFoto::class)->orderBy('urutan')->orderBy('id');
+    }
+
+    /**
+     * Daftar URL galeri (cover dulu). Fallback ke kolom foto lama bila galeri kosong.
+     *
+     * @return array<int,string>
+     */
+    public function galeriUrls(): array
+    {
+        $dariGaleri = $this->relationLoaded('fotos')
+            ? $this->fotos->sortBy([['urutan', 'asc'], ['id', 'asc']])->pluck('path')->all()
+            : $this->fotos()->orderBy('urutan')->orderBy('id')->pluck('path')->all();
+
+        $urls = collect($dariGaleri)
+            ->filter()
+            ->map(fn ($p) => '/storage/'.$p)
+            ->values()
+            ->all();
+
+        if ($urls === [] && $this->foto) {
+            $urls[] = '/storage/'.$this->foto;
+        }
+
+        return $urls;
+    }
+
+    public function fotoCover(): ?string
+    {
+        $galeri = $this->galeriUrls();
+
+        return $galeri[0] ?? null;
+    }
+
+    /**
+     * Harga acuan properti untuk satu periode.
+     */
+    public function hargaUntuk(string $periode): ?float
+    {
+        $nilai = match ($periode) {
+            'mingguan' => $this->harga_mingguan,
+            'harian' => $this->harga_harian,
+            default => $this->harga,
+        };
+
+        return $nilai !== null ? (float) $nilai : null;
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    public function periodeTersedia(): array
+    {
+        $daftar = [];
+
+        foreach (['bulanan', 'mingguan', 'harian'] as $periode) {
+            $harga = $this->hargaUntuk($periode);
+
+            if ($harga !== null && $harga > 0) {
+                $daftar[] = $periode;
+            }
+        }
+
+        return $daftar;
     }
 
     public function peminat(): BelongsToMany

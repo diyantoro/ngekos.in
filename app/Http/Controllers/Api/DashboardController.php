@@ -21,9 +21,12 @@ class DashboardController extends Controller
     {
         $id = $request->user()->id;
 
-        $penyewaanAktif = Penyewaan::where('anak_kos_id', $id)->where('status', 'aktif')->count();
+        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id)
+            ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif'));
 
-        $tagihanBelumBayar = Tagihan::whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
+        $penyewaanAktif = Penyewaan::where($scopeSewa)->where('status', 'aktif')->count();
+
+        $tagihanBelumBayar = Tagihan::whereHas('penyewaan', $scopeSewa)
             ->where('status', '!=', 'lunas')
             ->count();
 
@@ -35,21 +38,21 @@ class DashboardController extends Controller
 
         $pesanBelumDibaca = $request->user()->pesanBelumDibaca();
 
-        $sewaanAktif = Penyewaan::where('anak_kos_id', $id)
+        $sewaanAktif = Penyewaan::where($scopeSewa)
             ->where('status', 'aktif')
             ->with('properti')
             ->get();
 
         $kotaAktif = $sewaanAktif->first()?->properti?->kota;
 
-        $propertiTerpakai = Penyewaan::where('anak_kos_id', $id)
+        $propertiTerpakai = Penyewaan::where($scopeSewa)
             ->where('status', 'aktif')
             ->pluck('properti_id');
 
         $idFavorit = $request->user()->favorits()->pluck('propertis.id');
 
         $tagihanBerikutnya = Tagihan::where('status', '!=', 'lunas')
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $id))
+            ->whereHas('penyewaan', $scopeSewa)
             ->with(['penyewaan.kamar.properti'])
             ->orderBy('jatuh_tempo')
             ->first();
@@ -99,8 +102,10 @@ class DashboardController extends Controller
 
     public function anakKosPenyewaan(Request $request): JsonResponse
     {
-        $sewaans = Penyewaan::with(['kamar:id,nama,harga_sewa_bulanan', 'properti:id,nama,foto'])
-            ->where('anak_kos_id', $request->user()->id)
+        $uid = $request->user()->id;
+        $sewaans = Penyewaan::with(['kamar:id,nama,harga_sewa_bulanan', 'properti:id,nama,foto', 'anggotas.user:id,nama'])
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn ($s) => [
@@ -112,6 +117,22 @@ class DashboardController extends Controller
                 'tanggal_keluar' => $s->tanggal_keluar,
                 'status' => $s->status,
                 'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
+                'mode_hunian' => $s->mode_hunian ?? 'tunggal',
+                'is_utama' => $s->anak_kos_id === $uid,
+                'ktp_path' => $s->anak_kos_id === $uid
+                    ? ($s->ktp_path ? '/storage/'.$s->ktp_path : null)
+                    : ($s->anggotas->firstWhere('user_id', $uid)?->ktp_path
+                        ? '/storage/'.$s->anggotas->firstWhere('user_id', $uid)->ktp_path
+                        : null),
+                'butuh_ktp' => $s->anak_kos_id === $uid
+                    ? ! $s->ktp_path
+                    : ! $s->anggotas->firstWhere('user_id', $uid)?->ktp_path,
+                'anggotas' => $s->anggotas->map(fn ($a) => [
+                    'user_id' => $a->user_id,
+                    'nama' => $a->user?->nama,
+                    'porsi_persen' => (int) $a->porsi_persen,
+                    'status' => $a->status,
+                ])->values(),
             ]);
 
         return response()->json($sewaans);
@@ -119,20 +140,35 @@ class DashboardController extends Controller
 
     public function anakKosTagihan(Request $request): JsonResponse
     {
-        $tagihans = Tagihan::with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama'])
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $request->user()->id))
+        $uid = $request->user()->id;
+        $tagihans = Tagihan::with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama', 'penyewaan.anggotas'])
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(fn ($t) => [
-                'id' => $t->id,
-                'periode' => $t->periode,
-                'kamar' => $t->penyewaan?->kamar?->nama,
-                'properti' => $t->penyewaan?->properti?->nama,
-                'jumlah' => (float) $t->jumlah,
-                'denda' => (float) $t->denda,
-                'jatuh_tempo' => $t->jatuh_tempo,
-                'status' => $t->status,
-            ]);
+            ->map(function ($t) use ($uid) {
+                $porsi = null;
+                if ($t->penyewaan) {
+                    $t->penyewaan->loadMissing('anggotas');
+                    $porsi = \App\Services\PatunganService::porsiTagihan($t->penyewaan, $t);
+                    $sudah = (float) $t->pembayarans()->where('anak_kos_id', $uid)->where('status', 'diverifikasi')->sum('jumlah');
+                }
+
+                return [
+                    'id' => $t->id,
+                    'periode' => $t->periode,
+                    'kamar' => $t->penyewaan?->kamar?->nama,
+                    'properti' => $t->penyewaan?->properti?->nama,
+                    'jumlah' => (float) $t->jumlah,
+                    'denda' => (float) $t->denda,
+                    'jatuh_tempo' => $t->jatuh_tempo,
+                    'status' => $t->status,
+                    'mode_hunian' => $t->penyewaan?->mode_hunian ?? 'tunggal',
+                    'porsi_saya' => $porsi,
+                    'sudah_bayar_saya' => $sudah ?? 0,
+                    'sisa_porsi_saya' => isset($porsi) ? max(0, $porsi - ($sudah ?? 0)) : null,
+                ];
+            });
 
         return response()->json($tagihans);
     }
@@ -153,9 +189,36 @@ class DashboardController extends Controller
                 'diverifikasi_oleh' => $p->verifikator?->nama,
                 'verified_at' => $p->verified_at,
                 'created_at' => $p->created_at,
+                'nomor_kwitansi' => $p->nomor_kwitansi,
+                'kwitansi_url' => $p->file_kwitansi ? '/storage/'.$p->file_kwitansi : null,
             ]);
 
         return response()->json($pembayarans);
+    }
+
+    public function kwitansiSaya(Request $request, int $pembayaranId)
+    {
+        $pembayaran = Pembayaran::where('id', $pembayaranId)
+            ->where('anak_kos_id', $request->user()->id)
+            ->where('status', 'diverifikasi')
+            ->first();
+
+        if (! $pembayaran) {
+            return response()->json(['message' => 'Kwitansi tidak ditemukan.'], 404);
+        }
+
+        \App\Services\KwitansiService::untuk($pembayaran);
+
+        $path = $pembayaran->refresh()->file_kwitansi;
+
+        if (! $path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return response()->json(['message' => 'File kwitansi belum tersedia.'], 404);
+        }
+
+        return response()->download(
+            \Illuminate\Support\Facades\Storage::disk('public')->path($path),
+            ($pembayaran->nomor_kwitansi ?? 'kwitansi').'.pdf'
+        );
     }
 
     public function anakKosBayar(Request $request): JsonResponse
@@ -167,9 +230,11 @@ class DashboardController extends Controller
             'bukti' => 'nullable|image|max:2048',
         ]);
 
-        $tagihan = Tagihan::with('penyewaan')->findOrFail($validated['tagihan_id']);
+        $tagihan = Tagihan::with(['penyewaan.anggotas'])->findOrFail($validated['tagihan_id']);
 
-        if ($tagihan->penyewaan->anak_kos_id !== $request->user()->id) {
+        $penghuni = $tagihan->penyewaan ? $tagihan->penyewaan->idPenghuniAktif() : [];
+
+        if (! in_array($request->user()->id, $penghuni, true)) {
             return response()->json(['message' => 'Akses ditolak.'], 403);
         }
 
@@ -198,18 +263,35 @@ class DashboardController extends Controller
 
     public function anakKosAjukanKeluar(Request $request, int $sewaanId): JsonResponse
     {
+        $uid = $request->user()->id;
+
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('anak_kos_id', $request->user()->id)
             ->where('status', 'aktif')
-            ->with(['kamar'])
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'anggotas', 'tagihans.pembayarans'])
             ->first();
 
         if (! $sewaan) {
             return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
         }
 
-        if ($sewaan->permintaan_keluar_pada) {
+        if ($sewaan->anak_kos_id === $uid && $sewaan->permintaan_keluar_pada) {
             return response()->json(['message' => 'Pengajuan check-out sudah pernah dikirim.'], 422);
+        }
+
+        // Patungan + masih ada yang stay => keluar partial, wajib lunas porsi dulu.
+        $adaYangStay = $sewaan->anggotas->where('status', 'aktif')->where('user_id', '!=', $uid)->isNotEmpty()
+            || ($sewaan->anak_kos_id !== $uid);
+
+        if ($adaYangStay) {
+            try {
+                \App\Services\PatunganService::keluarkan($sewaan, $uid);
+            } catch (\DomainException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Porsi tagihan berikutnya menjadi tanggung jawab penghuni yang stay.']);
         }
 
         DB::transaction(function () use ($sewaan) {
@@ -228,27 +310,43 @@ class DashboardController extends Controller
     {
         $userId = $request->user()->id;
 
-        $totalProperti = Properti::where('pemilik_id', $userId)->count();
+        // Filter grafik: periode (3/6/12/24) + properti tertentu + custom range.
+        $bulanCount = max(1, min(24, (int) $request->input('periode', 6)));
+        $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
 
-        $totalKamar = Properti::where('pemilik_id', $userId)
-            ->sum(DB::raw('(SELECT COUNT(*) FROM kamars WHERE kamars.properti_id = propertis.id)')) ?? 0;
+        $scopePemilik = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId));
 
-        $kamarTerisi = Properti::where('pemilik_id', $userId)
-            ->sum(DB::raw('(SELECT COUNT(*) FROM kamars WHERE kamars.properti_id = propertis.id AND kamars.status = \'terisi\')')) ?? 0;
+        $totalProperti = Properti::where('pemilik_id', $userId)
+            ->when($propertiId, fn ($q) => $q->where('id', $propertiId))
+            ->count();
+
+        $kamarQuery = Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)));
+
+        $totalKamar = (clone $kamarQuery)->count();
+        $kamarTerisi = (clone $kamarQuery)->where('status', 'terisi')->count();
+        $kamarPerbaikan = (clone $kamarQuery)->where('status', 'perbaikan')->count();
 
         $pendapatanBulanIni = (int) Pembayaran::where('status', 'diverifikasi')
             ->whereMonth('verified_at', now()->month)
             ->whereYear('verified_at', now()->year)
-            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
             ->sum('jumlah');
 
         $pendapatanBulanLalu = (int) Pembayaran::where('status', 'diverifikasi')
             ->whereMonth('verified_at', now()->subMonth()->month)
             ->whereYear('verified_at', now()->subMonth()->year)
-            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
             ->sum('jumlah');
 
-        $scopeProperti = fn ($q) => $q->where('pemilik_id', $userId);
+        $scopeProperti = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId));
+
+        $scopePropertiId = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
         $pengeluaranBulanIni = (int) Pengeluaran::whereHas('properti', $scopeProperti)
             ->whereMonth('tanggal', now()->month)
@@ -261,7 +359,7 @@ class DashboardController extends Controller
             ->sum('jumlah');
 
         $kategoriPengeluaran = Pengeluaran::whereHas('properti', $scopeProperti)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths(5))
+            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
             ->get(['kategori', 'jumlah'])
             ->groupBy('kategori')
             ->map(fn ($rows) => (int) round($rows->sum('jumlah')))
@@ -272,31 +370,30 @@ class DashboardController extends Controller
             ->all();
 
         $penyewaanAktif = Penyewaan::where('status', 'aktif')
-            ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->whereHas('properti', $scopePropertiId)
             ->count();
-
-        $kamarPerbaikan = Properti::where('pemilik_id', $userId)
-            ->sum(DB::raw("(SELECT COUNT(*) FROM kamars WHERE kamars.properti_id = propertis.id AND kamars.status = 'perbaikan')")) ?? 0;
 
         $okupansi = $totalKamar > 0 ? (int) round($kamarTerisi / $totalKamar * 100) : 0;
 
         $tagihanBelum = Tagihan::where('status', '!=', 'lunas')
-            ->whereHas('penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->whereHas('penyewaan.properti', $scopePropertiId)
             ->orderBy('jatuh_tempo')
             ->get();
 
-        $scope = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId));
+        $scope = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $scopePropertiId);
 
         $chart = $this->monthlyChart(
             $scope,
-            fn ($q) => $q->whereHas('penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId)),
+            fn ($q) => $q->whereHas('penyewaan.properti', $scopePropertiId),
+            $bulanCount,
         );
 
-        $scopeTagihan = fn ($q) => $q->where('pemilik_id', $userId);
+        $scopeTagihan = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
-        $rekapPerBulan = $this->rekapPemilikPerBulan($userId, $totalKamar);
+        $rekapPerBulan = $this->rekapPemilikPerBulan($userId, $totalKamar, $bulanCount, $propertiId);
 
-        $scopePembayaranTerbaru = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', fn ($x) => $x->where('pemilik_id', $userId));
+        $scopePembayaranTerbaru = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $scopePropertiId);
 
         $pembayaranTerbaru = Pembayaran::where('status', 'diverifikasi')
             ->where($scopePembayaranTerbaru)
@@ -333,11 +430,14 @@ class DashboardController extends Controller
             'chart' => $chart,
             'rekap' => $rekapPerBulan,
             'pembayaran_terbaru' => $pembayaranTerbaru->map(fn (Pembayaran $p) => [
+                'id' => $p->id,
                 'anak_kos_nama' => $p->tagihan?->penyewaan?->anakKos?->nama ?? 'Penyewa',
                 'properti_nama' => $p->tagihan?->penyewaan?->properti?->nama,
                 'periode' => $p->tagihan?->periode,
                 'jumlah' => (float) $p->jumlah,
                 'verified_at' => $p->verified_at?->toDateString(),
+                'nomor_kwitansi' => $p->nomor_kwitansi,
+                'kwitansi_url' => $p->file_kwitansi ? '/storage/'.$p->file_kwitansi : null,
             ])->values(),
             'pembayaran_menunggu' => $pembayaranMenunggu->map(fn (Pembayaran $p) => [
                 'id' => $p->id,
@@ -366,21 +466,25 @@ class DashboardController extends Controller
 
     /**
      * Deret bulanan pendapatan, pengeluaran, laba bersih, dan okupansi
-     * untuk properti milik pemilik selama 6 bulan terakhir.
+     * untuk properti milik pemilik. Mendukung periode 1-24 bulan + filter properti.
      */
-    private function rekapPemilikPerBulan(int $userId, int $totalKamar): array
+    private function rekapPemilikPerBulan(int $userId, int $totalKamar, int $bulanCount = 6, ?int $propertiId = null): array
     {
-        $scope = fn ($q) => $q->where('pemilik_id', $userId);
+        $bulanCount = max(1, min(24, $bulanCount));
+        $scope = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId));
+        $scopeId = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
         $pendapatanPerBulan = Pembayaran::where('status', 'diverifikasi')
-            ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->where('verified_at', '>=', now()->startOfMonth()->subMonths(5))
+            ->whereHas('tagihan.penyewaan.properti', $scopeId)
+            ->where('verified_at', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
             ->get(['verified_at', 'jumlah'])
             ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
             ->map(fn ($rows) => (int) $rows->sum('jumlah'));
 
         $pengeluaranPerBulan = Pengeluaran::whereHas('properti', $scope)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths(5))
+            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
             ->get(['tanggal', 'jumlah'])
             ->groupBy(fn ($p) => $p->tanggal->format('m/Y'))
             ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
@@ -391,7 +495,7 @@ class DashboardController extends Controller
         $laba = [];
         $okupansi = [];
 
-        foreach (range(5, 0) as $i) {
+        foreach (range($bulanCount - 1, 0) as $i) {
             $start = now()->startOfMonth()->subMonths($i);
             $end = $start->copy()->endOfMonth();
             $key = $start->format('m/Y');
@@ -404,7 +508,7 @@ class DashboardController extends Controller
             $pengeluaran[] = $g;
             $laba[] = $p - $g;
 
-            $kamarTerisiBulan = Penyewaan::whereHas('properti', $scope)
+            $kamarTerisiBulan = Penyewaan::whereHas('properti', $scopeId)
                 ->where('tanggal_masuk', '<=', $end)
                 ->where(fn ($w) => $w->whereNull('tanggal_keluar')->orWhere('tanggal_keluar', '>=', $start))
                 ->distinct()
@@ -422,10 +526,107 @@ class DashboardController extends Controller
         ];
     }
 
+    /**
+     * Halaman grafik detail pemilik: filter periode + properti,
+     * plus aging piutang, top properti, dan tren lunas-vs-belum.
+     */
+    public function grafik(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $bulanCount = max(1, min(24, (int) $request->input('periode', 12)));
+        $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
+
+        $scopeId = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
+
+        $propertis = Properti::where('pemilik_id', $userId)
+            ->withCount([
+                'kamars as total_kamar',
+                'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+            ])
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+
+        $totalKamar = (int) $propertis->when($propertiId, fn ($c) => $c->where('id', $propertiId))->sum('total_kamar');
+
+        $scopeBayar = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $scopeId);
+        $scopeTagihan = fn ($q) => $q->whereHas('penyewaan.properti', $scopeId);
+
+        $chart = $this->monthlyChart($scopeBayar, $scopeTagihan, $bulanCount);
+        $rekap = $this->rekapPemilikPerBulan($userId, $totalKamar, $bulanCount, $propertiId);
+
+        // Tren jumlah transaksi + nilai per bulan.
+        $counts = $this->growthMonthly(
+            fn () => Pembayaran::where('status', 'diverifikasi')->where($scopeBayar),
+            $bulanCount, 'verified_at'
+        );
+        $nilais = $this->sumMonthly(
+            fn () => Pembayaran::where('status', 'diverifikasi')->where($scopeBayar),
+            $bulanCount, 'verified_at'
+        );
+
+        // Aging piutang: tagihan belum lunas dikelompokkan umur tunggakan.
+        $belum = Tagihan::where('status', '!=', 'lunas')
+            ->where($scopeTagihan)
+            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama'])
+            ->get();
+
+        $aging = ['belum_jatuh_tempo' => 0, 'telat_1_7' => 0, 'telat_8_30' => 0, 'telat_lebih_30' => 0];
+
+        foreach ($belum as $t) {
+            $nilai = (float) $t->jumlah + (float) $t->denda;
+            $hari = $t->jatuh_tempo ? today()->diffInDays($t->jatuh_tempo, false) : 0;
+
+            if ($hari >= 0) {
+                $aging['belum_jatuh_tempo'] += $nilai;
+            } elseif ($hari >= -7) {
+                $aging['telat_1_7'] += $nilai;
+            } elseif ($hari >= -30) {
+                $aging['telat_8_30'] += $nilai;
+            } else {
+                $aging['telat_lebih_30'] += $nilai;
+            }
+        }
+
+        // Top properti berdasarkan pendapatan terverifikasi pada periode.
+        $mulai = now()->startOfMonth()->subMonths($bulanCount - 1);
+
+        $pendapatanProperti = Pembayaran::where('status', 'diverifikasi')
+            ->where('verified_at', '>=', $mulai)
+            ->where($scopeBayar)
+            ->with('tagihan.penyewaan')
+            ->get()
+            ->groupBy(fn ($p) => $p->tagihan?->penyewaan?->properti_id)
+            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+
+        $topProperti = $propertis->map(fn ($p) => [
+            'id' => $p->id,
+            'nama' => $p->nama,
+            'total_kamar' => (int) $p->total_kamar,
+            'kamar_terisi' => (int) $p->kamar_terisi,
+            'pendapatan' => (int) ($pendapatanProperti[$p->id] ?? 0),
+        ])->sortByDesc('pendapatan')->values()->take(10)->all();
+
+        return response()->json([
+            'periode' => $bulanCount,
+            'properti_id' => $propertiId,
+            'propertis' => $propertis->map(fn ($p) => ['id' => $p->id, 'nama' => $p->nama])->values(),
+            'chart' => $chart,
+            'rekap' => $rekap,
+            'tren_transaksi' => ['jumlah' => $counts, 'nilai' => $nilais],
+            'aging_piutang' => array_map('intval', $aging),
+            'tagihan_belum' => [
+                'count' => $belum->count(),
+                'nilai' => (int) $belum->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda),
+            ],
+            'top_properti' => $topProperti,
+        ]);
+    }
+
     public function pemilikSewaans(Request $request): JsonResponse
     {
         $sewaans = Penyewaan::whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
-            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama', 'tagihans'])
+            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama', 'tagihans', 'anggotas.user:id,nama'])
             ->latest()
             ->limit(50)
             ->get()
@@ -443,6 +644,16 @@ class DashboardController extends Controller
                     'tanggal_keluar' => $s->tanggal_keluar,
                     'status' => $s->status,
                     'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
+                    'ktp_url' => $s->ktp_path ? '/storage/'.$s->ktp_path : null,
+                    'butuh_ktp' => ! $s->ktp_path,
+                    'mode_hunian' => $s->mode_hunian ?? 'tunggal',
+                    'anggotas' => $s->anggotas->map(fn ($a) => [
+                        'user_id' => $a->user_id,
+                        'nama' => $a->user?->nama,
+                        'porsi_persen' => (int) $a->porsi_persen,
+                        'status' => $a->status,
+                        'ktp_url' => $a->ktp_path ? '/storage/'.$a->ktp_path : null,
+                    ])->values(),
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),
                     'telat' => $telat,
@@ -451,6 +662,118 @@ class DashboardController extends Controller
             ->values();
 
         return response()->json($sewaans);
+    }
+
+    public function ktpPenyewaan(Request $request, int $sewaanId)
+    {
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
+            ->with('anggotas')
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        $userId = $request->input('user_id') ? (int) $request->input('user_id') : $sewaan->anak_kos_id;
+
+        $path = $userId === $sewaan->anak_kos_id
+            ? $sewaan->ktp_path
+            : $sewaan->anggotas->firstWhere('user_id', $userId)?->ktp_path;
+
+        if (! $path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return response()->json(['message' => 'File KTP belum tersedia.'], 404);
+        }
+
+        return response()->download(
+            \Illuminate\Support\Facades\Storage::disk('public')->path($path),
+            'ktp-sewaan-'.$sewaan->id.'-'.$userId.'.'.pathinfo($path, PATHINFO_EXTENSION)
+        );
+    }
+
+    public function tambahAnggota(Request $request, int $sewaanId): JsonResponse
+    {
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $request->user()->id)
+                ->orWhereHas('properti', fn ($w) => $w->where('pemilik_id', $request->user()->id)))
+            ->with(['kamar', 'anggotas'])
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        if (! $request->user()->hasRole('anak_kos') && ! $request->user()->hasAnyRole(['pemilik', 'admin', 'super_admin'])) {
+            return response()->json(['message' => 'Akses ditolak.'], 403);
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'ktp' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:2048',
+        ], [
+            'email.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
+        ]);
+
+        $teman = \App\Models\User::where('email', $validated['email'])->first();
+
+        if (! $teman->hasRole('anak_kos')) {
+            return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
+        }
+
+        $ktpPath = null;
+
+        if ($request->hasFile('ktp')) {
+            $ktpPath = $request->file('ktp')->store('ktp', 'public');
+        }
+
+        try {
+            $anggota = \App\Services\PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
+        } catch (\DomainException $e) {
+            if ($ktpPath) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($ktpPath);
+            }
+
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => "Teman sekamar {$teman->nama} berhasil ditambahkan (patungan 50/50).",
+            'anggota' => ['user_id' => $anggota->user_id, 'porsi_persen' => (int) $anggota->porsi_persen],
+        ], 201);
+    }
+
+    public function keluarAnggota(Request $request, int $sewaanId): JsonResponse
+    {
+        $uid = $request->user()->id;
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'anggotas', 'tagihans.pembayarans'])
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        // Hanya untuk patungan (ada yang stay). Sewa tunggal pakai endpoint keluar biasa.
+        $adaYangStay = $sewaan->anggotas->where('status', 'aktif')->where('user_id', '!=', $uid)->isNotEmpty()
+            || ($sewaan->anak_kos_id !== $uid);
+
+        if (! $adaYangStay) {
+            return response()->json(['message' => 'Gunakan menu check-out biasa untuk sewa tunggal.'], 422);
+        }
+
+        try {
+            \App\Services\PatunganService::keluarkan($sewaan, $uid);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Pastikan porsimu sudah lunas.']);
     }
 
     public function pemilikCheckOut(Request $request, int $sewaanId): JsonResponse
@@ -763,29 +1086,29 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Pembayaran tidak ditemukan atau sudah diproses.'], 404);
         }
 
-        $pembayaran->update([
-            'status' => $status,
-            'diverifikasi_oleh' => $request->user()->id,
-            'verified_at' => now(),
-        ]);
-
-        if ($status === 'diverifikasi') {
-            $tagihan = $pembayaran->tagihan;
-            $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
-
-            if ($total >= $tagihan->jumlah + $tagihan->denda) {
-                $tagihan->update(['status' => 'lunas']);
-            }
-
-            ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, $request->user()->id);
-
-            $nama = $pembayaran->anakKos?->nama ?? '-';
-            $pesan = "Pembayaran $nama sebesar Rp".number_format($pembayaran->jumlah, 0, ',', '.').' diverifikasi.';
-        } else {
-            $pesan = 'Pengajuan pembayaran ditolak.';
+        try {
+            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, $request->user()->id, $status);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['message' => $pesan]);
+        if ($status === 'diverifikasi') {
+            $nama = $pembayaran->anakKos?->nama ?? '-';
+            $pesan = "Pembayaran $nama sebesar Rp".number_format($pembayaran->jumlah, 0, ',', '.').' diverifikasi.';
+
+            if ($hasil['kwitansi_url']) {
+                $pesan .= ' Kwitansi tersedia: '.$hasil['kwitansi_url'];
+            }
+
+            return response()->json([
+                'message' => $pesan,
+                'nomor_kwitansi' => $hasil['pembayaran']->nomor_kwitansi,
+                'kwitansi_url' => $hasil['kwitansi_url'],
+                'tagihan_lunas' => $hasil['tagihan_lunas'],
+            ]);
+        }
+
+        return response()->json(['message' => 'Pengajuan pembayaran ditolak.']);
     }
 
     /**
@@ -834,16 +1157,17 @@ class DashboardController extends Controller
      * Builds the last 6 months of chart data (labels, revenue, paid/unpaid bills)
      * for a given role scope. $pembayaranScope filters Pembayaran, $tagihanScope filters Tagihan.
      */
-    private function monthlyChart(callable $pembayaranScope, callable $tagihanScope): array
+    private function monthlyChart(callable $pembayaranScope, callable $tagihanScope, int $bulanCount = 6): array
     {
+        $bulanCount = max(1, min(24, $bulanCount));
         $labels = [];
         $pendapatan = [];
         $lunas = [];
         $belum = [];
 
-        $start = now()->subMonths(5)->startOfMonth();
+        $start = now()->subMonths($bulanCount - 1)->startOfMonth();
 
-        for ($i = 0; $i < 6; $i++) {
+        for ($i = 0; $i < $bulanCount; $i++) {
             $month = $start->copy()->addMonths($i);
             $key = $month->format('m/Y');
             $labels[] = $month->translatedFormat('M Y');
@@ -935,7 +1259,10 @@ class DashboardController extends Controller
     }
 
     private function formatProperti(Properti $p): array
-    {        return [
+    {
+        $p->loadMissing(['fotos', 'kamars.fotos']);
+
+        return [
             'id' => $p->id,
             'nama' => $p->nama,
             'kota' => $p->kota,
@@ -947,7 +1274,8 @@ class DashboardController extends Controller
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => $p->jenis_harga,
             'status' => $p->status,
-            'foto' => $p->foto ? '/storage/'.$p->foto : null,
+            'foto' => $p->fotoCover(),
+            'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) $p->total_kamar,
             'kamar_terisi' => (int) $p->kamar_terisi,
             'kamars' => $p->kamars->map(fn (Kamar $k) => [
@@ -957,7 +1285,8 @@ class DashboardController extends Controller
                 'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
                 'jenis_harga' => $k->jenis_harga,
                 'status' => $k->status,
-                'foto' => $k->foto ? '/storage/'.$k->foto : null,
+                'foto' => $k->fotoCover(),
+                'fotos' => $k->galeriUrls(),
             ])->values(),
         ];
     }

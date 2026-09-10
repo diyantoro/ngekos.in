@@ -69,13 +69,19 @@ class ChatPesan extends Model
      */
     public static function notifikasiPembayaranDiverifikasi(Pembayaran $pembayaran, int $verifikatorId): self
     {
+        $isi = 'Pembayaran '.$pembayaran->tagihan->periode
+            .' sebesar Rp'.number_format((float) $pembayaran->jumlah, 0, ',', '.')
+            .' telah saya verifikasi. Terima kasih.';
+
+        if ($pembayaran->nomor_kwitansi) {
+            $isi .= ' Kwitansi '.$pembayaran->nomor_kwitansi.' tersedia dan bisa diunduh di dashboard (tab Pembayaran Saya).';
+        }
+
         return self::create([
             'properti_id' => $pembayaran->tagihan->penyewaan->properti_id,
             'anak_kos_id' => $pembayaran->anak_kos_id,
             'pengirim_id' => $verifikatorId,
-            'isi' => 'Pembayaran '.$pembayaran->tagihan->periode
-                .' sebesar Rp'.number_format((float) $pembayaran->jumlah, 0, ',', '.')
-                .' telah saya verifikasi. Terima kasih.',
+            'isi' => $isi,
         ]);
     }
 }

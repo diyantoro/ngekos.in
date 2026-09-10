@@ -46,19 +46,23 @@ new #[Layout('layouts.app')] class extends Component
     public ?string $harga = null;
 
     #[Validate('nullable|numeric|min:0')]
+    public ?string $harga_mingguan = null;
+
+    #[Validate('nullable|numeric|min:0')]
     public ?string $harga_harian = null;
 
     #[Validate('nullable|numeric|min:0')]
     public ?string $harga_asli = null;
-
-    #[Validate('required|in:bulanan,harian')]
-    public string $jenis_harga = 'bulanan';
 
     #[Validate('required|in:aktif,nonaktif')]
     public string $status = 'aktif';
 
     #[Validate('nullable|image|max:2048')]
     public $fotoBaru = null;
+
+    public $galeriBaru = [];
+
+    public array $hapusGaleriIds = [];
 
     #[Validate('nullable|integer')]
     public ?int $pemilikId = null;
@@ -90,9 +94,9 @@ new #[Layout('layouts.app')] class extends Component
             $this->aturan = $this->properti->aturan;
             $this->denda_per_hari = $this->properti->denda_per_hari;
             $this->harga = $this->properti->harga;
+            $this->harga_mingguan = $this->properti->harga_mingguan;
             $this->harga_harian = $this->properti->harga_harian;
             $this->harga_asli = $this->properti->harga_asli;
-            $this->jenis_harga = $this->properti->jenis_harga ?? 'bulanan';
             $this->status = $this->properti->status;
         }
     }
@@ -105,6 +109,9 @@ new #[Layout('layouts.app')] class extends Component
                 ? User::role('pemilik')->orderBy('nama')->get(['id', 'nama', 'email'])
                 : collect(),
             'pemilikProperti' => $this->properti?->pemilik,
+            'galeri' => $this->properti
+                ? $this->properti->fotos()->orderBy('urutan')->orderBy('id')->get()
+                : collect(),
         ];
     }
 
@@ -136,10 +143,16 @@ new #[Layout('layouts.app')] class extends Component
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
             'harga' => 'nullable|numeric|min:0',
+            'harga_mingguan' => 'nullable|numeric|min:0',
             'harga_harian' => 'nullable|numeric|min:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'jenis_harga' => 'required|in:bulanan,harian',
             'status' => 'required|in:aktif,nonaktif',
+            'galeriBaru' => ['nullable', 'array', 'max:10'],
+            'galeriBaru.*' => ['image', 'max:4096'],
+        ], [
+            'galeriBaru.max' => 'Maksimal 10 foto tambahan sekaligus.',
+            'galeriBaru.*.image' => 'Setiap file galeri harus berupa gambar.',
+            'galeriBaru.*.max' => 'Ukuran tiap foto galeri maksimal 4MB.',
         ]);
 
         $fasilitasString = FacilityHelper::normalizeString(
@@ -157,9 +170,9 @@ new #[Layout('layouts.app')] class extends Component
             'aturan' => $this->aturan,
             'denda_per_hari' => $this->denda_per_hari,
             'harga' => $this->harga,
+            'harga_mingguan' => $this->harga_mingguan,
             'harga_harian' => $this->harga_harian,
             'harga_asli' => $this->harga_asli,
-            'jenis_harga' => $this->jenis_harga,
             'status' => $this->status,
         ];
 
@@ -172,19 +185,22 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($this->properti) {
             $this->properti->update($data);
+            $properti = $this->properti->refresh();
             session()->flash('sukses', "Perubahan kos \"{$data['nama']}\" berhasil disimpan.");
         } else {
             $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->id();
-            Properti::create($data);
+            $properti = Properti::create($data);
             session()->flash('sukses', "Kos baru \"$data[nama]\" berhasil ditambahkan.");
         }
+
+        $this->sinkronGaleri($properti);
 
         $this->redirect(route('pemilik.properti', absolute: false), navigate: true);
     }
 
     private function normalizeKosong(): void
     {
-        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga', 'harga_harian', 'harga_asli'] as $field) {
+        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli'] as $field) {
             if ($this->{$field} === '') {
                 $this->{$field} = null;
             }
@@ -200,6 +216,94 @@ new #[Layout('layouts.app')] class extends Component
         Storage::disk('public')->delete($this->properti->foto);
         $this->properti->update(['foto' => null]);
         $this->pesan = 'Foto kos berhasil dihapus.';
+    }
+
+    public function tandaiHapusGaleri(int $fotoId): void
+    {
+        if (! in_array($fotoId, $this->hapusGaleriIds, true)) {
+            $this->hapusGaleriIds[] = $fotoId;
+        }
+    }
+
+    public function batalHapusGaleri(int $fotoId): void
+    {
+        $this->hapusGaleriIds = array_values(array_filter($this->hapusGaleriIds, fn ($id) => $id !== $fotoId));
+    }
+
+    public function jadikanCover(int $fotoId): void
+    {
+        if (! $this->properti) {
+            return;
+        }
+
+        abort_unless(
+            $this->properti->pemilik_id === auth()->id() || $this->bolehKelolaSemua(),
+            403
+        );
+
+        $foto = $this->properti->fotos()->find($fotoId);
+
+        if (! $foto) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($foto) {
+            $this->properti->fotos()->update(['is_cover' => false]);
+            $foto->update(['is_cover' => true, 'urutan' => 0]);
+            $this->properti->update(['foto' => $foto->path]);
+        });
+
+        $this->pesan = 'Foto cover berhasil diganti.';
+    }
+
+    private function sinkronGaleri(Properti $properti): void
+    {
+        // Hapus yang ditandai.
+        if ($this->hapusGaleriIds !== []) {
+            $hapus = $properti->fotos()->whereIn('id', $this->hapusGaleriIds)->get();
+
+            foreach ($hapus as $foto) {
+                Storage::disk('public')->delete($foto->path);
+                $foto->delete();
+            }
+
+            $this->hapusGaleriIds = [];
+        }
+
+        // Tambah galeri baru (total maks 10).
+        $sisa = 10 - $properti->fotos()->count();
+
+        if ($sisa > 0 && $this->galeriBaru) {
+            $urutan = (int) ($properti->fotos()->max('urutan') ?? -1) + 1;
+
+            foreach (array_slice($this->galeriBaru, 0, $sisa) as $file) {
+                $path = $file->store('properti_galeri', 'public');
+                $isCover = ! $properti->fotos()->exists();
+
+                $properti->fotos()->create([
+                    'path' => $path,
+                    'urutan' => $urutan++,
+                    'is_cover' => $isCover,
+                ]);
+
+                if ($isCover) {
+                    $properti->update(['foto' => $path]);
+                }
+            }
+        }
+
+        // Pastikan selalu ada cover bila galeri tersisa.
+        // Jika galeri kosong, biarkan kolom foto apa adanya (kompatibel data lama).
+        if (! $properti->fotos()->where('is_cover', true)->exists()) {
+            $pertama = $properti->fotos()->orderBy('urutan')->first();
+
+            if ($pertama) {
+                $pertama->update(['is_cover' => true]);
+                $properti->update(['foto' => $pertama->path]);
+            }
+        }
+
+        $this->galeriBaru = [];
     }
 
     public function ambilLokasiSaya(): void
@@ -311,6 +415,55 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
 
+            <!-- Galeri Foto (maks 10, bisa digeser di halaman detail) -->
+            <div>
+                <x-input-label for="galeriBaru" value="Galeri Foto (maks 10 foto)" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tambah beberapa foto sekaligus. Foto pertama menjadi cover; geser/ubah cover dari daftar di bawah. Foto tampil bisa digeser di halaman detail kos.</p>
+                <input wire:model="galeriBaru" id="galeriBaru" type="file" accept="image/*" multiple
+                    class="mt-2 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                <x-input-error :messages="$errors->get('galeriBaru')" class="mt-2" />
+                <x-input-error :messages="$errors->get('galeriBaru.*')" class="mt-2" />
+
+                @if ($galeriBaru)
+                    <div class="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        @foreach ($galeriBaru as $i => $file)
+                            <div class="relative h-20 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-600">
+                                <img src="{{ $file->temporaryUrl() }}" class="h-full w-full object-cover" alt="Pratinjau {{ $i + 1 }}">
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($galeri->isNotEmpty())
+                    <div class="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        @foreach ($galeri as $foto)
+                            @if (! in_array($foto->id, $hapusGaleriIds, true))
+                                <div class="relative h-20 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-600 group">
+                                    <img src="{{ asset('storage/' . $foto->path) }}" class="h-full w-full object-cover" alt="Galeri">
+                                    @if ($foto->is_cover)
+                                        <span class="absolute top-1 left-1 rounded-full bg-teal-600 px-1.5 py-0.5 text-[9px] font-bold text-white">Cover</span>
+                                    @endif
+                                    <div class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/50 p-1 opacity-0 group-hover:opacity-100 transition">
+                                        @if (! $foto->is_cover)
+                                            <button type="button" wire:click="jadikanCover({{ $foto->id }})" class="text-[10px] font-semibold text-white hover:underline">Cover</button>
+                                        @endif
+                                        <button type="button" wire:click="tandaiHapusGaleri({{ $foto->id }})" class="text-[10px] font-semibold text-rose-200 hover:underline">Hapus</button>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                    @if ($hapusGaleriIds !== [])
+                        <div class="mt-2 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                            <span>{{ count($hapusGaleriIds) }} foto akan dihapus saat disimpan.</span>
+                            @foreach ($hapusGaleriIds as $batalId)
+                                <button type="button" wire:click="batalHapusGaleri({{ $batalId }})" class="font-semibold underline">Batalkan #{{ $batalId }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+                @endif
+            </div>
+
             <!-- Nama Kos -->
             <div>
                 <x-input-label for="nama" value="Nama Kos" />
@@ -411,26 +564,29 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('deskripsi')" class="mt-2" />
             </div>
 
-            <!-- Harga -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Harga: sekali input bulanan + mingguan + harian -->
+            <div>
+                <x-input-label value="Harga Sewa (sekali isi, pencari kos yang memilih)" />
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Isi harga per bulan (wajib). Harga per minggu & per hari opsional — kosongkan bila tidak menerima periode itu.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                    <x-input-label for="jenis_harga" value="Jenis Harga" />
-                    <select wire:model="jenis_harga" id="jenis_harga" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="bulanan">Per Bulan</option>
-                        <option value="harian">Per Hari</option>
-                    </select>
-                    <x-input-error :messages="$errors->get('jenis_harga')" class="mt-2" />
-                </div>
-                <div>
-                    <x-input-label for="harga" value="Harga Sewa (Rp)" />
+                    <x-input-label for="harga" value="Harga per Bulan (Rp)" />
                     <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 750000" />
                     <x-input-error :messages="$errors->get('harga')" class="mt-2" />
                 </div>
                 <div>
-                    <x-input-label for="harga_harian" value="Harga Harian (Rp) — opsional" />
+                    <x-input-label for="harga_mingguan" value="Harga per Minggu (Rp)" />
+                    <x-text-input wire:model="harga_mingguan" id="harga_mingguan" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 200000" />
+                    <x-input-error :messages="$errors->get('harga_mingguan')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="harga_harian" value="Harga per Hari (Rp)" />
                     <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 40000" />
                     <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
                 </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp)" />
                     <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 900000 (dicoret)" />

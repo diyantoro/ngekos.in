@@ -47,6 +47,14 @@ window.pasangGoogleEmbed = function (el, lat, lng, zoom) {
     el.appendChild(iframe);
 };
 
+// Clustering marker untuk peta dengan banyak titik (beranda & katalog).
+// Memakai @googlemaps/markerclusterer (di-import dinamis agar masuk chunk terpisah).
+window.pasangCluster = async (markers, map) => {
+    if (!markers || !markers.length || !map) return null;
+    const { MarkerClusterer } = await import('@googlemaps/markerclusterer');
+    return new MarkerClusterer({ markers, map });
+};
+
 window.renderPendapatanChart = async (elementId, pendapatan, tagihan) => {
     const el = document.getElementById(elementId);
     if (!el) return;
@@ -162,6 +170,42 @@ window.distributionDonutChart = (elementId, labels, values) => window.renderChar
         plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } },
     },
 });
+
+// Grafik horizontal: jumlah kos aktif per kota (persebaran kos di beranda).
+// opsional onBarClick(index) dipanggil saat bar kota diklik.
+window.kosPerKotaChart = (elementId, labels, values, { onBarClick } = {}) => {
+    const gelap = document.documentElement.classList.contains('dark');
+    return window.renderChart(elementId, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Kos Aktif',
+                data: values,
+                backgroundColor: 'rgba(13, 148, 136, .85)',
+                hoverBackgroundColor: 'rgba(6, 182, 212, .9)',
+                borderRadius: 5,
+                barPercentage: 0.85,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (e, elements) => {
+                if (onBarClick && elements.length) onBarClick(elements[0].index);
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ctx.parsed.x.toLocaleString('id-ID') + ' kos aktif' } },
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0, color: gelap ? '#cbd5e1' : '#64748b' }, grid: { color: gelap ? 'rgba(148,163,184,.15)' : 'rgba(100,116,139,.12)' } },
+                y: { grid: { display: false }, ticks: { color: gelap ? '#e2e8f0' : '#475569' } },
+            },
+        },
+    });
+};
 
 // Grafik okupansi: tren tingkat hunian (%) per bulan.
 window.rekapOkupansiChart = (elementId, labels, values) => window.renderChart(elementId, {

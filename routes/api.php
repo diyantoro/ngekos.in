@@ -51,18 +51,27 @@ Route::middleware('auth:sanctum')->group(function () {
     // Sewa kamar langsung (tanpa menunggu konfirmasi)
     Route::post('/kos/{propertiId}/kamar/{kamarId}/sewa', [PenyewaanController::class, 'sewaKamar']);
 
+    // Patungan: tambah teman sekamar & keluar partial
+    Route::post('/penyewaan/{sewaanId}/anggota', [DashboardController::class, 'tambahAnggota']);
+    Route::post('/penyewaan/{sewaanId}/anggota/keluar', [DashboardController::class, 'keluarAnggota']);
+
     // Dashboard - Anak Kos
     Route::get('/dashboard/anak-kos', [DashboardController::class, 'anakKos']);
     Route::get('/dashboard/anak-kos/penyewaan', [DashboardController::class, 'anakKosPenyewaan']);
     Route::get('/dashboard/anak-kos/tagihan', [DashboardController::class, 'anakKosTagihan']);
     Route::get('/dashboard/anak-kos/pembayaran', [DashboardController::class, 'anakKosPembayaran']);
+    Route::get('/dashboard/anak-kos/pembayaran/{pembayaranId}/kwitansi', [DashboardController::class, 'kwitansiSaya']);
     Route::post('/dashboard/anak-kos/bayar', [DashboardController::class, 'anakKosBayar']);
     Route::post('/dashboard/anak-kos/{sewaanId}/keluar', [DashboardController::class, 'anakKosAjukanKeluar']);
 
     // Dashboard - Pemilik
     Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik']);
+    Route::get('/dashboard/pemilik/grafik', [DashboardController::class, 'grafik'])
+        ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/properti', [DashboardController::class, 'pemilikProperti']);
     Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans']);
+    Route::get('/dashboard/pemilik/sewaan/{sewaanId}/ktp', [DashboardController::class, 'ktpPenyewaan'])
+        ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap']);
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut']);
     Route::post('/dashboard/pemilik/pembayaran/{pembayaranId}/verifikasi', [DashboardController::class, 'verifikasiPembayaran'])

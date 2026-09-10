@@ -209,20 +209,11 @@ new class extends Component
             return;
         }
 
-        $pembayaran->update([
-            'status' => 'diverifikasi',
-            'diverifikasi_oleh' => auth()->id(),
-            'verified_at' => now(),
-        ]);
-
-        $tagihan = $pembayaran->tagihan;
-        $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
-
-        if ($total >= $tagihan->jumlah + $tagihan->denda) {
-            $tagihan->update(['status' => 'lunas']);
+        try {
+            \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'diverifikasi');
+        } catch (DomainException $e) {
+            return;
         }
-
-        ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, auth()->id());
     }
 }; ?>
 

@@ -213,23 +213,17 @@ new class extends Component
             return;
         }
 
-        $pembayaran->update([
-            'status' => 'diverifikasi',
-            'diverifikasi_oleh' => auth()->id(),
-            'verified_at' => now(),
-        ]);
+        try {
+            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'diverifikasi');
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
 
-        $tagihan = $pembayaran->tagihan;
-        $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
-
-        if ($total >= $tagihan->jumlah + $tagihan->denda) {
-            $tagihan->update(['status' => 'lunas']);
+            return;
         }
 
-        ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, auth()->id());
-
         $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
-            . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.';
+            . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.'
+            . ($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim." : '');
     }
 }; ?>
 

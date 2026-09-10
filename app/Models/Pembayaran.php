@@ -9,6 +9,7 @@ class Pembayaran extends Model
 {
     protected $fillable = [
         'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'bukti', 'status', 'diverifikasi_oleh', 'verified_at',
+        'nomor_kwitansi', 'file_kwitansi',
     ];
 
     protected function casts(): array

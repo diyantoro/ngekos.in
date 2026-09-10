@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KtpPenyewaanController;
+use App\Http\Controllers\KwitansiController;
 use App\Http\Controllers\PemilikRekapExportController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -55,6 +57,9 @@ Volt::route('pemilik/properti/{properti}/kamar', 'pages.pemilik.kamar')
 Volt::route('pemilik/pengeluaran', 'pages.pemilik.pengeluaran')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
     ->name('pemilik.pengeluaran');
+Volt::route('pemilik/grafik', 'pages.pemilik.grafik')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.grafik');
 
 // Ekspor rekap bulanan pemilik (PDF & Excel).
 Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
@@ -62,6 +67,14 @@ Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group
         ->name('pemilik.rekap.pdf');
     Route::get('pemilik/rekap/excel', [PemilikRekapExportController::class, 'excel'])
         ->name('pemilik.rekap.excel');
+});
+
+// Unduh kwitansi pembayaran terverifikasi + lihat KTP penyewa.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('pembayaran/{pembayaran}/kwitansi', [KwitansiController::class, 'unduh'])
+        ->name('pembayaran.kwitansi');
+    Route::get('penyewaan/{sewaan}/ktp', [KtpPenyewaanController::class, 'lihat'])
+        ->name('penyewaan.ktp');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

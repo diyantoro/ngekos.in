@@ -41,7 +41,16 @@ class KatalogDetailSewaTest extends TestCase
         $component->call('pesanKamar', $kamar->id)
             ->assertSet('modalKamarId', $kamar->id);
 
+        // Tanpa KTP: ditolak.
         $component->set('tanggalMasuk', today()->toDateString())
+            ->call('konfirmasiSewa')
+            ->assertHasErrors(['ktp' => 'required']);
+
+        $kamar->refresh();
+        $this->assertSame('tersedia', $kamar->status);
+
+        // Dengan KTP: berhasil.
+        $component->set('ktp', \Illuminate\Http\UploadedFile::fake()->image('ktp.jpg'))
             ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
             ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil dipesan'));
@@ -53,6 +62,7 @@ class KatalogDetailSewaTest extends TestCase
             ->where('kamar_id', $kamar->id)
             ->firstOrFail();
         $this->assertSame('aktif', $penyewaan->status);
+        $this->assertNotNull($penyewaan->ktp_path);
         $this->assertSame(1, $penyewaan->tagihans()->count());
         $tagihan = $penyewaan->tagihans()->first();
         $this->assertSame('belum_bayar', $tagihan->status);
@@ -72,7 +82,7 @@ class KatalogDetailSewaTest extends TestCase
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
         $service = app(PenyewaanService::class);
-        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 3);
+        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 3, null, 'ktp/test.jpg');
 
         $this->assertSame(3, $penyewaan->tagihans()->count());
         $this->assertSame(3, $penyewaan->tagihans()->where('status', 'belum_bayar')->count());
@@ -124,13 +134,13 @@ class KatalogDetailSewaTest extends TestCase
 
         $service = app(PenyewaanService::class);
 
-        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString());
+        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, 'ktp/test.jpg');
         $this->assertNotNull($sewaanPertama);
 
         $this->expectException(\DomainException::class);
 
         try {
-            $service->sewaKamar($user, $kamar, today()->toDateString());
+            $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, 'ktp/test.jpg');
         } finally {
             $this->assertSame(1, Penyewaan::where('kamar_id', $kamar->id)->count());
         }
@@ -161,6 +171,7 @@ class KatalogDetailSewaTest extends TestCase
         $component->set('tanggalMasuk', today()->toDateString())
             ->set('periodeSewa', 'harian')
             ->set('durasiHari', 3)
+            ->set('ktp', \Illuminate\Http\UploadedFile::fake()->image('ktp.jpg'))
             ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
             ->assertSet('pesan', fn ($pesan) => str_contains($pesan, '3 hari'));
@@ -187,7 +198,7 @@ class KatalogDetailSewaTest extends TestCase
         $kamar->update(['harga_sewa_harian' => 75000]);
 
         $service = app(PenyewaanService::class);
-        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 4);
+        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 4, 'ktp/test.jpg');
 
         $this->assertSame('aktif', $penyewaan->status);
         $this->assertEquals(today()->addDays(3)->toDateString(), $penyewaan->tanggal_keluar->toDateString());
@@ -211,6 +222,18 @@ class KatalogDetailSewaTest extends TestCase
         $service = app(PenyewaanService::class);
 
         $this->expectException(\DomainException::class);
-        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 2);
+        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 2, 'ktp/test.jpg');
+    }
+
+    public function test_sewa_ditolak_tanpa_ktp(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+
+        $service = app(PenyewaanService::class);
+
+        $this->expectException(\DomainException::class);
+        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null);
     }
 }

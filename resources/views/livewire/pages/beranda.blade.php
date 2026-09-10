@@ -3,6 +3,7 @@
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Support\Koordinat;
+use App\Support\NormalisasiKota;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -21,6 +22,7 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $query = Properti::query()
             ->where('status', 'aktif')
+            ->with('fotos')
             ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia')])
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
 
@@ -43,15 +45,10 @@ new #[Layout('layouts.publik')] class extends Component
                 ->distinct()
                 ->orderBy('kota')
                 ->pluck('kota'),
-            'kotaStatistik' => Properti::query()
-                ->where('status', 'aktif')
+            'kotaStatistik' => NormalisasiKota::agregasi(Properti::where('status', 'aktif')
                 ->whereNotNull('kota')
                 ->where('kota', '!=', '')
-                ->selectRaw('kota, COUNT(*) as jumlah')
-                ->groupBy('kota')
-                ->orderByDesc('jumlah')
-                ->limit(6)
-                ->get(),
+                ->pluck('kota')),
             'markers' => Properti::where('status', 'aktif')
                 ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
@@ -210,13 +207,19 @@ new #[Layout('layouts.publik')] class extends Component
                 <a href="{{ route('kos.detail', $properti) }}" wire:navigate
                    class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-teal-200 dark:hover:ring-teal-800 transition-all duration-200">
                     <div class="relative h-40 sm:h-44 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100">
-                        @if ($properti->foto)
-                            <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}"
+                        @php $coverBeranda = $properti->fotoCover(); @endphp
+                        @if ($coverBeranda)
+                            <img src="{{ $coverBeranda }}" alt="{{ $properti->nama }}"
                                  class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                         @else
                             <div class="h-full w-full flex items-center justify-center">
                                 <svg class="h-14 w-14 text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                             </div>
+                        @endif
+                        @if (count($properti->galeriUrls()) > 1)
+                            <span class="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+                                {{ count($properti->galeriUrls()) }} foto
+                            </span>
                         @endif
                         @if ($properti->kamar_tersedia > 0)
                             <span class="absolute top-2.5 right-2.5 inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -271,7 +274,84 @@ new #[Layout('layouts.publik')] class extends Component
 
     <!-- Persebaran Kos -->
     @if ($kotaStatistik->isNotEmpty())
-    <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10">
+    <section x-data="{
+                semua: false,
+                buka: null,
+                cariKota: '',
+                muat: 15,
+                data: @js($kotaStatistik),
+                get totalKota() { return this.data.length; },
+                get sisa() { return this.data.slice(6); },
+                get kotaLain() {
+                    const s = this.sisa;
+                    if (!s.length) return null;
+                    return { nama: 'Kota Lainnya', jumlah: s.reduce((a, k) => a + k.jumlah, 0), daerah: s };
+                },
+                get awal() {
+                    const rows = this.data.slice(0, 6);
+                    const lain = this.kotaLain;
+                    return lain ? rows.concat([lain]) : rows;
+                },
+                get hasilFilter() {
+                    const q = this.cariKota.trim().toLowerCase();
+                    if (!q) return this.data;
+                    return this.data.filter((k) => k.nama.toLowerCase().includes(q));
+                },
+                get tampil() {
+                    if (!this.semua) return this.awal;
+                    return this.hasilFilter.slice(0, this.muat);
+                },
+                get sisaMuat() { return this.hasilFilter.length - this.muat; },
+                get kosong() { return this.semua && this.hasilFilter.length === 0; },
+                get adaDaerahTampil() {
+                    return this.tampil.filter((k) => k.nama !== 'Kota Lainnya').some((kota) => kota.daerah.length);
+                },
+                kotakBuka() {
+                    if (!this.buka) return null;
+                    const k = this.tampil.find((kota) => kota.nama === this.buka);
+                    return k && k.daerah.length ? k : null;
+                },
+                bukaModeSemua() {
+                    this.buka = null;
+                    this.cariKota = '';
+                    this.muat = 15;
+                    this.semua = true;
+                },
+                kembaliTeratas() {
+                    this.semua = false;
+                    this.buka = null;
+                    this.cariKota = '';
+                    this.muat = 15;
+                },
+                muatLagi() { this.muat += 15; },
+                renderGrafik() {
+                    const el = document.getElementById('chart-persebaran-kos');
+                    if (!el || !this.tampil.length || typeof window.kosPerKotaChart !== 'function') return;
+                    const labels = this.tampil.map((kota) => kota.nama);
+                    const values = this.tampil.map((kota) => kota.jumlah);
+                    window.kosPerKotaChart('chart-persebaran-kos', labels, values, {
+                        onBarClick: (i) => {
+                            const k = this.tampil[i];
+                            if (!k) return;
+                            if (k.nama === 'Kota Lainnya') { this.bukaModeSemua(); return; }
+                            this.buka = k.daerah.length ? (this.buka === k.nama ? null : k.nama) : this.buka;
+                        },
+                    });
+                },
+                init() {
+                    this.$nextTick(() => {
+                        this.renderGrafik();
+                        this.$watch('semua', () => this.$nextTick(() => this.renderGrafik()));
+                        this.$watch('cariKota', () => {
+                            this.muat = 15;
+                            this.buka = null;
+                            this.$nextTick(() => this.renderGrafik());
+                        });
+                        this.$watch('muat', () => this.$nextTick(() => this.renderGrafik()));
+                        this.$watch(() => this.$store.theme.dark, () => this.$nextTick(() => this.renderGrafik()));
+                    });
+                },
+            }" class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10">
         <div class="reveal relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6 shadow-sm">
             <div class="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-teal-100/50 dark:bg-teal-500/10 blur-3xl"></div>
             <div class="relative flex items-center gap-3 mb-4">
@@ -283,21 +363,79 @@ new #[Layout('layouts.publik')] class extends Component
                     <p class="text-xs text-gray-500 dark:text-gray-400">Jumlah kos aktif per kota</p>
                 </div>
             </div>
-            <div class="relative space-y-3">
-                @php($jumlahMax = $kotaStatistik->max('jumlah') ? (int) $kotaStatistik->max('jumlah') : 1)
-                @foreach ($kotaStatistik as $stat)
-                    @php($pct = round(((int) $stat->jumlah / $jumlahMax) * 100, 1))
-                    <div class="flex items-center gap-3">
-                        <span class="w-28 shrink-0 truncate text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $stat->kota }}</span>
-                        <div class="flex-1 h-3 rounded-full bg-gray-100 dark:bg-gray-700/50 overflow-hidden">
-                            <div class="h-full rounded-full bg-gradient-to-r from-teal-500 via-teal-400 to-cyan-500 transition-all duration-1000 ease-out"
-                                 style="width:0%"
-                                 x-data="{ sasaran: {{ $pct }} }"
-                                 x-init="requestAnimationFrame(() => { const io = new IntersectionObserver((e) => { e.forEach((x) => { if (x.isIntersecting) { $el.style.width = sasaran + '%'; io.disconnect(); } }); }, { threshold: 0.4 }); io.observe($el.closest('.reveal') || $el); })"></div>
-                        </div>
-                        <span class="w-6 shrink-0 text-right text-xs font-extrabold text-teal-600 dark:text-teal-400">{{ (int) $stat->jumlah }}</span>
+            <div class="relative">
+                <!-- Pencarian (mode semua) -->
+                <div x-show="semua" x-cloak class="mb-3">
+                    <div class="flex items-center gap-2 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-teal-500/20 transition-all">
+                        <svg class="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                        <input type="text" x-model="cariKota" placeholder="Cari kota atau daerah..."
+                            class="w-full bg-transparent text-xs sm:text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
+                        <template x-if="cariKota">
+                            <button type="button" @click="cariKota = ''" class="rounded-lg p-1 text-gray-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors" title="Bersihkan pencarian">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </template>
                     </div>
-                @endforeach
+                </div>
+
+                <div x-show="!kosong" class="relative transition-all duration-200" :style="'height:' + Math.max(tampil.length * 32, 150) + 'px'" :class="semua ? 'max-h-80 overflow-y-auto pr-1' : ''">
+                    <canvas id="chart-persebaran-kos" class="cursor-pointer"></canvas>
+                </div>
+
+                <!-- Hasil pencarian kosong -->
+                <div x-show="kosong" x-cloak class="py-10 text-center">
+                    <p class="text-xs text-gray-400 dark:text-gray-500">
+                        Kota "<span class="font-semibold text-gray-600 dark:text-gray-300" x-text="cariKota"></span>" tidak ditemukan.
+                    </p>
+                </div>
+
+                <!-- Counter mode semua -->
+                <p x-show="semua && !kosong" class="mt-2 text-center text-[10px] text-gray-400 dark:text-gray-500">
+                    Menampilkan <span class="font-bold text-gray-600 dark:text-gray-300" x-text="Math.min(muat, hasilFilter.length).toLocaleString('id-ID')"></span> dari <span class="font-bold text-gray-600 dark:text-gray-300" x-text="hasilFilter.length.toLocaleString('id-ID')"></span> kota
+                </p>
+
+                <!-- Muat lebih banyak -->
+                <template x-if="semua && sisaMuat > 0">
+                    <button type="button" @click="muatLagi()"
+                        class="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 dark:border-teal-500/30 px-3 py-2 text-xs font-semibold text-teal-600 dark:text-teal-400 transition-all duration-200 hover:bg-teal-50 dark:hover:bg-teal-500/10 active:scale-95">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        Muat lebih banyak (<span x-text="sisaMuat"></span>)
+                    </button>
+                </template>
+
+                <template x-if="totalKota > 6">
+                    <button type="button" @click="semua ? kembaliTeratas() : bukaModeSemua()"
+                        class="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-teal-200 dark:border-teal-500/30 px-3 py-2 text-xs font-semibold text-teal-600 dark:text-teal-400 transition-all duration-200 hover:bg-teal-50 dark:hover:bg-teal-500/10 active:scale-95">
+                        <svg x-show="!semua" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        <svg x-show="semua" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" /></svg>
+                        <span x-text="semua ? 'Tampilkan teratas' : 'Lihat semua kota (' + totalKota + ')'"></span>
+                    </button>
+                </template>
+
+                <template x-if="kotakBuka()">
+                    <div class="mt-4 rounded-xl border border-teal-100 dark:border-teal-500/20 bg-teal-50/50 dark:bg-teal-500/5">
+                        <div class="flex items-center justify-between gap-2 border-b border-teal-100 dark:border-teal-500/20 px-3 py-2.5">
+                            <p class="text-xs font-bold text-teal-700 dark:text-teal-300">
+                                <span x-text="buka"></span> — pecahan daerah
+                            </p>
+                            <button type="button" @click="buka = null" class="rounded-lg p-1 text-teal-500 transition-colors hover:bg-teal-100 dark:hover:bg-teal-500/10" title="Tutup">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="divide-y divide-teal-100/70 dark:divide-teal-500/10 px-3 py-1">
+                            <template x-for="d in kotakBuka().daerah" :key="d.nama">
+                                <div class="flex items-center justify-between gap-3 py-2">
+                                    <span class="truncate text-xs font-semibold text-gray-700 dark:text-gray-200" x-text="d.nama"></span>
+                                    <span class="shrink-0 text-xs font-extrabold text-teal-600 dark:text-teal-400" x-text="d.jumlah.toLocaleString('id-ID') + ' kos'"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <p x-show="adaDaerahTampil && !buka" class="mt-4 text-center text-[10px] text-gray-400 dark:text-gray-500">
+                    Klik bar kota untuk melihat pecahan daerahnya.
+                </p>
             </div>
         </div>
     </section>
@@ -408,7 +546,7 @@ new #[Layout('layouts.publik')] class extends Component
                     _mapBeranda.fitBounds(bounds);
                 }
 
-                data.forEach((m) => {
+                const markers = data.map((m) => {
                     const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: _mapBeranda, title: m.nama });
                     const info = new google.maps.InfoWindow();
                     pemuat.addListener('click', () => {
@@ -418,7 +556,9 @@ new #[Layout('layouts.publik')] class extends Component
                         info.setContent(isi);
                         info.open({ map: _mapBeranda, anchor: pemuat });
                     });
+                    return pemuat;
                 });
+                window.pasangCluster(markers, _mapBeranda);
             }
 
             window.initPetaBeranda = function () {

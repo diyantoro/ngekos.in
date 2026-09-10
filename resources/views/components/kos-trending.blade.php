@@ -3,6 +3,7 @@
 @php
     $trending = \App\Models\Properti::query()
         ->where('status', 'aktif')
+        ->with('fotos')
         ->withCount([
             'kamars as total_kamar',
             'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
@@ -32,13 +33,17 @@
                 <a href="{{ route('kos.detail', $p) }}" wire:navigate
                     class="group w-[280px] shrink-0 snap-start rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
                     <div class="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-500/10 dark:to-amber-500/10 overflow-hidden">
-                        @if ($p->foto)
-                            <img src="{{ Storage::url($p->foto) }}" alt="{{ $p->nama }}"
+                        @php $coverTrend = $p->fotoCover(); @endphp
+                        @if ($coverTrend)
+                            <img src="{{ $coverTrend }}" alt="{{ $p->nama }}"
                                 class="h-full w-full object-cover">
                         @else
                             <div class="h-full w-full flex items-center justify-center">
                                 <svg class="h-10 w-10 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
                             </div>
+                        @endif
+                        @if (count($p->galeriUrls()) > 1)
+                            <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">{{ count($p->galeriUrls()) }} foto</span>
                         @endif
 
                         <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">

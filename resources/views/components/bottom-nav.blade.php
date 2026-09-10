@@ -39,15 +39,41 @@
             </a>
 
             @if (auth()->user()->hasAnyRole(['pemilik', 'admin', 'super_admin']))
-                <a href="{{ route('pemilik.properti') }}" wire:navigate
-                   aria-current="{{ request()->routeIs('pemilik.*') ? 'page' : 'false' }}"
-                   class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('pemilik.*') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
-                    @if (request()->routeIs('pemilik.*'))
-                        <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
-                    @endif
-                    <svg class="h-6 w-6 transition-transform duration-200 {{ request()->routeIs('pemilik.*') ? 'scale-110' : '' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" /></svg>
-                    <span class="text-[10px] font-semibold">Kelola</span>
-                </a>
+                <div x-data="{ buka: false }" class="relative">
+                    <button @click="buka = !buka" type="button"
+                       aria-label="Menu kelola"
+                       class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('pemilik.*') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
+                        @if (request()->routeIs('pemilik.*'))
+                            <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
+                        @endif
+                        <svg class="h-6 w-6 transition-transform duration-200 {{ request()->routeIs('pemilik.*') ? 'scale-110' : '' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" /></svg>
+                        <span class="text-[10px] font-semibold">Kelola</span>
+                    </button>
+                    <div x-show="buka" x-cloak @click.outside="buka = false"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 translate-y-2"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0"
+                         class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-44 rounded-2xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-50">
+                        <a href="{{ route('pemilik.properti') }}" wire:navigate @click="buka = false"
+                           class="flex items-center gap-2.5 px-4 py-3 text-xs font-semibold {{ request()->routeIs('pemilik.properti*') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10' : 'text-gray-600 dark:text-gray-300' }} hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /></svg>
+                            Kelola Kos
+                        </a>
+                        <a href="{{ route('pemilik.pengeluaran') }}" wire:navigate @click="buka = false"
+                           class="flex items-center gap-2.5 px-4 py-3 text-xs font-semibold {{ request()->routeIs('pemilik.pengeluaran') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10' : 'text-gray-600 dark:text-gray-300' }} hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v1.5A2.25 2.25 0 006 21zm12-8.25v-6.5A2.25 2.25 0 0015.75 4H8.25A2.25 2.25 0 006 6.25v6.5m18 0h-18" /></svg>
+                            Pengeluaran
+                        </a>
+                        <a href="{{ route('pemilik.grafik') }}" wire:navigate @click="buka = false"
+                           class="flex items-center gap-2.5 px-4 py-3 text-xs font-semibold {{ request()->routeIs('pemilik.grafik') ? 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10' : 'text-gray-600 dark:text-gray-300' }} hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+                            Grafik
+                        </a>
+                    </div>
+                </div>
             @endif
 
             <a href="{{ route('pengaturan') }}" wire:navigate

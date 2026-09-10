@@ -30,6 +30,7 @@ new #[Layout('layouts.app')] class extends Component
             'kelolaSemua' => $this->bolehKelolaSemua(),
             'propertis' => Properti::query()
                 ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->id()))
+                ->with('fotos')
                 ->withCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
                 ->orderBy('nama')
                 ->get(),
@@ -69,6 +70,19 @@ new #[Layout('layouts.app')] class extends Component
             Storage::disk('public')->delete($properti->foto);
         }
 
+        foreach ($properti->fotos as $foto) {
+            Storage::disk('public')->delete($foto->path);
+        }
+
+        foreach ($properti->kamars as $kamar) {
+            if ($kamar->foto) {
+                Storage::disk('public')->delete($kamar->foto);
+            }
+            foreach ($kamar->fotos as $foto) {
+                Storage::disk('public')->delete($foto->path);
+            }
+        }
+
         $properti->delete();
 
         $this->pesan = "Kos \"{$nama}\" beserta seluruh kamar & datanya telah dihapus.";
@@ -103,13 +117,17 @@ new #[Layout('layouts.app')] class extends Component
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="p-5 sm:p-6">
                     <div class="flex flex-col sm:flex-row gap-5">
-                        <div class="h-36 sm:h-32 sm:w-48 shrink-0 rounded-xl bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden">
-                            @if ($properti->foto)
-                                <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover">
+                        <div class="h-36 sm:h-32 sm:w-48 shrink-0 rounded-xl bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden relative">
+                            @php $coverKelola = $properti->fotoCover(); @endphp
+                            @if ($coverKelola)
+                                <img src="{{ $coverKelola }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover">
                             @else
                                 <div class="h-full w-full flex items-center justify-center">
                                     <svg class="h-10 w-10 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18-8.25V21m-1.5-8.25v-3.75a2.25 2.25 0 00-2.25-2.25h-1.5m-1.5 0V3.545c0-.621-.504-1.125-1.125-1.125H8.25c-.621 0-1.125.504-1.125 1.125v7.5" /></svg>
                                 </div>
+                            @endif
+                            @if (count($properti->galeriUrls()) > 1)
+                                <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">{{ count($properti->galeriUrls()) }} foto</span>
                             @endif
                         </div>
 

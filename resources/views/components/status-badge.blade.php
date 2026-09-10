@@ -18,6 +18,9 @@
         'belum_bayar' => 'bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-900/40 dark:text-rose-300 dark:ring-rose-800',
         'lunas' => 'bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800',
         'terlambat' => 'bg-rose-50 text-rose-700 ring-rose-200/80 dark:bg-rose-900/40 dark:text-rose-300 dark:ring-rose-800',
+        'patungan' => 'bg-sky-50 text-sky-700 ring-sky-200/80 dark:bg-sky-900/40 dark:text-sky-300 dark:ring-sky-800',
+        'tunggal' => 'bg-gray-100 text-gray-600 ring-gray-200/80 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600',
+        'keluar' => 'bg-gray-100 text-gray-600 ring-gray-200/80 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600',
     ];
     $label = str($status)->replace('_', ' ')->title();
 @endphp

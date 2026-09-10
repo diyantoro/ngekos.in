@@ -24,7 +24,7 @@ class NoLeakHtmlTest extends TestCase
     {
         $html = $this->get('/')->getContent();
 
-        $markerPos = strpos($html, 'data.forEach((m) => L.marker');
+        $markerPos = strpos($html, 'data.forEach((m) => bounds.extend');
         $this->assertNotFalse($markerPos, 'kode peta harus ada');
         $this->assertNotFalse(strpos($html, 'window.initPetaBeranda'), 'harus pakai fungsi global');
 

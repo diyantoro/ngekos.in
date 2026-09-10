@@ -163,7 +163,7 @@ class DashboardRenderCheckTest extends TestCase
         $this->assertStringContainsString('telah saya verifikasi', $chat->isi);
     }
 
-    public function test_pemilik_dashboard_menampilkan_rekap_keuangan_dan_okupansi(): void
+    public function test_pemilik_dashboard_menampilkan_ringkas_tanpa_grafik(): void
     {
         $user = User::where('email', 'pemilik1@ngekos.test')->first();
 
@@ -174,16 +174,19 @@ class DashboardRenderCheckTest extends TestCase
             ->assertViewHas('pengeluaranBulanIni')
             ->assertViewHas('labaBersihBulanIni')
             ->assertViewHas('tagihanBelumCount')
-            ->assertViewHas('chartKategori')
-            ->assertViewHas('chartOkupansi')
-            ->assertSet('periode', '6');
+            ->assertViewMissing('chartKategori')
+            ->assertViewMissing('chartOkupansi')
+            ->assertViewMissing('bulanLabels')
+            ->assertViewMissing('funnelStages');
 
         $this->actingAs($user)
             ->get(route('dashboard.pemilik'))
             ->assertOk()
             ->assertSee('Tingkat Okupansi')
             ->assertSee('Laba Bersih Bulan Ini')
-            ->assertSee('Pengeluaran per Kategori');
+            ->assertSee('Buka Grafik')
+            ->assertDontSee('Pengeluaran per Kategori')
+            ->assertDontSee('Grafik Pipeline');
     }
 
     public function test_super_admin_dashboard_menampilkan_pertumbuhan(): void

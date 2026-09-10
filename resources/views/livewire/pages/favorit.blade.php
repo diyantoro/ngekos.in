@@ -10,7 +10,7 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         return [
-            'favorits' => Auth::user()->favorits()->withCount([
+            'favorits' => Auth::user()->favorits()->with(['fotos'])->withCount([
                 'kamars as total_kamar',
                 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
             ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan')->get(),
@@ -68,12 +68,16 @@ new #[Layout('layouts.app')] class extends Component
                         <div class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-rose-200 dark:hover:ring-rose-800 transition-all duration-200">
                             <a href="{{ route('kos.detail', $properti) }}" wire:navigate>
                                 <div class="relative h-40 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
-                                    @if ($properti->foto)
-                                        <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
+                                    @php $coverFav = $properti->fotoCover(); @endphp
+                                    @if ($coverFav)
+                                        <img src="{{ $coverFav }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                                     @else
                                         <div class="h-full w-full flex items-center justify-center">
                                             <svg class="h-12 w-12 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                                         </div>
+                                    @endif
+                                    @if (count($properti->galeriUrls()) > 1)
+                                        <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">{{ count($properti->galeriUrls()) }} foto</span>
                                     @endif
                                     @if ($properti->kamar_tersedia > 0)
                                         <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">

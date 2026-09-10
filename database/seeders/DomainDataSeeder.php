@@ -145,6 +145,35 @@ class DomainDataSeeder extends Seeder
             'status' => 'menunggu_verifikasi',
         ]);
 
+        // Demo patungan 50/50: Rina (utama) + Maya (anggota) di kamar A3 kapasitas 2.
+        if ($a3->kapasitas >= 2) {
+            $sewaPatungan = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a3->id], [
+                'properti_id' => $melati->id,
+                'tanggal_masuk' => now()->startOfMonth()->toDateString(),
+                'status' => 'aktif',
+                'ktp_path' => 'ktp/demo-rina.jpg',
+                'mode_hunian' => 'patungan',
+            ]);
+
+            if ($sewaPatungan->wasRecentlyCreated) {
+                $a3->update(['status' => 'terisi']);
+                $sewaPatungan->tagihans()->create([
+                    'periode' => now()->translatedFormat('F Y'),
+                    'jumlah' => $a3->harga_sewa_bulanan,
+                    'denda' => 0,
+                    'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(),
+                    'status' => 'belum_bayar',
+                ]);
+            } else {
+                $sewaPatungan->update(['mode_hunian' => 'patungan']);
+            }
+
+            \App\Models\PenyewaanAnggota::firstOrCreate(
+                ['penyewaan_id' => $sewaPatungan->id, 'user_id' => $maya->id],
+                ['porsi_persen' => 50, 'status' => 'aktif', 'ktp_path' => 'ktp/demo-maya.jpg'],
+            );
+        }
+
         $budgetBulananMelati = [
             ['listrik', 'Tagihan listrik bulanan', 250000],
             ['internet', 'Langganan WiFi bulanan', 100000],

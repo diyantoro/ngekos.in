@@ -84,10 +84,10 @@ class PemilikRekapExportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_dashboard_pemilik_menampilkan_control_ekspor(): void
+    public function test_halaman_grafik_menampilkan_control_ekspor(): void
     {
         $response = $this->actingAs($this->pemilik())
-            ->get(route('dashboard.pemilik'));
+            ->get(route('pemilik.grafik'));
 
         $response->assertOk();
 
@@ -96,5 +96,22 @@ class PemilikRekapExportTest extends TestCase
         $this->assertStringContainsString(route('pemilik.rekap.pdf'), $content);
         $this->assertStringContainsString(route('pemilik.rekap.excel'), $content);
         $this->assertStringContainsString('type="month"', $content);
+    }
+
+    public function test_dashboard_pemilik_tidak_menampilkan_grafik_hanya_tautan(): void
+    {
+        $response = $this->actingAs($this->pemilik())
+            ->get(route('dashboard.pemilik'));
+
+        $response->assertOk();
+
+        $content = $response->getContent();
+        // Dashboard hanya berisi kartu tautan ke menu Grafik, bukan grafik itu sendiri.
+        $this->assertStringContainsString(route('pemilik.grafik'), $content);
+        $this->assertStringContainsString('Buka Grafik', $content);
+        $this->assertStringNotContainsString('Ekspor Rekap Bulanan', $content);
+        $this->assertStringNotContainsString('id="rekap-data"', $content);
+        $this->assertStringNotContainsString('id="chart-rekap-keuangan"', $content);
+        $this->assertStringNotContainsString('Grafik Pipeline', $content);
     }
 }

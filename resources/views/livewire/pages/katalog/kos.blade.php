@@ -24,6 +24,7 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $query = Properti::query()
             ->where('status', 'aktif')
+            ->with('fotos')
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
@@ -196,13 +197,20 @@ new #[Layout('layouts.publik')] class extends Component
                     <div class="flex sm:block">
                         <!-- Image -->
                         <div class="relative h-32 sm:h-44 w-28 sm:w-full shrink-0 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
-                            @if ($properti->foto)
-                                <img src="{{ asset('storage/' . $properti->foto) }}" alt="{{ $properti->nama }}"
+                            @php $coverKos = $properti->fotoCover(); @endphp
+                            @if ($coverKos)
+                                <img src="{{ $coverKos }}" alt="{{ $properti->nama }}"
                                      class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                             @else
                                 <div class="h-full w-full flex items-center justify-center">
                                     <svg class="h-10 w-10 sm:h-14 sm:w-14 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                                 </div>
+                            @endif
+                            @if (count($properti->galeriUrls()) > 1)
+                                <span class="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+                                    {{ count($properti->galeriUrls()) }}
+                                </span>
                             @endif
                             @if ($properti->kamar_tersedia > 0)
                                 <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
@@ -242,19 +250,10 @@ new #[Layout('layouts.publik')] class extends Component
                                 <div class="text-end">
                                     @php
                                         $hargaTampil = $properti->harga ?? $properti->harga_termurah;
-                                        $periode = $properti->jenis_harga ?? 'bulanan';
                                         $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
                                     @endphp
                                     @if ($hargaTampil)
-                                        @if ($adaDiskon)
-                                            <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
-                                        @endif
-                                        <span class="text-sm sm:text-base font-extrabold text-teal-600 dark:text-teal-400">
-                                            Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
-                                        </span>
-                                        @if ($properti->harga_harian)
-                                            <span class="block text-[10px] text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
-                                        @endif
+                                        <x-harga-tiga-periode :bulanan="$hargaTampil" :mingguan="$properti->harga_mingguan" :harian="$properti->harga_harian" :asli="$adaDiskon ? $properti->harga_asli : null" />
                                     @else
                                         <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                     @endif
@@ -337,7 +336,7 @@ new #[Layout('layouts.publik')] class extends Component
                     ngekosMap.fitBounds(bounds);
                 }
 
-                data.forEach(function (m) {
+                const markers = data.map(function (m) {
                     const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: ngekosMap, title: m.nama });
                     const info = new google.maps.InfoWindow();
                     pemuat.addListener('click', () => {
@@ -347,7 +346,9 @@ new #[Layout('layouts.publik')] class extends Component
                         info.setContent(isi);
                         info.open({ map: ngekosMap, anchor: pemuat });
                     });
+                    return pemuat;
                 });
+                window.pasangCluster(markers, ngekosMap);
             }
 
             window.togglePetaNgekos = function (show) {
