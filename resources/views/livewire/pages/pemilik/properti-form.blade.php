@@ -556,17 +556,9 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <!-- Lokasi Peta -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <x-input-label for="latitude" value="Latitude" />
-                    <x-text-input wire:model="latitude" id="latitude" class="mt-1 block w-full" type="number" step="any" min="-90" max="90" placeholder="-6.200000" />
-                    <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
-                </div>
-                <div>
-                    <x-input-label for="longitude" value="Longitude" />
-                    <x-text-input wire:model="longitude" id="longitude" class="mt-1 block w-full" type="number" step="any" min="-180" max="180" placeholder="106.816666" />
-                    <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
-                </div>
+            <div>
+                <x-input-label value="Lokasi di Peta (Opsional)" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Klik pada peta untuk menandai lokasi kos, atau gunakan tombol di bawah.</p>
             </div>
 
             @php
@@ -579,9 +571,9 @@ new #[Layout('layouts.app')] class extends Component
                 data-lng="{{ $longitude }}"
                 data-default-lat="{{ $titikAwal[0] }}"
                 data-default-lng="{{ $titikAwal[1] }}"
-                class="mt-3 h-72 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
+                class="h-72 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
 
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                 <button type="button" id="peta-cari-alamat" class="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
                     Cari dari Alamat
