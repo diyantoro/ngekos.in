@@ -7,9 +7,10 @@
         'harian' => ['nilai' => $harian, 'satuan' => 'hari'],
     ];
 
-    $tersedia = collect($opsi)->filter(fn ($o) => ! empty($o['nilai']) && (float) $o['nilai'] > 0);
+    $tersedia = collect($opsi)->filter(fn ($o) => $o['nilai'] !== null && (float) $o['nilai'] > 0);
 
-    $utama = $tersedia->sortBy('nilai')->first();
+    $utamaArray = $tersedia->sortBy('nilai')->first();
+    $utama = $utamaArray ? $utamaArray['nilai'] : null;
     $satuanUtama = $tersedia->sortBy('nilai')->keys()->first();
     $satuanLabel = $utama ? ($opsi[$satuanUtama]['satuan'] ?? 'bln') : 'bln';
 
