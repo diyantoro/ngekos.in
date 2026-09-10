@@ -864,11 +864,30 @@ new #[Layout('layouts.app')] class extends Component
         pasangToggleLokasiForm();
     }
 
+    // Initialize on load
     if (typeof window.loadNgekosMaps === 'function') {
         window.loadNgekosMaps(initPetaForm);
     } else {
         initPetaForm();
     }
+
+    // Re-initialize after Livewire navigation
+    document.addEventListener('livewire:navigated', () => {
+        // Reset flag so map can be re-initialized
+        const el = document.getElementById('peta-properti-form');
+        if (el && el.dataset.terpasang) {
+            delete el.dataset.terpasang;
+        }
+        
+        // Re-init map
+        setTimeout(() => {
+            if (typeof window.loadNgekosMaps === 'function') {
+                window.loadNgekosMaps(initPetaForm);
+            } else {
+                initPetaForm();
+            }
+        }, 100);
+    });
 </script>
 @endscript
 
