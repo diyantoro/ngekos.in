@@ -5,7 +5,6 @@ export function photoCropManager() {
         currentIndex: -1,
         cropper: null,
         showModal: false,
-        uploading: false,
 
         init() {
             this.$watch('showModal', value => {
@@ -159,13 +158,7 @@ export function photoCropManager() {
                 return;
             }
 
-            this.uploading = true;
-
             try {
-                // Get current galeriBaru value (might already have files)
-                const existingFiles = wire.get('galeriBaru') || [];
-                const newFiles = [];
-
                 // Upload one by one and collect uploaded files
                 for (let i = 0; i < this.files.length; i++) {
                     const f = this.files[i];
@@ -176,9 +169,8 @@ export function photoCropManager() {
 
                     // Upload to Livewire temporary storage
                     await new Promise((resolve, reject) => {
-                        wire.upload('galeriBaru', file, 
-                            (uploadedFilename) => {
-                                newFiles.push(uploadedFilename);
+                        wire.upload('galeriBaru', file,
+                            () => {
                                 resolve();
                             },
                             (error) => reject(error)
@@ -192,7 +184,6 @@ export function photoCropManager() {
                 });
                 this.files = [];
                 this.currentIndex = -1;
-                this.uploading = false;
 
                 // Reset input
                 const input = this.$refs.fileInput;
@@ -200,27 +191,9 @@ export function photoCropManager() {
 
             } catch (error) {
                 console.error('Upload failed:', error);
-                this.uploading = false;
                 alert('Upload gagal. Silakan coba lagi.');
                 this.cancelAll();
             }
-        },
-
-        // Remove a file from queue
-        removeFile(index) {
-            const file = this.files[index];
-            if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
-            this.files.splice(index, 1);
-
-            if (this.files.length === 0) {
-                this.cancelAll();
-            }
-        },
-
-        // Get current file info
-        get currentFile() {
-            if (this.currentIndex < 0 || this.currentIndex >= this.files.length) return null;
-            return this.files[this.currentIndex];
         },
 
         // Check if can go back

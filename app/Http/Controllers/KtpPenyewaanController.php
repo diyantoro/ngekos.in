@@ -33,14 +33,26 @@ class KtpPenyewaanController extends Controller
 
         abort_unless($boleh, 403);
 
-        $userId = $request->query('user_id') ? (int) $request->query('user_id') : $sewaan->anak_kos_id;
+        $userId = $sewaan->anak_kos_id;
+
+        if (! $user->hasRole('anak_kos')) {
+            $userId = $request->query('user_id') ? (int) $request->query('user_id') : $sewaan->anak_kos_id;
+        } elseif ($sewaan->anak_kos_id !== $user->id) {
+            $anggotaSaya = $sewaan->anggotas->firstWhere('user_id', $user->id);
+
+            if (! $anggotaSaya) {
+                abort(403);
+            }
+
+            $userId = $user->id;
+        }
 
         $path = $userId === $sewaan->anak_kos_id
             ? $sewaan->ktp_path
             : $sewaan->anggotas->firstWhere('user_id', $userId)?->ktp_path;
 
-        abort_unless($path && Storage::disk('public')->exists($path), 404);
+        abort_unless($path && \App\Services\KtpStorage::ada($path), 404);
 
-        return response()->file(Storage::disk('public')->path($path));
+        return response()->file(\App\Services\KtpStorage::pathAbsolut($path));
     }
 }

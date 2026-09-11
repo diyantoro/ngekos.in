@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ChatPesan;
 use App\Models\Penyewaan;
 use App\Models\PenyewaanAnggota;
 use App\Models\User;
@@ -61,18 +62,36 @@ class PatunganService
             throw new DomainException('User ini sudah punya sewa aktif di kamar tersebut.');
         }
 
-        return DB::transaction(function () use ($penyewaan, $user, $ktpPath) {
+        $ktpLama = PenyewaanAnggota::where('penyewaan_id', $penyewaan->id)->where('user_id', $user->id)->value('ktp_path');
+
+        if (! $ktpPath && ! $ktpLama) {
+            throw new DomainException('Foto KTP teman wajib diunggah sebelum ditambah sebagai anggota.');
+        }
+
+        return DB::transaction(function () use ($penyewaan, $user, $ktpPath, $ktpLama) {
             $anggota = PenyewaanAnggota::updateOrCreate(
                 ['penyewaan_id' => $penyewaan->id, 'user_id' => $user->id],
                 [
                     'porsi_persen' => 50,
                     'status' => 'aktif',
-                    'ktp_path' => $ktpPath ?? PenyewaanAnggota::where('penyewaan_id', $penyewaan->id)->where('user_id', $user->id)->value('ktp_path'),
+                    'ktp_path' => $ktpPath ?? $ktpLama,
                     'tanggal_keluar' => null,
                 ]
             );
 
             $penyewaan->update(['mode_hunian' => 'patungan']);
+
+            $penyewaan->loadMissing(['kamar', 'anakKos', 'properti']);
+
+            ChatPesan::notifikasiAnggotaDitambah(
+                (int) $penyewaan->properti_id,
+                (int) $penyewaan->anak_kos_id,
+                (string) ($penyewaan->anakKos?->nama ?? 'Penyewa utama'),
+                (int) $user->id,
+                (string) ($user->nama ?? 'Teman sekamar'),
+                (string) ($penyewaan->kamar?->nama ?? '-'),
+                (string) ($penyewaan->properti?->nama ?? $penyewaan->kamar?->properti?->nama ?? '-'),
+            );
 
             return $anggota->refresh();
         });
@@ -130,7 +149,20 @@ class PatunganService
             );
         }
 
-        DB::transaction(function () use ($penyewaan, $userId) {
+        $penyewaan->loadMissing(['kamar', 'anakKos']);
+
+        $leaverNama = $userId === $penyewaan->anak_kos_id
+            ? (string) ($penyewaan->anakKos?->nama ?? 'Penghuni')
+            : (string) ($penyewaan->anggotas->firstWhere('user_id', $userId)?->user?->nama
+                ?? PenyewaanAnggota::with('user:id,nama')->where('penyewaan_id', $penyewaan->id)->where('user_id', $userId)->first()?->user?->nama
+                ?? 'Penghuni');
+
+        $kamarNama = (string) ($penyewaan->kamar?->nama ?? '-');
+        $propertiId = (int) $penyewaan->properti_id;
+        $calonStay = array_values(array_diff($penyewaan->idPenghuniAktif(), [$userId]));
+        $fullCheckout = false;
+
+        DB::transaction(function () use ($penyewaan, $userId, &$fullCheckout) {
             $isUtama = $penyewaan->anak_kos_id === $userId;
 
             if ($isUtama) {
@@ -150,6 +182,7 @@ class PatunganService
                         'status' => 'selesai',
                     ]);
                     optional($penyewaan->kamar)->update(['status' => 'tersedia']);
+                    $fullCheckout = true;
 
                     return;
                 }
@@ -169,6 +202,10 @@ class PatunganService
 
             // Kamar tetap terisi karena masih ada yang stay — tidak diubah ke tersedia.
         });
+
+        if (! $fullCheckout) {
+            ChatPesan::notifikasiAnggotaKeluar($propertiId, $userId, $leaverNama, $calonStay, $kamarNama);
+        }
     }
 
     /**

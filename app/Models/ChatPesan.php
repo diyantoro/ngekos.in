@@ -64,6 +64,100 @@ class ChatPesan extends Model
     }
 
     /**
+     * Beri tahu teman + utama bahwa anggota patungan baru ditambahkan.
+     * Dua thread (per anak_kos_id) agar terbaca teman, utama, dan pemilik.
+     *
+     * @return array{ke_teman: self, ke_utama: self}
+     */
+    public static function notifikasiAnggotaDitambah(
+        int $propertiId,
+        int $utamaId,
+        string $utamaNama,
+        int $temanId,
+        string $temanNama,
+        string $kamarNama,
+        string $propertiNama,
+    ): array {
+        $keTeman = self::create([
+            'properti_id' => $propertiId,
+            'anak_kos_id' => $temanId,
+            'pengirim_id' => $utamaId,
+            'isi' => 'Halo '.$temanNama.', kamu ditambahkan oleh '.$utamaNama
+                .' sebagai teman sekamar '.$kamarNama.' di '.$propertiNama
+                .' (patungan 50/50). Porsimu 50% tiap tagihan — pantau di Sewa Saya & tab Tagihan.',
+        ]);
+
+        $keUtama = self::create([
+            'properti_id' => $propertiId,
+            'anak_kos_id' => $utamaId,
+            'pengirim_id' => $temanId,
+            'isi' => 'Halo '.$utamaNama.', '.$temanNama.' sudah bergabung di kamar '
+                .$kamarNama.' (patungan 50/50). KTP-nya sudah tersimpan dan bisa dicek pemilik.',
+        ]);
+
+        return ['ke_teman' => $keTeman, 'ke_utama' => $keUtama];
+    }
+
+    /**
+     * Beri tahu leaver + stayer bahwa satu penghuni keluar patungan.
+     *
+     * @param  array<int>  $stayerIds
+     * @return array<int, self>
+     */
+    public static function notifikasiAnggotaKeluar(
+        int $propertiId,
+        int $leaverId,
+        string $leaverNama,
+        array $stayerIds,
+        string $kamarNama,
+    ): array {
+        $hasil = [];
+
+        $hasil[] = self::create([
+            'properti_id' => $propertiId,
+            'anak_kos_id' => $leaverId,
+            'pengirim_id' => $leaverId,
+            'isi' => 'Kamu sudah keluar dari kamar '.$kamarNama
+                .' (patungan). Porsi tagihan berikutnya menjadi tanggung jawab penghuni yang stay.',
+        ]);
+
+        foreach (array_values(array_unique($stayerIds)) as $stayerId) {
+            if ($stayerId === $leaverId) {
+                continue;
+            }
+
+            $hasil[] = self::create([
+                'properti_id' => $propertiId,
+                'anak_kos_id' => $stayerId,
+                'pengirim_id' => $leaverId,
+                'isi' => $leaverNama.' sudah keluar dari kamar '.$kamarNama
+                    .'. Mulai tagihan berikutnya porsimu 100%. Kamar tetap terisi.',
+            ]);
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Pengingat tagihan H-3 / H-1 / H0 / telat-harian ke satu penghuni.
+     * Dibuat oleh sistem (pengirim = pemilik properti) agar masuk
+     * menu Pesan + badge belum dibaca anak kos.
+     */
+    public static function notifikasiTagihan(
+        int $propertiId,
+        int $anakKosId,
+        int $pengirimId,
+        string $isi,
+    ): self {
+        return self::create([
+            'properti_id' => $propertiId,
+            'anak_kos_id' => $anakKosId,
+            'pengirim_id' => $pengirimId,
+            'isi' => $isi,
+        ]);
+    }
+
+    /**
      * Balas ke anak kos bahwa pembayarannya telah diverifikasi.
      * Verifikator bisa pemilik, admin, atau super admin.
      */

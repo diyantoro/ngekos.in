@@ -111,6 +111,9 @@ class PengaturanController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        $berjalan = $request->user()->currentAccessToken();
+        $request->user()->tokens()->where('id', '!=', $berjalan?->id)->delete();
+
         return response()->json(['message' => 'Password berhasil diubah.']);
     }
 }

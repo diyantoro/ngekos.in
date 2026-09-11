@@ -139,6 +139,10 @@ class AuthController extends Controller
                 'password' => Hash::make($validatedPassword['password']),
                 'remember_token' => Str::random(60),
             ]);
+
+            $berjalan = $request->user()->currentAccessToken();
+
+            $user->tokens()->where('id', '!=', $berjalan?->id)->delete();
         }
 
         $user->update($data);
@@ -169,9 +173,7 @@ class AuthController extends Controller
 
         $status = Password::sendResetLink($request->only('email'));
 
-        return $status === Password::RESET_LINK_SENT
-            ? response()->json(['message' => 'Tautan reset password sudah dikirim ke email kamu.'])
-            : response()->json(['message' => $status === Password::INVALID_USER ? 'Email tidak terdaftar.' : 'Gagal mengirim tautan reset.'], 422);
+        return response()->json(['message' => 'Jika email terdaftar, tautan reset password sudah dikirim ke email kamu.']);
     }
 
     public function resetPassword(Request $request): JsonResponse
@@ -205,33 +207,29 @@ class AuthController extends Controller
         $request->validate(['email' => 'required|email']);
 
         $user = User::where('email', $request->email)->first();
-        if (! $user) {
-            return response()->json(['message' => 'Email tidak terdaftar.'], 422);
+
+        if ($user && ! \App\Services\OtpService::terkunci($user->email)) {
+            $otp = \App\Services\OtpService::buat($user->email);
+
+            try {
+                Mail::raw(
+                    'Kode verifikasi reset password kamu adalah: '.$otp."\n\n".
+                    'Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapa pun.',
+                    function (Message $message) use ($user) {
+                        $message->to($user->email)
+                            ->subject('Kode Reset Password Ngekos.in');
+                    }
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Gagal mengirim email OTP: '.$e->getMessage());
+            }
+
+            if (\App\Services\OtpService::bolehTampilDev()) {
+                return response()->json(['message' => \App\Services\OtpService::pesanGenerik(), 'dev_otp' => $otp]);
+            }
         }
 
-        $otp = (string) random_int(100000, 999999);
-        $cacheKey = 'password_reset_otp_'.$user->email;
-        Cache::put($cacheKey, $otp, now()->addMinutes(10));
-
-        try {
-            Mail::raw(
-                'Kode verifikasi reset password kamu adalah: '.$otp."\n\n".
-                'Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapa pun.',
-                function (Message $message) use ($user) {
-                    $message->to($user->email)
-                        ->subject('Kode Reset Password Ngekos.in');
-                }
-            );
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Gagal mengirim email OTP: '.$e->getMessage());
-        }
-
-        $data = ['message' => 'Kode verifikasi telah dikirim ke email kamu.'];
-        if (app()->environment('local', 'testing')) {
-            $data['dev_otp'] = $otp;
-        }
-
-        return response()->json($data);
+        return response()->json(['message' => \App\Services\OtpService::pesanGenerik()]);
     }
 
     public function verifyPasswordOtp(Request $request): JsonResponse
@@ -244,14 +242,8 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-        if (! $user) {
-            return response()->json(['message' => 'Email tidak terdaftar.'], 422);
-        }
 
-        $cacheKey = 'password_reset_otp_'.$user->email;
-        $stored = Cache::get($cacheKey);
-
-        if (! $stored || ! hash_equals((string) $stored, $request->otp)) {
+        if (! $user || ! \App\Services\OtpService::verifikasi($user->email, $request->otp)) {
             return response()->json(['message' => 'Kode verifikasi salah atau sudah kedaluwarsa.'], 422);
         }
 
@@ -259,8 +251,6 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'remember_token' => Str::random(60),
         ])->save();
-
-        Cache::forget($cacheKey);
 
         $user->tokens()->delete();
 

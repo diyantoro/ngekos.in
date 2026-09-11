@@ -107,7 +107,7 @@ class BantuanController extends Controller
         );
     }
 
-    public function tandaiDibaca(Request $request, int $id): JsonResponse
+    public function tandaiDibaca(int $id): JsonResponse
     {
         $pesan = PesanBantuan::find($id);
 

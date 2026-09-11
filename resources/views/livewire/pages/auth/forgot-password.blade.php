@@ -20,18 +20,15 @@ new #[Layout('layouts.guest')] class extends Component
             'email' => ['required', 'string', 'email'],
         ]);
 
-        if (app()->environment('local', 'testing')) {
+        if (\App\Services\OtpService::bolehTampilDev()) {
             $user = User::query()->where('email', $this->email)->first();
 
             if ($user) {
-                // Mode pengembangan: mail tidak benar-benar terkirim, jadi tautan
-                // reset & kode OTP ditampilkan langsung di layar untuk pengujian.
                 $token = Password::broker()->createToken($user);
 
                 $user->notify(new ResetPassword($token));
 
-                $otp = (string) random_int(100000, 999999);
-                Cache::put('password_reset_otp_'.$user->email, $otp, now()->addMinutes(10));
+                $otp = \App\Services\OtpService::buat($user->email);
 
                 session()->flash('dev_reset_link', route('password.reset', [
                     'token' => $token,

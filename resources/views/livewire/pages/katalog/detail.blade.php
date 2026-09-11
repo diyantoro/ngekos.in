@@ -221,7 +221,7 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
-        $ktpPath = $this->ktp ? $this->ktp->store('ktp', 'public') : null;
+        $ktpPath = $this->ktp ? \App\Services\KtpStorage::simpan($this->ktp) : null;
 
         try {
             app(PenyewaanService::class)->sewaKamar(
@@ -234,9 +234,7 @@ new #[Layout('layouts.publik')] class extends Component
                 $this->periodeSewa === 'mingguan' ? $this->durasiMinggu : null,
             );
         } catch (DomainException $e) {
-            if ($ktpPath) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($ktpPath);
-            }
+            \App\Services\KtpStorage::hapus($ktpPath);
             $this->resetForm();
             $this->galat = $e->getMessage();
 

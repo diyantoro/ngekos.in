@@ -40,6 +40,7 @@ class PembayaranService
                 $tagihan = $pembayaran->tagihan()->with('pembayarans')->first()
                     ?? $pembayaran->tagihan;
 
+                TagihanService::sinkronDenda($tagihan);
                 $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
 
                 if ($total >= ((float) $tagihan->jumlah + (float) $tagihan->denda)) {

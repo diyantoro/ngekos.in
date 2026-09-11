@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pembayaran;
-use App\Models\Penyewaan;
 use App\Services\KwitansiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;

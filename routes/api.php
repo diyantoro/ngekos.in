@@ -14,9 +14,10 @@ use App\Http\Controllers\Api\PropertiManageController;
 use App\Http\Controllers\Api\StorageProxyController;
 use Illuminate\Support\Facades\Route;
 
-// Storage proxy (serve public files via API with CORS headers for Flutter web)
+// Storage proxy (hanya prefix publik non-sensitif; KTP selalu 404 di sini)
 Route::get('/storage/{path}', StorageProxyController::class)
-    ->where('path', '.*');
+    ->where('path', '.*')
+    ->middleware('throttle:60,1');
 
 // Public routes (dibatasi rate untuk mencegah brute-force & spam)
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
@@ -40,40 +41,58 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/email/verification-notification', [AuthController::class, 'sendVerificationEmail']);
 
     // Push notification device token
-    Route::post('/device-token', [DeviceTokenController::class, 'store']);
-    Route::delete('/device-token', [DeviceTokenController::class, 'destroy']);
+    Route::post('/device-token', [DeviceTokenController::class, 'store'])->middleware('throttle:60,1');
+    Route::delete('/device-token', [DeviceTokenController::class, 'destroy'])->middleware('throttle:60,1');
 
     // Chat
-    Route::get('/chat', [ChatController::class, 'index']);
-    Route::get('/chat/{propertiId}', [ChatController::class, 'show']);
-    Route::post('/chat/{propertiId}', [ChatController::class, 'send']);
+    Route::get('/chat', [ChatController::class, 'index'])
+        ->middleware(['role:anak_kos|pemilik|admin|super_admin', 'throttle:60,1']);
+    Route::get('/chat/{propertiId}', [ChatController::class, 'show'])
+        ->middleware(['role:anak_kos|pemilik|admin|super_admin', 'throttle:60,1']);
+    Route::post('/chat/{propertiId}', [ChatController::class, 'send'])
+        ->middleware(['role:anak_kos|pemilik|admin|super_admin', 'throttle:30,1']);
 
     // Sewa kamar langsung (tanpa menunggu konfirmasi)
-    Route::post('/kos/{propertiId}/kamar/{kamarId}/sewa', [PenyewaanController::class, 'sewaKamar']);
+    Route::post('/kos/{propertiId}/kamar/{kamarId}/sewa', [PenyewaanController::class, 'sewaKamar'])
+        ->middleware(['role:anak_kos', 'throttle:10,1']);
 
     // Patungan: tambah teman sekamar & keluar partial
-    Route::post('/penyewaan/{sewaanId}/anggota', [DashboardController::class, 'tambahAnggota']);
-    Route::post('/penyewaan/{sewaanId}/anggota/keluar', [DashboardController::class, 'keluarAnggota']);
+    Route::post('/penyewaan/{sewaanId}/anggota', [DashboardController::class, 'tambahAnggota'])
+        ->middleware(['role:anak_kos|pemilik|admin|super_admin', 'throttle:30,1']);
+    Route::post('/penyewaan/{sewaanId}/anggota/keluar', [DashboardController::class, 'keluarAnggota'])
+        ->middleware(['role:anak_kos', 'throttle:30,1']);
 
     // Dashboard - Anak Kos
-    Route::get('/dashboard/anak-kos', [DashboardController::class, 'anakKos']);
-    Route::get('/dashboard/anak-kos/penyewaan', [DashboardController::class, 'anakKosPenyewaan']);
-    Route::get('/dashboard/anak-kos/tagihan', [DashboardController::class, 'anakKosTagihan']);
-    Route::get('/dashboard/anak-kos/pembayaran', [DashboardController::class, 'anakKosPembayaran']);
-    Route::get('/dashboard/anak-kos/pembayaran/{pembayaranId}/kwitansi', [DashboardController::class, 'kwitansiSaya']);
-    Route::post('/dashboard/anak-kos/bayar', [DashboardController::class, 'anakKosBayar']);
-    Route::post('/dashboard/anak-kos/{sewaanId}/keluar', [DashboardController::class, 'anakKosAjukanKeluar']);
+    Route::get('/dashboard/anak-kos', [DashboardController::class, 'anakKos'])
+        ->middleware('role:anak_kos');
+    Route::get('/dashboard/anak-kos/penyewaan', [DashboardController::class, 'anakKosPenyewaan'])
+        ->middleware('role:anak_kos');
+    Route::get('/dashboard/anak-kos/tagihan', [DashboardController::class, 'anakKosTagihan'])
+        ->middleware('role:anak_kos');
+    Route::get('/dashboard/anak-kos/pembayaran', [DashboardController::class, 'anakKosPembayaran'])
+        ->middleware('role:anak_kos');
+    Route::get('/dashboard/anak-kos/pembayaran/{pembayaranId}/kwitansi', [DashboardController::class, 'kwitansiSaya'])
+        ->middleware('role:anak_kos');
+    Route::post('/dashboard/anak-kos/bayar', [DashboardController::class, 'anakKosBayar'])
+        ->middleware(['role:anak_kos', 'throttle:30,1']);
+    Route::post('/dashboard/anak-kos/{sewaanId}/keluar', [DashboardController::class, 'anakKosAjukanKeluar'])
+        ->middleware(['role:anak_kos', 'throttle:30,1']);
 
     // Dashboard - Pemilik
-    Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik']);
+    Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik'])
+        ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/grafik', [DashboardController::class, 'grafik'])
         ->middleware('role:pemilik|admin|super_admin');
-    Route::get('/dashboard/pemilik/properti', [DashboardController::class, 'pemilikProperti']);
-    Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans']);
+    Route::get('/dashboard/pemilik/properti', [DashboardController::class, 'pemilikProperti'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans'])
+        ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/sewaan/{sewaanId}/ktp', [DashboardController::class, 'ktpPenyewaan'])
         ->middleware('role:pemilik|admin|super_admin');
-    Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap']);
-    Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut']);
+    Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut'])
+        ->middleware('role:pemilik|admin|super_admin');
     Route::post('/dashboard/pemilik/pembayaran/{pembayaranId}/verifikasi', [DashboardController::class, 'verifikasiPembayaran'])
         ->middleware('role:pemilik|admin|super_admin');
 

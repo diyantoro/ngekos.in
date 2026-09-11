@@ -73,12 +73,12 @@ class PenyewaanController extends Controller
             ], 422);
         }
 
-        $ktpPath = $request->file('ktp')->store('ktp', 'public');
+        $ktpPath = \App\Services\KtpStorage::simpan($request->file('ktp'));
 
         try {
             $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, $validated['tanggal_masuk'], $durasiBulan, $durasiHari, $ktpPath, $durasiMinggu);
         } catch (DomainException $e) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($ktpPath);
+            \App\Services\KtpStorage::hapus($ktpPath);
 
             return response()->json(['message' => $e->getMessage()], 422);
         }

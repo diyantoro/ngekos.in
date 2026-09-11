@@ -50,9 +50,8 @@ return [
     |
     */
 
-    // Durasi token (menit). Nilai null = token tidak kedaluwarsa.
-    // Di produksi disarankan diisi (mis. 10080 = 7 hari) agar token tidak berlaku selamanya.
-    'expiration' => env('SANCTUM_EXPIRATION', null),
+    // Durasi token (menit). Default 10080 = 7 hari agar token tidak berlaku selamanya.
+    'expiration' => env('SANCTUM_EXPIRATION', 10080),
 
     /*
     |--------------------------------------------------------------------------

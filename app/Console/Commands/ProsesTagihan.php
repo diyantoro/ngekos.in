@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Pengaturan;
 use App\Models\Penyewaan;
+use App\Services\TagihanService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -83,25 +84,17 @@ class ProsesTagihan extends Command
      */
     private function hitungDenda(Penyewaan $sewaan, Carbon $hariIni): int
     {
-        // Denda per properti lebih diutamakan; bila kosong, pakai pengaturan global.
-        $dendaPerHari = (float) ($sewaan->properti?->denda_per_hari ?? Pengaturan::dendaPerHari());
-
-        if ($dendaPerHari <= 0) {
-            return 0;
-        }
-
         $diubah = 0;
 
         $sewaan->tagihans()
             ->where('status', '!=', 'lunas')
-            ->whereDate('jatuh_tempo', '<', $hariIni->toDateString())
+            ->whereDate('jatuh_tempo', '<=', $hariIni->toDateString())
             ->get()
-            ->each(function ($tagihan) use ($dendaPerHari, $hariIni, &$diubah) {
-                $hariTelat = (int) floor(($hariIni->timestamp - $tagihan->jatuh_tempo->endOfDay()->timestamp) / 86400);
-                $denda = round(max(0, $hariTelat) * $dendaPerHari, 2);
+            ->each(function ($tagihan) use ($hariIni, &$diubah) {
+                $sebelum = (float) $tagihan->denda;
+                $sesudah = TagihanService::sinkronDenda($tagihan, $hariIni);
 
-                if ((float) $tagihan->denda !== $denda) {
-                    $tagihan->update(['denda' => $denda]);
+                if ($sebelum !== $sesudah) {
                     $diubah++;
                 }
             });

@@ -47,6 +47,8 @@ class User extends Authenticatable
     {
         return [
             'tagihan_baru' => 'Email saat tagihan bulanan dibuat',
+            'pengingat_tagihan' => 'Pengingat H-3, H-1 & jatuh tempo tagihan',
+            'tagihan_telat' => 'Peringatan tagihan terlambat + denda harian',
             'pembayaran_diverifikasi' => 'Email saat pembayaran diverifikasi',
             'chat_baru' => 'Pemberitahuan pesan chat baru',
             'bantuan_balasan' => 'Notifikasi push saat admin membalas pesan bantuan',

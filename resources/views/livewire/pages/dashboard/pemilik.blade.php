@@ -135,30 +135,24 @@ new class extends Component
             ->first();
 
         if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
             return;
         }
 
-        // Patungan + masih ada penghuni lain => jangan kosongkan kamar.
-        $adaPenghuniLain = $sewaan->anggotas->where('status', 'aktif')->isNotEmpty();
+        try {
+            $hasil = \App\Services\CheckoutService::checkoutPemilik($sewaan, auth()->id());
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
 
-        $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas')->count();
+            return;
+        }
 
-        DB::transaction(function () use ($sewaan, $adaPenghuniLain) {
-            $sewaan->update([
-                'tanggal_keluar' => now()->toDateString(),
-                'status' => 'selesai',
-            ]);
-
-            if (! $adaPenghuniLain) {
-                optional($sewaan->kamar)->update(['status' => 'tersedia']);
-            }
-        });
-
-        $catatan = $belumLunas > 0
-            ? " Perhatian: masih ada {$belumLunas} tagihan belum lunas milik penyewa ini."
+        $catatan = $hasil['tagihan_belum_lunas'] > 0
+            ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas milik penyewa ini."
             : '';
 
-        $tambahan = $adaPenghuniLain ? ' Kamar tetap terisi karena masih ada anggota patungan yang stay.' : ' Kamar kembali tersedia.';
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
 
         $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}";
     }
@@ -511,19 +505,26 @@ new class extends Component
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                         <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                                             {{ $sewaan->anakKos?->nama ?? '-' }}
+                                            <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
+                                                @if ($sewaan->ktp_path)
+                                                    <a href="{{ route('penyewaan.ktp', $sewaan) }}" target="_blank" rel="noopener" class="font-semibold text-teal-600 dark:text-teal-400 hover:underline">KTP utama</a>
+                                                @else
+                                                    <span class="font-semibold text-amber-600 dark:text-amber-400">KTP utama belum ada</span>
+                                                @endif
+                                            </span>
                                             @foreach ($anggotaAktifRow as $ag)
                                                 <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ {{ $ag->user?->nama }} ({{ (int) $ag->porsi_persen }}%)</span>
+                                                <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
+                                                    @if ($ag->ktp_path)
+                                                        <a href="{{ route('penyewaan.ktp', ['sewaan' => $sewaan->id, 'user_id' => $ag->user_id]) }}" target="_blank" rel="noopener" class="font-semibold text-teal-600 dark:text-teal-400 hover:underline">KTP {{ $ag->user?->nama }}</a>
+                                                    @else
+                                                        <span class="font-semibold text-amber-600 dark:text-amber-400">KTP {{ $ag->user?->nama }} belum ada</span>
+                                                    @endif
+                                                </span>
                                             @endforeach
                                             @if ($isPatunganRow)
                                                 <span class="mt-1 inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300">Patungan</span>
                                             @endif
-                                            <span class="mt-1 block">
-                                                @if ($sewaan->ktp_path)
-                                                    <a href="{{ route('penyewaan.ktp', $sewaan) }}" target="_blank" rel="noopener" class="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline">Lihat KTP</a>
-                                                @else
-                                                    <span class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">KTP belum ada</span>
-                                                @endif
-                                            </span>
                                         </td>
                                         <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
                                             {{ $sewaan->kamar?->nama ?? '-' }}

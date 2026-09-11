@@ -83,6 +83,7 @@ class FiturBaruTest extends TestCase
 
         $pemilik = $this->user('pemilik1@ngekos.test');
         $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
+        $pembayaran->tagihan->update(['jatuh_tempo' => today()->toDateString(), 'denda' => 0]);
 
         $hasil = PembayaranService::verifikasi($pembayaran, $pemilik->id, 'diverifikasi');
 
@@ -171,6 +172,33 @@ class FiturBaruTest extends TestCase
         $this->assertEquals(((float) $tagihan->jumlah + (float) $tagihan->denda) / 2, $porsi);
     }
 
+    public function test_tambah_anggota_mengirim_chat_ke_teman_dan_utama(): void
+    {
+        $sewa = $this->sewaPatunganA3();
+        $rina = $this->user('anak1@ngekos.test');
+        $yoga = $this->user('anak2@ngekos.test');
+
+        $this->assertDatabaseHas('chat_pesans', [
+            'properti_id' => $sewa->properti_id,
+            'anak_kos_id' => $yoga->id,
+            'pengirim_id' => $rina->id,
+        ]);
+        $this->assertDatabaseHas('chat_pesans', [
+            'properti_id' => $sewa->properti_id,
+            'anak_kos_id' => $rina->id,
+            'pengirim_id' => $yoga->id,
+        ]);
+
+        $chatTeman = \App\Models\ChatPesan::where('anak_kos_id', $yoga->id)
+            ->where('properti_id', $sewa->properti_id)
+            ->latest('id')->firstOrFail();
+        $this->assertStringContainsString('patungan 50/50', $chatTeman->isi);
+        $this->assertNull($chatTeman->dibaca_pada);
+
+        Volt::actingAs($yoga)->test('pages.dashboard.anak-kos')
+            ->assertSee('Kamu ditambahkan sebagai teman sekamar');
+    }
+
     public function test_bayar_masing_masing_melunasi_tagihan(): void
     {
         $sewa = $this->sewaPatunganA3();
@@ -234,6 +262,21 @@ class FiturBaruTest extends TestCase
             'keluar',
             $sewa->anggotas()->where('user_id', $yoga->id)->firstOrFail()->status
         );
+
+        // Stayer (rina) dapat chat porsi 100%, leaver (yoga) dapat chat pamit.
+        $rina = $this->user('anak1@ngekos.test');
+        $chatStay = \App\Models\ChatPesan::where('anak_kos_id', $rina->id)
+            ->where('properti_id', $sewa->properti_id)
+            ->latest('id')->firstOrFail();
+        $this->assertStringContainsString('porsimu 100%', $chatStay->isi);
+        $chatLeaver = \App\Models\ChatPesan::where('anak_kos_id', $yoga->id)
+            ->where('properti_id', $sewa->properti_id)
+            ->latest('id')->firstOrFail();
+        $this->assertStringContainsString('sudah keluar', $chatLeaver->isi);
+
+        // Banner stay muncul di dashboard stayer.
+        Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
+            ->assertSee('sudah keluar, kamu tetap stay');
     }
 
     public function test_utama_keluar_mempromosikan_anggota_yang_stay(): void
@@ -287,6 +330,53 @@ class FiturBaruTest extends TestCase
         PatunganService::tambahAnggota($sewa, $yoga, 'ktp/yoga.jpg');
     }
 
+    public function test_tambah_anggota_ditolak_tanpa_ktp(): void
+    {
+        $rina = $this->user('anak1@ngekos.test');
+        $yoga = $this->user('anak2@ngekos.test');
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = Kamar::create([
+            'properti_id' => $properti->id,
+            'nama' => 'KTP-'.uniqid(),
+            'kapasitas' => 2,
+            'harga_sewa_bulanan' => 1200000,
+            'harga_sewa_harian' => 60000,
+            'status' => 'tersedia',
+        ]);
+        $sewa = app(PenyewaanService::class)->sewaKamar(
+            $rina, $kamar, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+        );
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessageMatches('/KTP teman wajib/');
+        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
+    }
+
+    public function test_volt_tambah_teman_ditolak_tanpa_ktp(): void
+    {
+        $rina = $this->user('anak1@ngekos.test');
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = Kamar::create([
+            'properti_id' => $properti->id,
+            'nama' => 'VT-'.uniqid(),
+            'kapasitas' => 2,
+            'harga_sewa_bulanan' => 1200000,
+            'harga_sewa_harian' => 60000,
+            'status' => 'tersedia',
+        ]);
+        $sewa = app(PenyewaanService::class)->sewaKamar(
+            $rina, $kamar, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+        );
+
+        Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
+            ->call('bukaModalTeman', $sewa->id)
+            ->set('emailTeman', 'anak2@ngekos.test')
+            ->call('simpanTeman')
+            ->assertHasErrors('ktpTeman');
+
+        $this->assertSame('tunggal', $sewa->refresh()->mode_hunian);
+    }
+
     public function test_api_tambah_anggota_dan_keluar_partial(): void
     {
         Storage::fake('public');
@@ -295,11 +385,17 @@ class FiturBaruTest extends TestCase
         $rina = $this->user('anak1@ngekos.test');
         $yoga = $this->user('anak2@ngekos.test');
 
-        // Kamar penuh (2/2): tambah orang ketiga ditolak.
+        // Tanpa KTP ditolak validasi.
         Sanctum::actingAs($rina, ['*']);
 
         $this->postJson("/api/penyewaan/{$sewa->id}/anggota", [
             'email' => 'anak3@ngekos.test',
+        ])->assertStatus(422)->assertJsonValidationErrors('ktp');
+
+        // Kamar penuh (2/2): tambah orang ketiga ditolak walau bawa KTP.
+        $this->postJson("/api/penyewaan/{$sewa->id}/anggota", [
+            'email' => 'anak3@ngekos.test',
+            'ktp' => UploadedFile::fake()->image('ktp.jpg'),
         ])->assertStatus(422);
 
         // Yoga keluar partial via API (porsinya belum lunas -> 422).

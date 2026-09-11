@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Kamar;
 use App\Models\ChatPesan;
+use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
+use App\Services\KwitansiService;
+use App\Services\PatunganService;
+use App\Services\PembayaranService;
+use App\Services\PemilikRekapService;
+use App\Services\TagihanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
@@ -77,15 +83,22 @@ class DashboardController extends Controller
             'total_dibayar' => $totalDibayar,
             'jumlah_favorit' => $jumlahFavorit,
             'pesan_belum_dibaca' => $pesanBelumDibaca,
-            'tagihan_berikutnya' => $tagihanBerikutnya ? [
-                'id' => $tagihanBerikutnya->id,
-                'periode' => $tagihanBerikutnya->periode,
-                'jumlah' => (float) $tagihanBerikutnya->jumlah,
-                'denda' => (float) $tagihanBerikutnya->denda,
-                'jatuh_tempo' => $tagihanBerikutnya->jatuh_tempo?->toDateString(),
-                'properti' => $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama,
-                'kamar' => $tagihanBerikutnya->penyewaan?->kamar?->nama,
-            ] : null,
+            'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya) {
+                TagihanService::sinkronDenda($tagihanBerikutnya);
+
+                return [
+                    'id' => $tagihanBerikutnya->id,
+                    'periode' => $tagihanBerikutnya->periode,
+                    'jumlah' => (float) $tagihanBerikutnya->jumlah,
+                    'denda' => (float) $tagihanBerikutnya->denda,
+                    'hari_telat' => TagihanService::hariTelat($tagihanBerikutnya),
+                    'denda_per_hari' => TagihanService::dendaPerHari($tagihanBerikutnya),
+                    'total' => (float) $tagihanBerikutnya->jumlah + (float) $tagihanBerikutnya->denda,
+                    'jatuh_tempo' => $tagihanBerikutnya->jatuh_tempo?->toDateString(),
+                    'properti' => $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama,
+                    'kamar' => $tagihanBerikutnya->penyewaan?->kamar?->nama,
+                ];
+            })() : null,
             'rekomendasi' => $rekomendasi->values()->map(fn (Properti $p) => [
                 'id' => $p->id,
                 'nama' => $p->nama,
@@ -119,11 +132,7 @@ class DashboardController extends Controller
                 'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
                 'mode_hunian' => $s->mode_hunian ?? 'tunggal',
                 'is_utama' => $s->anak_kos_id === $uid,
-                'ktp_path' => $s->anak_kos_id === $uid
-                    ? ($s->ktp_path ? '/storage/'.$s->ktp_path : null)
-                    : ($s->anggotas->firstWhere('user_id', $uid)?->ktp_path
-                        ? '/storage/'.$s->anggotas->firstWhere('user_id', $uid)->ktp_path
-                        : null),
+                'ktp_path' => null,
                 'butuh_ktp' => $s->anak_kos_id === $uid
                     ? ! $s->ktp_path
                     : ! $s->anggotas->firstWhere('user_id', $uid)?->ktp_path,
@@ -150,7 +159,8 @@ class DashboardController extends Controller
                 $porsi = null;
                 if ($t->penyewaan) {
                     $t->penyewaan->loadMissing('anggotas');
-                    $porsi = \App\Services\PatunganService::porsiTagihan($t->penyewaan, $t);
+                    TagihanService::sinkronDenda($t);
+                    $porsi = PatunganService::porsiTagihan($t->penyewaan, $t);
                     $sudah = (float) $t->pembayarans()->where('anak_kos_id', $uid)->where('status', 'diverifikasi')->sum('jumlah');
                 }
 
@@ -161,6 +171,9 @@ class DashboardController extends Controller
                     'properti' => $t->penyewaan?->properti?->nama,
                     'jumlah' => (float) $t->jumlah,
                     'denda' => (float) $t->denda,
+                    'hari_telat' => TagihanService::hariTelat($t),
+                    'denda_per_hari' => TagihanService::dendaPerHari($t),
+                    'total' => (float) $t->jumlah + (float) $t->denda,
                     'jatuh_tempo' => $t->jatuh_tempo,
                     'status' => $t->status,
                     'mode_hunian' => $t->penyewaan?->mode_hunian ?? 'tunggal',
@@ -207,28 +220,45 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Kwitansi tidak ditemukan.'], 404);
         }
 
-        \App\Services\KwitansiService::untuk($pembayaran);
+        KwitansiService::untuk($pembayaran);
 
         $path = $pembayaran->refresh()->file_kwitansi;
 
-        if (! $path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             return response()->json(['message' => 'File kwitansi belum tersedia.'], 404);
         }
 
         return response()->download(
-            \Illuminate\Support\Facades\Storage::disk('public')->path($path),
+            Storage::disk('public')->path($path),
             ($pembayaran->nomor_kwitansi ?? 'kwitansi').'.pdf'
         );
     }
 
     public function anakKosBayar(Request $request): JsonResponse
     {
+        $tagihanAwal = Tagihan::with(['penyewaan.anggotas'])->find($request->input('tagihan_id'));
+
+        if (! $tagihanAwal || ! $tagihanAwal->penyewaan) {
+            return response()->json(['message' => 'Tagihan tidak ditemukan.'], 404);
+        }
+
+        $wajibAwal = TagihanService::wajibBayar($tagihanAwal, $request->user()->id);
+
         $validated = $request->validate([
             'tagihan_id' => 'required|exists:tagihans,id',
-            'metode' => 'required|string|max:50',
-            'jumlah' => 'required|numeric|min:1',
-            'bukti' => 'nullable|image|max:2048',
+            'metode' => 'required|in:transfer,cash',
+            'jumlah' => 'required|numeric|min:1|max:'.$wajibAwal,
+            'bukti' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:2048',
+        ], [
+            'metode.in' => 'Metode pembayaran harus transfer atau tunai.',
+            'jumlah.max' => 'Nominal melebihi kewajiban '.TagihanService::rupiah($wajibAwal).'. Bayar harus pas.',
+            'bukti.mimes' => 'Bukti harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
+            'bukti.max' => 'Ukuran bukti maksimal 2MB.',
         ]);
+
+        if ($request->input('metode') === 'transfer' && ! $request->hasFile('bukti')) {
+            return response()->json(['message' => 'Lampirkan bukti transfer terlebih dahulu.'], 422);
+        }
 
         $tagihan = Tagihan::with(['penyewaan.anggotas'])->findOrFail($validated['tagihan_id']);
 
@@ -240,6 +270,23 @@ class DashboardController extends Controller
 
         if ($tagihan->status === 'lunas') {
             return response()->json(['message' => 'Tagihan sudah lunas.'], 422);
+        }
+
+        if ($tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists()) {
+            return response()->json(['message' => 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin/pemilik.'], 422);
+        }
+
+        $rincian = TagihanService::rincian($tagihan);
+        $isPatungan = (bool) $tagihan->penyewaan?->isPatungan();
+        $wajib = TagihanService::wajibBayar($tagihan, $request->user()->id);
+
+        if ((float) $validated['jumlah'] < $wajib) {
+            $kurang = TagihanService::rupiah($wajib - (float) $validated['jumlah']);
+
+            return response()->json(['message' => 'Nominal kurang '.$kurang.'. Total saat ini '.TagihanService::rupiah($wajib)
+                .' (sewa '.TagihanService::rupiah($rincian['sewa'])
+                .($rincian['denda'] > 0 ? ' + denda '.$rincian['hari_telat'].' hari '.TagihanService::rupiah($rincian['denda']) : '')
+                .($isPatungan ? ' — porsi patunganmu' : '').'). Bayar harus pas, tidak boleh kurang.'], 422);
         }
 
         $buktiPath = null;
@@ -276,32 +323,15 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
         }
 
-        if ($sewaan->anak_kos_id === $uid && $sewaan->permintaan_keluar_pada) {
-            return response()->json(['message' => 'Pengajuan check-out sudah pernah dikirim.'], 422);
+        try {
+            $hasil = CheckoutService::keluarPenghuni($sewaan, $uid);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        // Patungan + masih ada yang stay => keluar partial, wajib lunas porsi dulu.
-        $adaYangStay = $sewaan->anggotas->where('status', 'aktif')->where('user_id', '!=', $uid)->isNotEmpty()
-            || ($sewaan->anak_kos_id !== $uid);
-
-        if ($adaYangStay) {
-            try {
-                \App\Services\PatunganService::keluarkan($sewaan, $uid);
-            } catch (\DomainException $e) {
-                return response()->json(['message' => $e->getMessage()], 422);
-            }
-
+        if ($hasil['jenis'] === 'partial') {
             return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Porsi tagihan berikutnya menjadi tanggung jawab penghuni yang stay.']);
         }
-
-        DB::transaction(function () use ($sewaan) {
-            $sewaan->update([
-                'permintaan_keluar_pada' => now(),
-                'tanggal_keluar' => now()->toDateString(),
-                'status' => 'selesai',
-            ]);
-            optional($sewaan->kamar)->update(['status' => 'tersedia']);
-        });
 
         return response()->json(['message' => 'Check-out berhasil. Kamar kembali tersedia.']);
     }
@@ -313,9 +343,6 @@ class DashboardController extends Controller
         // Filter grafik: periode (3/6/12/24) + properti tertentu + custom range.
         $bulanCount = max(1, min(24, (int) $request->input('periode', 6)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
-
-        $scopePemilik = fn ($q) => $q->where('pemilik_id', $userId)
-            ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId));
 
         $totalProperti = Properti::where('pemilik_id', $userId)
             ->when($propertiId, fn ($q) => $q->where('id', $propertiId))
@@ -644,7 +671,7 @@ class DashboardController extends Controller
                     'tanggal_keluar' => $s->tanggal_keluar,
                     'status' => $s->status,
                     'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
-                    'ktp_url' => $s->ktp_path ? '/storage/'.$s->ktp_path : null,
+                    'ktp_url' => null,
                     'butuh_ktp' => ! $s->ktp_path,
                     'mode_hunian' => $s->mode_hunian ?? 'tunggal',
                     'anggotas' => $s->anggotas->map(fn ($a) => [
@@ -652,7 +679,7 @@ class DashboardController extends Controller
                         'nama' => $a->user?->nama,
                         'porsi_persen' => (int) $a->porsi_persen,
                         'status' => $a->status,
-                        'ktp_url' => $a->ktp_path ? '/storage/'.$a->ktp_path : null,
+                        'ktp_url' => null,
                     ])->values(),
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),
@@ -682,12 +709,12 @@ class DashboardController extends Controller
             ? $sewaan->ktp_path
             : $sewaan->anggotas->firstWhere('user_id', $userId)?->ktp_path;
 
-        if (! $path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        if (! $path || ! \App\Services\KtpStorage::ada($path)) {
             return response()->json(['message' => 'File KTP belum tersedia.'], 404);
         }
 
         return response()->download(
-            \Illuminate\Support\Facades\Storage::disk('public')->path($path),
+            \App\Services\KtpStorage::pathAbsolut($path),
             'ktp-sewaan-'.$sewaan->id.'-'.$userId.'.'.pathinfo($path, PATHINFO_EXTENSION)
         );
     }
@@ -711,28 +738,25 @@ class DashboardController extends Controller
 
         $validated = $request->validate([
             'email' => 'required|email|exists:users,email',
-            'ktp' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:2048',
+            'ktp' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:2048',
         ], [
             'email.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
+            'ktp.required' => 'Foto KTP teman wajib diunggah.',
         ]);
 
-        $teman = \App\Models\User::where('email', $validated['email'])->first();
+        $teman = User::where('email', $validated['email'])->first();
 
         if (! $teman->hasRole('anak_kos')) {
             return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
         }
 
-        $ktpPath = null;
-
-        if ($request->hasFile('ktp')) {
-            $ktpPath = $request->file('ktp')->store('ktp', 'public');
-        }
+        $ktpPath = $request->file('ktp')->store('ktp', 'public');
 
         try {
-            $anggota = \App\Services\PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
+            $anggota = PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
         } catch (\DomainException $e) {
             if ($ktpPath) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($ktpPath);
+                Storage::disk('public')->delete($ktpPath);
             }
 
             return response()->json(['message' => $e->getMessage()], 422);
@@ -768,7 +792,7 @@ class DashboardController extends Controller
         }
 
         try {
-            \App\Services\PatunganService::keluarkan($sewaan, $uid);
+            PatunganService::keluarkan($sewaan, $uid);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -791,15 +815,16 @@ class DashboardController extends Controller
         $nama = $sewaan->anakKos?->nama;
         $kamarNama = $sewaan->kamar?->nama;
 
-        DB::transaction(function () use ($sewaan) {
-            $sewaan->update([
-                'tanggal_keluar' => now()->toDateString(),
-                'status' => 'selesai',
-            ]);
-            optional($sewaan->kamar)->update(['status' => 'tersedia']);
-        });
+        try {
+            $hasil = CheckoutService::checkoutPemilik($sewaan, $request->user()->id);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
-        return response()->json(['message' => "Check-out $nama dari kamar $kamarNama berhasil. Kamar kembali tersedia."]);
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
+
+        return response()->json(['message' => "Check-out $nama dari kamar $kamarNama berhasil.{$tambahan}{$catatan}"]);
     }
 
     public function pemilikProperti(Request $request): JsonResponse
@@ -818,7 +843,7 @@ class DashboardController extends Controller
     public function rekap(Request $request): JsonResponse
     {
         try {
-            $data = \App\Services\PemilikRekapService::data(
+            $data = PemilikRekapService::data(
                 $request->user()->id,
                 $request->input('bulan'),
             );
@@ -949,10 +974,6 @@ class DashboardController extends Controller
 
         $bulanCount = min(24, max(1, (int) $request->input('periode', 6)));
         $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
-
-        $transaksiBulanIni = Pembayaran::where('status', 'diverifikasi')
-            ->where('verified_at', '>=', $monthStart)
-            ->get(['id', 'verified_at', 'jumlah']);
 
         $transaksiJumlah = $this->growthMonthly(fn () => Pembayaran::where('status', 'diverifikasi'), $bulanCount, 'verified_at');
         $transaksiNilai = $this->sumMonthly(fn () => Pembayaran::where('status', 'diverifikasi'), $bulanCount, 'verified_at');
@@ -1087,7 +1108,7 @@ class DashboardController extends Controller
         }
 
         try {
-            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, $request->user()->id, $status);
+            $hasil = PembayaranService::verifikasi($pembayaran, $request->user()->id, $status);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

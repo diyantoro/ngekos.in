@@ -146,10 +146,14 @@ class ChatController extends Controller
      * Cek apakah user berhak membaca/menulis percakapan di properti tertentu:
      * sebagai anak kos pemilik percakapan, pemilik properti, atau admin yang ditugaskan.
      */
-    private function berhakMengakses($user, int $propertiId, int $anakKosId): bool
+    private function berhakMengakses(\App\Models\User $user, int $propertiId, int $anakKosId): bool
     {
         if ($user->hasRole('anak_kos')) {
-            return $user->id === $anakKosId;
+            if ($user->id !== $anakKosId) {
+                return false;
+            }
+
+            return Properti::where('id', $propertiId)->where('status', 'aktif')->exists();
         }
 
         return Properti::where('id', $propertiId)

@@ -182,6 +182,7 @@ class DashboardApiParityTest extends TestCase
     {
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
         $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
+        $pembayaran->tagihan->update(['jatuh_tempo' => today()->toDateString(), 'denda' => 0]);
         $anakId = $pembayaran->anak_kos_id;
 
         Sanctum::actingAs($pemilik, ['*']);
