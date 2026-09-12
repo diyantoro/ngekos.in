@@ -68,7 +68,7 @@
     <div class="relative overflow-hidden {{ $variant === 'hero' ? '' : 'rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15' }}">
         <div class="promo-track" data-promo-track>
             @foreach ($ads as $ad)
-                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} px-6 py-6 sm:px-9 sm:py-7 {{ $variant === 'hero' ? 'min-h-[340px] sm:min-h-[440px] flex items-center' : '' }}"
+                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-6 py-4 sm:px-9 sm:py-5 min-h-[220px] sm:min-h-[300px] flex items-center' : 'px-6 py-6 sm:px-9 sm:py-7' }}"
                     data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
@@ -83,13 +83,13 @@
                                 <svg class="h-3 w-3 {{ $ad['accent'] }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                                 Iklan Partner
                             </span>
-                            <p class="mt-2.5 {{ $variant === 'hero' ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
-                            <p class="mt-0.5 {{ $variant === 'hero' ? 'text-base sm:text-lg' : 'text-sm' }} font-bold text-white/95">{{ $ad['tagline'] }}</p>
-                            <p class="mt-1 {{ $variant === 'hero' ? 'text-sm' : 'text-xs' }} leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
+                            <p class="mt-2 {{ $variant === 'hero' ? 'text-xl sm:text-2xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
+                            <p class="mt-0.5 {{ $variant === 'hero' ? 'text-sm sm:text-base' : 'text-sm' }} font-bold text-white/95">{{ $ad['tagline'] }}</p>
+                            <p class="mt-1 {{ $variant === 'hero' ? 'text-xs sm:text-sm' : 'text-xs' }} leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
                         </div>
                         <div class="shrink-0 relative" data-promo-anim>
-                            <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
-                                <svg class="{{ $variant === 'hero' ? 'h-8 w-8 sm:h-10 sm:w-10' : 'h-6 w-6 sm:h-7 sm:w-7' }} text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
+                            <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-12 w-12 sm:h-14 sm:w-14' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                <svg class="h-6 w-6 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
                             </div>
                             <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>
                         </div>

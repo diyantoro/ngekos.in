@@ -427,22 +427,33 @@ new class extends Component
         </div>
 
         @if ($tagihanBerikutnya)
-            <div class="rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-700 dark:to-emerald-700 p-5 text-white shadow-sm">
+            @php
+                $sisaBanner = \App\Services\TagihanService::selisihHari($tagihanBerikutnya);
+                $telatBanner = \App\Services\TagihanService::hariTelat($tagihanBerikutnya);
+                $dendaHarianBanner = \App\Services\TagihanService::dendaPerHari($tagihanBerikutnya);
+            @endphp
+            <div class="rounded-2xl bg-gradient-to-r p-5 text-white shadow-sm {{ $telatBanner > 0 || $sisaBanner <= 3 ? 'from-rose-600 to-red-600 dark:from-rose-700 dark:to-red-700' : ($sisaBanner <= 7 ? 'from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600' : 'from-teal-600 to-emerald-600 dark:from-teal-700 dark:to-emerald-700') }}">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
                         <span class="shrink-0 h-11 w-11 rounded-2xl bg-white/15 text-white flex items-center justify-center">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </span>
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-teal-100">Tagihan Berikutnya</p>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-white/80">Tagihan Berikutnya</p>
                             <p class="text-sm font-bold text-white mt-0.5">
                                 {{ $tagihanBerikutnya->periode }} &middot; {{ $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama }}
                                 {{ $tagihanBerikutnya->penyewaan?->kamar ? '- Kamar ' . $tagihanBerikutnya->penyewaan->kamar->nama : '' }}
                             </p>
-                            <p class="text-xs text-teal-100 mt-0.5">
-                                Jatuh tempo {{ $tagihanBerikutnya->jatuh_tempo?->translatedFormat('d M Y') }}
-                                @if ($tagihanBerikutnya->jatuh_tempo)
-                                    &middot; {{ $tagihanBerikutnya->jatuh_tempo->isPast() ? 'terlambat ' . $tagihanBerikutnya->jatuh_tempo->diffForHumans() : 'sisa ' . $tagihanBerikutnya->jatuh_tempo->diffForHumans() }}
+                            <p class="text-xs text-white/90 mt-0.5">
+                                Jatuh tempo {{ $tagihanBerikutnya->jatuh_tempo?->translatedFormat('d F Y') ?? '-' }}
+                            </p>
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
+                                @if ($telatBanner > 0)
+                                    Terlambat {{ $telatBanner }} hari{{ $dendaHarianBanner > 0 ? ' — denda Rp'.number_format($dendaHarianBanner, 0, ',', '.').'/hari' : '' }}
+                                @elseif ($sisaBanner === 0)
+                                    Jatuh tempo hari ini — bayar sebelum lewat hari ini
+                                @else
+                                    Sisa {{ $sisaBanner }} hari (bayar sebelum {{ $tagihanBerikutnya->jatuh_tempo?->translatedFormat('d M Y') }})
                                 @endif
                             </p>
                         </div>
@@ -602,7 +613,11 @@ new class extends Component
                                         @if ($belumLunas->isEmpty())
                                             <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua tagihan lunas</span>
                                         @else
+                                            @php $terdekat = $belumLunas->sortBy('jatuh_tempo')->first(); @endphp
                                             <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa tagihan Rp{{ number_format($sisa, 0, ',', '.') }}</span> ({{ $belumLunas->count() }} tagihan) &mdash; bayar lewat tab Tagihan Saya
+                                            @if ($terdekat?->jatuh_tempo)
+                                                <span class="mt-1 block">Terdekat: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $terdekat->periode }}, jatuh tempo {{ $terdekat->jatuh_tempo->translatedFormat('d M Y') }}</span></span>
+                                            @endif
                                         @endif
                                     </p>
                                     @if ($sewaan->status === 'aktif')
@@ -667,7 +682,26 @@ new class extends Component
                                             <span class="block text-[11px] text-gray-400">Sudah bayar: Rp{{ number_format($sudahSaya, 0, ',', '.') }} · Sisa porsi: Rp{{ number_format(max(0, ($porsiSaya ?? 0) - $sudahSaya), 0, ',', '.') }}</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $tagihan->jatuh_tempo?->translatedFormat('d M Y') }}</td>
+                                    @php
+                                        $sisaHari = \App\Services\TagihanService::selisihHari($tagihan);
+                                        $telatHari = \App\Services\TagihanService::hariTelat($tagihan);
+                                    @endphp
+                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                        {{ $tagihan->jatuh_tempo?->translatedFormat('d M Y') }}
+                                        @if ($tagihan->status !== 'lunas' && $tagihan->jatuh_tempo)
+                                            @if ($telatHari > 0)
+                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Telat {{ $telatHari }} hari</span>
+                                            @elseif ($sisaHari === 0)
+                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Hari ini</span>
+                                            @elseif ($sisaHari <= 3)
+                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Sisa {{ $sisaHari }} hari</span>
+                                            @elseif ($sisaHari <= 7)
+                                                <span class="mt-1 block w-fit rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Sisa {{ $sisaHari }} hari</span>
+                                            @else
+                                                <span class="mt-1 block w-fit rounded-full bg-teal-50 dark:bg-teal-500/10 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-500/30">Sisa {{ $sisaHari }} hari</span>
+                                            @endif
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-4"><x-status-badge :status="$tagihan->status" /></td>
                                     <td class="px-4 py-4">
                                         @if ($tagihan->status !== 'lunas')
@@ -767,11 +801,31 @@ new class extends Component
                     <div class="min-w-0">
                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Bayar Tagihan {{ $tagihanModal?->periode }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            Jatuh tempo {{ $jatuhModal }}
+                            Jatuh tempo {{ $tagihanModal?->jatuh_tempo?->translatedFormat('d F Y') ?? '-' }}
                             @if ($isPatunganModal)
                                 · Porsimu: <span class="font-bold text-sky-600 dark:text-sky-400">Rp{{ number_format($porsiModal, 0, ',', '.') }}</span>
                             @endif
                         </p>
+                        @php
+                            $sisaModal = $tagihanModal ? \App\Services\TagihanService::selisihHari($tagihanModal) : 0;
+                            $telatModal = $hariTelatModal;
+                        @endphp
+                        @if ($telatModal > 0)
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-500/10 px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">
+                                Terlambat {{ $telatModal }} hari{{ $dendaHarianModal > 0 ? ' — denda Rp'.number_format($dendaHarianModal, 0, ',', '.').'/hari' : '' }}
+                            </p>
+                        @elseif ($sisaModal === 0)
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">
+                                Jatuh tempo hari ini — bayar sebelum lewat hari ini
+                            </p>
+                        @else
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-500/10 px-2.5 py-1 text-[11px] font-bold text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-500/30">
+                                Sisa {{ $sisaModal }} hari (bayar sebelum {{ $jatuhModal }})
+                            </p>
+                        @endif
+                        @if ($dendaHarianModal > 0)
+                            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Jika lewat jatuh tempo, denda Rp{{ number_format($dendaHarianModal, 0, ',', '.') }} per hari otomatis ditambahkan.</p>
+                        @endif
                     </div>
                     <button type="button" wire:click="tutupModalBayar"
                         class="shrink-0 h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 flex items-center justify-center transition">&times;</button>
