@@ -168,7 +168,7 @@ new #[Layout('layouts.publik')] class extends Component
                 Menampilkan <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $propertis->count() }}</span> kos
                 @if ($kota) di <span class="font-semibold text-teal-600 dark:text-teal-400">{{ $kota }}</span> @endif
             </p>
-            <button @click="tampilkanPeta = !tampilkanPeta; togglePetaNgekos(tampilkanPeta)"
+            <button @click="tampilkanPeta = !tampilkanPeta; $nextTick(() => togglePetaNgekos(tampilkanPeta))"
                 class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ count($markers) ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500' }}"
                 @if (! count($markers)) disabled title="Belum ada koordinat" @endif>
                 <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
@@ -186,7 +186,7 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="rounded-2xl overflow-hidden shadow-card ring-1 ring-gray-100 dark:ring-gray-700">
                 <div id="peta-kos" class="h-96 w-full bg-gray-100 dark:bg-gray-800"></div>
             </div>
-            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota. Peta: Google Maps.</p>
+            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota.</p>
         </div>
 
         <!-- Cards - Mobile-first list layout -->
@@ -304,39 +304,55 @@ new #[Layout('layouts.publik')] class extends Component
     @push('scripts')
         <script>
             let ngekosMap = null;
+            let ngekosBounds = null;
+            const dataPetaKos = @json($markers);
 
-            function inisialisasiPetaKos() {
+            function fallbackPetaKos() {
                 const el = document.getElementById('peta-kos');
-                if (!el || ngekosMap) return;
+                if (!el || !dataPetaKos.length) return;
+                if (typeof window.pasangOsmEmbed === 'function') {
+                    const sum = dataPetaKos.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                    window.pasangOsmEmbed(el, sum.lat / dataPetaKos.length, sum.lng / dataPetaKos.length, 10, dataPetaKos);
+                } else if (typeof window.pasangGoogleEmbed === 'function') {
+                    const sum = dataPetaKos.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                    window.pasangGoogleEmbed(el, sum.lat / dataPetaKos.length, sum.lng / dataPetaKos.length, dataPetaKos.length <= 1 ? 14 : 10);
+                } else {
+                    el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-sm text-gray-400">' +
+                        'Peta tidak dapat dimuat saat ini.</div>';
+                }
+            }
+
+            function inisialisasiPetaKos(percobaan) {
+                const el = document.getElementById('peta-kos');
+                if (!el || !dataPetaKos.length) return;
+                if (el.offsetWidth === 0) {
+                    if ((percobaan || 0) < 10) requestAnimationFrame(() => inisialisasiPetaKos((percobaan || 0) + 1));
+                    return;
+                }
                 if (typeof google === 'undefined' || !google.maps) {
-                    if (el.dataset.gagal) return;
-                    el.dataset.gagal = '1';
-                    const data = @json($markers);
-                    if (typeof window.pasangGoogleEmbed === 'function' && data.length) {
-                        const sum = data.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                        window.pasangGoogleEmbed(el, sum.lat / data.length, sum.lng / data.length, data.length <= 1 ? 14 : 10);
-                    } else {
-                        el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-sm text-gray-400">' +
-                            'Peta belum dikonfigurasi. Tambahkan GOOGLE_MAPS_API_KEY.</div>';
-                    }
+                    fallbackPetaKos();
+                    return;
+                }
+                if (ngekosMap) {
+                    requestAnimationFrame(() => {
+                        google.maps.event.trigger(ngekosMap, 'resize');
+                        if (ngekosBounds) ngekosMap.fitBounds(ngekosBounds);
+                    });
                     return;
                 }
 
-                const data = @json($markers);
-                if (!data.length) return;
-
-                const bounds = new google.maps.LatLngBounds();
-                data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+                ngekosBounds = new google.maps.LatLngBounds();
+                dataPetaKos.forEach((m) => ngekosBounds.extend({ lat: m.lat, lng: m.lng }));
 
                 ngekosMap = new google.maps.Map(el, { mapTypeId: 'roadmap' });
-                if (data.length === 1) {
-                    ngekosMap.setCenter(bounds.getCenter());
+                if (dataPetaKos.length === 1) {
+                    ngekosMap.setCenter(ngekosBounds.getCenter());
                     ngekosMap.setZoom(14);
                 } else {
-                    ngekosMap.fitBounds(bounds);
+                    ngekosMap.fitBounds(ngekosBounds);
                 }
 
-                const markers = data.map(function (m) {
+                const markers = dataPetaKos.map(function (m) {
                     const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: ngekosMap, title: m.nama });
                     const info = new google.maps.InfoWindow();
                     pemuat.addListener('click', () => {
@@ -348,20 +364,23 @@ new #[Layout('layouts.publik')] class extends Component
                     });
                     return pemuat;
                 });
-                window.pasangCluster(markers, ngekosMap);
+                if (typeof window.pasangCluster === 'function') window.pasangCluster(markers, ngekosMap);
             }
 
             window.togglePetaNgekos = function (show) {
                 const el = document.getElementById('peta-kos');
-                if (!el) return;
-                if (!show) return;
-                if (ngekosMap) {
-                    google.maps.event.trigger(ngekosMap, 'resize');
-                    return;
-                }
-                window.loadNgekosMaps(inisialisasiPetaKos);
-                inisialisasiPetaKos();
+                if (!el || !show) return;
+                requestAnimationFrame(() => {
+                    inisialisasiPetaKos();
+                    if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(inisialisasiPetaKos);
+                });
             };
+
+            document.addEventListener('livewire:navigated', () => {
+                ngekosMap = null;
+                ngekosBounds = null;
+            });
+            if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(inisialisasiPetaKos);
         </script>
     @endpush
 </div>

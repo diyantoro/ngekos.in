@@ -50,6 +50,36 @@ window.pasangGoogleEmbed = function (el, lat, lng, zoom) {
     el.appendChild(iframe);
 };
 
+// Embed OpenStreetMap tanpa API key sama sekali (paling andal).
+// el: container, lat/lng: titik tengah, zoom diabaikan OSM (pakai bbox).
+// daftar: opsional array [{lat,lng}] untuk banyak marker & bbox otomatis.
+window.pasangOsmEmbed = function (el, lat, lng, zoom, daftar) {
+    if (!el) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const titik = Array.isArray(daftar) && daftar.length ? daftar.slice(0, 30) : [{ lat, lng }];
+    let minLat = lat, maxLat = lat, minLng = lng, maxLng = lng;
+    titik.forEach((m) => {
+        if (!Number.isFinite(m.lat) || !Number.isFinite(m.lng)) return;
+        minLat = Math.min(minLat, m.lat); maxLat = Math.max(maxLat, m.lat);
+        minLng = Math.min(minLng, m.lng); maxLng = Math.max(maxLng, m.lng);
+    });
+    const pad = titik.length > 1 ? 0.08 : 0.01;
+    const bbox = [minLng - pad, minLat - pad, maxLng + pad, maxLat + pad].join(',');
+    const markers = titik
+        .filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng))
+        .map((m) => '&marker=' + m.lat + ',' + m.lng)
+        .join('');
+    el.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.className = 'h-full w-full border-0';
+    iframe.loading = 'lazy';
+    iframe.referrerPolicy = 'no-referrer-when-downgrade';
+    iframe.title = 'Peta lokasi kos';
+    iframe.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox
+        + '&layer=mapnik' + markers;
+    el.appendChild(iframe);
+};
+
 // Clustering marker untuk peta dengan banyak titik (beranda & katalog).
 // Memakai @googlemaps/markerclusterer (di-import dinamis agar masuk chunk terpisah).
 window.pasangCluster = async (markers, map) => {
@@ -360,3 +390,85 @@ if (document.readyState === 'loading') {
 }
 document.addEventListener('livewire:navigated', initReveal);
 document.addEventListener('alpine:navigated', initReveal);
+
+const initPromo = () => {
+    document.querySelectorAll('[data-promo]').forEach((root) => {
+        if (root.dataset.promoDone === '1') return;
+        root.dataset.promoDone = '1';
+        const track = root.querySelector('[data-promo-track]');
+        const slides = Array.from(root.querySelectorAll('[data-promo-slide]'));
+        if (!track || slides.length < 2) return;
+        let index = 0;
+        let timer = null;
+        const delay = 4500;
+        const dotsWrap = root.querySelector('[data-promo-dots]');
+        const count = root.querySelector('[data-promo-count]');
+        const dots = [];
+        if (dotsWrap) {
+            dotsWrap.innerHTML = '';
+            slides.forEach((_, i) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.setAttribute('aria-label', 'Ke promo ' + (i + 1));
+                b.addEventListener('click', () => { go(i); restart(); });
+                dotsWrap.appendChild(b);
+                dots.push(b);
+            });
+        }
+        const paint = () => dots.forEach((d, i) => {
+            d.className = 'h-1.5 rounded-full transition-all duration-300 '
+                + (i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80');
+        });
+        const render = () => {
+            track.style.transform = 'translateX(-' + index * 100 + '%)';
+            slides.forEach((s, i) => {
+                const on = i === index;
+                s.classList.toggle('promo-active', on);
+                s.setAttribute('aria-hidden', on ? 'false' : 'true');
+            });
+            paint();
+            if (count) count.textContent = (index + 1) + ' / ' + slides.length;
+        };
+        const next = () => { index = (index + 1) % slides.length; render(); };
+        const prev = () => { index = (index - 1 + slides.length) % slides.length; render(); };
+        const go = (i) => { index = ((i % slides.length) + slides.length) % slides.length; render(); };
+        const start = () => { if (!timer) timer = setInterval(next, delay); };
+        const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+        const restart = () => { stop(); start(); };
+        root.querySelector('[data-promo-next]')?.addEventListener('click', () => { next(); restart(); });
+        root.querySelector('[data-promo-prev]')?.addEventListener('click', () => { prev(); restart(); });
+        root.addEventListener('mouseenter', stop);
+        root.addEventListener('mouseleave', start);
+        root.addEventListener('focusin', stop);
+        root.addEventListener('focusout', start);
+        let sx = null;
+        root.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; stop(); }, { passive: true });
+        root.addEventListener('touchend', (e) => {
+            if (sx !== null) {
+                const d = e.changedTouches[0].clientX - sx;
+                if (Math.abs(d) > 40) {
+                    if (d < 0) next(); else prev();
+                }
+                sx = null;
+            }
+            start();
+        }, { passive: true });
+        root.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') { next(); restart(); }
+            else if (e.key === 'ArrowLeft') { prev(); restart(); }
+        });
+        render();
+        start();
+    });
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPromo);
+} else {
+    initPromo();
+}
+document.addEventListener('livewire:navigated', initPromo);
+document.addEventListener('alpine:navigated', initPromo);
+if ('MutationObserver' in window) {
+    new MutationObserver(() => initPromo()).observe(document.documentElement, { childList: true, subtree: true });
+}

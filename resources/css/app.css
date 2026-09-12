@@ -206,6 +206,8 @@
 .promo-track {
     display: flex;
     flex-wrap: nowrap;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
 }
 
 .promo-slide {
@@ -213,27 +215,28 @@
     min-width: 100%;
 }
 
-.promo-auto {
-    animation: promoScroll 18s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+[data-promo-anim] {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    transition-delay: 0.15s;
 }
 
-.promo-track:hover {
-    animation-play-state: paused;
+.promo-active [data-promo-anim] {
+    opacity: 1;
+    transform: none;
 }
 
-@keyframes promoScroll {
-    0%   { transform: translateX(0); }
-    8%   { transform: translateX(0); }
-    14%  { transform: translateX(-100%); }
-    22%  { transform: translateX(-100%); }
-    28%  { transform: translateX(-200%); }
-    36%  { transform: translateX(-200%); }
-    42%  { transform: translateX(-300%); }
-    50%  { transform: translateX(-300%); }
-    56%  { transform: translateX(-400%); }
-    64%  { transform: translateX(-400%); }
-    70%  { transform: translateX(-500%); }
-    100% { transform: translateX(-500%); }
+@media (prefers-reduced-motion: reduce) {
+    .promo-track {
+        transition: none;
+    }
+
+    [data-promo-anim] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
 }
 
 /* ===== Reduced motion ===== */

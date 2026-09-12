@@ -915,11 +915,13 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         if (typeof google === 'undefined' || !google.maps) {
-            if (typeof window.pasangGoogleEmbed === 'function') {
+            if (typeof window.pasangOsmEmbed === 'function') {
+                window.pasangOsmEmbed(el, lat, lng, 16);
+            } else if (typeof window.pasangGoogleEmbed === 'function') {
                 window.pasangGoogleEmbed(el, lat, lng, 16);
             } else {
                 el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">' +
-                    'Peta belum dikonfigurasi. Tambahkan GOOGLE_MAPS_API_KEY.</div>';
+                    'Peta tidak dapat dimuat saat ini.</div>';
             }
             return;
         }

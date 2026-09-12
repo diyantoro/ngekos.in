@@ -69,26 +69,23 @@ new #[Layout('layouts.publik')] class extends Component
 }; ?>
 
 <div>
-<!-- Hero Section - Mobile First -->
-    <section class="hero-gradient relative bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 overflow-hidden">
-        <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.05%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-30"></div>
+<!-- Iklan Partner sebagai hero full-bleed -->
+    <section class="relative overflow-hidden">
+        <x-promo-ads variant="hero" />
+    </section>
 
-        <div class="animate-blob absolute -top-16 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
-        <div class="animate-blob absolute top-32 -right-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl"></div>
-        <div class="animate-blob absolute top-10 left-1/3 h-48 w-48 rounded-full bg-fuchsia-300/20 blur-3xl" style="animation-delay:-5s"></div>
-        <div class="animate-float-slow absolute bottom-10 left-1/4 h-32 w-32 rounded-full bg-emerald-200/20 blur-2xl"></div>
-        <div class="animate-float-reverse absolute top-8 right-1/4 h-20 w-20 rounded-full bg-white/15 blur-xl"></div>
-
-        <div class="relative max-w-7xl mx-auto px-4 py-10 sm:py-16">
+<!-- Pencarian Kos -->
+    <section class="relative bg-white dark:bg-gray-900 overflow-hidden">
+        <div class="relative max-w-7xl mx-auto px-4 py-8 sm:py-10">
             <div class="text-center max-w-2xl mx-auto">
-                <span class="fade-up inline-flex items-center gap-1.5 rounded-full bg-white/15 ring-1 ring-white/25 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                <span class="fade-up inline-flex items-center gap-1.5 rounded-full bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-3 py-1 text-xs font-semibold text-teal-700 dark:text-teal-300">
+                    <span class="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
                     {{ $totalKamar }} kamar tersedia saat ini
                 </span>
-                <h1 class="fade-up stagger-1 mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight drop-shadow-sm">
-                    Cari Kos<br class="sm:hidden"> <span class="text-gradient">Gak Pake Ribet</span>
+                <h1 class="fade-up stagger-1 mt-4 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-gray-100 leading-tight">
+                    Cari Kos<br class="sm:hidden"> <span class="gradient-text">Gak Pake Ribet</span>
                 </h1>
-                <p class="fade-up stagger-2 mt-3 text-sm sm:text-base text-teal-100 leading-relaxed">
+                <p class="fade-up stagger-2 mt-3 text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed">
                     Temukan kamar kos impianmu, tanya pemilik langsung lewat chat, dan kelola semua dalam satu aplikasi.
                 </p>
             </div>
@@ -96,11 +93,11 @@ new #[Layout('layouts.publik')] class extends Component
             <!-- Search Bar - Prominent like Mamikos -->
             <div class="fade-up stagger-3 mt-6 max-w-2xl mx-auto">
                 <form action="{{ route('kos.index') }}" method="GET" wire:navigate
-                      class="animate-shine bg-white rounded-2xl shadow-xl shadow-teal-950/25 p-2 flex items-center gap-2">
+                      class="animate-shine bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 p-2 flex items-center gap-2">
                     <div class="flex-1 flex items-center gap-2 px-3">
                         <svg class="h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                         <input type="text" name="cari" value="{{ $cari }}" placeholder="Ketik nama kos, kota, atau lokasi..."
-                            class="w-full border-0 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:ring-0 focus:outline-none py-2.5">
+                            class="w-full border-0 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 focus:outline-none py-2.5">
                     </div>
                     <button type="submit"
                             class="shrink-0 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-bold text-white hover:from-emerald-500 hover:to-teal-500 transition shadow-sm">
@@ -111,13 +108,13 @@ new #[Layout('layouts.publik')] class extends Component
                 <!-- Quick filter chips -->
                 <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
                     <a href="{{ route('kos.index') }}?cari=" wire:navigate
-                       class="inline-flex items-center gap-1.5 rounded-full bg-white/20 ring-1 ring-white/25 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition backdrop-blur">
+                       class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-500/10 dark:hover:text-teal-300 transition">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
                         Semua Kos
                     </a>
                     @foreach ($daftarKota->take(4) as $kota)
                         <a href="{{ route('kos.index') }}?kota={{ $kota }}" wire:navigate
-                           class="inline-flex items-center gap-1.5 rounded-full bg-white/20 ring-1 ring-white/25 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition backdrop-blur">
+                           class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-500/10 dark:hover:text-teal-300 transition">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                             {{ $kota }}
                         </a>
@@ -127,13 +124,8 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
     </section>
 
-    <!-- Iklan Partner -->
-    <section class="max-w-7xl mx-auto px-4 pt-8">
-        <x-promo-ads />
-    </section>
-
     <!-- Stats + CTA Strip -->
-    <section class="max-w-7xl mx-auto px-4 -mt-5 relative z-10">
+    <section class="max-w-7xl mx-auto px-4 mt-6 relative z-10">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <a href="{{ route('register') }}" wire:navigate
                class="reveal group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -456,7 +448,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $markers->count() }} titik lokasi kos aktif</p>
                     </div>
                 </div>
-                <button @click="tampilkanPeta = !tampilkanPeta; if (tampilkanPeta) initPetaBeranda()"
+                <button @click="tampilkanPeta = !tampilkanPeta; $nextTick(() => { if (tampilkanPeta) initPetaBeranda(); else if (typeof resetPetaBeranda === 'function') resetPetaBeranda(); })"
                     class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ $markers->count() ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400' }}">
                     <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
@@ -526,17 +518,46 @@ new #[Layout('layouts.publik')] class extends Component
     @push('scripts')
         <script>
             let _mapBeranda = null;
+            let _boundsBeranda = null;
+            const dataPetaBeranda = @js($markers);
 
-            function berandaBuatPeta() {
-                if (typeof google === 'undefined' || !google.maps) return;
+            function berandaFallback() {
                 const el = document.getElementById('peta-kos-beranda');
-                if (!el || _mapBeranda) return;
+                if (!el || !dataPetaBeranda.length) return;
+                if (typeof window.pasangOsmEmbed === 'function') {
+                    const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                    window.pasangOsmEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, 10, dataPetaBeranda);
+                } else if (typeof window.pasangGoogleEmbed === 'function') {
+                    const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                    window.pasangGoogleEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, dataPetaBeranda.length <= 1 ? 14 : 10);
+                } else {
+                    el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta tidak dapat dimuat saat ini.</div>';
+                }
+            }
 
-                const data = @js($markers);
-                if (!data.length) return;
+            function berandaBuatPeta(percobaan) {
+                const el = document.getElementById('peta-kos-beranda');
+                const data = dataPetaBeranda;
+                if (!el || !data.length) return;
+                if (el.offsetWidth === 0) {
+                    if ((percobaan || 0) < 10) requestAnimationFrame(() => berandaBuatPeta((percobaan || 0) + 1));
+                    return;
+                }
+                if (typeof google === 'undefined' || !google.maps) {
+                    berandaFallback();
+                    return;
+                }
+                if (_mapBeranda) {
+                    requestAnimationFrame(() => {
+                        google.maps.event.trigger(_mapBeranda, 'resize');
+                        if (_boundsBeranda) _mapBeranda.fitBounds(_boundsBeranda);
+                    });
+                    return;
+                }
 
                 const bounds = new google.maps.LatLngBounds();
                 data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+                _boundsBeranda = bounds;
 
                 _mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
                 if (data.length === 1) {
@@ -558,36 +579,31 @@ new #[Layout('layouts.publik')] class extends Component
                     });
                     return pemuat;
                 });
-                window.pasangCluster(markers, _mapBeranda);
+                if (typeof window.pasangCluster === 'function') window.pasangCluster(markers, _mapBeranda);
             }
 
             window.initPetaBeranda = function () {
                 const el = document.getElementById('peta-kos-beranda');
                 if (!el) return;
-                if (typeof google === 'undefined' || !google.maps) {
-                    if (el.dataset.gagal) return;
-                    el.dataset.gagal = '1';
-                    const data = @js($markers);
-                    if (typeof window.pasangGoogleEmbed === 'function' && data.length) {
-                        const sum = data.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                        window.pasangGoogleEmbed(el, sum.lat / data.length, sum.lng / data.length, data.length <= 1 ? 14 : 10);
-                    } else {
-                        el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta belum dikonfigurasi. Tambahkan GOOGLE_MAPS_API_KEY.</div>';
-                    }
-                    return;
-                }
-                berandaBuatPeta();
+                requestAnimationFrame(() => {
+                    berandaBuatPeta();
+                    if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(berandaBuatPeta);
+                });
+            };
+
+            window.resetPetaBeranda = function () {
+                const el = document.getElementById('peta-kos-beranda');
+                if (el) el.innerHTML = '';
+                _mapBeranda = null;
+                _boundsBeranda = null;
             };
 
             (() => {
-                const init = () => window.initPetaBeranda();
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', init);
-                } else {
-                    init();
-                }
-                document.addEventListener('livewire:navigated', init);
-                window.loadNgekosMaps(window.initPetaBeranda);
+                document.addEventListener('livewire:navigated', () => {
+                    _mapBeranda = null;
+                    _boundsBeranda = null;
+                });
+                if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(berandaBuatPeta);
             })();
         </script>
     @endpush

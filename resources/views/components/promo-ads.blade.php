@@ -1,4 +1,4 @@
-@props(['ads' => []])
+@props(['ads' => [], 'variant' => 'default'])
 
 @php
     $defaultAds = [
@@ -53,6 +53,7 @@
     ];
 
     $ads = filled($ads) ? $ads : $defaultAds;
+    $total = count($ads);
     $icons = [
         'wifi' => '<path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />',
         'bag' => '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />',
@@ -63,11 +64,12 @@
     ];
 @endphp
 
-<div class="relative group">
-    <div class="relative overflow-hidden rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15">
-        <div class="promo-track promo-auto">
+<div class="relative group/promo" data-promo role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
+    <div class="relative overflow-hidden {{ $variant === 'hero' ? '' : 'rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15' }}">
+        <div class="promo-track" data-promo-track>
             @foreach ($ads as $ad)
-                <div class="promo-slide relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} px-6 py-6 sm:px-9 sm:py-7">
+                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} px-6 py-6 sm:px-9 sm:py-7 {{ $variant === 'hero' ? 'min-h-[340px] sm:min-h-[440px] flex items-center' : '' }}"
+                    data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
                     <div class="absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/25 blur-3xl"></div>
@@ -75,19 +77,19 @@
                     <div class="absolute top-6 right-1/4 h-8 w-8 rounded-full border border-white/25"></div>
                     <div class="absolute -bottom-6 right-1/3 h-12 w-12 rounded-full border border-white/20"></div>
 
-                    <div class="relative flex items-center justify-between gap-4">
-                        <div class="min-w-0 max-w-xl">
+                    <div class="relative flex items-center justify-between gap-4 w-full {{ $variant === 'hero' ? 'max-w-7xl mx-auto' : '' }}">
+                        <div class="min-w-0 max-w-xl" data-promo-anim>
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
                                 <svg class="h-3 w-3 {{ $ad['accent'] }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                                 Iklan Partner
                             </span>
-                            <p class="mt-2.5 text-xl sm:text-2xl font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
-                            <p class="mt-0.5 text-sm font-bold text-white/95">{{ $ad['tagline'] }}</p>
-                            <p class="mt-1 text-xs leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
+                            <p class="mt-2.5 {{ $variant === 'hero' ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
+                            <p class="mt-0.5 {{ $variant === 'hero' ? 'text-base sm:text-lg' : 'text-sm' }} font-bold text-white/95">{{ $ad['tagline'] }}</p>
+                            <p class="mt-1 {{ $variant === 'hero' ? 'text-sm' : 'text-xs' }} leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
                         </div>
-                        <div class="shrink-0 relative">
-                            <div class="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
-                                <svg class="h-6 w-6 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
+                        <div class="shrink-0 relative" data-promo-anim>
+                            <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                <svg class="{{ $variant === 'hero' ? 'h-8 w-8 sm:h-10 sm:w-10' : 'h-6 w-6 sm:h-7 sm:w-7' }} text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
                             </div>
                             <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>
                         </div>
@@ -96,4 +98,19 @@
             @endforeach
         </div>
     </div>
+
+    @if ($total > 1)
+        <button type="button" data-promo-prev aria-label="Promo sebelumnya"
+            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+        </button>
+        <button type="button" data-promo-next aria-label="Promo berikutnya"
+            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        </button>
+
+        <div class="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5" data-promo-dots></div>
+
+        <span class="absolute top-3 right-3 sm:right-4 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur" data-promo-count>1 / {{ $total }}</span>
+    @endif
 </div>
