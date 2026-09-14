@@ -43,12 +43,10 @@ new class extends Component
         $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id)
             ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif'));
 
-        $sewaanAktif = Penyewaan::where('anak_kos_id', $id)
+        $kotaAktif = Penyewaan::where('anak_kos_id', $id)
             ->where('status', 'aktif')
-            ->with('properti')
-            ->get();
-
-        $kotaAktif = $sewaanAktif->first()?->properti?->kota;
+            ->with('properti:id,kota')
+            ->first()?->properti?->kota;
 
         $propertiTerpakai = Penyewaan::where('anak_kos_id', $id)
             ->where('status', 'aktif')
@@ -56,57 +54,97 @@ new class extends Component
 
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
 
-        $tagihans = Tagihan::whereHas('penyewaan', $scopeSewa)
-            ->with(['penyewaan.kamar', 'penyewaan.properti', 'penyewaan.anggotas', 'pembayarans'])
-            ->orderByDesc('jatuh_tempo')
-            ->get();
-
-        foreach ($tagihans->where('status', '!=', 'lunas') as $tagihan) {
-            \App\Services\TagihanService::sinkronDenda($tagihan);
-        }
-
         $tagihanBerikutnya = Tagihan::where('status', '!=', 'lunas')
             ->whereHas('penyewaan', $scopeSewa)
-            ->with(['penyewaan.kamar.properti'])
+            ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+            ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id'])
             ->orderBy('jatuh_tempo')
             ->first();
 
+        $dendaGlobal = (float) \App\Models\Pengaturan::dendaPerHari();
+        $olesDenda = function ($tagihan) use ($dendaGlobal) {
+            if ($tagihan->status === 'lunas') {
+                return;
+            }
+            $perHari = (float) ($tagihan->penyewaan?->properti?->denda_per_hari ?? $dendaGlobal);
+            $tagihan->setAttribute('denda', \App\Services\TagihanService::dendaBerjalan($tagihan));
+        };
+
         if ($tagihanBerikutnya) {
-            \App\Services\TagihanService::sinkronDenda($tagihanBerikutnya);
+            $tagihanBerikutnya->loadMissing('penyewaan.properti:id,denda_per_hari');
+            $olesDenda($tagihanBerikutnya);
         }
+
+        $tagihans = $this->tab === 'tagihan'
+            ? Tagihan::whereHas('penyewaan', $scopeSewa)
+                ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+                ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,denda_per_hari', 'penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+                ->orderByDesc('jatuh_tempo')
+                ->limit(50)
+                ->get()
+                ->each($olesDenda)
+            : collect();
 
         return [
             'penyewaanAktif' => Penyewaan::where('anak_kos_id', $id)->where('status', 'aktif')->count()
                 + \App\Models\PenyewaanAnggota::where('user_id', $id)->where('status', 'aktif')->count(),
-            'tagihanBelumBayar' => $tagihans->where('status', '!=', 'lunas')->count(),
+            'tagihanBelumBayar' => $this->tab === 'tagihan'
+                ? $tagihans->where('status', '!=', 'lunas')->count()
+                : Tagihan::where('status', '!=', 'lunas')->whereHas('penyewaan', $scopeSewa)->count(),
             'totalBayar' => (int) Pembayaran::where('anak_kos_id', $id)->where('status', 'diverifikasi')->sum('jumlah'),
             'tagihans' => $tagihans,
-            'pembayarans' => Pembayaran::where('anak_kos_id', $id)
-                ->with(['tagihan', 'verifikator'])
-                ->latest()
-                ->get(),
-            'sewaans' => Penyewaan::where($scopeSewa)
-                ->with(['kamar.properti', 'kamar', 'anakKos', 'anggotas.user', 'tagihans.pembayarans'])
-                ->orderByDesc('status')
-                ->latest()
-                ->get(),
+            'pembayarans' => $this->tab === 'pembayaran'
+                ? Pembayaran::where('anak_kos_id', $id)
+                    ->select(['id', 'tagihan_id', 'metode', 'jumlah', 'bukti', 'status', 'diverifikasi_oleh', 'nomor_kwitansi'])
+                    ->with(['tagihan:id,periode', 'verifikator:id,nama'])
+                    ->latest()
+                    ->limit(50)
+                    ->get()
+                : collect(),
+            'sewaans' => $this->tab === 'sewaan'
+                ? Penyewaan::where($scopeSewa)
+                    ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian'])
+                    ->with(['kamar.properti:id,nama', 'kamar:id,nama,kapasitas,properti_id', 'anakKos:id,nama', 'anggotas.user:id,nama', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+                    ->orderByDesc('status')
+                    ->latest()
+                    ->limit(20)
+                    ->get()
+                : collect(),
             'jumlahFavorit' => $idFavorit->count(),
             'pesanBelumDibaca' => auth()->user()->pesanBelumDibaca(),
             'tagihanBerikutnya' => $tagihanBerikutnya,
-            'rekomendasi' => Properti::query()
-                ->where('status', 'aktif')
-                ->whereNotIn('id', $propertiTerpakai)
-                ->whereNotIn('id', $idFavorit)
-                ->when($kotaAktif, fn ($q) => $q->where('kota', $kotaAktif))
-                ->with('fotos')
-                ->withCount([
-                    'kamars as total_kamar',
-                    'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
-                ])
-                ->orderByDesc('kamar_terisi')
-                ->limit(4)
-                ->get()
-                ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi),
+            'rekomendasi' => (function () use ($id, $propertiTerpakai, $idFavorit, $kotaAktif) {
+                $ids = cache()->remember("anak-kos.rekomendasi.{$id}", 600, fn () => Properti::query()
+                    ->where('status', 'aktif')
+                    ->whereNotIn('id', $propertiTerpakai->all())
+                    ->whereNotIn('id', $idFavorit->all())
+                    ->when($kotaAktif, fn ($q) => $q->where('kota', $kotaAktif))
+                    ->withCount([
+                        'kamars as total_kamar',
+                        'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+                    ])
+                    ->orderByDesc('kamar_terisi')
+                    ->limit(4)
+                    ->pluck('id')
+                    ->all());
+
+                if ($ids === []) {
+                    return collect();
+                }
+
+                return Properti::query()
+                    ->whereIn('id', $ids)
+                    ->select(['id', 'nama', 'kota', 'alamat', 'foto'])
+                    ->with('fotos:id,properti_id,path,urutan')
+                    ->withCount([
+                        'kamars as total_kamar',
+                        'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+                    ])
+                    ->get()
+                    ->sortBy(fn ($p) => array_search($p->id, $ids))
+                    ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi)
+                    ->values();
+            })(),
         ];
     }
 
@@ -782,7 +820,16 @@ new class extends Component
 
     @if ($modalBayarId)
     @php
-        $tagihanModal = $tagihans->firstWhere('id', $modalBayarId);
+        $tagihanModal = $tagihans->firstWhere('id', $modalBayarId)
+            ?? ($tagihanBerikutnya?->id === $modalBayarId ? $tagihanBerikutnya : null);
+        if (! $tagihanModal) {
+            $tagihanModal = \App\Models\Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+                ->with(['penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari'])
+                ->find($modalBayarId);
+            if ($tagihanModal) {
+                $tagihanModal->setAttribute('denda', \App\Services\TagihanService::dendaBerjalan($tagihanModal));
+            }
+        }
         $sewaModal = (float) ($tagihanModal?->jumlah ?? 0);
         $dendaModal = (float) ($tagihanModal?->denda ?? 0);
         $totalTagihan = $sewaModal + $dendaModal;
@@ -790,7 +837,9 @@ new class extends Component
         $dendaHarianModal = $tagihanModal ? \App\Services\TagihanService::dendaPerHari($tagihanModal) : 0;
         $porsiModal = $tagihanModal?->penyewaan ? \App\Services\PatunganService::porsiTagihan($tagihanModal->penyewaan, $tagihanModal) : $totalTagihan;
         $isPatunganModal = (bool) $tagihanModal?->penyewaan?->isPatungan();
-        $wajibModal = $tagihanModal ? \App\Services\TagihanService::wajibBayar($tagihanModal, auth()->id()) : $totalTagihan;
+        $wajibModal = $isPatunganModal && $tagihanModal
+            ? round(max(0, $porsiModal - (float) $tagihanModal->pembayarans()->where('anak_kos_id', auth()->id())->where('status', 'diverifikasi')->sum('jumlah')), 2)
+            : $totalTagihan;
         $jatuhModal = $tagihanModal?->jatuh_tempo?->translatedFormat('d M Y') ?? '-';
     @endphp
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">

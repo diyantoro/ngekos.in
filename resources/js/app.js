@@ -1,6 +1,18 @@
-import 'cropperjs/dist/cropper.min.css';
-import Cropper from 'cropperjs';
-window.Cropper = Cropper;
+// Cropper.js hanya dipakai di form properti/kamar — dimuat malas agar bundle global ringan.
+// window.ensureCropper() me-resolve constructor Cropper + menyuntik CSS sekali saja.
+window.ensureCropper = (() => {
+    let janji = null;
+    return () => {
+        if (window.Cropper) return Promise.resolve(window.Cropper);
+        if (!janji) {
+            janji = Promise.all([
+                import('cropperjs'),
+                import('cropperjs/dist/cropper.min.css'),
+            ]).then(([m]) => (window.Cropper = m.default ?? m.Cropper ?? m));
+        }
+        return janji;
+    };
+})();
 
 import { photoCropManager } from './photo-crop-manager.js';
 window.photoCropManager = photoCropManager;

@@ -20,9 +20,15 @@ class Pengaturan extends Model
      *
      * @return array<string, string|null>
      */
+    private static ?array $memoSemua = null;
+
     public static function semua(): array
     {
-        return Cache::rememberForever('pengaturan.semua', function () {
+        if (self::$memoSemua !== null) {
+            return self::$memoSemua;
+        }
+
+        return self::$memoSemua = Cache::rememberForever('pengaturan.semua', function () {
             return static::query()->pluck('nilai', 'kunci')->all();
         });
     }
@@ -43,6 +49,7 @@ class Pengaturan extends Model
             static::query()->updateOrCreate(['kunci' => $kunci], ['nilai' => $nilai]);
         }
 
+        self::$memoSemua = null;
         Cache::forget('pengaturan.semua');
     }
 

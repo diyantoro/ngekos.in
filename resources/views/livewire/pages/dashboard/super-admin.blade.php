@@ -31,58 +31,76 @@ new class extends Component
             ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->format('m/Y'))
             ->all();
 
-        $userGrowth = User::with('roles:id,name')
+        $userPerBulan = \Illuminate\Support\Facades\DB::table('users')
             ->where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at'])
-            ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
-
-        $propertiGrowth = Properti::where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at'])
-            ->groupBy(fn ($p) => $p->created_at->format('m/Y'));
-
-        $penyewaanGrowth = Penyewaan::where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at'])
-            ->groupBy(fn ($p) => $p->created_at->format('m/Y'));
-
-        $chartGrowthTotal = [];
-        $chartGrowthAnak = [];
-        $chartGrowthPemilik = [];
-        $chartGrowthProperti = [];
-        $chartGrowthPenyewaan = [];
-
-        foreach ($labels as $m) {
-            $users = $userGrowth[$m] ?? collect();
-            $chartGrowthTotal[] = $users->count();
-            $chartGrowthAnak[] = $users->filter(fn ($u) => $u->roles->pluck('name')->contains('anak_kos'))->count();
-            $chartGrowthPemilik[] = $users->filter(fn ($u) => $u->roles->pluck('name')->contains('pemilik'))->count();
-            $chartGrowthProperti[] = ($propertiGrowth[$m] ?? collect())->count();
-            $chartGrowthPenyewaan[] = ($penyewaanGrowth[$m] ?? collect())->count();
-        }
-
-        $transaksiBulanIni = Pembayaran::where('status', 'diverifikasi')
+            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')->all();
+        $anakPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
+            ->join('users', 'users.id', '=', 'model_has_roles.model_id')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_type', (new User)->getMorphClass())
+            ->where('roles.name', 'anak_kos')
+            ->where('users.created_at', '>=', $monthStart)
+            ->selectRaw("DATE_FORMAT(users.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')->all();
+        $pemilikPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
+            ->join('users', 'users.id', '=', 'model_has_roles.model_id')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_type', (new User)->getMorphClass())
+            ->where('roles.name', 'pemilik')
+            ->where('users.created_at', '>=', $monthStart)
+            ->selectRaw("DATE_FORMAT(users.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')->all();
+        $propertiPerBulan = Properti::where('created_at', '>=', $monthStart)
+            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')->all();
+        $sewaPerBulan = Penyewaan::where('created_at', '>=', $monthStart)
+            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')->all();
+        $trx = Pembayaran::where('status', 'diverifikasi')
             ->where('verified_at', '>=', $monthStart)
-            ->get(['id', 'verified_at', 'jumlah']);
+            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as jml, SUM(jumlah) as nilai")
+            ->groupBy('bulan')
+            ->get()->keyBy('bulan');
 
-        $chartTransaksiJumlah = $this->growthSeries($transaksiBulanIni, $bulanCount, 'verified_at');
-        $chartTransaksiNilai = $this->nilaiSeries($transaksiBulanIni, $bulanCount, 'verified_at');
+        $petik = fn (array $peta, bool $bulat = false) => array_map(fn ($l) => $bulat ? (int) round((float) ($peta[$l] ?? 0)) : (int) ($peta[$l] ?? 0), $labels);
+        $chartGrowthTotal = $petik($userPerBulan);
+        $chartGrowthAnak = $petik($anakPerBulan);
+        $chartGrowthPemilik = $petik($pemilikPerBulan);
+        $chartGrowthProperti = $petik($propertiPerBulan);
+        $chartGrowthPenyewaan = $petik($sewaPerBulan);
+        $chartTransaksiJumlah = array_map(fn ($l) => (int) ($trx[$l]->jml ?? 0), $labels);
+        $chartTransaksiNilai = array_map(fn ($l) => (int) round((float) ($trx[$l]->nilai ?? 0)), $labels);
 
-        $pendapatanProperti = Pembayaran::where('status', 'diverifikasi')
-            ->with('tagihan.penyewaan')
-            ->get()
-            ->groupBy(fn ($p) => $p->tagihan?->penyewaan?->properti_id)
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+        $pendapatanProperti = \Illuminate\Support\Facades\DB::table('pembayarans')
+            ->join('tagihans', 'tagihans.id', '=', 'pembayarans.tagihan_id')
+            ->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
+            ->where('pembayarans.status', 'diverifikasi')
+            ->selectRaw('penyewaans.properti_id as properti_id, SUM(pembayarans.jumlah) as total')
+            ->groupBy('penyewaans.properti_id')
+            ->pluck('total', 'properti_id');
 
         $penyewaanProperti = Penyewaan::query()
             ->selectRaw('properti_id, count(*) as total')
             ->groupBy('properti_id')
             ->pluck('total', 'properti_id');
 
-        $topPropertis = Properti::withCount([
-            'kamars as total_kamar',
-            'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
-        ])->withAvg('ulasans as rating', 'rating')
+        $topIds = $pendapatanProperti->sortDesc()->keys()->filter()->take(5)->all();
+
+        $topPropertis = $topIds === []
+            ? []
+            : Properti::select(['id', 'nama', 'kota', 'pemilik_id'])
+            ->withCount([
+                'kamars as total_kamar',
+                'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+            ])->withAvg('ulasans as rating', 'rating')
             ->with('pemilik:id,nama')
-            ->whereIn('id', $pendapatanProperti->keys()->filter())
+            ->whereIn('id', $topIds)
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
@@ -111,22 +129,25 @@ new class extends Component
             'kamarTerisi' => Kamar::where('status', 'terisi')->count(),
             'penyewaanAktif' => Penyewaan::where('status', 'aktif')->count(),
             'pendapatan' => (int) Pembayaran::where('status', 'diverifikasi')->sum('jumlah'),
-            'propertis' => Properti::with('pemilik')
+            'propertis' => $this->tab === 'properti' ? Properti::select(['id', 'nama', 'pemilik_id', 'alamat'])
+                ->with('pemilik:id,nama')
                 ->withCount(['kamars', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
                 ->when($this->cari, fn ($q) => $q->where('nama', 'like', "%{$this->cari}%"))
                 ->orderBy('nama')
-                ->limit(100)
-                ->get(),
-            'penggunas' => User::with('roles')
+                ->limit(30)
+                ->get() : collect(),
+            'penggunas' => $this->tab === 'pengguna' ? User::select(['id', 'nama', 'email', 'no_hp'])
+                ->with('roles:id,name')
                 ->when($this->cari, fn ($q) => $q->where(fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")->orWhere('email', 'like', "%{$this->cari}%")))
                 ->orderBy('nama')
-                ->limit(100)
-                ->get(),
-            'pembayarans' => Pembayaran::with(['anakKos', 'tagihan'])
+                ->limit(30)
+                ->get() : collect(),
+            'pembayarans' => $this->tab === 'pembayaran' ? Pembayaran::select(['id', 'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'bukti', 'status'])
+                ->with(['anakKos:id,nama', 'tagihan:id,periode'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(15)
-                ->get(),
+                ->get() : collect(),
             'funnelStages' => [
                 ['label' => 'Kunjungan', 'sub' => 'pengguna terdaftar di platform', 'nilai' => User::count()],
                 ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->count()],
@@ -135,10 +156,10 @@ new class extends Component
             ],
             'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
                 ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->get(['verified_at', 'jumlah'])
-                ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
-                ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
-                ->keyBy('month')
+                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan')
+                ->map(fn ($total, $bulan) => ['month' => $bulan, 'total' => (int) $total])
                 ->all(),
             'needAttention' => [
                 'pembayaranMenunggu' => Pembayaran::where('status', 'menunggu_verifikasi')->count(),
@@ -146,20 +167,15 @@ new class extends Component
                 'propertiTanpaKamar' => Properti::whereDoesntHave('kamars')->count(),
             ],
             'tagihanStatusPerBulan' => Tagihan::where('created_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->get(['created_at', 'jumlah', 'denda', 'status'])
-                ->groupBy(fn ($t) => $t->created_at->format('m/Y'))
-                ->map(function ($rows) {
-                    $total = $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
-                    $lunas = $rows->where('status', 'lunas')->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
-
-                    return [
-                        'month' => $rows->first()->created_at->format('m/Y'),
-                        'total' => (int) round($total),
-                        'lunas' => (int) round($lunas),
-                        'belum' => (int) round($total - $lunas),
-                    ];
-                })
-                ->keyBy('month')
+                ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, SUM(jumlah + denda) as total, SUM(IF(status = 'lunas', jumlah + denda, 0)) as lunas")
+                ->groupBy('bulan')
+                ->get()
+                ->mapWithKeys(fn ($r) => [$r->bulan => [
+                    'month' => $r->bulan,
+                    'total' => (int) round((float) $r->total),
+                    'lunas' => (int) round((float) $r->lunas),
+                    'belum' => (int) round((float) $r->total - (float) $r->lunas),
+                ]])
                 ->all(),
             'bulanLabels' => $labels,
             'chartGrowthTotal' => $chartGrowthTotal,

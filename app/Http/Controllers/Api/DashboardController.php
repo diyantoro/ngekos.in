@@ -44,12 +44,11 @@ class DashboardController extends Controller
 
         $pesanBelumDibaca = $request->user()->pesanBelumDibaca();
 
-        $sewaanAktif = Penyewaan::where($scopeSewa)
+        $kotaAktif = Penyewaan::where($scopeSewa)
             ->where('status', 'aktif')
-            ->with('properti')
-            ->get();
-
-        $kotaAktif = $sewaanAktif->first()?->properti?->kota;
+            ->with('properti:id,kota')
+            ->select(['id', 'properti_id'])
+            ->first()?->properti?->kota;
 
         $propertiTerpakai = Penyewaan::where($scopeSewa)
             ->where('status', 'aktif')
@@ -150,18 +149,31 @@ class DashboardController extends Controller
     public function anakKosTagihan(Request $request): JsonResponse
     {
         $uid = $request->user()->id;
-        $tagihans = Tagihan::with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama', 'penyewaan.anggotas'])
+        $tagihans = Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status', 'created_at'])
+            ->with([
+                'penyewaan:id,properti_id,kamar_id,mode_hunian',
+                'penyewaan.kamar:id,nama',
+                'penyewaan.properti:id,nama,denda_per_hari',
+                'penyewaan.anggotas:id,penyewaan_id,user_id,status',
+                'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status',
+            ])
             ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $uid)
                 ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
             ->orderBy('created_at', 'desc')
+            ->limit(200)
             ->get()
             ->map(function ($t) use ($uid) {
                 $porsi = null;
                 if ($t->penyewaan) {
-                    $t->penyewaan->loadMissing('anggotas');
-                    TagihanService::sinkronDenda($t);
+                    // Read-only: hitung denda berjalan in-memory tanpa UPDATE per baris.
+                    if ($t->status !== 'lunas') {
+                        $t->setAttribute('denda', TagihanService::dendaBerjalan($t));
+                    }
                     $porsi = PatunganService::porsiTagihan($t->penyewaan, $t);
-                    $sudah = (float) $t->pembayarans()->where('anak_kos_id', $uid)->where('status', 'diverifikasi')->sum('jumlah');
+                    $sudah = (float) $t->pembayarans
+                        ->where('status', 'diverifikasi')
+                        ->where('anak_kos_id', $uid)
+                        ->sum('jumlah');
                 }
 
                 return [
@@ -348,25 +360,32 @@ class DashboardController extends Controller
             ->when($propertiId, fn ($q) => $q->where('id', $propertiId))
             ->count();
 
-        $kamarQuery = Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
-            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)));
+        $kamarStatus = Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
-        $totalKamar = (clone $kamarQuery)->count();
-        $kamarTerisi = (clone $kamarQuery)->where('status', 'terisi')->count();
-        $kamarPerbaikan = (clone $kamarQuery)->where('status', 'perbaikan')->count();
+        $totalKamar = (int) $kamarStatus->sum();
+        $kamarTerisi = (int) ($kamarStatus['terisi'] ?? 0);
+        $kamarPerbaikan = (int) ($kamarStatus['perbaikan'] ?? 0);
+
+        $awalBulanIni = now()->startOfMonth();
+        $akhirBulanIni = now()->copy()->endOfMonth();
+        $awalBulanLalu = now()->subMonth()->startOfMonth();
+        $akhirBulanLalu = now()->subMonth()->endOfMonth();
+
+        $scopeBayarPemilik = fn ($q) => $q->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
         $pendapatanBulanIni = (int) Pembayaran::where('status', 'diverifikasi')
-            ->whereMonth('verified_at', now()->month)
-            ->whereYear('verified_at', now()->year)
-            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId)
-                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->whereBetween('verified_at', [$awalBulanIni, $akhirBulanIni])
+            ->whereHas('tagihan.penyewaan.properti', $scopeBayarPemilik)
             ->sum('jumlah');
 
         $pendapatanBulanLalu = (int) Pembayaran::where('status', 'diverifikasi')
-            ->whereMonth('verified_at', now()->subMonth()->month)
-            ->whereYear('verified_at', now()->subMonth()->year)
-            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId)
-                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->whereBetween('verified_at', [$awalBulanLalu, $akhirBulanLalu])
+            ->whereHas('tagihan.penyewaan.properti', $scopeBayarPemilik)
             ->sum('jumlah');
 
         $scopeProperti = fn ($q) => $q->where('pemilik_id', $userId)
@@ -376,23 +395,21 @@ class DashboardController extends Controller
             ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
         $pengeluaranBulanIni = (int) Pengeluaran::whereHas('properti', $scopeProperti)
-            ->whereMonth('tanggal', now()->month)
-            ->whereYear('tanggal', now()->year)
+            ->whereBetween('tanggal', [$awalBulanIni->toDateString(), $akhirBulanIni->toDateString()])
             ->sum('jumlah');
 
         $pengeluaranBulanLalu = (int) Pengeluaran::whereHas('properti', $scopeProperti)
-            ->whereMonth('tanggal', now()->subMonth()->month)
-            ->whereYear('tanggal', now()->subMonth()->year)
+            ->whereBetween('tanggal', [$awalBulanLalu->toDateString(), $akhirBulanLalu->toDateString()])
             ->sum('jumlah');
 
         $kategoriPengeluaran = Pengeluaran::whereHas('properti', $scopeProperti)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
-            ->get(['kategori', 'jumlah'])
+            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1)->toDateString())
+            ->selectRaw('kategori, SUM(jumlah) as total')
             ->groupBy('kategori')
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')))
-            ->sortDesc()
-            ->take(7)
-            ->map(fn ($nilai, $kategori) => ['label' => ucwords(str_replace('_', ' ', (string) $kategori)), 'value' => $nilai])
+            ->orderByDesc('total')
+            ->limit(7)
+            ->get()
+            ->map(fn ($r) => ['label' => ucwords(str_replace('_', ' ', (string) $r->kategori)), 'value' => (int) round((float) $r->total)])
             ->values()
             ->all();
 
@@ -402,9 +419,17 @@ class DashboardController extends Controller
 
         $okupansi = $totalKamar > 0 ? (int) round($kamarTerisi / $totalKamar * 100) : 0;
 
-        $tagihanBelum = Tagihan::where('status', '!=', 'lunas')
-            ->whereHas('penyewaan.properti', $scopePropertiId)
+        $tagihanBelumQuery = fn () => Tagihan::where('status', '!=', 'lunas')
+            ->whereHas('penyewaan.properti', $scopePropertiId);
+
+        $tagihanBelumCount = $tagihanBelumQuery()->count();
+        $nilaiTagihanBelum = (int) round((float) ($tagihanBelumQuery()->selectRaw('COALESCE(SUM(jumlah + denda), 0) as total')->value('total') ?? 0));
+        $tagihanTelatCount = $tagihanBelumQuery()->where('jatuh_tempo', '<', today()->toDateString())->count();
+        $tagihanBelumList = $tagihanBelumQuery()
+            ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo'])
+            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama'])
             ->orderBy('jatuh_tempo')
+            ->limit(6)
             ->get();
 
         $scope = fn ($q) => $q->whereHas('tagihan.penyewaan.properti', $scopePropertiId);
@@ -449,9 +474,9 @@ class DashboardController extends Controller
             'pengeluaran_bulan_lalu' => $pengeluaranBulanLalu,
             'laba_bersih_bulan_ini' => $pendapatanBulanIni - $pengeluaranBulanIni,
             'laba_bersih_bulan_lalu' => $pendapatanBulanLalu - $pengeluaranBulanLalu,
-            'tagihan_belum_bayar' => $tagihanBelum->count(),
-            'nilai_tagihan_belum' => (int) $tagihanBelum->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda),
-            'tagihan_telat' => $tagihanBelum->filter(fn ($t) => optional($t->jatuh_tempo)->lt(today()))->count(),
+            'tagihan_belum_bayar' => $tagihanBelumCount,
+            'nilai_tagihan_belum' => $nilaiTagihanBelum,
+            'tagihan_telat' => $tagihanTelatCount,
             'kategori_pengeluaran' => $kategoriPengeluaran,
             'penyewaan_aktif' => $penyewaanAktif,
             'chart' => $chart,
@@ -475,7 +500,7 @@ class DashboardController extends Controller
                 'metode' => $p->metode,
                 'jumlah' => (float) $p->jumlah,
             ])->values(),
-            'tagihan_list' => $tagihanBelum->take(6)->map(fn (Tagihan $t) => [
+            'tagihan_list' => $tagihanBelumList->map(fn (Tagihan $t) => [
                 'anak_kos_nama' => $t->penyewaan?->anakKos?->nama ?? 'Penyewa',
                 'kamar_nama' => $t->penyewaan?->kamar?->nama,
                 'periode' => $t->periode,
@@ -503,18 +528,25 @@ class DashboardController extends Controller
         $scopeId = fn ($q) => $q->where('pemilik_id', $userId)
             ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
+        $mulaiRange = now()->startOfMonth()->subMonths($bulanCount - 1);
+
         $pendapatanPerBulan = Pembayaran::where('status', 'diverifikasi')
             ->whereHas('tagihan.penyewaan.properti', $scopeId)
-            ->where('verified_at', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
+            ->where('verified_at', '>=', $mulaiRange)
             ->get(['verified_at', 'jumlah'])
             ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
             ->map(fn ($rows) => (int) $rows->sum('jumlah'));
 
         $pengeluaranPerBulan = Pengeluaran::whereHas('properti', $scope)
-            ->where('tanggal', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
+            ->where('tanggal', '>=', $mulaiRange->toDateString())
             ->get(['tanggal', 'jumlah'])
             ->groupBy(fn ($p) => $p->tanggal->format('m/Y'))
             ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+
+        $sewaansRange = Penyewaan::whereHas('properti', $scopeId)
+            ->where('tanggal_masuk', '<=', now()->endOfMonth()->toDateString())
+            ->where(fn ($w) => $w->whereNull('tanggal_keluar')->orWhere('tanggal_keluar', '>=', $mulaiRange->toDateString()))
+            ->get(['kamar_id', 'tanggal_masuk', 'tanggal_keluar']);
 
         $labels = [];
         $pendapatan = [];
@@ -535,11 +567,11 @@ class DashboardController extends Controller
             $pengeluaran[] = $g;
             $laba[] = $p - $g;
 
-            $kamarTerisiBulan = Penyewaan::whereHas('properti', $scopeId)
-                ->where('tanggal_masuk', '<=', $end)
-                ->where(fn ($w) => $w->whereNull('tanggal_keluar')->orWhere('tanggal_keluar', '>=', $start))
-                ->distinct()
-                ->count('kamar_id');
+            $kamarTerisiBulan = $sewaansRange
+                ->filter(fn ($s) => $s->tanggal_masuk->lte($end) && ($s->tanggal_keluar === null || $s->tanggal_keluar->gte($start)))
+                ->pluck('kamar_id')
+                ->unique()
+                ->count();
 
             $okupansi[] = $totalKamar > 0 ? (int) round($kamarTerisiBulan / $totalKamar * 100) : 0;
         }
@@ -582,49 +614,57 @@ class DashboardController extends Controller
         $chart = $this->monthlyChart($scopeBayar, $scopeTagihan, $bulanCount);
         $rekap = $this->rekapPemilikPerBulan($userId, $totalKamar, $bulanCount, $propertiId);
 
-        // Tren jumlah transaksi + nilai per bulan.
-        $counts = $this->growthMonthly(
-            fn () => Pembayaran::where('status', 'diverifikasi')->where($scopeBayar),
-            $bulanCount, 'verified_at'
-        );
-        $nilais = $this->sumMonthly(
-            fn () => Pembayaran::where('status', 'diverifikasi')->where($scopeBayar),
-            $bulanCount, 'verified_at'
-        );
-
-        // Aging piutang: tagihan belum lunas dikelompokkan umur tunggakan.
-        $belum = Tagihan::where('status', '!=', 'lunas')
-            ->where($scopeTagihan)
-            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama'])
-            ->get();
-
-        $aging = ['belum_jatuh_tempo' => 0, 'telat_1_7' => 0, 'telat_8_30' => 0, 'telat_lebih_30' => 0];
-
-        foreach ($belum as $t) {
-            $nilai = (float) $t->jumlah + (float) $t->denda;
-            $hari = $t->jatuh_tempo ? today()->diffInDays($t->jatuh_tempo, false) : 0;
-
-            if ($hari >= 0) {
-                $aging['belum_jatuh_tempo'] += $nilai;
-            } elseif ($hari >= -7) {
-                $aging['telat_1_7'] += $nilai;
-            } elseif ($hari >= -30) {
-                $aging['telat_8_30'] += $nilai;
-            } else {
-                $aging['telat_lebih_30'] += $nilai;
-            }
-        }
-
-        // Top properti berdasarkan pendapatan terverifikasi pada periode.
         $mulai = now()->startOfMonth()->subMonths($bulanCount - 1);
 
-        $pendapatanProperti = Pembayaran::where('status', 'diverifikasi')
+        // Tren jumlah transaksi + nilai per bulan: 1 query agregasi, bukan 2x get semua rows.
+        $trenRows = Pembayaran::where('status', 'diverifikasi')
             ->where('verified_at', '>=', $mulai)
             ->where($scopeBayar)
-            ->with('tagihan.penyewaan')
+            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as jml, SUM(jumlah) as nilai")
+            ->groupBy('bulan')
             ->get()
-            ->groupBy(fn ($p) => $p->tagihan?->penyewaan?->properti_id)
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+            ->keyBy('bulan');
+
+        $counts = [];
+        $nilais = [];
+        foreach (range($bulanCount - 1, 0) as $i) {
+            $key = now()->startOfMonth()->subMonths($i)->format('m/Y');
+            $counts[] = (int) ($trenRows[$key]->jml ?? 0);
+            $nilais[] = (int) round((float) ($trenRows[$key]->nilai ?? 0));
+        }
+
+        // Aging piutang + total: 1 query agregasi CASE, tanpa hydrate semua model + with relation.
+        $hariIni = today()->toDateString();
+        $agregat = Tagihan::where('status', '!=', 'lunas')
+            ->where($scopeTagihan)
+            ->selectRaw('COUNT(*) as jml, COALESCE(SUM(jumlah + denda), 0) as nilai')
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo >= ? THEN jumlah + denda ELSE 0 END), 0) as belum_jatuh_tempo", [$hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < ? AND jatuh_tempo >= DATE_SUB(?, INTERVAL 7 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_1_7", [$hariIni, $hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < DATE_SUB(?, INTERVAL 7 DAY) AND jatuh_tempo >= DATE_SUB(?, INTERVAL 30 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_8_30", [$hariIni, $hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < DATE_SUB(?, INTERVAL 30 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_lebih_30", [$hariIni])
+            ->first();
+
+        $aging = [
+            'belum_jatuh_tempo' => (int) round((float) ($agregat->belum_jatuh_tempo ?? 0)),
+            'telat_1_7' => (int) round((float) ($agregat->telat_1_7 ?? 0)),
+            'telat_8_30' => (int) round((float) ($agregat->telat_8_30 ?? 0)),
+            'telat_lebih_30' => (int) round((float) ($agregat->telat_lebih_30 ?? 0)),
+        ];
+        $belumCount = (int) ($agregat->jml ?? 0);
+        $belumNilai = (int) round((float) ($agregat->nilai ?? 0));
+
+        // Top properti berdasarkan pendapatan terverifikasi pada periode: join + group, tanpa with+group PHP.
+        $pendapatanProperti = DB::table('pembayarans')
+            ->join('tagihans', 'tagihans.id', '=', 'pembayarans.tagihan_id')
+            ->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
+            ->join('propertis', 'propertis.id', '=', 'penyewaans.properti_id')
+            ->where('pembayarans.status', 'diverifikasi')
+            ->where('pembayarans.verified_at', '>=', $mulai)
+            ->where('propertis.pemilik_id', $userId)
+            ->when($propertiId, fn ($q) => $q->where('propertis.id', $propertiId))
+            ->selectRaw('penyewaans.properti_id as properti_id, SUM(pembayarans.jumlah) as total')
+            ->groupBy('penyewaans.properti_id')
+            ->pluck('total', 'properti_id');
 
         $topProperti = $propertis->map(fn ($p) => [
             'id' => $p->id,
@@ -643,8 +683,8 @@ class DashboardController extends Controller
             'tren_transaksi' => ['jumlah' => $counts, 'nilai' => $nilais],
             'aging_piutang' => array_map('intval', $aging),
             'tagihan_belum' => [
-                'count' => $belum->count(),
-                'nilai' => (int) $belum->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda),
+                'count' => $belumCount,
+                'nilai' => $belumNilai,
             ],
             'top_properti' => $topProperti,
         ]);
@@ -1175,36 +1215,43 @@ class DashboardController extends Controller
     }
 
     /**
-     * Builds the last 6 months of chart data (labels, revenue, paid/unpaid bills)
+     * Builds the last N months of chart data (labels, revenue, paid/unpaid bills)
      * for a given role scope. $pembayaranScope filters Pembayaran, $tagihanScope filters Tagihan.
+     * Hanya 2 query agregasi (bukan 3xN): rows ditarik sekali dalam range lalu dikelompokkan di PHP.
      */
     private function monthlyChart(callable $pembayaranScope, callable $tagihanScope, int $bulanCount = 6): array
     {
         $bulanCount = max(1, min(24, $bulanCount));
+        $start = now()->subMonths($bulanCount - 1)->startOfMonth();
+        $end = now()->endOfMonth();
+
+        $pendapatanRows = Pembayaran::where('status', 'diverifikasi')
+            ->whereBetween('verified_at', [$start, $end])
+            ->where($pembayaranScope)
+            ->get(['verified_at', 'jumlah'])
+            ->groupBy(fn ($p) => $p->verified_at->format('m/Y'));
+
+        $tagihanRows = Tagihan::whereBetween('created_at', [$start, $end])
+            ->where($tagihanScope)
+            ->get(['created_at', 'status', 'jumlah', 'denda'])
+            ->groupBy(fn ($t) => $t->created_at->format('m/Y'));
+
         $labels = [];
         $pendapatan = [];
         $lunas = [];
         $belum = [];
 
-        $start = now()->subMonths($bulanCount - 1)->startOfMonth();
-
         for ($i = 0; $i < $bulanCount; $i++) {
             $month = $start->copy()->addMonths($i);
             $key = $month->format('m/Y');
             $labels[] = $month->translatedFormat('M Y');
-            $pendapatan[] = (int) Pembayaran::where('status', 'diverifikasi')
-                ->whereMonth('verified_at', $month->month)
-                ->whereYear('verified_at', $month->year)
-                ->where($pembayaranScope)
-                ->sum('jumlah');
+            $pendapatan[] = (int) round(($pendapatanRows[$key] ?? collect())->sum('jumlah'));
 
-            $agtihan = Tagihan::whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
-                ->where($tagihanScope);
-            $totalLunas = (clone $agtihan)->where('status', 'lunas')->sum(DB::raw('jumlah + denda'));
-            $totalAll = (clone $agtihan)->sum(DB::raw('jumlah + denda'));
+            $rows = $tagihanRows[$key] ?? collect();
+            $totalLunas = (int) round($rows->where('status', 'lunas')->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda));
+            $totalAll = (int) round($rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda));
 
-            $lunas[] = (int) $totalLunas;
+            $lunas[] = $totalLunas;
             $belum[] = (int) max(0, $totalAll - $totalLunas);
         }
 

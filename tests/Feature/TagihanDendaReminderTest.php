@@ -136,7 +136,7 @@ class TagihanDendaReminderTest extends TestCase
 
         $this->postJson('/api/dashboard/anak-kos/bayar', [
             'tagihan_id' => $tagihan->id,
-            'metode' => 'transfer',
+            'metode' => 'cash',
             'jumlah' => 1000000,
         ])->assertStatus(422)->assertJsonPath('message', fn ($m) => str_contains($m, 'kurang'));
 

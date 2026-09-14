@@ -106,17 +106,38 @@ class User extends Authenticatable
     /**
      * Jumlah pesan chat yang belum dibaca user ini
      * (sebagai penyewa atau sebagai pemilik kos).
+     * Dicabang per role agar tanpa OR + subquery properti yang berat;
+     * role lain (admin/super_admin) tidak memakai chat sehingga langsung 0.
      */
     public function pesanBelumDibaca(): int
     {
-        return $this->pesanBelumDibacaCache ??= ChatPesan::query()
-            ->where('pengirim_id', '!=', $this->id)
-            ->whereNull('dibaca_pada')
-            ->where(function ($q) {
-                $q->where('anak_kos_id', $this->id)
-                    ->orWhereHas('properti', fn ($p) => $p->where('pemilik_id', $this->id));
-            })
-            ->count();
+        if ($this->pesanBelumDibacaCache !== null) {
+            return $this->pesanBelumDibacaCache;
+        }
+
+        if ($this->hasRole('anak_kos')) {
+            return $this->pesanBelumDibacaCache = ChatPesan::query()
+                ->where('anak_kos_id', $this->id)
+                ->where('pengirim_id', '!=', $this->id)
+                ->whereNull('dibaca_pada')
+                ->count();
+        }
+
+        if ($this->hasRole('pemilik')) {
+            $ids = cache()->remember("pemilik.properti-ids.{$this->id}", 300, fn () => Properti::where('pemilik_id', $this->id)->pluck('id')->all());
+
+            if ($ids === []) {
+                return $this->pesanBelumDibacaCache = 0;
+            }
+
+            return $this->pesanBelumDibacaCache = ChatPesan::query()
+                ->whereIn('properti_id', $ids)
+                ->where('pengirim_id', '!=', $this->id)
+                ->whereNull('dibaca_pada')
+                ->count();
+        }
+
+        return $this->pesanBelumDibacaCache = 0;
     }
 
     /**

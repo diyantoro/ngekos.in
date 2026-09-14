@@ -15,32 +15,50 @@ new #[Layout('layouts.publik')] class extends Component
         $percakapans = collect();
 
         if ($adalahPenyewa || $adalahPemilik) {
-            $query = ChatPesan::query()->with(['properti.pemilik', 'anakKos', 'pengirim']);
+            $dasar = ChatPesan::query();
 
             if ($adalahPenyewa) {
-                $query->where('anak_kos_id', $user->id);
+                $dasar->where('anak_kos_id', $user->id);
             } else {
-                $query->whereHas('properti', fn ($q) => $q->where('pemilik_id', $user->id));
+                $ids = \App\Models\Properti::where('pemilik_id', $user->id)->pluck('id');
+                if ($ids->isEmpty()) {
+                    $dasar->whereRaw('1 = 0');
+                } else {
+                    $dasar->whereIn('properti_id', $ids);
+                }
             }
 
-            $percakapans = $query->get()
-                ->groupBy(fn ($m) => $m->anak_kos_id.'-'.$m->properti_id)
-                ->map(function ($msgs) use ($user, $adalahPenyewa) {
-                    $contoh = $msgs->last();
-                    $belumDibaca = $msgs->filter(fn ($m) => $m->dibaca_pada === null && $m->pengirim_id !== $user->id)->count();
+            $ringkas = (clone $dasar)
+                ->selectRaw('properti_id, anak_kos_id, MAX(id) as last_id, MAX(created_at) as terakhir, SUM(CASE WHEN dibaca_pada IS NULL AND pengirim_id != ? THEN 1 ELSE 0 END) as belum', [$user->id])
+                ->groupBy('properti_id', 'anak_kos_id')
+                ->orderByDesc('terakhir')
+                ->limit(50)
+                ->get();
+
+            if ($ringkas->isNotEmpty()) {
+                $terakhir = ChatPesan::whereIn('id', $ringkas->pluck('last_id'))
+                    ->with(['properti:id,nama,pemilik_id', 'properti.pemilik:id,nama', 'anakKos:id,nama'])
+                    ->get()
+                    ->keyBy('id');
+
+                $percakapans = $ringkas->map(function ($r) use ($user, $adalahPenyewa, $terakhir) {
+                    $contoh = $terakhir->get($r->last_id);
+
+                    if (! $contoh) {
+                        return null;
+                    }
 
                     return [
                         'properti' => $contoh->properti,
                         'lawan' => $adalahPenyewa ? $contoh->properti?->pemilik : $contoh->anakKos,
                         'terakhir' => $contoh,
-                        'belumDibaca' => $belumDibaca,
+                        'belumDibaca' => (int) $r->belum,
                         'url' => $adalahPenyewa
                             ? route('chat.room', ['properti' => $contoh->properti_id])
                             : route('chat.room.anak', ['properti' => $contoh->properti_id, 'anakKos' => $contoh->anak_kos_id]),
                     ];
-                })
-                ->sortByDesc(fn ($c) => $c['terakhir']->created_at)
-                ->values();
+                })->filter()->values();
+            }
         }
 
         return [

@@ -15,7 +15,8 @@ class KatalogController extends Controller
         $query = Properti::withCount([
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
-        ])->where('status', 'aktif');
+        ])->with(['fotos:id,properti_id,path,urutan'])
+            ->where('status', 'aktif');
 
         if ($request->filled('kota')) {
             $query->where('kota', 'like', "%{$request->kota}%");

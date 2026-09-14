@@ -25,38 +25,59 @@ new class extends Component
         $id = auth()->id();
         $scope = fn ($q) => $q->where('pemilik_id', $id);
 
-        $statusKamar = Kamar::whereHas('properti', $scope)
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
+        $ringkas = cache()->remember("pemilik.ringkas.{$id}", 60, function () use ($id, $scope) {
+            $statusKamar = Kamar::whereHas('properti', $scope)
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        $totalKamar = (int) $statusKamar->sum();
-        $kamarTerisi = (int) ($statusKamar['terisi'] ?? 0);
-        $kamarTersedia = (int) ($statusKamar['tersedia'] ?? 0);
-        $kamarPerbaikan = (int) ($statusKamar['perbaikan'] ?? 0);
+            $totalKamar = (int) $statusKamar->sum();
+            $sekarang = now();
+            $lalu = now()->subMonth();
+
+            return [
+                'totalProperti' => Properti::where('pemilik_id', $id)->count(),
+                'totalKamar' => $totalKamar,
+                'kamarTerisi' => (int) ($statusKamar['terisi'] ?? 0),
+                'kamarTersedia' => (int) ($statusKamar['tersedia'] ?? 0),
+                'kamarPerbaikan' => (int) ($statusKamar['perbaikan'] ?? 0),
+                'pendapatanBulanIni' => (int) Pembayaran::where('status', 'diverifikasi')
+                    ->whereBetween('verified_at', [$sekarang->copy()->startOfMonth(), $sekarang->copy()->endOfMonth()])
+                    ->whereHas('tagihan.penyewaan.properti', $scope)
+                    ->sum('jumlah'),
+                'pendapatanBulanLalu' => (int) Pembayaran::where('status', 'diverifikasi')
+                    ->whereBetween('verified_at', [$lalu->copy()->startOfMonth(), $lalu->copy()->endOfMonth()])
+                    ->whereHas('tagihan.penyewaan.properti', $scope)
+                    ->sum('jumlah'),
+                'pengeluaranBulanIni' => (int) Pengeluaran::whereHas('properti', $scope)
+                    ->whereBetween('tanggal', [$sekarang->copy()->startOfMonth()->toDateString(), $sekarang->copy()->endOfMonth()->toDateString()])
+                    ->sum('jumlah'),
+                'pengeluaranBulanLalu' => (int) Pengeluaran::whereHas('properti', $scope)
+                    ->whereBetween('tanggal', [$lalu->copy()->startOfMonth()->toDateString(), $lalu->copy()->endOfMonth()->toDateString()])
+                    ->sum('jumlah'),
+                'penyewaanAktif' => Penyewaan::where('status', 'aktif')
+                    ->whereHas('properti', $scope)->count(),
+                'tagihanBelumCount' => Tagihan::where('status', '!=', 'lunas')
+                    ->whereHas('penyewaan.properti', $scope)->count(),
+                'nilaiTagihanBelum' => (int) Tagihan::where('status', '!=', 'lunas')
+                    ->whereHas('penyewaan.properti', $scope)
+                    ->selectRaw('COALESCE(SUM(jumlah + denda), 0) as total')->value('total'),
+                'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
+                    ->where('jatuh_tempo', '<', today()->toDateString())
+                    ->whereHas('penyewaan.properti', $scope)->count(),
+            ];
+        });
+
+        $totalKamar = $ringkas['totalKamar'];
+        $kamarTerisi = $ringkas['kamarTerisi'];
+        $kamarTersedia = $ringkas['kamarTersedia'];
+        $kamarPerbaikan = $ringkas['kamarPerbaikan'];
         $okupansiSekarang = $totalKamar > 0 ? (int) round($kamarTerisi / $totalKamar * 100) : 0;
 
-        $pendapatanBulanIni = (int) Pembayaran::where('status', 'diverifikasi')
-            ->whereMonth('verified_at', now()->month)
-            ->whereYear('verified_at', now()->year)
-            ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->sum('jumlah');
-
-        $pendapatanBulanLalu = (int) Pembayaran::where('status', 'diverifikasi')
-            ->whereMonth('verified_at', now()->subMonth()->month)
-            ->whereYear('verified_at', now()->subMonth()->year)
-            ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->sum('jumlah');
-
-        $pengeluaranBulanIni = (int) Pengeluaran::whereHas('properti', $scope)
-            ->whereMonth('tanggal', now()->month)
-            ->whereYear('tanggal', now()->year)
-            ->sum('jumlah');
-
-        $pengeluaranBulanLalu = (int) Pengeluaran::whereHas('properti', $scope)
-            ->whereMonth('tanggal', now()->subMonth()->month)
-            ->whereYear('tanggal', now()->subMonth()->year)
-            ->sum('jumlah');
+        $pendapatanBulanIni = $ringkas['pendapatanBulanIni'];
+        $pendapatanBulanLalu = $ringkas['pendapatanBulanLalu'];
+        $pengeluaranBulanIni = $ringkas['pengeluaranBulanIni'];
+        $pengeluaranBulanLalu = $ringkas['pengeluaranBulanLalu'];
 
         $labaBersihBulanIni = $pendapatanBulanIni - $pengeluaranBulanIni;
         $labaBersihBulanLalu = $pendapatanBulanLalu - $pengeluaranBulanLalu;
@@ -64,38 +85,40 @@ new class extends Component
         $tagihanBelumQuery = fn () => Tagihan::where('status', '!=', 'lunas')
             ->whereHas('penyewaan.properti', $scope);
 
-        $tagihanBelumCount = $tagihanBelumQuery()->count();
-        $nilaiTagihanBelum = (int) $tagihanBelumQuery()->selectRaw('COALESCE(SUM(jumlah + denda), 0) as total')->value('total');
-        $tagihanTelat = $tagihanBelumQuery()->where('jatuh_tempo', '<', today())->count();
+        $tagihanBelumCount = $ringkas['tagihanBelumCount'];
+        $nilaiTagihanBelum = $ringkas['nilaiTagihanBelum'];
+        $tagihanTelat = $ringkas['tagihanTelat'];
         $tagihanBelumList = $tagihanBelumQuery()
-            ->with(['penyewaan.anakKos', 'penyewaan.kamar', 'penyewaan.properti'])
+            ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama'])
             ->orderBy('jatuh_tempo')
             ->limit(6)
             ->get();
 
         $pembayaranTerbaru = Pembayaran::where('status', 'diverifikasi')
             ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->with(['tagihan.penyewaan.anakKos', 'tagihan.penyewaan.properti'])
+            ->select(['id', 'tagihan_id', 'anak_kos_id', 'jumlah', 'nomor_kwitansi', 'verified_at'])
+            ->with(['tagihan.penyewaan.anakKos:id,nama', 'tagihan.penyewaan.properti:id,nama'])
             ->latest('verified_at')
             ->limit(6)
             ->get();
 
         $pembayaranMenunggu = Pembayaran::where('status', 'menunggu_verifikasi')
             ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->with(['anakKos', 'tagihan.penyewaan.kamar', 'tagihan.penyewaan.properti'])
+            ->select(['id', 'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'created_at'])
+            ->with(['anakKos:id,nama', 'tagihan.penyewaan.kamar:id,nama', 'tagihan.penyewaan.properti:id,nama'])
             ->latest()
             ->limit(10)
             ->get();
 
         return [
-            'totalProperti' => Properti::where('pemilik_id', $id)->count(),
+            'totalProperti' => $ringkas['totalProperti'],
             'totalKamar' => $totalKamar,
             'kamarTerisi' => $kamarTerisi,
             'kamarTersedia' => $kamarTersedia,
             'kamarPerbaikan' => $kamarPerbaikan,
             'okupansiSekarang' => $okupansiSekarang,
-            'penyewaanAktif' => Penyewaan::where('status', 'aktif')
-                ->whereHas('properti', $scope)->count(),
+            'penyewaanAktif' => $ringkas['penyewaanAktif'],
             'pendapatanBulanIni' => $pendapatanBulanIni,
             'pendapatanBulanLalu' => $pendapatanBulanLalu,
             'pengeluaranBulanIni' => $pengeluaranBulanIni,
@@ -109,19 +132,21 @@ new class extends Component
             'pembayaranTerbaru' => $pembayaranTerbaru,
             'pembayaranMenunggu' => $pembayaranMenunggu,
             'pembayaranMenungguCount' => $pembayaranMenunggu->count(),
-            'propertis' => Properti::where('pemilik_id', $id)
-                ->with('kamars')
+            'propertis' => $this->tab === 'sewaan' ? collect() : Properti::where('pemilik_id', $id)
+                ->select(['id', 'nama', 'alamat', 'status'])
+                ->with('kamars:id,properti_id,nama,kapasitas,harga_sewa_bulanan,status')
                 ->withCount(['kamars', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
                 ->when($this->cari, fn ($q) => $q->where('nama', 'like', "%{$this->cari}%"))
                 ->orderBy('nama')
-                ->limit(100)
+                ->limit(30)
                 ->get(),
-            'sewaans' => Penyewaan::query()
+            'sewaans' => $this->tab === 'properti' ? collect() : Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->with(['anakKos', 'kamar.properti', 'tagihans', 'anggotas.user'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian'])
+                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
-                ->limit(50)
+                ->limit(20)
                 ->get(),
         ];
     }

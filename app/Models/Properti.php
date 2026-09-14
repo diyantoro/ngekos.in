@@ -50,13 +50,20 @@ class Properti extends Model
         return $this->hasMany(PropertiFoto::class)->orderBy('urutan')->orderBy('id');
     }
 
+    private ?array $galeriCache = null;
+
     /**
      * Daftar URL galeri (cover dulu). Fallback ke kolom foto lama bila galeri kosong.
+     * Hasil di-memoize per instance agar pemanggilan berulang di satu render gratis.
      *
      * @return array<int,string>
      */
     public function galeriUrls(): array
     {
+        if ($this->galeriCache !== null) {
+            return $this->galeriCache;
+        }
+
         $dariGaleri = $this->relationLoaded('fotos')
             ? $this->fotos->sortBy([['urutan', 'asc'], ['id', 'asc']])->pluck('path')->all()
             : $this->fotos()->orderBy('urutan')->orderBy('id')->pluck('path')->all();
@@ -71,7 +78,7 @@ class Properti extends Model
             $urls[] = '/storage/'.$this->foto;
         }
 
-        return $urls;
+        return $this->galeriCache = $urls;
     }
 
     public function fotoCover(): ?string

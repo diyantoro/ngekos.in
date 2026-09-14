@@ -48,25 +48,55 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $this->favorit = auth()->check() && $this->properti->peminat()->where('user_id', auth()->id())->exists();
 
-        $this->statistikUlasan = [
-            'total' => $this->properti->ulasans()->count(),
-            'rata' => $this->properti->ulasans()->avg('rating'),
-            'distribusi' => $this->properti->ulasans()->selectRaw('rating, COUNT(*) as jumlah')->groupBy('rating')->pluck('jumlah', 'rating')->toArray(),
-        ];
+        $this->properti->loadMissing(['fotos', 'pemilik:id,nama,no_hp']);
+        $this->statistikUlasan = $this->hitungStatistikUlasan();
+    }
+
+    private function hitungStatistikUlasan(): array
+    {
+        $distribusi = $this->properti->ulasans()
+            ->selectRaw('rating, COUNT(*) as jumlah')
+            ->groupBy('rating')
+            ->pluck('jumlah', 'rating')
+            ->all();
+        $total = (int) array_sum($distribusi);
+        $rata = $total > 0
+            ? round(array_sum(array_map(fn ($j, $r) => ((int) $r) * ((int) $j), $distribusi, array_keys($distribusi))) / $total, 1)
+            : null;
+
+        return ['total' => $total, 'rata' => $rata, 'distribusi' => $distribusi];
     }
 
     public function with(): array
     {
-        $this->properti->loadCount([
-            'kamars as total_kamar',
-            'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
-        ]);
-        $this->properti->loadMissing('fotos');
+        if ($this->properti->getAttribute('total_kamar') === null) {
+            $this->properti->loadCount([
+                'kamars as total_kamar',
+                'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
+            ]);
+        }
+
+        $kamars = Kamar::select(['id', 'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'status', 'foto'])
+            ->with('fotos:id,kamar_id,path,urutan')
+            ->where('properti_id', $this->properti->id)
+            ->orderBy('nama')
+            ->get();
+        $tersedia = $kamars->where('status', 'tersedia');
 
         return [
-            'kamars' => Kamar::with('fotos')->where('properti_id', $this->properti->id)->orderBy('nama')->get(),
+            'kamars' => $kamars,
             'titik' => Koordinat::titik($this->properti->kota, $this->properti->latitude, $this->properti->longitude),
-            'ulasans' => Ulasan::with('user')->where('properti_id', $this->properti->id)->latest()->get(),
+            'ulasans' => Ulasan::select(['id', 'properti_id', 'user_id', 'rating', 'komentar', 'created_at'])
+                ->with('user:id,nama')
+                ->where('properti_id', $this->properti->id)
+                ->latest()
+                ->limit(20)
+                ->get(),
+            'termurah' => [
+                'bulan' => $tersedia->min('harga_sewa_bulanan'),
+                'minggu' => $tersedia->whereNotNull('harga_sewa_mingguan')->min('harga_sewa_mingguan'),
+                'hari' => $tersedia->whereNotNull('harga_sewa_harian')->min('harga_sewa_harian'),
+            ],
         ];
     }
 
@@ -299,11 +329,7 @@ new #[Layout('layouts.publik')] class extends Component
             ['rating' => $this->ratingUlasan, 'komentar' => $this->komentarUlasan ?: null],
         );
 
-        $this->statistikUlasan = [
-            'total' => $this->properti->ulasans()->count(),
-            'rata' => round($this->properti->ulasans()->avg('rating'), 1),
-            'distribusi' => $this->properti->ulasans()->selectRaw('rating, COUNT(*) as jumlah')->groupBy('rating')->pluck('jumlah', 'rating')->toArray(),
-        ];
+        $this->statistikUlasan = $this->hitungStatistikUlasan();
 
         $this->pesan = 'Terima kasih! Ulasanmu berhasil disimpan.';
         $this->galat = null;
@@ -439,9 +465,9 @@ new #[Layout('layouts.publik')] class extends Component
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Harga Mulai</p>
                     <p class="mt-1">
                         @php
-                            $termurahBulan = $properti->kamars()->where('status', 'tersedia')->min('harga_sewa_bulanan');
-                            $termurahMinggu = $properti->kamars()->where('status', 'tersedia')->whereNotNull('harga_sewa_mingguan')->min('harga_sewa_mingguan');
-                            $termurahHari = $properti->kamars()->where('status', 'tersedia')->whereNotNull('harga_sewa_harian')->min('harga_sewa_harian');
+                            $termurahBulan = $termurah['bulan'] ?? null;
+                            $termurahMinggu = $termurah['minggu'] ?? null;
+                            $termurahHari = $termurah['hari'] ?? null;
                             $adaDiskonDetail = $properti->harga_asli && $termurahBulan && $properti->harga_asli > $termurahBulan;
                         @endphp
                         @if ($termurahBulan)

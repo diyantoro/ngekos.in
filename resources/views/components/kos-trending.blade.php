@@ -1,17 +1,31 @@
 @props(['limit' => 6])
 
 @php
-    $trending = \App\Models\Properti::query()
+    $trendingIds = cache()->remember('kos.trending.'.$limit, 600, fn () => \App\Models\Properti::query()
         ->where('status', 'aktif')
-        ->with('fotos')
         ->withCount([
             'kamars as total_kamar',
             'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
         ])
         ->orderByDesc('kamar_terisi')
         ->limit($limit)
-        ->get()
-        ->filter(fn ($p) => $p->kamar_terisi > 0);
+        ->pluck('id')
+        ->all());
+    $trending = $trendingIds === []
+        ? collect()
+        : \App\Models\Properti::query()
+            ->whereIn('id', $trendingIds)
+            ->select(['id', 'nama', 'kota', 'alamat', 'foto'])
+            ->with('fotos:id,properti_id,path,urutan')
+            ->withCount([
+                'kamars as total_kamar',
+                'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
+                'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
+            ])
+            ->get()
+            ->sortBy(fn ($p) => array_search($p->id, $trendingIds))
+            ->filter(fn ($p) => $p->kamar_terisi > 0)
+            ->values();
 @endphp
 
 @if ($trending->isNotEmpty())

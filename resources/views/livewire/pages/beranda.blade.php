@@ -22,7 +22,8 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->with('fotos')
+            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
+            ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia')])
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
 
@@ -34,22 +35,24 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         return [
-            'totalProperti' => Properti::where('status', 'aktif')->count(),
-            'totalKamar' => Kamar::where('status', 'tersedia')->count(),
+            'totalProperti' => cache()->remember('beranda.totalProperti', 300, fn () => Properti::where('status', 'aktif')->count()),
+            'totalKamar' => cache()->remember('beranda.totalKamar', 300, fn () => Kamar::where('status', 'tersedia')->count()),
             'propertiList' => $query
                 ->latest('created_at')
                 ->take(6)
                 ->get(),
-            'daftarKota' => Properti::where('status', 'aktif')
+            'daftarKota' => collect(cache()->remember('beranda.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
                 ->whereNotNull('kota')
                 ->distinct()
                 ->orderBy('kota')
-                ->pluck('kota'),
-            'kotaStatistik' => NormalisasiKota::agregasi(Properti::where('status', 'aktif')
+                ->pluck('kota')
+                ->all())),
+            'kotaStatistik' => collect(cache()->remember('beranda.kotaStatistik', 3600, fn () => NormalisasiKota::agregasi(Properti::where('status', 'aktif')
                 ->whereNotNull('kota')
                 ->where('kota', '!=', '')
-                ->pluck('kota')),
-            'markers' => Properti::where('status', 'aktif')
+                ->pluck('kota')
+                ->all())->all())),
+            'markers' => collect(cache()->remember('beranda.markers', 3600, fn () => Properti::where('status', 'aktif')
                 ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
                     $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
@@ -63,7 +66,8 @@ new #[Layout('layouts.publik')] class extends Component
                     ] : null;
                 })
                 ->filter()
-                ->values(),
+                ->values()
+                ->all())),
         ];
     }
 }; ?>

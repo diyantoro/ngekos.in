@@ -45,33 +45,41 @@ export function photoCropManager() {
             });
         },
 
-        // Initialize Cropper.js
+        // Initialize Cropper.js (dimuat malas via window.ensureCropper)
         initCropper() {
             if (this.cropper) {
                 this.cropper.destroy();
+                this.cropper = null;
             }
 
             const img = this.$refs.cropImage;
             if (!img) return;
 
             const currentFile = this.files[this.currentIndex];
-            img.onload = () => {
-                this.cropper = new Cropper(img, {
-                    viewMode: 1,
-                    aspectRatio: NaN, // Free aspect ratio
-                    autoCropArea: 0.95,
-                    responsive: true,
-                    background: false,
-                    modal: true,
-                    guides: true,
-                    center: true,
-                    highlight: true,
-                    cropBoxResizable: true,
-                    cropBoxMovable: true,
-                    toggleDragModeOnDblclick: false,
-                });
+            const pasang = (Crop) => {
+                img.onload = () => {
+                    this.cropper = new Crop(img, {
+                        viewMode: 1,
+                        aspectRatio: NaN, // Free aspect ratio
+                        autoCropArea: 0.95,
+                        responsive: true,
+                        background: false,
+                        modal: true,
+                        guides: true,
+                        center: true,
+                        highlight: true,
+                        cropBoxResizable: true,
+                        cropBoxMovable: true,
+                        toggleDragModeOnDblclick: false,
+                    });
+                };
+                img.src = currentFile.previewUrl;
             };
-            img.src = currentFile.previewUrl;
+            if (window.Cropper) {
+                pasang(window.Cropper);
+            } else if (typeof window.ensureCropper === 'function') {
+                window.ensureCropper().then(pasang).catch(() => {});
+            }
         },
 
         // Apply crop to current image

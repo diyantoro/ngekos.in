@@ -341,13 +341,17 @@ new #[Layout('layouts.app')] class extends Component
                     this.tempUrl = URL.createObjectURL(file);
                     this.showCrop = true;
                     this.$nextTick(() => {
-                        if (this.cropper) this.cropper.destroy();
+                        if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
                         const img = document.getElementById('cropFoto');
-                        img.onload = () => {
-                            if (this.cropper) this.cropper.destroy();
-                            this.cropper = new Cropper(img, { viewMode: 1, autoCropArea: 0.9 });
+                        const buat = (Crop) => {
+                            img.onload = () => {
+                                if (this.cropper) this.cropper.destroy();
+                                this.cropper = new Crop(img, { viewMode: 1, autoCropArea: 0.9 });
+                            };
+                            img.src = this.tempUrl;
                         };
-                        img.src = this.tempUrl;
+                        if (window.Cropper) { buat(window.Cropper); return; }
+                        if (typeof window.ensureCropper === 'function') { window.ensureCropper().then(buat).catch(() => {}); }
                     });
                 },
                 batalCrop() {

@@ -45,66 +45,80 @@ new class extends Component
     public function with(): array
     {
         $id = auth()->id();
+        $bulanCount = max(1, min(24, (int) $this->periode));
+        $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
+        $enamBulan = now()->subMonths(5)->startOfMonth();
+
+        $totalTugas = Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count();
+        $pembayaranMenungguCount = Pembayaran::where('status', 'menunggu_verifikasi')
+            ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+            ->count();
+        $penyewaanAktifCount = Penyewaan::where('status', 'aktif')
+            ->whereHas('properti', $this->kelolaan())
+            ->count();
+
+        $bulanLabels = collect(range($bulanCount - 1, 0))
+            ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->format('m/Y'))
+            ->all();
+
+        $pendapatanRows = Pembayaran::where('status', 'diverifikasi')
+            ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+            ->where('verified_at', '>=', $enamBulan)
+            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan');
+        $pendapatanPerBulan = $pendapatanRows
+            ->map(fn ($total, $bulan) => ['month' => $bulan, 'total' => (int) $total])
+            ->all();
+
+        $tagihanRows = Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
+            ->where('created_at', '>=', $enamBulan)
+            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, SUM(jumlah + denda) as total, SUM(IF(status = 'lunas', jumlah + denda, 0)) as lunas")
+            ->groupBy('bulan')
+            ->get()
+            ->keyBy('bulan');
+        $tagihanStatusPerBulan = $tagihanRows
+            ->map(fn ($r) => [
+                'month' => $r->bulan,
+                'total' => (int) round((float) $r->total),
+                'lunas' => (int) round((float) $r->lunas),
+                'belum' => (int) round((float) $r->total - (float) $r->lunas),
+            ])
+            ->all();
 
         return [
-            'totalTugas' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count(),
-            'pembayaranMenunggu' => Pembayaran::where('status', 'menunggu_verifikasi')
-                ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-                ->count(),
-            'penyewaanAktif' => Penyewaan::where('status', 'aktif')
-                ->whereHas('properti', $this->kelolaan())
-                ->count(),
+            'totalTugas' => $totalTugas,
+            'pembayaranMenunggu' => $pembayaranMenungguCount,
+            'penyewaanAktif' => $penyewaanAktifCount,
             'pembayarans' => Pembayaran::whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-                ->with(['anakKos', 'tagihan'])
+                ->select(['id', 'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'bukti', 'status'])
+                ->with(['anakKos:id,nama', 'tagihan:id,periode'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(15)
                 ->get(),
             'funnelStages' => [
-                ['label' => 'Kunjungan', 'sub' => 'properti yang Anda kelola', 'nilai' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count()],
-                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->whereHas('properti', $this->kelolaan())->count()],
+                ['label' => 'Kunjungan', 'sub' => 'properti yang Anda kelola', 'nilai' => $totalTugas],
+                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => $penyewaanAktifCount],
                 ['label' => 'Tagihan', 'sub' => 'total tagihan yang terbit', 'nilai' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())->count()],
                 ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->whereHas('penyewaan.properti', $this->kelolaan())->count()],
             ],
-            'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
-                ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-                ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->get(['verified_at', 'jumlah'])
-                ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
-                ->map(fn ($rows) => ['month' => $rows->first()->verified_at->format('m/Y'), 'total' => (int) $rows->sum('jumlah')])
-                ->keyBy('month')
-                ->all(),
+            'pendapatanPerBulan' => $pendapatanPerBulan,
             'needAttention' => [
-                'pembayaranMenunggu' => Pembayaran::where('status', 'menunggu_verifikasi')
-                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())->count(),
+                'pembayaranMenunggu' => $pembayaranMenungguCount,
                 'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
                     ->where('denda', '>', 0)
                     ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
                 'propertiTanpaKamar' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))
                     ->whereDoesntHave('kamars')->count(),
             ],
-            'tagihanStatusPerBulan' => Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
-                ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->get(['created_at', 'jumlah', 'denda', 'status'])
-                ->groupBy(fn ($t) => $t->created_at->format('m/Y'))
-                ->map(function ($rows) {
-                    $total = $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
-                    $lunas = $rows->where('status', 'lunas')->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
-
-                    return [
-                        'month' => $rows->first()->created_at->format('m/Y'),
-                        'total' => (int) round($total),
-                        'lunas' => (int) round($lunas),
-                        'belum' => (int) round($total - $lunas),
-                    ];
-                })
-                ->keyBy('month')
-                ->all(),
+            'tagihanStatusPerBulan' => $tagihanStatusPerBulan,
             'totalKamar' => Kamar::whereHas('properti', $this->kelolaan())->count(),
             'kamarTerisi' => Kamar::where('status', 'terisi')->whereHas('properti', $this->kelolaan())->count(),
             'tagihanBelum' => Tagihan::where('status', '!=', 'lunas')
                 ->whereHas('penyewaan.properti', $this->kelolaan())
-                ->with(['penyewaan.anakKos', 'penyewaan.properti'])
+                ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo'])
+                ->with(['penyewaan.anakKos:id,nama', 'penyewaan.properti:id,nama'])
                 ->orderBy('jatuh_tempo')
                 ->limit(5)
                 ->get(),
@@ -112,38 +126,30 @@ new class extends Component
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
-            'bulanLabels' => collect(range(($bulanCount = max(1, min(24, (int) $this->periode))) - 1, 0))
-                ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->format('m/Y'))
-                ->all(),
-            'chartGrowthProperti' => $this->growthSeries(
-                Properti::where($this->kelolaan())
-                    ->where('created_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
-                    ->get(['id', 'created_at']),
-                max(1, min(24, (int) $this->periode))
-            ),
-            'chartGrowthPenyewaan' => $this->growthSeries(
-                Penyewaan::whereHas('properti', $this->kelolaan())
-                    ->where('created_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
-                    ->get(['id', 'created_at']),
-                max(1, min(24, (int) $this->periode))
-            ),
-            'chartGrowthPembayaran' => $this->growthSeries(
-                Pembayaran::where('status', 'diverifikasi')
-                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-                    ->where('verified_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
-                    ->get(['id', 'verified_at']),
-                max(1, min(24, (int) $this->periode)),
-                'verified_at'
-            ),
-            'chartNilaiTransaksi' => $this->nilaiSeries(
-                Pembayaran::where('status', 'diverifikasi')
-                    ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-                    ->where('verified_at', '>=', now()->startOfMonth()->subMonths(max(1, min(24, (int) $this->periode)) - 1))
-                    ->get(['id', 'verified_at', 'jumlah']),
-                max(1, min(24, (int) $this->periode)),
-                'verified_at'
-            ),
-            'userGrowthMonth' => $this->userRoleSeries(max(1, min(24, (int) $this->periode))),
+            'bulanLabels' => $bulanLabels,
+            'chartGrowthProperti' => $this->hitungSeries($bulanLabels, Properti::where($this->kelolaan())
+                ->where('created_at', '>=', $monthStart)
+                ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan')->all()),
+            'chartGrowthPenyewaan' => $this->hitungSeries($bulanLabels, Penyewaan::whereHas('properti', $this->kelolaan())
+                ->where('created_at', '>=', $monthStart)
+                ->selectRaw("DATE_FORMAT(penyewaans.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan')->all()),
+            'chartGrowthPembayaran' => $this->hitungSeries($bulanLabels, Pembayaran::where('status', 'diverifikasi')
+                ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                ->where('verified_at', '>=', $monthStart)
+                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan')->all()),
+            'chartNilaiTransaksi' => $this->hitungSeries($bulanLabels, Pembayaran::where('status', 'diverifikasi')
+                ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                ->where('verified_at', '>=', $monthStart)
+                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan')->all(), true),
+            'userGrowthMonth' => cache()->remember("admin.userGrowth.{$bulanCount}", 600, fn () => $this->userRoleSeries($bulanCount)),
             'statusPenyewaan' => Penyewaan::whereHas('properti', $this->kelolaan())
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
@@ -153,6 +159,11 @@ new class extends Component
                 ->groupBy('status')
                 ->pluck('total', 'status'),
         ];
+    }
+
+    private function hitungSeries(array $labels, array $peta, bool $bulat = false): array
+    {
+        return array_map(fn ($label) => $bulat ? (int) round((float) ($peta[$label] ?? 0)) : (int) ($peta[$label] ?? 0), $labels);
     }
 
     /**

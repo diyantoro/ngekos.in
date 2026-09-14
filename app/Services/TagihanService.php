@@ -61,6 +61,8 @@ class TagihanService
 
     /**
      * Sinkron kolom denda ke nilai berjalan. Return denda terbaru.
+     * Tulis DB hanya lewat jalur eksplisit (scheduler, reminder, verifikasi).
+     * Endpoint read memakai rincian() yang read-only di bawah.
      */
     public static function sinkronDenda(Tagihan $tagihan, ?Carbon $pada = null): float
     {
@@ -72,7 +74,6 @@ class TagihanService
 
         if ((float) $tagihan->denda !== $denda) {
             $tagihan->update(['denda' => $denda]);
-            $tagihan->refresh();
         }
 
         return $denda;
@@ -80,13 +81,18 @@ class TagihanService
 
     /**
      * Rincian siap tampil / validasi bayar (termasuk patungan).
+     * Read-only: denda berjalan dihitung in-memory tanpa tulis DB
+     * agar endpoint read tidak memicu N write per baris.
      *
      * @return array{sewa: float, denda: float, hari_telat: int, denda_per_hari: float, total: float, porsi: float|null}
      */
     public static function rincian(Tagihan $tagihan, ?Carbon $pada = null): array
     {
         $tagihan->loadMissing(['penyewaan.anggotas']);
-        self::sinkronDenda($tagihan, $pada);
+
+        if ($tagihan->status !== 'lunas') {
+            $tagihan->setAttribute('denda', self::dendaBerjalan($tagihan, $pada));
+        }
 
         $porsi = null;
 

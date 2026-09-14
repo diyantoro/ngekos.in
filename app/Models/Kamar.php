@@ -35,11 +35,17 @@ class Kamar extends Model
         return $this->hasMany(KamarFoto::class)->orderBy('urutan')->orderBy('id');
     }
 
+    private ?array $galeriCache = null;
+
     /**
      * @return array<int,string>
      */
     public function galeriUrls(): array
     {
+        if ($this->galeriCache !== null) {
+            return $this->galeriCache;
+        }
+
         $dariGaleri = $this->relationLoaded('fotos')
             ? $this->fotos->sortBy([['urutan', 'asc'], ['id', 'asc']])->pluck('path')->all()
             : $this->fotos()->orderBy('urutan')->orderBy('id')->pluck('path')->all();
@@ -54,7 +60,7 @@ class Kamar extends Model
             $urls[] = '/storage/'.$this->foto;
         }
 
-        return $urls;
+        return $this->galeriCache = $urls;
     }
 
     public function fotoCover(): ?string

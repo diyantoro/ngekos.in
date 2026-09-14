@@ -24,7 +24,8 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->with('fotos')
+            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli'])
+            ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
