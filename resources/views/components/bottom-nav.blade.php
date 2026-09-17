@@ -38,6 +38,22 @@
                 <span class="text-[10px] font-semibold">Pesan</span>
             </a>
 
+            @if (auth()->user()->hasAnyRole(['super_admin', 'admin']))
+                @php $bantuanBaru = auth()->user()->bantuanMasukBelumDibaca(); @endphp
+                <a href="{{ route('bantuan.masuk') }}" wire:navigate
+                   aria-current="{{ request()->routeIs('bantuan.masuk') ? 'page' : 'false' }}"
+                   class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition-all duration-200 {{ request()->routeIs('bantuan.masuk') ? 'text-teal-600 dark:text-teal-400' : 'text-gray-400 active:text-gray-600 dark:active:text-gray-300' }}">
+                    @if (request()->routeIs('bantuan.masuk'))
+                        <span class="absolute -top-px left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"></span>
+                    @endif
+                    <svg class="h-6 w-6 transition-transform duration-200 {{ request()->routeIs('bantuan.masuk') ? 'scale-110' : '' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" /></svg>
+                    @if ($bantuanBaru > 0)
+                        <span class="absolute top-0.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-sm animate-bounce-gentle">{{ $bantuanBaru > 9 ? '9+' : $bantuanBaru }}</span>
+                    @endif
+                    <span class="text-[10px] font-semibold">Bantuan</span>
+                </a>
+            @endif
+
             @if (auth()->user()->hasAnyRole(['pemilik', 'admin', 'super_admin']))
                 <div x-data="{ buka: false }" class="relative">
                     <button @click="buka = !buka" type="button"

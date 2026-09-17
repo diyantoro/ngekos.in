@@ -283,6 +283,7 @@ class AuthController extends Controller
             'inisial' => $user->inisial,
             'peran' => $user->getRoleNames()->first(),
             'pesan_belum_dibaca' => $user->pesanBelumDibaca(),
+            'bantuan_masuk_belum_dibaca' => $user->bantuanMasukBelumDibaca(),
             'bantuan_belum_dibaca' => PesanBantuan::where('user_id', $user->id)
                 ->whereNotNull('balasan')
                 ->whereNull('dibaca_pada')

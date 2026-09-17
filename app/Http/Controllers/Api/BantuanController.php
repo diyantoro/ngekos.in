@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PesanBantuan;
+use App\Services\BantuanNotifier;
 use App\Services\PushNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class BantuanController extends Controller
             'pesan.min' => 'Pesan minimal 10 karakter.',
         ]);
 
-        PesanBantuan::create([
+        $pesan = PesanBantuan::create([
             'user_id' => $request->user()?->id,
             'nama' => $validated['nama'],
             'email' => $validated['email'],
@@ -33,6 +34,8 @@ class BantuanController extends Controller
             'pesan' => $validated['pesan'],
             'status' => 'baru',
         ]);
+
+        BantuanNotifier::sebarkanPesanBaru($pesan, $request->user()?->id);
 
         return response()->json(['message' => 'Pesan kamu berhasil dikirim. Admin akan membalas secepatnya.'], 201);
     }
@@ -120,6 +123,39 @@ class BantuanController extends Controller
         }
 
         return response()->json(['message' => 'Pesan ditandai sudah dibaca.']);
+    }
+
+    public function notifikasi(Request $request): JsonResponse
+    {
+        $notifikasi = $request->user()
+            ->notifications()
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(fn ($n) => [
+                'id' => $n->id,
+                'dibaca' => $n->read_at !== null,
+                'tanggal' => $n->created_at->format('Y-m-d H:i:s'),
+                'data' => $n->data,
+            ]);
+
+        return response()->json($notifikasi);
+    }
+
+    public function notifikasiBaca(Request $request): JsonResponse
+    {
+        $request->user()->notifications()->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'Semua notifikasi ditandai sudah dibaca.']);
+    }
+
+    public function notifikasiCount(Request $request): JsonResponse
+    {
+        $count = $request->user()
+            ->unreadNotifications()
+            ->count();
+
+        return response()->json(['count' => (int) $count]);
     }
 
     private function format(PesanBantuan $p): array

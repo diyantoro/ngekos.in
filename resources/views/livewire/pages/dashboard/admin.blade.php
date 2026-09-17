@@ -4,6 +4,7 @@ use App\Models\ChatPesan;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
+use App\Models\PesanBantuan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
@@ -112,6 +113,7 @@ new class extends Component
                     ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
                 'propertiTanpaKamar' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))
                     ->whereDoesntHave('kamars')->count(),
+                'bantuanBaru' => PesanBantuan::jumlahBaru(),
             ],
             'tagihanStatusPerBulan' => $tagihanStatusPerBulan,
             'totalKamar' => Kamar::whereHas('properti', $this->kelolaan())->count(),
@@ -239,8 +241,8 @@ new class extends Component
     }
 }; ?>
 
-<div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+<div class="py-10" wire:poll.60000>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <x-dashboard-greeting
             roleLabel="Admin Properti"
             description="Verifikasi pembayaran pada properti yang ditugaskan kepada Anda."
@@ -423,6 +425,18 @@ new class extends Component
                             </div>
                         </div>
                     @endif
+                    @if (($needAttention['bantuanBaru'] ?? 0) > 0)
+                        <a href="{{ route('bantuan.masuk') }}" wire:navigate
+                            class="rounded-xl bg-white dark:bg-gray-800 p-3.5 flex items-center gap-3 hover:bg-teal-50/50 dark:hover:bg-gray-700/60 transition group">
+                            <span class="shrink-0 h-9 w-9 rounded-xl bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center group-hover:scale-105 transition">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" /></svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-lg font-extrabold text-gray-900 dark:text-gray-100">{{ $needAttention['bantuanBaru'] }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Pesan bantuan baru</p>
+                            </div>
+                        </a>
+                    @endif
                 </div>
             </div>
         @endif
@@ -486,7 +500,7 @@ new class extends Component
                                         <span class="text-xs text-gray-400 dark:text-gray-500 italic">Tidak ada</span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4"><x-status-badge :status="$pembayaran->status" /></td>
+<td class="px-6 py-4"><x-status-badge :status="$pembayaran->status" /></td>
                                 <td class="px-6 py-4">
                                     @if ($pembayaran->status === 'menunggu_verifikasi')
                                         <div class="flex justify-end">

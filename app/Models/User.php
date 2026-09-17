@@ -21,8 +21,6 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
-    private ?int $pesanBelumDibacaCache = null;
-
     /**
      * Get the attributes that should be cast.
      *
@@ -52,6 +50,7 @@ class User extends Authenticatable
             'pembayaran_diverifikasi' => 'Email saat pembayaran diverifikasi',
             'chat_baru' => 'Pemberitahuan pesan chat baru',
             'bantuan_balasan' => 'Notifikasi push saat admin membalas pesan bantuan',
+            'bantuan_baru' => 'Push saat ada pesan bantuan baru (admin)',
         ];
     }
 
@@ -111,12 +110,8 @@ class User extends Authenticatable
      */
     public function pesanBelumDibaca(): int
     {
-        if ($this->pesanBelumDibacaCache !== null) {
-            return $this->pesanBelumDibacaCache;
-        }
-
         if ($this->hasRole('anak_kos')) {
-            return $this->pesanBelumDibacaCache = ChatPesan::query()
+            return ChatPesan::query()
                 ->where('anak_kos_id', $this->id)
                 ->where('pengirim_id', '!=', $this->id)
                 ->whereNull('dibaca_pada')
@@ -127,17 +122,26 @@ class User extends Authenticatable
             $ids = cache()->remember("pemilik.properti-ids.{$this->id}", 300, fn () => Properti::where('pemilik_id', $this->id)->pluck('id')->all());
 
             if ($ids === []) {
-                return $this->pesanBelumDibacaCache = 0;
+                return 0;
             }
 
-            return $this->pesanBelumDibacaCache = ChatPesan::query()
+            return ChatPesan::query()
                 ->whereIn('properti_id', $ids)
                 ->where('pengirim_id', '!=', $this->id)
                 ->whereNull('dibaca_pada')
                 ->count();
         }
 
-        return $this->pesanBelumDibacaCache = 0;
+        return 0;
+    }
+
+    public function bantuanMasukBelumDibaca(): int
+    {
+        if (! $this->hasAnyRole(['super_admin', 'admin'])) {
+            return 0;
+        }
+
+        return cache()->remember('bantuan_masuk_count', 60, fn () => PesanBantuan::jumlahBaru());
     }
 
     /**

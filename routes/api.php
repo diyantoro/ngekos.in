@@ -112,13 +112,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/pengaturan/ganti-password', [PengaturanController::class, 'gantiPassword']);
 
     // Bantuan
-    Route::post('/bantuan', [BantuanController::class, 'kirim']);
+    Route::post('/bantuan', [BantuanController::class, 'kirim'])->middleware('throttle:10,1');
     Route::get('/bantuan/riwayat', [BantuanController::class, 'riwayat']);
     Route::get('/bantuan/masuk', [BantuanController::class, 'masuk'])
         ->middleware('role:super_admin|admin');
     Route::post('/bantuan/{id}/balas', [BantuanController::class, 'balas'])
         ->middleware('role:super_admin|admin');
     Route::post('/bantuan/{id}/baca', [BantuanController::class, 'tandaiDibaca'])
+        ->middleware('role:super_admin|admin');
+    Route::get('/notifikasi', [BantuanController::class, 'notifikasi'])
+        ->middleware('role:super_admin|admin');
+    Route::get('/notifikasi/count', [BantuanController::class, 'notifikasiCount'])
+        ->middleware('role:super_admin|admin');
+    Route::post('/notifikasi/baca', [BantuanController::class, 'notifikasiBaca'])
         ->middleware('role:super_admin|admin');
 
     // Pengguna (super admin)

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\PesanBantuan;
+use App\Services\BantuanNotifier;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -33,7 +34,7 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $validated = $this->validate();
 
-        PesanBantuan::create([
+        $pesanBaru = PesanBantuan::create([
             'user_id' => auth()->id(),
             'nama' => $validated['nama'],
             'email' => $validated['email'],
@@ -41,6 +42,8 @@ new #[Layout('layouts.publik')] class extends Component
             'pesan' => $validated['pesan'],
             'status' => 'baru',
         ]);
+
+        BantuanNotifier::sebarkanPesanBaru($pesanBaru, auth()->id());
 
         $this->reset('subjek', 'pesan');
         $this->sukses = 'Pesan kamu berhasil dikirim. Admin akan membalas secepatnya, dan balasan bisa dilihat di halaman Riwayat Bantuan.';

@@ -19,6 +19,16 @@ class PesanBantuan extends Model
         ];
     }
 
+    public function scopeBaru($query)
+    {
+        return $query->where('status', 'baru');
+    }
+
+    public static function jumlahBaru(): int
+    {
+        return (int) static::baru()->count();
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
