@@ -344,7 +344,16 @@ new #[Layout('layouts.publik')] class extends Component
                             this.$nextTick(() => this.renderGrafik());
                         });
                         this.$watch('muat', () => this.$nextTick(() => this.renderGrafik()));
-                        this.$watch(() => this.$store.theme.dark, () => this.$nextTick(() => this.renderGrafik()));
+                        try {
+                            if (this.$store && this.$store.theme) {
+                                this.$watch(() => this.$store.theme.dark, () => this.$nextTick(() => this.renderGrafik()));
+                            } else {
+                                document.addEventListener('ngekos:theme-changed', () => this.$nextTick(() => this.renderGrafik()));
+                            }
+                        } catch (e) {
+                            document.addEventListener('ngekos:theme-changed', () => this.$nextTick(() => this.renderGrafik()));
+                        }
+                        document.addEventListener('livewire:navigated', () => this.$nextTick(() => this.renderGrafik()));
                     });
                 },
             }" class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10">
@@ -521,13 +530,14 @@ new #[Layout('layouts.publik')] class extends Component
 
     @push('scripts')
         <script>
-            let _mapBeranda = null;
-            let _boundsBeranda = null;
-            const dataPetaBeranda = @js($markers);
+            window._mapBeranda = window._mapBeranda || null;
+            window._boundsBeranda = window._boundsBeranda || null;
+            window.dataPetaBeranda = @js($markers);
 
             function berandaFallback() {
                 const el = document.getElementById('peta-kos-beranda');
-                if (!el || !dataPetaBeranda.length) return;
+                const data = window.dataPetaBeranda || [];
+                if (!el || !data.length) return;
                 if (typeof window.pasangOsmEmbed === 'function') {
                     const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
                     window.pasangOsmEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, 10, dataPetaBeranda);
@@ -541,49 +551,50 @@ new #[Layout('layouts.publik')] class extends Component
 
             function berandaBuatPeta(percobaan) {
                 const el = document.getElementById('peta-kos-beranda');
-                const data = dataPetaBeranda;
+                const data = window.dataPetaBeranda || [];
                 if (!el || !data.length) return;
                 if (el.offsetWidth === 0) {
-                    if ((percobaan || 0) < 10) requestAnimationFrame(() => berandaBuatPeta((percobaan || 0) + 1));
+                    if ((percobaan || 0) < 20) setTimeout(() => berandaBuatPeta((percobaan || 0) + 1), 120);
+                    else berandaFallback();
                     return;
                 }
                 if (typeof google === 'undefined' || !google.maps) {
                     berandaFallback();
                     return;
                 }
-                if (_mapBeranda) {
-                    requestAnimationFrame(() => {
-                        google.maps.event.trigger(_mapBeranda, 'resize');
-                        if (_boundsBeranda) _mapBeranda.fitBounds(_boundsBeranda);
-                    });
+                if (window._mapBeranda) {
+                    try {
+                        google.maps.event.trigger(window._mapBeranda, 'resize');
+                        if (window._boundsBeranda) window._mapBeranda.fitBounds(window._boundsBeranda);
+                    } catch (e) {}
                     return;
                 }
 
                 const bounds = new google.maps.LatLngBounds();
                 data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
-                _boundsBeranda = bounds;
+                window._boundsBeranda = bounds;
 
-                _mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
+                window._mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
                 if (data.length === 1) {
-                    _mapBeranda.setCenter(bounds.getCenter());
-                    _mapBeranda.setZoom(14);
+                    window._mapBeranda.setCenter(bounds.getCenter());
+                    window._mapBeranda.setZoom(14);
                 } else {
-                    _mapBeranda.fitBounds(bounds);
+                    window._mapBeranda.fitBounds(bounds);
                 }
 
                 const markers = data.map((m) => {
-                    const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: _mapBeranda, title: m.nama });
+                    const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: window._mapBeranda, title: m.nama });
                     const info = new google.maps.InfoWindow();
                     pemuat.addListener('click', () => {
                         const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
                             (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
                             (m.kota ? String(m.kota).replace(/</g, '&lt;') : '');
                         info.setContent(isi);
-                        info.open({ map: _mapBeranda, anchor: pemuat });
+                        info.open({ map: window._mapBeranda, anchor: pemuat });
                     });
                     return pemuat;
                 });
-                if (typeof window.pasangCluster === 'function') window.pasangCluster(markers, _mapBeranda);
+                if (typeof window.pasangCluster === 'function') { try { window.pasangCluster(markers, window._mapBeranda); } catch (e) {} }
             }
 
             window.initPetaBeranda = function () {
@@ -598,16 +609,18 @@ new #[Layout('layouts.publik')] class extends Component
             window.resetPetaBeranda = function () {
                 const el = document.getElementById('peta-kos-beranda');
                 if (el) el.innerHTML = '';
-                _mapBeranda = null;
-                _boundsBeranda = null;
+                window._mapBeranda = null;
+                window._boundsBeranda = null;
             };
 
             (() => {
                 document.addEventListener('livewire:navigated', () => {
-                    _mapBeranda = null;
-                    _boundsBeranda = null;
+                    window._mapBeranda = null;
+                    window._boundsBeranda = null;
                 });
-                if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(berandaBuatPeta);
+                if (typeof window.loadNgekosMaps === 'function') { try { window.loadNgekosMaps(window.berandaBuatPeta || berandaBuatPeta); } catch (e) {} }
+                window.berandaBuatPeta = berandaBuatPeta;
+                window.berandaFallback = berandaFallback;
             })();
         </script>
     @endpush

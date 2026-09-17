@@ -16,6 +16,7 @@ use App\Services\PatunganService;
 use App\Services\PembayaranService;
 use App\Services\PemilikRekapService;
 use App\Services\TagihanService;
+use App\Support\GrafikBulan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -620,7 +621,7 @@ class DashboardController extends Controller
         $trenRows = Pembayaran::where('status', 'diverifikasi')
             ->where('verified_at', '>=', $mulai)
             ->where($scopeBayar)
-            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as jml, SUM(jumlah) as nilai")
+            ->selectRaw(GrafikBulan::kolomBulan('verified_at').', COUNT(*) as jml, SUM(jumlah) as nilai')
             ->groupBy('bulan')
             ->get()
             ->keyBy('bulan');
@@ -635,13 +636,15 @@ class DashboardController extends Controller
 
         // Aging piutang + total: 1 query agregasi CASE, tanpa hydrate semua model + with relation.
         $hariIni = today()->toDateString();
+        $kurang7 = GrafikBulan::kurangiHari('?', 7);
+        $kurang30 = GrafikBulan::kurangiHari('?', 30);
         $agregat = Tagihan::where('status', '!=', 'lunas')
             ->where($scopeTagihan)
             ->selectRaw('COUNT(*) as jml, COALESCE(SUM(jumlah + denda), 0) as nilai')
-            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo >= ? THEN jumlah + denda ELSE 0 END), 0) as belum_jatuh_tempo", [$hariIni])
-            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < ? AND jatuh_tempo >= DATE_SUB(?, INTERVAL 7 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_1_7", [$hariIni, $hariIni])
-            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < DATE_SUB(?, INTERVAL 7 DAY) AND jatuh_tempo >= DATE_SUB(?, INTERVAL 30 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_8_30", [$hariIni, $hariIni])
-            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < DATE_SUB(?, INTERVAL 30 DAY) THEN jumlah + denda ELSE 0 END), 0) as telat_lebih_30", [$hariIni])
+            ->selectRaw('COALESCE(SUM(CASE WHEN jatuh_tempo >= ? THEN jumlah + denda ELSE 0 END), 0) as belum_jatuh_tempo', [$hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < ? AND jatuh_tempo >= {$kurang7} THEN jumlah + denda ELSE 0 END), 0) as telat_1_7", [$hariIni, $hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < {$kurang7} AND jatuh_tempo >= {$kurang30} THEN jumlah + denda ELSE 0 END), 0) as telat_8_30", [$hariIni, $hariIni])
+            ->selectRaw("COALESCE(SUM(CASE WHEN jatuh_tempo < {$kurang30} THEN jumlah + denda ELSE 0 END), 0) as telat_lebih_30", [$hariIni])
             ->first();
 
         $aging = [
@@ -790,14 +793,12 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
         }
 
-        $ktpPath = $request->file('ktp')->store('ktp', 'public');
+        $ktpPath = \App\Services\KtpStorage::simpan($request->file('ktp'));
 
         try {
             $anggota = PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
         } catch (\DomainException $e) {
-            if ($ktpPath) {
-                Storage::disk('public')->delete($ktpPath);
-            }
+            \App\Services\KtpStorage::hapus($ktpPath);
 
             return response()->json(['message' => $e->getMessage()], 422);
         }

@@ -21,6 +21,15 @@
                 var gelap = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
                 document.documentElement.classList.toggle('dark', gelap);
             })();
+            window.toggleNgekosTheme = window.toggleNgekosTheme || function () {
+                var gelap = !document.documentElement.classList.contains('dark');
+                document.documentElement.classList.toggle('dark', gelap);
+                try { localStorage.setItem('theme', gelap ? 'dark' : 'light'); } catch (e) {}
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.setAttribute('content', gelap ? '#0f172a' : '#0d9488');
+                try { if (window.Alpine && Alpine.store && Alpine.store('theme')) Alpine.store('theme').dark = gelap; } catch (e) {}
+                window.dispatchEvent(new CustomEvent('ngekos:theme-changed', { detail: { dark: gelap } }));
+            };
         </script>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 

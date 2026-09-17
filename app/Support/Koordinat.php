@@ -28,11 +28,33 @@ class Koordinat
         'Denpasar' => [-8.6705, 115.2126],
     ];
 
+    protected static ?array $petaKota = null;
+
     public static function kota(string $kota): ?array
     {
-        $kota = trim($kota);
+        if (self::$petaKota === null) {
+            self::$petaKota = [];
+            foreach (self::$kota as $nama => $titik) {
+                self::$petaKota[NormalisasiKota::normalize($nama)] = $titik;
+            }
+        }
 
-        return self::$kota[$kota] ?? null;
+        $n = NormalisasiKota::normalize($kota);
+
+        if (isset(self::$petaKota[$n])) {
+            return self::$petaKota[$n];
+        }
+
+        $cocok = null;
+        foreach (self::$petaKota as $nama => $titik) {
+            if (str_starts_with($n, $nama.' ')) {
+                if ($cocok === null || strlen($nama) > strlen($cocok)) {
+                    $cocok = $nama;
+                }
+            }
+        }
+
+        return $cocok !== null ? self::$petaKota[$cocok] : null;
     }
 
     /**
@@ -41,10 +63,15 @@ class Koordinat
      *
      * @return array{0: float, 1: float}|null
      */
-    public static function titik(?string $kota, ?string $latitude, ?string $longitude): ?array
+    public static function titik(?string $kota, mixed $latitude, mixed $longitude): ?array
     {
-        if ($latitude && $longitude) {
-            return [(float) $latitude, (float) $longitude];
+        if (is_numeric($latitude) && is_numeric($longitude)) {
+            $lat = (float) $latitude;
+            $lng = (float) $longitude;
+
+            if ($lat != 0.0 || $lng != 0.0) {
+                return [$lat, $lng];
+            }
         }
 
         return $kota !== null && $kota !== '' ? self::kota($kota) : null;

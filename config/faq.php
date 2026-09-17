@@ -15,23 +15,39 @@ return [
     */
 
     [
+        'judul' => 'Cara mendaftar akun',
         'kata_kunci' => ['daftar', 'register', 'buat akun', 'akun baru', 'mendaftar', 'sign up'],
         'jawaban' => 'Untuk mendaftar, klik tombol "Daftar" di halaman utama lalu isi nama lengkap, email, dan password. Kamu bisa memilih peran: "Anak Kos" untuk mencari kamar, atau "Pemilik Kos" untuk mendaftarkan kos-mu. Setelah itu kamu bisa langsung masuk ke dashboard.',
     ],
 
     [
+        'judul' => 'Cara masuk & lupa password',
         'kata_kunci' => ['login', 'masuk', 'lupa password', 'reset password', 'lupa sandi'],
         'jawaban' => 'Kamu bisa masuk dengan email dan password di halaman Masuk. Jika lupa password, klik tautan "Lupa password?" di halaman masuk untuk menerima tautan reset melalui email.',
     ],
 
     [
+        'judul' => 'Peran pengguna',
         'kata_kunci' => ['peran', 'role', 'anak kos', 'pemilik kos', 'super admin', 'admin'],
         'jawaban' => 'Aplikasi ini memiliki 4 peran: 1) Anak Kos: mencari dan menyewa kamar, membayar tagihan. 2) Pemilik Kos: mendaftarkan dan mempromosikan kos, mengelola kamar, melihat pendapatan. 3) Admin: membantu pemilik mengelola kamar dan memverifikasi pembayaran. 4) Super Admin: mengelola seluruh sistem.',
     ],
 
     [
+        'judul' => 'Cara mencari kos',
         'kata_kunci' => ['cari kos', 'katalog', 'pencarian', 'filter', 'promosi', 'tampil'],
         'jawaban' => 'Halaman "Cari Kos" menampilkan semua kos yang aktif dari berbagai pemilik. Kamu bisa mencari berdasarkan nama, kota, alamat, harga maksimal, dan kapasitas. Kos yang berstatus "Aktif" oleh pemiliknya akan tampil di halaman ini.',
+    ],
+
+    [
+        'judul' => 'Peta & persebaran kos',
+        'kata_kunci' => ['peta', 'map', 'lokasi kos', 'persebaran', 'sebaran', 'titik kos'],
+        'jawaban' => 'Di halaman utama ada bagian "Peta Kos" (klik Lihat Peta) untuk melihat titik lokasi kos aktif, dan "Persebaran Kos" untuk jumlah kos per kota. Klik bar kota untuk melihat pecahan daerahnya.',
+    ],
+
+    [
+        'judul' => 'Mode gelap & terang',
+        'kata_kunci' => ['mode gelap', 'mode terang', 'dark mode', 'light mode', 'tema gelap', 'tema terang'],
+        'jawaban' => 'Kamu bisa berganti mode gelap/terang lewat ikon bulan/matahari di header (pojok kanan atas) atau menu sidebar. Pilihanmu tersimpan otomatis di perangkat ini.',
     ],
 
     [

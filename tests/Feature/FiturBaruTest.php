@@ -57,6 +57,7 @@ class FiturBaruTest extends TestCase
     public function test_api_sewa_berhasil_dengan_ktp(): void
     {
         Storage::fake('public');
+        Storage::fake('private');
 
         $anak = $this->user('anak1@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
@@ -72,7 +73,7 @@ class FiturBaruTest extends TestCase
 
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('kamar_id', $kamar->id)->firstOrFail();
         $this->assertNotNull($sewa->ktp_path);
-        Storage::disk('public')->assertExists($sewa->ktp_path);
+        Storage::disk('private')->assertExists($sewa->ktp_path);
     }
 
     // ---------- 2. Kwitansi otomatis ----------
@@ -380,6 +381,7 @@ class FiturBaruTest extends TestCase
     public function test_api_tambah_anggota_dan_keluar_partial(): void
     {
         Storage::fake('public');
+        Storage::fake('private');
 
         $sewa = $this->sewaPatunganA3();
         $rina = $this->user('anak1@ngekos.test');
@@ -477,8 +479,8 @@ class FiturBaruTest extends TestCase
 
     public function test_ktp_hanya_bisa_dilihat_pemilik_kelolaan(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('ktp/test.jpg', 'fake-ktp');
+        Storage::fake('private');
+        Storage::disk('private')->put('ktp/test.jpg', 'fake-ktp');
 
         $sewa = Penyewaan::firstOrFail();
         $sewa->update(['ktp_path' => 'ktp/test.jpg']);
@@ -492,6 +494,7 @@ class FiturBaruTest extends TestCase
     public function test_volt_lengkapi_ktp_susulan(): void
     {
         Storage::fake('public');
+        Storage::fake('private');
 
         $anak = $this->user('anak1@ngekos.test');
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('status', 'aktif')->firstOrFail();

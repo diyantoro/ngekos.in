@@ -7,6 +7,7 @@ use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
+use App\Support\GrafikBulan;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -33,7 +34,7 @@ new class extends Component
 
         $userPerBulan = \Illuminate\Support\Facades\DB::table('users')
             ->where('created_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $anakPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
@@ -42,7 +43,7 @@ new class extends Component
             ->where('model_has_roles.model_type', (new User)->getMorphClass())
             ->where('roles.name', 'anak_kos')
             ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(users.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $pemilikPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
@@ -51,20 +52,20 @@ new class extends Component
             ->where('model_has_roles.model_type', (new User)->getMorphClass())
             ->where('roles.name', 'pemilik')
             ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(users.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $propertiPerBulan = Properti::where('created_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $sewaPerBulan = Penyewaan::where('created_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $trx = Pembayaran::where('status', 'diverifikasi')
             ->where('verified_at', '>=', $monthStart)
-            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as jml, SUM(jumlah) as nilai")
+            ->selectRaw(GrafikBulan::kolomBulan('verified_at').', COUNT(*) as jml, SUM(jumlah) as nilai')
             ->groupBy('bulan')
             ->get()->keyBy('bulan');
 
@@ -156,7 +157,7 @@ new class extends Component
             ],
             'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
                 ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+                ->selectRaw(GrafikBulan::kolomBulan('verified_at').', SUM(jumlah) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')
                 ->map(fn ($total, $bulan) => ['month' => $bulan, 'total' => (int) $total])
@@ -167,7 +168,7 @@ new class extends Component
                 'propertiTanpaKamar' => Properti::whereDoesntHave('kamars')->count(),
             ],
             'tagihanStatusPerBulan' => Tagihan::where('created_at', '>=', now()->subMonths(5)->startOfMonth())
-                ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, SUM(jumlah + denda) as total, SUM(IF(status = 'lunas', jumlah + denda, 0)) as lunas")
+                ->selectRaw(GrafikBulan::kolomBulan('created_at').', SUM(jumlah + denda) as total, '.GrafikBulan::jumlahLunas())
                 ->groupBy('bulan')
                 ->get()
                 ->mapWithKeys(fn ($r) => [$r->bulan => [

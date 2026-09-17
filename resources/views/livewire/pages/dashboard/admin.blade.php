@@ -7,6 +7,7 @@ use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
+use App\Support\GrafikBulan;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -64,7 +65,7 @@ new class extends Component
         $pendapatanRows = Pembayaran::where('status', 'diverifikasi')
             ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
             ->where('verified_at', '>=', $enamBulan)
-            ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+            ->selectRaw(GrafikBulan::kolomBulan('verified_at').', SUM(jumlah) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan');
         $pendapatanPerBulan = $pendapatanRows
@@ -73,7 +74,7 @@ new class extends Component
 
         $tagihanRows = Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
             ->where('created_at', '>=', $enamBulan)
-            ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, SUM(jumlah + denda) as total, SUM(IF(status = 'lunas', jumlah + denda, 0)) as lunas")
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', SUM(jumlah + denda) as total, '.GrafikBulan::jumlahLunas())
             ->groupBy('bulan')
             ->get()
             ->keyBy('bulan');
@@ -129,24 +130,24 @@ new class extends Component
             'bulanLabels' => $bulanLabels,
             'chartGrowthProperti' => $this->hitungSeries($bulanLabels, Properti::where($this->kelolaan())
                 ->where('created_at', '>=', $monthStart)
-                ->selectRaw("DATE_FORMAT(created_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')->all()),
             'chartGrowthPenyewaan' => $this->hitungSeries($bulanLabels, Penyewaan::whereHas('properti', $this->kelolaan())
                 ->where('created_at', '>=', $monthStart)
-                ->selectRaw("DATE_FORMAT(penyewaans.created_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->selectRaw(GrafikBulan::kolomBulan('penyewaans.created_at').', COUNT(*) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')->all()),
             'chartGrowthPembayaran' => $this->hitungSeries($bulanLabels, Pembayaran::where('status', 'diverifikasi')
                 ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
                 ->where('verified_at', '>=', $monthStart)
-                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, COUNT(*) as total")
+                ->selectRaw(GrafikBulan::kolomBulan('verified_at').', COUNT(*) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')->all()),
             'chartNilaiTransaksi' => $this->hitungSeries($bulanLabels, Pembayaran::where('status', 'diverifikasi')
                 ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
                 ->where('verified_at', '>=', $monthStart)
-                ->selectRaw("DATE_FORMAT(verified_at, '%m/%Y') as bulan, SUM(jumlah) as total")
+                ->selectRaw(GrafikBulan::kolomBulan('verified_at').', SUM(jumlah) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')->all(), true),
             'userGrowthMonth' => cache()->remember("admin.userGrowth.{$bulanCount}", 600, fn () => $this->userRoleSeries($bulanCount)),

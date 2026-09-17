@@ -19,8 +19,9 @@ window.photoCropManager = photoCropManager;
 
 // Loader Google Maps — key dibaca dari <meta name="gmaps-key">.
 // Skrip Maps JS dimuat sekali (lazy) dan callback antrean dipanggil saat siap.
+// Tanpa key: callback tetap dipanggil async agar fallback OSM/embed jalan.
 window.loadNgekosMaps = (() => {
-    const key = (document.querySelector('meta[name="gmaps-key"]') || {}).content || '';
+    const bacaKey = () => ((document.querySelector('meta[name="gmaps-key"]') || {}).content || '').trim();
     let booted = false;
     const antre = [];
 
@@ -32,8 +33,16 @@ window.loadNgekosMaps = (() => {
     };
 
     return function loadNgekosMaps(fn) {
-        if (!key) return;
-        if (booted && window.google && window.google.maps) { fn(); return; }
+        if (typeof fn !== 'function') return;
+        const key = bacaKey();
+        if (!key) {
+            setTimeout(fn, 0);
+            return;
+        }
+        if (booted && window.google && window.google.maps) {
+            try { fn(); } catch (e) { console.error('Inisialisasi peta gagal:', e); }
+            return;
+        }
         antre.push(fn);
         if (document.getElementById('ngekos-gmaps-js')) return;
         const s = document.createElement('script');
@@ -42,6 +51,11 @@ window.loadNgekosMaps = (() => {
             + '&v=weekly&libraries=places,geocoding&loading=async&callback=ngekosMapsBoot';
         s.async = true;
         s.defer = true;
+        s.onerror = () => {
+            antre.splice(0).forEach((cb) => {
+                try { cb(); } catch (e) { console.error('Inisialisasi peta gagal:', e); }
+            });
+        };
         document.head.appendChild(s);
     };
 })();
@@ -317,23 +331,63 @@ window.growthBarChart = (elementId, labels, datasets) => window.renderChart(elem
     },
 });
 
-document.addEventListener('alpine:init', () => {
-    Alpine.store('theme', {
-        dark: localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches),
-        toggle() {
-            this.dark = !this.dark;
-            localStorage.setItem('theme', this.dark ? 'dark' : 'light');
-            this.apply();
-        },
-        apply() {
-            document.documentElement.classList.toggle('dark', this.dark);
-            const meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', this.dark ? '#0f172a' : '#0d9488');
-        },
-        init() {
-            this.apply();
+const terapkanTema = (gelap) => {
+    document.documentElement.classList.toggle('dark', gelap);
+    try { localStorage.setItem('theme', gelap ? 'dark' : 'light'); } catch (e) { /* abaikan */ }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', gelap ? '#0f172a' : '#0d9488');
+    try {
+        if (window.Alpine && window.Alpine.store && window.Alpine.store('theme')) {
+            window.Alpine.store('theme').dark = gelap;
         }
-    });
+    } catch (e) { /* abaikan jika store belum siap */ }
+    window.dispatchEvent(new CustomEvent('ngekos:theme-changed', { detail: { dark: gelap } }));
+};
+
+window.toggleNgekosTheme = () => {
+    terapkanTema(!document.documentElement.classList.contains('dark'));
+};
+
+const daftarkanThemeStore = () => {
+    try {
+        if (!window.Alpine || !window.Alpine.store) return;
+        if (!window.Alpine.store('theme')) {
+            window.Alpine.store('theme', {
+                dark: document.documentElement.classList.contains('dark'),
+                toggle() {
+                    terapkanTema(!document.documentElement.classList.contains('dark'));
+                    this.dark = document.documentElement.classList.contains('dark');
+                },
+                apply() {
+                    this.dark = document.documentElement.classList.contains('dark');
+                },
+                init() {
+                    this.dark = document.documentElement.classList.contains('dark');
+                },
+            });
+        } else {
+            window.Alpine.store('theme').dark = document.documentElement.classList.contains('dark');
+        }
+    } catch (e) { /* abaikan jika Alpine belum siap */ }
+};
+
+if (window.Alpine) daftarkanThemeStore();
+// Navigasi Livewire (wire:navigate) mengganti <body> tanpa reload <head>,
+// sehingga class "dark" di <html> bisa hilang. Terapkan ulang dari localStorage.
+const sinkronTemaNavigasi = () => {
+    try {
+        const t = localStorage.getItem('theme');
+        const gelap = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', gelap);
+        if (window.Alpine && window.Alpine.store && window.Alpine.store('theme')) {
+            window.Alpine.store('theme').dark = gelap;
+        }
+    } catch (e) { /* abaikan */ }
+};
+document.addEventListener('livewire:navigated', sinkronTemaNavigasi);
+document.addEventListener('alpine:navigated', sinkronTemaNavigasi);
+document.addEventListener('alpine:init', () => {
+    daftarkanThemeStore();
 
     // Counter statistik: hitung naik saat elemen terlihat (menggunakan nilai target yang dilewatkan).
     Alpine.data('statCounter', (target) => ({
@@ -365,12 +419,6 @@ document.addEventListener('alpine:init', () => {
             io.observe(this.$el);
         }
     }));
-
-    // Navigasi Livewire/Alpine mengganti DOM dan menghapus class "dark" dari <html>
-    // (elemen html dari server dikirim tanpa class). Terapkan ulang setelah navigasi selesai.
-    const reapplyTheme = () => Alpine.store('theme')?.apply();
-    document.addEventListener('livewire:navigated', reapplyTheme);
-    document.addEventListener('alpine:navigated', reapplyTheme);
 
     Alpine.store('theme').init();
 });

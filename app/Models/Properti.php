@@ -30,6 +30,21 @@ class Properti extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        $lupakanCache = function (): void {
+            foreach (['katalog.markers', 'katalog.daftarKota', 'beranda.markers', 'beranda.daftarKota', 'beranda.kotaStatistik', 'beranda.totalProperti', 'beranda.totalKamar'] as $kunci) {
+                try {
+                    cache()->forget($kunci);
+                } catch (\Throwable $e) {
+                }
+            }
+        };
+
+        static::saved($lupakanCache);
+        static::deleted($lupakanCache);
+    }
+
     public function pemilik(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pemilik_id');
