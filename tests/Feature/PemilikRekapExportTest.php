@@ -40,6 +40,7 @@ class PemilikRekapExportTest extends TestCase
     public function test_ekspor_pdf_mengunduh_file_pdf(): void
     {
         $bulan = now()->format('Y-m');
+        \App\Services\SubscriptionService::mulaiTrialFree($this->pemilik());
 
         $response = $this->actingAs($this->pemilik())
             ->get(route('pemilik.rekap.pdf', ['bulan' => $bulan]))
@@ -50,13 +51,39 @@ class PemilikRekapExportTest extends TestCase
             'application/pdf',
             $response->headers->get('Content-Type') ?? ''
         );
+        $this->assertSame('basic', $response->headers->get('X-Report-Tier'));
+    }
+
+    public function test_ekspor_pdf_trial_ada_watermark(): void
+    {
+        $bulan = now()->format('Y-m');
+        \App\Services\SubscriptionService::mulaiTrialFree($this->pemilik());
+
+        $pdf = $this->actingAs($this->pemilik())
+            ->get(route('pemilik.rekap.pdf', ['bulan' => $bulan]))
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertNotEmpty($pdf);
+    }
+
+    public function test_ekspor_excel_ditolak_free_dengan_403(): void
+    {
+        $this->actingAs($this->pemilik())
+            ->get(route('pemilik.rekap.excel'))
+            ->assertForbidden();
     }
 
     public function test_ekspor_excel_mengunduh_file_xlsx(): void
     {
         $bulan = now()->format('Y-m');
+        $pemilik = $this->pemilik();
+        \App\Models\Subscription::create([
+            'user_id' => $pemilik->id, 'plan' => 'pro', 'status' => 'active',
+            'starts_at' => now()->subDay(), 'expires_at' => now()->addMonth(),
+        ]);
 
-        $response = $this->actingAs($this->pemilik())
+        $response = $this->actingAs($pemilik)
             ->get(route('pemilik.rekap.excel', ['bulan' => $bulan]))
             ->assertOk()
             ->assertHeader('Content-Disposition', "attachment; filename=rekap-pemilik-{$bulan}.xlsx");
@@ -86,7 +113,9 @@ class PemilikRekapExportTest extends TestCase
 
     public function test_halaman_grafik_menampilkan_control_ekspor(): void
     {
-        $response = $this->actingAs($this->pemilik())
+        $pemilik = $this->pemilik();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+        $response = $this->actingAs($pemilik)
             ->get(route('pemilik.grafik'));
 
         $response->assertOk();
@@ -94,8 +123,21 @@ class PemilikRekapExportTest extends TestCase
         $content = $response->getContent();
         $this->assertStringContainsString('Ekspor Rekap Bulanan', $content);
         $this->assertStringContainsString(route('pemilik.rekap.pdf'), $content);
-        $this->assertStringContainsString(route('pemilik.rekap.excel'), $content);
         $this->assertStringContainsString('type="month"', $content);
+    }
+
+    public function test_halaman_grafik_free_partial_lock(): void
+    {
+        $pemilik = $this->pemilik();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+
+        $content = $this->actingAs($pemilik)->get(route('pemilik.grafik'))->getContent();
+
+        $this->assertStringContainsString('Uang Masuk vs Uang Keluar', $content);
+        $this->assertStringContainsString('Siapa yang belum bayar', $content);
+        $this->assertStringContainsString('Kos Pemasukan Terbesar', $content);
+        $this->assertStringContainsString('Pengeluaran per Kategori', $content);
+        $this->assertStringContainsString('Kamar Terisi', $content);
     }
 
     public function test_dashboard_pemilik_tidak_menampilkan_grafik_hanya_tautan(): void

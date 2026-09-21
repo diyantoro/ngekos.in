@@ -58,11 +58,12 @@ new #[Layout('layouts.publik')] class extends Component
                 ->pluck('kota')
                 ->all()),
             'markers' => cache()->remember('katalog.markers', 3600, fn () => Properti::where('status', 'aktif')
-                ->get(['nama', 'kota', 'alamat', 'latitude', 'longitude'])
+                ->get(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
                     $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
 
                     return $titik ? [
+                        'id' => $p->id,
                         'nama' => $p->nama,
                         'kota' => $p->kota,
                         'alamat' => $p->alamat,
@@ -200,7 +201,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <div class="relative h-32 sm:h-44 w-28 sm:w-full shrink-0 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
                             @php $coverKos = $properti->fotoCover(); @endphp
                             @if ($coverKos)
-                                <img src="{{ $coverKos }}" alt="{{ $properti->nama }}"
+                                <img src="{{ $coverKos }}" alt="{{ $properti->nama }}" loading="lazy" decoding="async"
                                      class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                             @else
                                 <div class="h-full w-full flex items-center justify-center">
@@ -359,7 +360,8 @@ new #[Layout('layouts.publik')] class extends Component
                     pemuat.addListener('click', () => {
                         const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
                             (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
-                            (m.kota ? String(m.kota).replace(/</g, '&lt;') : '');
+                            (m.kota ? String(m.kota).replace(/</g, '&lt;') : '') +
+                            (m.id ? '<br><a href="/kos/' + m.id + '">Lihat detail</a>' : '');
                         info.setContent(isi);
                         info.open({ map: ngekosMap, anchor: pemuat });
                     });

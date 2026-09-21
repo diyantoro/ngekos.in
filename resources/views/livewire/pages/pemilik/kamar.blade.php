@@ -2,6 +2,7 @@
 
 use App\Models\Kamar;
 use App\Models\Properti;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -97,6 +98,15 @@ new #[Layout('layouts.app')] class extends Component
             $this->sinkronGaleri($kamar->refresh());
             $this->pesan = "Kamar {$kamar->nama} berhasil diperbarui.";
         } else {
+            $owner = $this->properti->pemilik ?? auth()->user();
+            $cek = SubscriptionService::checkLimit($owner, 'room');
+
+            if (! $cek['allowed']) {
+                $this->galat = $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.';
+
+                return;
+            }
+
             $data['properti_id'] = $this->properti->id;
             $kamar = Kamar::create($data);
             $this->sinkronGaleri($kamar);

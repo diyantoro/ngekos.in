@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PenggunaController;
 use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PropertiManageController;
 use App\Http\Controllers\Api\StorageProxyController;
+use App\Http\Controllers\Api\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 // Storage proxy (hanya prefix publik non-sensitif; KTP selalu 404 di sini)
@@ -126,6 +127,19 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:super_admin|admin');
     Route::post('/notifikasi/baca', [BantuanController::class, 'notifikasiBaca'])
         ->middleware('role:super_admin|admin');
+
+    // Langganan premium
+    Route::get('/plans', [SubscriptionController::class, 'plans']);
+    Route::get('/subscription', [SubscriptionController::class, 'show']);
+    Route::get('/subscription/history', [SubscriptionController::class, 'history']);
+    Route::get('/dashboard/pemilik/analytics', [DashboardController::class, 'analytics'])
+        ->middleware(['role:pemilik|admin|super_admin', 'premium:advanced_analytics']);
+    Route::get('/dashboard/pemilik/rekap-premium', [DashboardController::class, 'rekapPremium'])
+        ->middleware(['role:pemilik|admin|super_admin', 'premium:advanced_report']);
+    Route::get('/subscriptions', [SubscriptionController::class, 'index'])
+        ->middleware('role:super_admin');
+    Route::post('/subscriptions', [SubscriptionController::class, 'store'])
+        ->middleware('role:super_admin');
 
     // Pengguna (super admin)
     Route::get('/pengguna', [PenggunaController::class, 'index'])

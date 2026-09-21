@@ -72,7 +72,7 @@ new #[Layout('layouts.publik')] class extends Component
     }
 }; ?>
 
-<div class="py-8">
+<div class="py-8" wire:poll.3s>
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 flex items-center justify-between gap-3">
@@ -96,7 +96,7 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
 
         <!-- Pesan -->
-        <div id="ruang-pesan" class="mt-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5 h-[55vh] overflow-y-auto space-y-3" wire:poll.3s>
+        <div id="ruang-pesan" class="mt-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5 h-[55vh] overflow-y-auto space-y-3">
             @forelse ($pesans as $p)
                 @php
                     $punya = $p->pengirim_id === auth()->id();
@@ -136,21 +136,36 @@ new #[Layout('layouts.publik')] class extends Component
 
 @script
 <script>
-    const el = document.getElementById('ruang-pesan');
+    const ambilRuang = () => document.getElementById('ruang-pesan');
     let tetapBawah = true;
+    let tickScroll = false;
 
-    el.addEventListener('scroll', () => {
-        tetapBawah = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
-    });
+    const pasangScrollRuang = () => {
+        const target = ambilRuang();
+        if (!target || target.dataset.scrollSiap === '1') return;
+        target.dataset.scrollSiap = '1';
+        target.addEventListener('scroll', () => {
+            if (tickScroll) return;
+            tickScroll = true;
+            requestAnimationFrame(() => {
+                tetapBawah = target.scrollHeight - target.scrollTop - target.clientHeight < 150;
+                tickScroll = false;
+            });
+        }, { passive: true });
+    };
 
     const keBawah = () => requestAnimationFrame(() => {
-        if (tetapBawah) el.scrollTop = el.scrollHeight;
+        const target = ambilRuang();
+        if (!target || !tetapBawah) return;
+        target.scrollTo({ top: target.scrollHeight, behavior: 'auto' });
     });
 
-    el.scrollTop = el.scrollHeight;
+    pasangScrollRuang();
+    keBawah();
 
     Livewire.hook('commit', ({ succeed }) => {
-        succeed(() => setTimeout(keBawah, 50));
+        succeed(() => setTimeout(() => { pasangScrollRuang(); keBawah(); }, 50));
     });
+    document.addEventListener('livewire:navigated', () => { pasangScrollRuang(); keBawah(); });
 </script>
 @endscript

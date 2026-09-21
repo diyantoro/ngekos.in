@@ -11,6 +11,7 @@ use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
 use App\Models\PesanBantuan;
+use App\Models\Pengeluaran;
 use App\Services\KwitansiService;
 use App\Services\PatunganService;
 use App\Services\PembayaranService;
@@ -351,10 +352,11 @@ class DashboardController extends Controller
 
     public function pemilik(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
 
         // Filter grafik: periode (3/6/12/24) + properti tertentu + custom range.
-        $bulanCount = max(1, min(24, (int) $request->input('periode', 6)));
+        $bulanCount = \App\Services\SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 6)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
 
         $totalProperti = Properti::where('pemilik_id', $userId)
@@ -592,8 +594,9 @@ class DashboardController extends Controller
      */
     public function grafik(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
-        $bulanCount = max(1, min(24, (int) $request->input('periode', 12)));
+        $user = $request->user();
+        $userId = $user->id;
+        $bulanCount = \App\Services\SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 12)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
 
         $scopeId = fn ($q) => $q->where('pemilik_id', $userId)
@@ -691,6 +694,32 @@ class DashboardController extends Controller
             ],
             'top_properti' => $topProperti,
         ]);
+    }
+
+    public function analytics(Request $request): JsonResponse
+    {
+        $response = $this->grafik($request);
+        $data = $response->getData(true);
+
+        return response()->json([
+            'periode' => $data['periode'] ?? null,
+            'chart' => $data['chart'] ?? null,
+            'rekap' => $data['rekap'] ?? null,
+            'tren_transaksi' => $data['tren_transaksi'] ?? null,
+            'aging_piutang' => $data['aging_piutang'] ?? null,
+            'top_properti' => $data['top_properti'] ?? null,
+        ]);
+    }
+
+    public function rekapPremium(Request $request): JsonResponse
+    {
+        try {
+            $data = PemilikRekapService::data($request->user()->id, $request->query('bulan'), \App\Services\SubscriptionService::reportTier($request->user()));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($data);
     }
 
     public function pemilikSewaans(Request $request): JsonResponse
@@ -887,6 +916,7 @@ class DashboardController extends Controller
             $data = PemilikRekapService::data(
                 $request->user()->id,
                 $request->input('bulan'),
+                \App\Services\SubscriptionService::reportTier($request->user()),
             );
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

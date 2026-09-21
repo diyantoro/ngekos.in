@@ -48,6 +48,10 @@ new #[Layout('layouts.guest')] class extends Component
         $user = User::create($data);
         $user->assignRole($validated['peran']);
 
+        if ($validated['peran'] === 'pemilik') {
+            \App\Services\SubscriptionService::mulaiTrialFree($user);
+        }
+
         event(new Registered($user));
         Auth::login($user);
 

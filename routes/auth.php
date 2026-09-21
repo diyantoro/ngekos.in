@@ -11,9 +11,9 @@ Route::middleware('guest')->group(function () {
     Volt::route('login', 'pages.auth.pilih-peran')
         ->name('login');
 
-    Volt::route('login/{peran}', 'pages.auth.login')
-        ->where('peran', 'anak_kos|pemilik')
-        ->name('login.form');
+Volt::route('login/{peran}', 'pages.auth.login')
+      ->where('peran', 'anak_kos|pemilik')
+      ->name('login.form');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
         ->name('password.request');

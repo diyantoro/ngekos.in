@@ -2,6 +2,7 @@
 
 use App\Models\Properti;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -188,6 +189,15 @@ new #[Layout('layouts.app')] class extends Component
             $properti = $this->properti->refresh();
             session()->flash('sukses', "Perubahan kos \"{$data['nama']}\" berhasil disimpan.");
         } else {
+            $targetUser = $this->bolehKelolaSemua() ? User::find($this->pemilikId) : auth()->user();
+            $cek = SubscriptionService::checkLimit($targetUser ?? auth()->user(), 'property');
+
+            if (! $cek['allowed']) {
+                $this->addError('nama', $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.');
+
+                return;
+            }
+
             $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->id();
             $properti = Properti::create($data);
             session()->flash('sukses', "Kos baru \"$data[nama]\" berhasil ditambahkan.");

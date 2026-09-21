@@ -5,6 +5,7 @@ use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -27,9 +28,14 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
-        $id = auth()->id();
+        $user = auth()->user();
+        $id = $user->id;
         $propertiId = $this->propertiId;
-        $bulanCount = max(1, min(24, (int) $this->periode));
+        $maxPeriode = SubscriptionService::maxPeriode($user);
+        $bulanCount = SubscriptionService::clampPeriode($user, max(1, (int) $this->periode));
+        $isFree = ! SubscriptionService::isExempt($user) && SubscriptionService::getPlan($user) === 'free';
+        $sisaTrial = SubscriptionService::sisaTrialHari($user);
+        $trialHabis = SubscriptionService::trialExpired($user);
 
         $scopeId = fn ($q) => $q->where('pemilik_id', $id)
             ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
@@ -175,6 +181,10 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'daftarProperti' => $daftarProperti,
+            'maxPeriode' => $maxPeriode,
+            'isFree' => $isFree,
+            'sisaTrial' => $sisaTrial,
+            'trialHabis' => $trialHabis,
             'totalKamar' => $totalKamar,
             'bulanLabels' => $bulanLabels,
             'chartPendapatan' => $chartPendapatan,
@@ -204,7 +214,7 @@ new #[Layout('layouts.app')] class extends Component
                     Kembali ke Dashboard
                 </a>
                 <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">Grafik & Analitik</h1>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Keuangan, okupansi, piutang, dan performa tiap properti.</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Keuangan, kamar terisi, tagihan, dan performa tiap kos.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <select wire:model.live="propertiId"
@@ -217,12 +227,24 @@ new #[Layout('layouts.app')] class extends Component
                 <select wire:model.live="periode"
                     class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
                     <option value="3">3 bulan</option>
-                    <option value="6">6 bulan</option>
-                    <option value="12">12 bulan</option>
-                    <option value="24">24 bulan</option>
+                    @if ($maxPeriode >= 6)<option value="6">6 bulan</option>@endif
+                    @if ($maxPeriode >= 12)<option value="12">12 bulan</option>@endif
+                    @if ($maxPeriode >= 24)<option value="24">24 bulan</option>@endif
                 </select>
             </div>
         </div>
+
+        @if ($isFree && $sisaTrial !== null)
+            <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO agar laporan & grafik lengkap tetap terbuka.
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade</a>
+            </div>
+        @elseif ($isFree && $trialHabis)
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar, halaman Laporan & unduh Excel dikunci.
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+            </div>
+        @endif
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <x-stat-card label="Pendapatan Periode" :value="'Rp' . number_format($totalPendapatan, 0, ',', '.')" tone="emerald"
@@ -246,11 +268,15 @@ new #[Layout('layouts.app')] class extends Component
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     PDF
                 </button>
+                @if ($isFree)
+                    <span title="Unduh Excel butuh paket PRO" class="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400 cursor-not-allowed">Excel · PRO</span>
+                @else
                 <button type="submit" formaction="{{ route('pemilik.rekap.excel') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     Excel
                 </button>
+                @endif
             </form>
         </div>
 
@@ -265,38 +291,65 @@ new #[Layout('layouts.app')] class extends Component
             data-belum='@json($chartBelum)'
             data-kategori='@json($chartKategori)'
             class="space-y-6">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
-                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pendapatan vs Pengeluaran vs Laba</h3>
+            <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
+                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Uang Masuk vs Uang Keluar</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                     {{ $propertiId ? ($daftarProperti->firstWhere('id', $propertiId)?->nama ?? '') : 'Semua properti' }} · {{ count($bulanLabels) }} bulan terakhir
                 </p>
-                <canvas id="grafik-keuangan" class="mt-4 max-h-72"></canvas>
+                <div class="relative mt-4 w-full" style="height: 17rem;">
+                        <canvas id="grafik-keuangan" class="absolute inset-0 h-full w-full"></canvas>
+                    </div>
             </div>
 
+            @if ($isFree)
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+                        <x-premium-lock requiredPlan="pro" title="Tren Transaksi" message="Tren jumlah transaksi dikunci di Free. Upgrade ke PRO untuk melihatnya." />
+                    </div>
+                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+                        <x-premium-lock requiredPlan="pro" title="Lunas vs Belum" message="Grafik lunas vs belum dikunci di Free. Upgrade ke PRO untuk melihatnya." />
+                    </div>
+                </div>
+            @else
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Transaksi</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Jumlah pembayaran terverifikasi per bulan</p>
-                    <canvas id="grafik-transaksi" class="mt-4 max-h-64"></canvas>
+                    <div class="relative mt-4 w-full" style="height: 15rem;">
+                        <canvas id="grafik-transaksi" class="absolute inset-0 h-full w-full"></canvas>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tagihan Lunas vs Belum</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Nilai tagihan terbit per bulan (Rp)</p>
-                    <canvas id="grafik-lunas" class="mt-4 max-h-64"></canvas>
+                                        <div class="relative mt-4 w-full" style="height: 15rem;">
+                        <canvas id="grafik-lunas" class="absolute inset-0 h-full w-full"></canvas>
+                    </div>
                 </div>
             </div>
+            @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Okupansi</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Tingkat hunian (%) per bulan</p>
-                    <canvas id="grafik-okupansi" class="mt-4 max-h-64"></canvas>
+                @if ($isFree)
+                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+                        <x-premium-lock requiredPlan="pro" title="Kamar Terisi" message="Tren kamar terisi dikunci di Free. Upgrade ke PRO untuk melihatnya." />
+                    </div>
+                @else
+                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
+                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Kamar Terisi</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Kamar terisi (%) per bulan</p>
+                                        <div class="relative mt-4 w-full" style="height: 15rem;">
+                        <canvas id="grafik-okupansi" class="absolute inset-0 h-full w-full"></canvas>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+                @endif
+                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pengeluaran per Kategori</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Komposisi biaya operasional periode ini</p>
                     @if (count($chartKategori) > 0)
-                        <canvas id="grafik-kategori" class="mt-4 max-h-64"></canvas>
+                                            <div class="relative mt-4 w-full" style="height: 15rem;">
+                        <canvas id="grafik-kategori" class="absolute inset-0 h-full w-full"></canvas>
+                    </div>
                     @else
                         <p class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pengeluaran pada periode ini.</p>
                     @endif
@@ -305,31 +358,36 @@ new #[Layout('layouts.app')] class extends Component
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            @if ($isFree)
+                <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+                    <x-premium-lock requiredPlan="pro" title="Siapa yang belum bayar" message="Rincian yang belum bayar dikunci di Free. Upgrade ke PRO untuk melihatnya." />
+                </div>
+            @else
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Aging Piutang</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Nilai tagihan belum lunas per umur tunggakan</p>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Tagihan Belum Bayar</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Nilai tagihan yang belum dibayar</p>
                 </div>
                 <div class="p-5 grid grid-cols-2 gap-3">
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-700/40 p-4">
-                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Belum jatuh tempo</p>
+                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Belum waktunya bayar</p>
                         <p class="mt-1 text-base font-extrabold text-gray-900 dark:text-gray-100">Rp{{ number_format($aging['belum_jatuh_tempo'], 0, ',', '.') }}</p>
                     </div>
                     <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 p-4">
-                        <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Telat 1–7 hari</p>
+                        <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase">Baru telat, di bawah seminggu</p>
                         <p class="mt-1 text-base font-extrabold text-amber-700 dark:text-amber-300">Rp{{ number_format($aging['telat_1_7'], 0, ',', '.') }}</p>
                     </div>
                     <div class="rounded-xl bg-orange-50 dark:bg-orange-500/10 p-4">
-                        <p class="text-[11px] font-semibold text-orange-600 dark:text-orange-400 uppercase">Telat 8–30 hari</p>
+                        <p class="text-[11px] font-semibold text-orange-600 dark:text-orange-400 uppercase">Telat sampai sebulan</p>
                         <p class="mt-1 text-base font-extrabold text-orange-700 dark:text-orange-300">Rp{{ number_format($aging['telat_8_30'], 0, ',', '.') }}</p>
                     </div>
                     <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 p-4">
-                        <p class="text-[11px] font-semibold text-rose-600 dark:text-rose-400 uppercase">Telat &gt; 30 hari</p>
+                        <p class="text-[11px] font-semibold text-rose-600 dark:text-rose-400 uppercase">Telat lebih dari sebulan, segera tagih</p>
                         <p class="mt-1 text-base font-extrabold text-rose-700 dark:text-rose-300">Rp{{ number_format($aging['telat_lebih_30'], 0, ',', '.') }}</p>
                     </div>
                 </div>
                 <div class="px-5 pb-5">
-                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Rincian tunggakan (maks 50)</p>
+                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Siapa yang belum bayar (maks 50)</p>
                     <div class="divide-y divide-gray-100 dark:divide-gray-700 max-h-72 overflow-y-auto">
                         @forelse ($tagihanBelum as $t)
                             <div class="py-2.5 flex items-center justify-between gap-3">
@@ -345,89 +403,37 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </div>
             </div>
+            @endif
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Top Properti (Pendapatan Periode)</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Berdasarkan pembayaran terverifikasi</p>
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kos Pemasukan Terbesar</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Berdasarkan pembayaran terverifikasi</p>
+                    </div>
+                    <span class="shrink-0 inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-500/30">Pro</span>
                 </div>
-                <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @forelse ($topProperti as $i => $p)
-                        <div class="px-5 py-3.5 flex items-center gap-3">
-                            <span class="shrink-0 h-8 w-8 rounded-lg bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 text-sm font-extrabold flex items-center justify-center">{{ $i + 1 }}</span>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $p['nama'] }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $p['kamar_terisi'] }}/{{ $p['total_kamar'] }} terisi</p>
+                @if (SubscriptionService::hasFeature(auth()->user(), 'advanced_analytics'))
+                    <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                        @forelse ($topProperti as $i => $p)
+                            <div class="px-5 py-3.5 flex items-center gap-3">
+                                <span class="shrink-0 h-8 w-8 rounded-lg bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 text-sm font-extrabold flex items-center justify-center">{{ $i + 1 }}</span>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $p['nama'] }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $p['kamar_terisi'] }}/{{ $p['total_kamar'] }} terisi</p>
+                                </div>
+                                <p class="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($p['pendapatan'], 0, ',', '.') }}</p>
                             </div>
-                            <p class="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($p['pendapatan'], 0, ',', '.') }}</p>
-                        </div>
-                    @empty
-                        <p class="px-5 py-10 text-center text-sm text-gray-400">Belum ada data.</p>
-                    @endforelse
-                </div>
+                        @empty
+                            <p class="px-5 py-10 text-center text-sm text-gray-400">Belum ada data.</p>
+                        @endforelse
+                    </div>
+                @else
+                    <div class="p-5">
+                        <x-premium-lock requiredPlan="pro" title="Perbandingan Properti" message="Bandingkan performa tiap kos Anda. Tersedia di paket PRO." />
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
-
-@push('scripts')
-    <script>
-        function renderGrafikPemilik() {
-            const wrap = document.getElementById('grafik-data');
-            if (!wrap || typeof window.renderChart === 'undefined') return;
-
-            const labels = JSON.parse(wrap.dataset.labels || '[]');
-            const pendapatan = JSON.parse(wrap.dataset.pendapatan || '[]');
-            const pengeluaran = JSON.parse(wrap.dataset.pengeluaran || '[]');
-            const laba = JSON.parse(wrap.dataset.laba || '[]');
-            const okupansi = JSON.parse(wrap.dataset.okupansi || '[]');
-            const transaksi = JSON.parse(wrap.dataset.transaksi || '[]');
-            const lunas = JSON.parse(wrap.dataset.lunas || '[]');
-            const belum = JSON.parse(wrap.dataset.belum || '[]');
-            const kategori = JSON.parse(wrap.dataset.kategori || '[]');
-
-            window.rekapKeuanganChart('grafik-keuangan', labels, pendapatan, pengeluaran, laba);
-            window.rekapOkupansiChart('grafik-okupansi', labels, okupansi);
-
-            window.renderChart('grafik-transaksi', {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'Transaksi', data: transaksi, backgroundColor: 'rgba(13, 148, 136, .85)', borderRadius: 6 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
-            });
-
-            window.renderChart('grafik-lunas', {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: 'Lunas', data: lunas, backgroundColor: 'rgba(16, 185, 129, .85)', borderRadius: 6 },
-                        { label: 'Belum', data: belum, backgroundColor: 'rgba(244, 63, 94, .85)', borderRadius: 6 },
-                    ],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
-                    scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } } },
-                },
-            });
-
-            if (kategori.length) {
-                window.rekapKategoriChart('grafik-kategori', kategori.map(k => k.label), kategori.map(k => k.value));
-            }
-        }
-
-        (function () {
-            const init = () => renderGrafikPemilik();
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-            document.addEventListener('livewire:navigated', init);
-            if (typeof Livewire !== 'undefined') {
-                Livewire.on('chart:data-updated', () => requestAnimationFrame(renderGrafikPemilik));
-            }
-        })();
-    </script>
-@endpush

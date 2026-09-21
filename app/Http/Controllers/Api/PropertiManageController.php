@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use App\Support\FacilityHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -68,6 +69,21 @@ class PropertiManageController extends Controller
         if ($pemilikId !== null
             && (! User::find($pemilikId)?->hasRole('pemilik'))) {
             return response()->json(['message' => 'Pemilik kos tidak valid.'], 422);
+        }
+
+        $targetUser = ($pemilikId ?? $request->user()->id) === $request->user()->id
+            ? $request->user()
+            : User::find($pemilikId);
+
+        if ($targetUser) {
+            $cek = SubscriptionService::checkLimit($targetUser, 'property');
+
+            if (! $cek['allowed']) {
+                return response()->json([
+                    'message' => $cek['message'],
+                    'required_plan' => $cek['required_plan'],
+                ], 403);
+            }
         }
 
         $data = $this->dataProperti($validated);
@@ -194,6 +210,16 @@ class PropertiManageController extends Controller
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
         ]);
+
+        $owner = $properti->pemilik;
+        $cek = SubscriptionService::checkLimit($owner ?? $request->user(), 'room');
+
+        if (! $cek['allowed']) {
+            return response()->json([
+                'message' => $cek['message'],
+                'required_plan' => $cek['required_plan'],
+            ], 403);
+        }
 
         $data = [
             'properti_id' => $propertiId,

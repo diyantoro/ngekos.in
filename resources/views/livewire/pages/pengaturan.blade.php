@@ -5,9 +5,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] class extends Component
 {
+    use WithFileUploads;
+
     public string $tab = 'profil';
 
     public string $situsNama = '';
@@ -23,6 +26,14 @@ new #[Layout('layouts.app')] class extends Component
     public string $kosJatuhTempo = 'akhir';
 
     public string $kosDendaPerHari = '0';
+
+    public string $qrisString = '';
+
+    public $qrisGambar;
+
+    public string $petunjukBayar = '';
+
+    public string $gambarQrisSaatIni = '';
 
     public array $notifikasi = [];
 
@@ -41,6 +52,10 @@ new #[Layout('layouts.app')] class extends Component
             $jatuhTempo = (string) Pengaturan::ambil('kos.jatuh_tempo', 'akhir');
             $this->kosJatuhTempo = $jatuhTempo === 'akhir' ? 'akhir' : (string) max(1, min(28, (int) $jatuhTempo));
             $this->kosDendaPerHari = (string) Pengaturan::dendaPerHari();
+
+            $this->qrisString = (string) Pengaturan::ambil('pay.qris', '');
+            $this->petunjukBayar = (string) Pengaturan::ambil('pay.petunjuk', '');
+            $this->gambarQrisSaatIni = (string) Pengaturan::ambil('pay.qris_image', '');
         }
 
         foreach (array_keys(User::daftarNotifikasi()) as $kunci) {
@@ -104,6 +119,38 @@ new #[Layout('layouts.app')] class extends Component
         $this->pesan = 'Pengaturan kos berhasil disimpan.';
     }
 
+    public function simpanPembayaran(): void
+    {
+        abort_unless($this->bolehKelola(), 403);
+
+        $this->validate([
+            'qrisString' => 'nullable|string|max:500',
+            'qrisGambar' => 'nullable|image|max:2048',
+            'petunjukBayar' => 'nullable|string|max:500',
+        ], [], [
+            'qrisString' => 'QRIS string',
+            'qrisGambar' => 'gambar QRIS',
+            'petunjukBayar' => 'petunjuk pembayaran',
+        ]);
+
+        $qrisImage = (string) Pengaturan::ambil('pay.qris_image', '');
+
+        if ($this->qrisGambar) {
+            $qrisImage = $this->qrisGambar->store('qris', 'public');
+        }
+
+        Pengaturan::simpanBanyak([
+            'pay.qris' => $this->qrisString,
+            'pay.qris_image' => $qrisImage,
+            'pay.petunjuk' => $this->petunjukBayar,
+        ]);
+
+        $this->gambarQrisSaatIni = $qrisImage;
+        $this->reset('qrisGambar');
+
+        $this->pesan = 'Pengaturan pembayaran QRIS berhasil disimpan.';
+    }
+
     public function simpanNotifikasi(): void
     {
         $preferensi = [];
@@ -141,6 +188,10 @@ new #[Layout('layouts.app')] class extends Component
                         <button wire:click="$set('tab', 'kos')" wire:loading.attr="disabled"
                             class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'kos' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
                             Kos
+                        </button>
+                        <button wire:click="$set('tab', 'pembayaran')" wire:loading.attr="disabled"
+                            class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
+                            Pembayaran
                         </button>
                     @endif
                     <button wire:click="$set('tab', 'profil')" wire:loading.attr="disabled"
@@ -224,6 +275,51 @@ new #[Layout('layouts.app')] class extends Component
                             <button type="submit" wire:loading.attr="disabled"
                                 class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                                 Simpan Pengaturan Kos
+                            </button>
+                            <span wire:loading.delay class="text-xs text-gray-400 dark:text-gray-500">Menyimpan...</span>
+                        </div>
+                    </form>
+                @elseif ($tab === 'pembayaran' && $this->bolehKelola())
+                    <form wire:submit="simpanPembayaran" class="max-w-2xl space-y-5">
+                        <div>
+                            <label for="qrisString" class="block text-sm font-medium text-gray-700 dark:text-gray-200">QRIS String (teks payment code)</label>
+                            <textarea id="qrisString" wire:model="qrisString" rows="3"
+                                class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 font-mono text-xs focus:ring-teal-500 focus:border-teal-500 transition-colors"></textarea>
+                            @error('qrisString') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Kode QRIS statis dari bank/merchant Anda. Ditampilkan apa adanya bila tidak ada gambar.</p>
+                        </div>
+                        <div>
+                            <label for="qrisGambar" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Gambar QRIS (opsional)</label>
+                            <input type="file" id="qrisGambar" wire:model="qrisGambar" accept="image/*"
+                                class="mt-2 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-teal-500">
+                            @error('qrisGambar') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            @if ($qrisGambar)
+                                <div wire:loading wire:target="qrisGambar" class="mt-2 text-xs text-gray-400">Mengunggah...</div>
+                                <img src="{{ $qrisGambar->temporaryUrl() }}" alt="Pratinjau QRIS"
+                                    class="mt-3 h-40 w-40 rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-2">
+                            @elseif ($gambarQrisSaatIni)
+                                <img src="{{ asset('storage/'.$gambarQrisSaatIni) }}" alt="QRIS aktif"
+                                    class="mt-3 h-40 w-40 rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-2">
+                            @elseif ($qrisString)
+                                <div class="mt-3">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Barcode QRIS dari teks:</p>
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data={{ urlencode($qrisString) }}" alt="QRIS Barcode"
+                                        class="h-40 w-40 rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-2">
+                                </div>
+                            @endif
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Unggah foto/screenshot QRIS merchant Anda. Utama bila QRIS string kosong.</p>
+                        </div>
+                        <div>
+                            <label for="petunjukBayar" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Petunjuk Pembayaran</label>
+                            <textarea id="petunjukBayar" wire:model="petunjukBayar" rows="2"
+                                class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500 transition-colors"></textarea>
+                            @error('petunjukBayar') <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Contoh: "Scan dengan GoPay/OVO/DANA lalu simpan bukti transfer."</p>
+                        </div>
+                        <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                            <button type="submit" wire:loading.attr="disabled"
+                                class="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                Simpan Pengaturan Pembayaran
                             </button>
                             <span wire:loading.delay class="text-xs text-gray-400 dark:text-gray-500">Menyimpan...</span>
                         </div>

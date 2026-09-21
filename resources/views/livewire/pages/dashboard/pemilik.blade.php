@@ -7,6 +7,7 @@ use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Component;
 
@@ -132,6 +133,22 @@ new class extends Component
             'pembayaranTerbaru' => $pembayaranTerbaru,
             'pembayaranMenunggu' => $pembayaranMenunggu,
             'pembayaranMenungguCount' => $pembayaranMenunggu->count(),
+            'langganan' => (function () {
+                $user = auth()->user();
+                $plan = SubscriptionService::getPlan($user);
+
+                return [
+                    'plan' => $plan,
+                    'propertyUsed' => SubscriptionService::usage($user, 'property'),
+                    'propertyLimit' => SubscriptionService::limitFor($plan, 'property'),
+                    'roomUsed' => SubscriptionService::usage($user, 'room'),
+                    'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
+                    'expiresAt' => SubscriptionService::getSubscription($user)?->expires_at?->translatedFormat('d F Y'),
+                    'status' => SubscriptionService::getSubscription($user)?->status,
+                    'sisaTrial' => SubscriptionService::sisaTrialHari($user),
+                    'trialHabis' => SubscriptionService::trialExpired($user),
+                ];
+            })(),
             'propertis' => $this->tab === 'sewaan' ? collect() : Properti::where('pemilik_id', $id)
                 ->select(['id', 'nama', 'alamat', 'status'])
                 ->with('kamars:id,properti_id,nama,kapasitas,harga_sewa_bulanan,status')
@@ -222,6 +239,18 @@ new class extends Component
         />
 
         <x-promo-ads />
+
+        <x-subscription-card
+            :plan="$langganan['plan']"
+            :propertyUsed="$langganan['propertyUsed']"
+            :propertyLimit="$langganan['propertyLimit']"
+            :roomUsed="$langganan['roomUsed']"
+            :roomLimit="$langganan['roomLimit']"
+            :expiresAt="$langganan['expiresAt']"
+            :status="$langganan['status'] ?? null"
+            :sisaTrial="$langganan['sisaTrial'] ?? null"
+            :trialHabis="$langganan['trialHabis'] ?? null"
+        />
 
         <x-promo-premium />
 

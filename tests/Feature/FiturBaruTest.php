@@ -469,7 +469,8 @@ class FiturBaruTest extends TestCase
             ->get(route('pemilik.grafik'))
             ->assertOk()
             ->assertSee('Grafik')
-            ->assertSee('Aging Piutang');
+            ->assertSee('Uang Masuk vs Uang Keluar')
+            ->assertSee('Siapa yang belum bayar');
 
         $this->actingAs($pemilik)
             ->get(route('dashboard.pemilik'))

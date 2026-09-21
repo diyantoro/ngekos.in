@@ -102,6 +102,20 @@ class User extends Authenticatable
         return $this->hasMany(DeviceToken::class);
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function activeSubscription(): ?Subscription
+    {
+        $subscription = $this->relationLoaded('subscriptions')
+            ? $this->subscriptions->sortByDesc('id')->first()
+            : $this->subscriptions()->latest('id')->first();
+
+        return $subscription && $subscription->isActive() ? $subscription : null;
+    }
+
     /**
      * Jumlah pesan chat yang belum dibaca user ini
      * (sebagai penyewa atau sebagai pemilik kos).

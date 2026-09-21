@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PemilikRekapService;
+use App\Services\SubscriptionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -14,11 +15,20 @@ class PemilikRekapExportController extends Controller
 {
     public function pdf(Request $request): StreamedResponse
     {
+        $user = $request->user();
+
+        if (! SubscriptionService::canExportPdf($user)) {
+            abort(403, 'Unduh PDF butuh paket PRO.');
+        }
+
         try {
-            $data = PemilikRekapService::data($request->user()->id, $request->query('bulan'));
+            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user));
         } catch (InvalidArgumentException $e) {
             abort(422, $e->getMessage());
         }
+
+        $data['is_trial'] = ! SubscriptionService::isExempt($user) && SubscriptionService::trialAktif($user) !== null;
+        $data['watermark'] = SubscriptionService::perluWatermark($user);
 
         $nama = 'rekap-pemilik-'.$data['bulan'].'.pdf';
 
@@ -28,14 +38,20 @@ class PemilikRekapExportController extends Controller
         return response()->streamDownload(
             fn () => print($pdf->output()),
             $nama,
-            ['Content-Type' => 'application/pdf'],
+            ['Content-Type' => 'application/pdf', 'X-Report-Tier' => SubscriptionService::reportTier($user)],
         );
     }
 
     public function excel(Request $request): StreamedResponse
     {
+        $user = $request->user();
+
+        if (! SubscriptionService::canExportExcel($user)) {
+            abort(403, 'Unduh Excel butuh paket PRO. Data tidak hilang.');
+        }
+
         try {
-            $data = PemilikRekapService::data($request->user()->id, $request->query('bulan'));
+            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user));
         } catch (InvalidArgumentException $e) {
             abort(422, $e->getMessage());
         }
@@ -58,7 +74,7 @@ class PemilikRekapExportController extends Controller
             'Penyewaan Aktif' => $ringkasan['penyewaan_aktif'],
             'Pendapatan' => $ringkasan['pendapatan'],
             'Pengeluaran' => $ringkasan['pengeluaran'],
-            'Laba Bersih' => $ringkasan['laba_bersih'],
+            'Untung Bersih' => $ringkasan['laba_bersih'],
             'Jumlah Transaksi' => $ringkasan['jumlah_transaksi'],
         ];
         foreach ($paket as $label => $nilai) {

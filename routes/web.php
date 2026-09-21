@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KtpPenyewaanController;
 use App\Http\Controllers\KwitansiController;
+use App\Http\Controllers\PemilikLaporanPremiumController;
 use App\Http\Controllers\PemilikRekapExportController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -41,6 +42,20 @@ Volt::route('pengguna', 'pages.super-admin.pengguna')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('pengguna');
 
+// Langganan premium (aktivasi manual oleh admin).
+Volt::route('langganan', 'pages.langganan.subscription')
+    ->middleware(['auth', 'verified'])
+    ->name('langganan.subscription');
+Volt::route('langganan/paket', 'pages.langganan.plans')
+    ->middleware(['auth', 'verified'])
+    ->name('langganan.plans');
+Volt::route('langganan/bayar/{plan}', 'pages.langganan.bayar')
+    ->middleware(['auth', 'verified'])
+    ->name('langganan.bayar');
+Volt::route('langganan/kelola', 'pages.super-admin.subscriptions')
+    ->middleware(['auth', 'verified', 'role:super_admin'])
+    ->name('langganan.kelola');
+
 // Kelola kos (pemilik pemiliknya sendiri; admin/super admin mengelola semuanya).
 Volt::route('pemilik/properti', 'pages.pemilik.properti')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
@@ -61,11 +76,29 @@ Volt::route('pemilik/grafik', 'pages.pemilik.grafik')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
     ->name('pemilik.grafik');
 
-// Ekspor rekap bulanan pemilik (PDF & Excel).
+// Laporan premium (fitur PRO/BUSINESS: advanced_report untuk halaman,
+// export_report untuk mengunduh PDF/Excel). Enforcement server-side.
+Volt::route('pemilik/laporan', 'pages.pemilik.laporan-premium')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.laporan');
+
+// Ekspor laporan premium wajib anggota paket dengan fitur export_report.
+Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
+    Route::get('pemilik/laporan/pdf', [PemilikLaporanPremiumController::class, 'pdf'])
+        ->middleware('premium:export_report')
+        ->name('pemilik.laporan.pdf');
+    Route::get('pemilik/laporan/excel', [PemilikLaporanPremiumController::class, 'excel'])
+        ->middleware('premium:export_report')
+        ->name('pemilik.laporan.excel');
+});
+
+// Ekspor rekap bulanan pemilik: PDF boleh semua paket (free ada watermark),
+// Excel hanya PRO/BUSINESS.
 Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
     Route::get('pemilik/rekap/pdf', [PemilikRekapExportController::class, 'pdf'])
         ->name('pemilik.rekap.pdf');
     Route::get('pemilik/rekap/excel', [PemilikRekapExportController::class, 'excel'])
+        ->middleware('premium:export_report')
         ->name('pemilik.rekap.excel');
 });
 

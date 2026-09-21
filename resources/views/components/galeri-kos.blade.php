@@ -4,14 +4,15 @@
     $daftar = collect($fotos)->filter()->values()->all();
 @endphp
 
-<div x-data="{ aktif: 0, total: {{ count($daftar) }} }" class="relative {{ $kelas }} bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden group">
+<div x-data="{ aktif: 0, total: {{ count($daftar) }}, ticking: false }" class="relative {{ $kelas }} bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden group">
     @if (count($daftar) > 0)
-        <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain scroll-smooth"
             x-ref="track"
-            @scroll.debounce.100ms="aktif = Math.round($el.scrollLeft / $el.clientWidth)">
+            @scroll="if (!ticking) { ticking = true; requestAnimationFrame(() => { aktif = Math.round($el.scrollLeft / $el.clientWidth); ticking = false; }); }"
+            @scrollend="aktif = Math.round($el.scrollLeft / $el.clientWidth)">
             @foreach ($daftar as $foto)
                 <div class="h-full w-full shrink-0 snap-center">
-                    <img src="{{ $foto }}" alt="{{ $nama }}" class="h-full w-full object-cover" loading="lazy">
+                    <img src="{{ $foto }}" alt="{{ $nama }}" class="h-full w-full object-cover" loading="lazy" decoding="async">
                 </div>
             @endforeach
         </div>

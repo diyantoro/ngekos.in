@@ -147,8 +147,8 @@ new class extends Component
     }
 }; ?>
 
-<div x-data="{ terbuka: false, scroll() { $nextTick(() => { const el = document.getElementById('chat-riwayat'); if (el) el.scrollTop = el.scrollHeight; }); } }"
-     x-init="(() => { try { if ($wire && $wire.$watch) $wire.$watch('percakapan', () => scroll()); } catch (e) {} $watch('terbuka', (v) => { if (v) scroll(); }); if (window.Livewire) { document.addEventListener('livewire:initialized', () => { try { $wire.$watch('percakapan', () => scroll()); } catch (e) {} }); } })()" @keydown.escape.window="terbuka = false" @click.away="terbuka = false" wire:ignore.self class="fixed right-4 sm:right-5 z-[60] bottom-24 sm:bottom-6 {{ $tampil ? '' : 'hidden' }}">
+<div x-data="{ terbuka: false, tetapBawah: true, scroll(paksa = false) { $nextTick(() => { const el = document.getElementById('chat-riwayat'); if (!el) return; if (paksa || this.tetapBawah) el.scrollTo({ top: el.scrollHeight, behavior: 'auto' }); }); } }"
+     x-init="(() => { const pasang = () => { try { if ($wire && $wire.$watch && !window.__chatbotWatch) { window.__chatbotWatch = true; $wire.$watch('percakapan', () => scroll()); } } catch (e) {} }; pasang(); $watch('terbuka', (v) => { if (v) { tetapBawah = true; scroll(true); } }); if (window.Livewire) { document.addEventListener('livewire:initialized', pasang); } })()" @keydown.escape.window="terbuka = false" @click.away="terbuka = false" wire:ignore.self class="fixed right-4 sm:right-5 z-[60] bottom-24 sm:bottom-6 {{ $tampil ? '' : 'hidden' }}">
     <button type="button" @click="terbuka = !terbuka"
             class="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 via-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-300/60 ring-2 ring-white/60 hover:scale-105 hover:shadow-xl hover:shadow-emerald-300/70 transition"
             :aria-label="terbuka ? 'Tutup chatbot bantuan' : 'Buka chatbot bantuan'"
@@ -202,7 +202,7 @@ new class extends Component
             </div>
         </div>
 
-        <div id="chat-riwayat" class="flex-1 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-900 px-4 py-4" aria-live="polite">
+        <div id="chat-riwayat" class="flex-1 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-900 px-4 py-4" aria-live="polite" @scroll="tetapBawah = ($event.target.scrollHeight - $event.target.scrollTop - $event.target.clientHeight) < 150">
             @foreach ($percakapan as $index => $pesan)
                 <div wire:key="chat-{{ $index }}"
                      class="flex {{ $pesan['dari'] === 'user' ? 'justify-end' : 'justify-start' }}">

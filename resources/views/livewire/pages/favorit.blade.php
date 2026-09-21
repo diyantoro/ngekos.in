@@ -70,7 +70,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <div class="relative h-40 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
                                     @php $coverFav = $properti->fotoCover(); @endphp
                                     @if ($coverFav)
-                                        <img src="{{ $coverFav }}" alt="{{ $properti->nama }}" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
+                                        <img src="{{ $coverFav }}" alt="{{ $properti->nama }}" loading="lazy" decoding="async" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                                     @else
                                         <div class="h-full w-full flex items-center justify-center">
                                             <svg class="h-12 w-12 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>

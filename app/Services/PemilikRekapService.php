@@ -11,7 +11,7 @@ use InvalidArgumentException;
 
 class PemilikRekapService
 {
-    public static function data(int $userId, ?string $bulan = null): array
+    public static function data(int $userId, ?string $bulan = null, string $tier = 'basic'): array
     {
         try {
             $periodeMulai = $bulan
@@ -45,6 +45,11 @@ class PemilikRekapService
             ->with(['anakKos:id,nama', 'tagihan:id,periode'])
             ->orderBy('verified_at', 'desc')
             ->get();
+
+        if ($tier === 'basic') {
+            $sewaans = $sewaans->take(20);
+            $transaksi = $transaksi->take(20);
+        }
 
         $pendapatan = (int) $transaksi->sum(fn ($t) => (float) $t->jumlah);
 

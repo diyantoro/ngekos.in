@@ -72,8 +72,8 @@
                     data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
-                    <div class="absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/25 blur-3xl"></div>
-                    <div class="absolute -left-10 bottom-0 h-28 w-40 rounded-full bg-white/10 blur-3xl"></div>
+                    <div class="absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/25 blur-xl sm:blur-3xl"></div>
+                    <div class="absolute -left-10 bottom-0 h-28 w-40 rounded-full bg-white/10 blur-xl sm:blur-3xl"></div>
                     <div class="absolute top-6 right-1/4 h-8 w-8 rounded-full border border-white/25"></div>
                     <div class="absolute -bottom-6 right-1/3 h-12 w-12 rounded-full border border-white/20"></div>
 

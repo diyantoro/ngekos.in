@@ -42,15 +42,15 @@
             </a>
         </div>
 
-        <div class="mt-4 flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mb-2 snap-x snap-mandatory">
+        <div class="mt-4 flex gap-4 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth pb-2 -mb-2 snap-x snap-proximity">
             @foreach ($trending as $p)
                 <a href="{{ route('kos.detail', $p) }}" wire:navigate
                     class="group w-[280px] shrink-0 snap-start rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
                     <div class="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-500/10 dark:to-amber-500/10 overflow-hidden">
                         @php $coverTrend = $p->fotoCover(); @endphp
                         @if ($coverTrend)
-                            <img src="{{ $coverTrend }}" alt="{{ $p->nama }}"
-                                class="h-full w-full object-cover">
+                            <img src="{{ $coverTrend }}" alt="{{ $p->nama }}" loading="lazy" decoding="async"
+                                class="h-full w-full object-cover aspect-[7/4]">
                         @else
                             <div class="h-full w-full flex items-center justify-center">
                                 <svg class="h-10 w-10 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>

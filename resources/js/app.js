@@ -157,8 +157,24 @@ window.renderChart = async (elementId, config) => {
     chartRegistry.set(elementId, new Chart(el, config));
 };
 
+// Ringkas nominal Rupiah: 1.5 jt, 2,3 M, dst (biar muat di layar kecil).
+const formatRupiahRingkas = (v) => {
+    const n = Number(v);
+    const abs = Math.abs(n);
+    const fmt = (x, d) => 'Rp' + x.toLocaleString('id-ID', { maximumFractionDigits: d });
+    if (abs >= 1_000_000_000) return fmt(n / 1_000_000_000, 1) + ' M';
+    if (abs >= 1_000_000) return fmt(n / 1_000_000, 1) + ' jt';
+    if (abs >= 1_000) return fmt(n / 1_000, 0) + ' rb';
+    return fmt(n, 0);
+};
+
+// Opsi ticks sumbu X yang menyesuaikan layar sempit (mobile): bulan saja + autoSkip.
+const ticksSumbuX = (labels, sempit) => sempit
+    ? { maxRotation: 0, minRotation: 0, autoSkip: true, autoSkipPadding: 6, font: { size: 9 }, callback: (v, i) => String(labels[i] ?? v).split(' ')[0] }
+    : { maxRotation: 0, minRotation: 0, font: { size: 11 }, callback: (v, i) => labels[i] ?? v };
+
 // Grafik keuangan: line Pendapatan vs Pengeluaran vs Laba Bersih per bulan.
-window.rekapKeuanganChart = (elementId, labels, pendapatan, pengeluaran, laba) => window.renderChart(elementId, {
+window.rekapKeuanganChart = (elementId, labels, pendapatan, pengeluaran, laba, extra = {}) => window.renderChart(elementId, {
     type: 'line',
     data: {
         labels,
@@ -171,8 +187,11 @@ window.rekapKeuanganChart = (elementId, labels, pendapatan, pengeluaran, laba) =
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
-        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } } },
+        ...extra,
+        scales: {
+            y: { beginAtZero: true, ticks: { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } },
+            ...(extra.scales || {}),
+        },
     },
 });
 
@@ -267,7 +286,7 @@ window.kosPerKotaChart = (elementId, labels, values, { onBarClick } = {}) => {
 };
 
 // Grafik okupansi: tren tingkat hunian (%) per bulan.
-window.rekapOkupansiChart = (elementId, labels, values) => window.renderChart(elementId, {
+window.rekapOkupansiChart = (elementId, labels, values, extra = {}) => window.renderChart(elementId, {
     type: 'line',
     data: {
         labels,
@@ -285,28 +304,111 @@ window.rekapOkupansiChart = (elementId, labels, values) => window.renderChart(el
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+        ...extra,
+        scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+            ...(extra.scales || {}),
+        },
     },
 });
 
 // Grafik pengeluaran by kategori (donut).
-window.rekapKategoriChart = (elementId, labels, values) => window.renderChart(elementId, {
-    type: 'doughnut',
-    data: {
-        labels,
-        datasets: [{
-            data: values,
-            backgroundColor: ['#0d9488', '#f43f5e', '#6366f1', '#f59e0b', '#0ea5e9', '#8b5cf6', '#22c55e', '#64748b'],
-            borderWidth: 2,
-        }],
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } },
-    },
-});
+// Di layar kecil legenda dipindah ke bawah agar donat tidak tergencet.
+window.rekapKategoriChart = (elementId, labels, values) => {
+    const sempit = window.innerWidth < 640;
+    return window.renderChart(elementId, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#0d9488', '#f43f5e', '#6366f1', '#f59e0b', '#0ea5e9', '#8b5cf6', '#22c55e', '#64748b'],
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: sempit ? 'bottom' : 'right', labels: { boxWidth: 10, font: { size: sempit ? 10 : 11 } } } },
+        },
+    });
+};
+
+// Halaman Grafik & Analitik (pemilik): render semua chart dari data atribut #grafik-data.
+// Dipasang GLOBAL agar tetap berjalan walau halaman dibuka lewat wire:navigate
+// (skrip di @push tidak selalu dieksekusi saat navigasi SPA Livewire).
+window.renderGrafikPemilik = () => {
+    const wrap = document.getElementById('grafik-data');
+    if (!wrap || typeof window.renderChart === 'undefined') return;
+
+    const labels = JSON.parse(wrap.dataset.labels || '[]');
+    const pendapatan = JSON.parse(wrap.dataset.pendapatan || '[]');
+    const pengeluaran = JSON.parse(wrap.dataset.pengeluaran || '[]');
+    const laba = JSON.parse(wrap.dataset.laba || '[]');
+    const okupansi = JSON.parse(wrap.dataset.okupansi || '[]');
+    const transaksi = JSON.parse(wrap.dataset.transaksi || '[]');
+    const lunas = JSON.parse(wrap.dataset.lunas || '[]');
+    const belum = JSON.parse(wrap.dataset.belum || '[]');
+    const kategori = JSON.parse(wrap.dataset.kategori || '[]');
+    const sempit = window.innerWidth < 640;
+    const tX = ticksSumbuX(labels, sempit);
+    const tYu = sempit ? { callback: formatRupiahRingkas } : undefined;
+
+    window.rekapKeuanganChart('grafik-keuangan', labels, pendapatan, pengeluaran, laba, {
+        scales: {
+            x: tX,
+            ...(tYu ? { y: { beginAtZero: true, ticks: tYu } } : {}),
+        },
+    });
+    window.rekapOkupansiChart('grafik-okupansi', labels, okupansi, { scales: { x: tX } });
+
+    window.renderChart('grafik-transaksi', {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Transaksi', data: transaksi, backgroundColor: 'rgba(13, 148, 136, .85)', borderRadius: 6 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: tX, y: { beginAtZero: true, ticks: { precision: 0, font: { size: sempit ? 10 : 11 } } } },
+        },
+    });
+
+    window.renderChart('grafik-lunas', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Lunas', data: lunas, backgroundColor: 'rgba(16, 185, 129, .85)', borderRadius: 6 },
+                { label: 'Belum', data: belum, backgroundColor: 'rgba(244, 63, 94, .85)', borderRadius: 6 },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: sempit ? 10 : 11 } } } },
+            scales: { x: tX, y: { beginAtZero: true, ticks: sempit ? { callback: formatRupiahRingkas } : { callback: v => 'Rp' + Number(v).toLocaleString('id-ID') } } },
+        },
+    });
+
+    if (kategori.length) {
+        window.rekapKategoriChart('grafik-kategori', kategori.map(k => k.label), kategori.map(k => k.value));
+    }
+};
+
+const inisialisasiGrafikPemilik = () => requestAnimationFrame(window.renderGrafikPemilik);
+
+const daftarkanGrafikPemilik = () => {
+    document.addEventListener('livewire:navigated', inisialisasiGrafikPemilik);
+    try {
+        if (window.Livewire) window.Livewire.on('chart:data-updated', inisialisasiGrafikPemilik);
+    } catch (e) { /* abaikan jika Livewire belum siap */ }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inisialisasiGrafikPemilik);
+    } else {
+        inisialisasiGrafikPemilik();
+    }
+};
+daftarkanGrafikPemilik();
 
 // Grafik pertumbuhan (multi-series, untuk admin & super admin).
 window.growthLineChart = (elementId, labels, datasets) => window.renderChart(elementId, {
@@ -389,7 +491,22 @@ document.addEventListener('alpine:navigated', sinkronTemaNavigasi);
 document.addEventListener('alpine:init', () => {
     daftarkanThemeStore();
 
-    // Counter statistik: hitung naik saat elemen terlihat (menggunakan nilai target yang dilewatkan).
+    // Counter statistik: hitung naik saat elemen terlihat (shared observer, ringan).
+    let statObserver = null;
+    const getStatObserver = () => {
+        if (statObserver) return statObserver;
+        statObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const jalan = entry.target._statJalan;
+                if (jalan) {
+                    statObserver.unobserve(entry.target);
+                    jalan();
+                }
+            });
+        }, { threshold: 0.4 });
+        return statObserver;
+    };
     Alpine.data('statCounter', (target) => ({
         display: 0,
         run() {
@@ -408,39 +525,38 @@ document.addEventListener('alpine:init', () => {
         },
         init() {
             if (!('IntersectionObserver' in window)) { this.run(); return; }
-            const io = new IntersectionObserver((entries, obs) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        obs.disconnect();
-                        this.run();
-                    }
-                });
-            }, { threshold: 0.4 });
-            io.observe(this.$el);
+            const diri = this;
+            this.$el._statJalan = () => diri.run();
+            getStatObserver().observe(this.$el);
         }
     }));
 
     Alpine.store('theme').init();
 });
 
-// Reveal on scroll: elemen dengan class `.reveal` muncul halus saat masuk viewport.
+// Reveal on scroll: satu shared observer agar ringan (bukan satu IO per elemen).
+let revealObserver = null;
+const getRevealObserver = () => {
+    if (revealObserver) return revealObserver;
+    revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target;
+            revealObserver.unobserve(el);
+            el.classList.add('is-revealed');
+            setTimeout(() => el.classList.remove('reveal'), 800);
+        });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    return revealObserver;
+};
 const initReveal = () => {
     const els = document.querySelectorAll('.reveal:not(.is-revealed)');
     if (!('IntersectionObserver' in window)) {
         els.forEach((el) => el.classList.add('is-revealed'));
         return;
     }
-    els.forEach((el) => {
-        const io = new IntersectionObserver((entries, obs) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) return;
-                el.classList.add('is-revealed');
-                obs.disconnect();
-                setTimeout(() => el.classList.remove('reveal'), 800);
-            });
-        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-        io.observe(el);
-    });
+    const io = getRevealObserver();
+    els.forEach((el) => io.observe(el));
 };
 
 if (document.readyState === 'loading') {
@@ -489,12 +605,28 @@ const initPromo = () => {
             paint();
             if (count) count.textContent = (index + 1) + ' / ' + slides.length;
         };
+        const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let terlihat = true;
         const next = () => { index = (index + 1) % slides.length; render(); };
         const prev = () => { index = (index - 1 + slides.length) % slides.length; render(); };
         const go = (i) => { index = ((i % slides.length) + slides.length) % slides.length; render(); };
-        const start = () => { if (!timer) timer = setInterval(next, delay); };
+        const start = () => {
+            if (timer || hematGerak || !terlihat || document.hidden) return;
+            timer = setInterval(next, delay);
+        };
         const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
         const restart = () => { stop(); start(); };
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver((entries) => {
+                entries.forEach((e) => {
+                    terlihat = e.isIntersecting;
+                    if (terlihat) start(); else stop();
+                });
+            }, { threshold: 0.1 }).observe(root);
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stop(); else start();
+        });
         root.querySelector('[data-promo-next]')?.addEventListener('click', () => { next(); restart(); });
         root.querySelector('[data-promo-prev]')?.addEventListener('click', () => { prev(); restart(); });
         root.addEventListener('mouseenter', stop);
@@ -529,6 +661,14 @@ if (document.readyState === 'loading') {
 }
 document.addEventListener('livewire:navigated', initPromo);
 document.addEventListener('alpine:navigated', initPromo);
-if ('MutationObserver' in window) {
-    new MutationObserver(() => initPromo()).observe(document.documentElement, { childList: true, subtree: true });
-}
+
+// Pindah halaman via wire:navigate dibuat instan (tidak animasi smooth),
+// scroll dalam halaman tetap smooth.
+document.addEventListener('livewire:navigating', () => {
+    document.documentElement.style.scrollBehavior = 'auto';
+});
+document.addEventListener('livewire:navigated', () => {
+    requestAnimationFrame(() => {
+        document.documentElement.style.scrollBehavior = '';
+    });
+});

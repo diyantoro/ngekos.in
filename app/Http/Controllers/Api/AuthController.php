@@ -99,6 +99,10 @@ class AuthController extends Controller
         $user = User::create($data);
         $user->assignRole($validated['peran']);
 
+        if ($validated['peran'] === 'pemilik') {
+            \App\Services\SubscriptionService::mulaiTrialFree($user);
+        }
+
         $token = $user->createToken('mobile-token')->plainTextToken;
 
         return response()->json([

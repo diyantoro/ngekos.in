@@ -15,13 +15,25 @@
         tr:nth-child(even) td { background: #f9fafb; }
         .ringkasan td:first-child { font-weight: bold; width: 50%; }
         .footer { margin-top: 18px; font-size: 10px; color: #9ca3af; text-align: center; }
+        .watermark { position: fixed; top: 42%; left: 0; right: 0; text-align: center; font-size: 44px; font-weight: bold; color: #d1d5db; opacity: 0.3; }
+        .trial-banner { text-align: center; font-size: 12px; font-weight: bold; color: #b45309; background: #fef3c7; border: 1px solid #fcd34d; padding: 6px 8px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
+    @if (($watermark ?? false) || ($is_trial ?? false))
+        <div class="watermark">TRIAL FREE</div>
+    @endif
     <div class="header">
         <h1>Rekap Bulanan Pemilik Kos</h1>
         <p>{{ $periode }} ({{ $bulan }})</p>
+        @if (($watermark ?? false) || ($is_trial ?? false))
+            <p style="font-weight: bold; color: #b45309;">TRIAL FREE - Laporan Dasar</p>
+        @endif
     </div>
+
+    @if (($watermark ?? false) || ($is_trial ?? false))
+        <div class="trial-banner">TRIAL FREE - Laporan Dasar. Upgrade ke PRO untuk laporan lengkap tanpa watermark.</div>
+    @endif
 
     <h2>Ringkasan</h2>
     <table class="ringkasan">
@@ -31,7 +43,7 @@
         <tr><td>Penyewaan Aktif</td><td>{{ $ringkasan['penyewaan_aktif'] }}</td></tr>
         <tr><td>Pendapatan</td><td>Rp {{ number_format($ringkasan['pendapatan'], 0, ',', '.') }}</td></tr>
         <tr><td>Pengeluaran</td><td>Rp {{ number_format($ringkasan['pengeluaran'], 0, ',', '.') }}</td></tr>
-        <tr><td>Laba Bersih</td><td>Rp {{ number_format($ringkasan['laba_bersih'], 0, ',', '.') }}</td></tr>
+        <tr><td>Untung Bersih</td><td>Rp {{ number_format($ringkasan['laba_bersih'], 0, ',', '.') }}</td></tr>
         <tr><td>Jumlah Transaksi</td><td>{{ $ringkasan['jumlah_transaksi'] }}</td></tr>
     </table>
 
