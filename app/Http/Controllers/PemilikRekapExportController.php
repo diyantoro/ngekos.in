@@ -17,6 +17,12 @@ class PemilikRekapExportController extends Controller
     {
         $user = $request->user();
 
+        $kunci = SubscriptionService::cekLaporan($user);
+
+        if (! $kunci['allowed']) {
+            abort(403, $kunci['message']);
+        }
+
         if (! SubscriptionService::canExportPdf($user)) {
             abort(403, 'Unduh PDF butuh paket PRO.');
         }
@@ -45,6 +51,12 @@ class PemilikRekapExportController extends Controller
     public function excel(Request $request): StreamedResponse
     {
         $user = $request->user();
+
+        $kunci = SubscriptionService::cekLaporan($user);
+
+        if (! $kunci['allowed']) {
+            abort(403, $kunci['message']);
+        }
 
         if (! SubscriptionService::canExportExcel($user)) {
             abort(403, 'Unduh Excel butuh paket PRO. Data tidak hilang.');

@@ -55,12 +55,12 @@ new #[Layout('layouts.app')] class extends Component
 
         @if ($isFree && $sisaTrial !== null)
             <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO agar laporan & grafik lengkap tetap terbuka.
+                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar & laporan premium.
                 <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade</a>
             </div>
-        @elseif ($isFree && $trialHabis)
+        @elseif ($isFree && $sisaTrial === null && $trialHabis)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar, halaman Laporan & unduh Excel dikunci.
+                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci.
                 <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
             </div>
         @endif

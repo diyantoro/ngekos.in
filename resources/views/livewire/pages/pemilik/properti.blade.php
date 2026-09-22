@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Properti;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -26,8 +27,15 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
+        $user = auth()->user();
+        $cek = SubscriptionService::checkLimit($user, 'property');
+
         return [
             'kelolaSemua' => $this->bolehKelolaSemua(),
+            'bolehTambah' => $cek['allowed'],
+            'kunciTambah' => $cek['allowed']
+                ? null
+                : $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.',
             'propertis' => Properti::query()
                 ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->id()))
                 ->with('fotos')
@@ -106,12 +114,27 @@ new #[Layout('layouts.app')] class extends Component
                     @endif
                 </p>
             </div>
-            <a href="{{ route('pemilik.properti.buat') }}" wire:navigate
-               class="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                Tambah Kos Baru
-            </a>
+            @if ($bolehTambah ?? true)
+                <a href="{{ route('pemilik.properti.buat') }}" wire:navigate
+                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Tambah Kos Baru
+                </a>
+            @else
+                <a href="{{ route('langganan.plans') }}" wire:navigate
+                   class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                    Upgrade untuk Tambah Kos
+                </a>
+            @endif
         </div>
+
+        @if (! ($bolehTambah ?? true))
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                {{ $kunciTambah }}
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+            </div>
+        @endif
 
         @forelse ($propertis as $properti)
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
@@ -178,10 +201,17 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <p class="text-gray-500 dark:text-gray-400 font-medium">Belum ada kos terdaftar.</p>
                 <p class="mt-1 text-sm text-gray-400 dark:text-gray-500">Tambahkan kos pertamamu agar mulai dipromosikan di Ngekos.in.</p>
-                <a href="{{ route('pemilik.properti.buat') }}" wire:navigate
-                   class="mt-5 inline-flex items-center rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
-                    Tambah Kos Baru
-                </a>
+                @if ($bolehTambah ?? true)
+                    <a href="{{ route('pemilik.properti.buat') }}" wire:navigate
+                       class="mt-5 inline-flex items-center rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
+                        Tambah Kos Baru
+                    </a>
+                @else
+                    <a href="{{ route('langganan.plans') }}" wire:navigate
+                       class="mt-5 inline-flex items-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
+                        Upgrade untuk Tambah Kos
+                    </a>
+                @endif
             </div>
         @endforelse
     </div>

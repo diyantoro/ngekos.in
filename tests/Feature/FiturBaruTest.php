@@ -415,6 +415,7 @@ class FiturBaruTest extends TestCase
     public function test_api_grafik_mendukung_filter_periode_dan_properti(): void
     {
         $pemilik = $this->user('pemilik1@ngekos.test');
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
 
         Sanctum::actingAs($pemilik, ['*']);
@@ -464,6 +465,7 @@ class FiturBaruTest extends TestCase
     public function test_halaman_grafik_web_bisa_diakses_pemilik_dan_ada_di_sidebar(): void
     {
         $pemilik = $this->user('pemilik1@ngekos.test');
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
 
         $this->actingAs($pemilik)
             ->get(route('pemilik.grafik'))

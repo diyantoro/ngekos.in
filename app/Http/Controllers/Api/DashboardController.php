@@ -595,6 +595,15 @@ class DashboardController extends Controller
     public function grafik(Request $request): JsonResponse
     {
         $user = $request->user();
+        $kunci = \App\Services\SubscriptionService::cekLaporan($user);
+
+        if (! $kunci['allowed']) {
+            return response()->json([
+                'message' => $kunci['message'],
+                'required_plan' => $kunci['required_plan'],
+            ], 403);
+        }
+
         $userId = $user->id;
         $bulanCount = \App\Services\SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 12)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
@@ -912,6 +921,15 @@ class DashboardController extends Controller
 
     public function rekap(Request $request): JsonResponse
     {
+        $kunci = \App\Services\SubscriptionService::cekLaporan($request->user());
+
+        if (! $kunci['allowed']) {
+            return response()->json([
+                'message' => $kunci['message'],
+                'required_plan' => $kunci['required_plan'],
+            ], 403);
+        }
+
         try {
             $data = PemilikRekapService::data(
                 $request->user()->id,

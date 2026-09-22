@@ -36,6 +36,35 @@ new #[Layout('layouts.app')] class extends Component
         $isFree = ! SubscriptionService::isExempt($user) && SubscriptionService::getPlan($user) === 'free';
         $sisaTrial = SubscriptionService::sisaTrialHari($user);
         $trialHabis = SubscriptionService::trialExpired($user);
+        $laporanKunci = SubscriptionService::laporanDikunci($user);
+
+        if ($laporanKunci) {
+            return [
+                'terkunci' => true,
+                'cek' => SubscriptionService::cekLaporan($user),
+                'daftarProperti' => Properti::where('pemilik_id', $id)->orderBy('nama')->get(['id', 'nama']),
+                'maxPeriode' => $maxPeriode,
+                'isFree' => $isFree,
+                'sisaTrial' => $sisaTrial,
+                'trialHabis' => $trialHabis,
+                'totalKamar' => 0,
+                'bulanLabels' => [],
+                'chartPendapatan' => [],
+                'chartPengeluaran' => [],
+                'chartLaba' => [],
+                'chartOkupansi' => [],
+                'chartTransaksi' => [],
+                'chartLunas' => [],
+                'chartBelum' => [],
+                'chartKategori' => [],
+                'totalPendapatan' => 0,
+                'totalPengeluaran' => 0,
+                'totalTransaksi' => 0,
+                'aging' => ['belum_jatuh_tempo' => 0, 'telat_1_7' => 0, 'telat_8_30' => 0, 'telat_lebih_30' => 0],
+                'tagihanBelum' => collect(),
+                'topProperti' => [],
+            ];
+        }
 
         $scopeId = fn ($q) => $q->where('pemilik_id', $id)
             ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
@@ -180,6 +209,7 @@ new #[Layout('layouts.app')] class extends Component
         ])->sortByDesc('pendapatan')->values()->take(10)->all();
 
         return [
+            'terkunci' => false,
             'daftarProperti' => $daftarProperti,
             'maxPeriode' => $maxPeriode,
             'isFree' => $isFree,
@@ -236,15 +266,21 @@ new #[Layout('layouts.app')] class extends Component
 
         @if ($isFree && $sisaTrial !== null)
             <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO agar laporan & grafik lengkap tetap terbuka.
+                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar & laporan premium.
                 <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade</a>
             </div>
-        @elseif ($isFree && $trialHabis)
+        @elseif ($isFree && $sisaTrial === null && $trialHabis)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar, halaman Laporan & unduh Excel dikunci.
+                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci.
                 <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
             </div>
         @endif
+
+        @if ($terkunci ?? false)
+            <div class="max-w-2xl mx-auto">
+                <x-premium-lock requiredPlan="pro" title="Grafik & Analitik" message="Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci." />
+            </div>
+        @else
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <x-stat-card label="Pendapatan Periode" :value="'Rp' . number_format($totalPendapatan, 0, ',', '.')" tone="emerald"
@@ -268,15 +304,11 @@ new #[Layout('layouts.app')] class extends Component
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     PDF
                 </button>
-                @if ($isFree)
-                    <span title="Unduh Excel butuh paket PRO" class="inline-flex items-center gap-1.5 rounded-lg bg-gray-300 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400 cursor-not-allowed">Excel · PRO</span>
-                @else
                 <button type="submit" formaction="{{ route('pemilik.rekap.excel') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     Excel
                 </button>
-                @endif
             </form>
         </div>
 
@@ -301,16 +333,6 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
             </div>
 
-            @if ($isFree)
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
-                        <x-premium-lock requiredPlan="pro" title="Tren Transaksi" message="Tren jumlah transaksi dikunci di Free. Upgrade ke PRO untuk melihatnya." />
-                    </div>
-                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
-                        <x-premium-lock requiredPlan="pro" title="Lunas vs Belum" message="Grafik lunas vs belum dikunci di Free. Upgrade ke PRO untuk melihatnya." />
-                    </div>
-                </div>
-            @else
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Transaksi</h3>
@@ -327,14 +349,8 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </div>
             </div>
-            @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                @if ($isFree)
-                    <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
-                        <x-premium-lock requiredPlan="pro" title="Kamar Terisi" message="Tren kamar terisi dikunci di Free. Upgrade ke PRO untuk melihatnya." />
-                    </div>
-                @else
                 <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Kamar Terisi</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Kamar terisi (%) per bulan</p>
@@ -342,7 +358,6 @@ new #[Layout('layouts.app')] class extends Component
                         <canvas id="grafik-okupansi" class="absolute inset-0 h-full w-full"></canvas>
                     </div>
                 </div>
-                @endif
                 <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pengeluaran per Kategori</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Komposisi biaya operasional periode ini</p>
@@ -358,11 +373,6 @@ new #[Layout('layouts.app')] class extends Component
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            @if ($isFree)
-                <div class="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
-                    <x-premium-lock requiredPlan="pro" title="Siapa yang belum bayar" message="Rincian yang belum bayar dikunci di Free. Upgrade ke PRO untuk melihatnya." />
-                </div>
-            @else
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Tagihan Belum Bayar</h3>
@@ -403,17 +413,14 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 </div>
             </div>
-            @endif
 
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <div>
                         <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kos Pemasukan Terbesar</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Berdasarkan pembayaran terverifikasi</p>
                     </div>
-                    <span class="shrink-0 inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-violet-700 dark:text-violet-300 ring-1 ring-violet-200 dark:ring-violet-500/30">Pro</span>
                 </div>
-                @if (SubscriptionService::hasFeature(auth()->user(), 'advanced_analytics'))
                     <div class="divide-y divide-gray-100 dark:divide-gray-700">
                         @forelse ($topProperti as $i => $p)
                             <div class="px-5 py-3.5 flex items-center gap-3">
@@ -428,12 +435,8 @@ new #[Layout('layouts.app')] class extends Component
                             <p class="px-5 py-10 text-center text-sm text-gray-400">Belum ada data.</p>
                         @endforelse
                     </div>
-                @else
-                    <div class="p-5">
-                        <x-premium-lock requiredPlan="pro" title="Perbandingan Properti" message="Bandingkan performa tiap kos Anda. Tersedia di paket PRO." />
-                    </div>
-                @endif
             </div>
         </div>
+        @endif
     </div>
 </div>

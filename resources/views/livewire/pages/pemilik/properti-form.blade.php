@@ -104,8 +104,22 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
+        $tambahDikunci = false;
+        $kunciTambah = null;
+
+        if (! $this->properti && ! $this->bolehKelolaSemua()) {
+            $cek = SubscriptionService::checkLimit(auth()->user(), 'property');
+
+            if (! $cek['allowed']) {
+                $tambahDikunci = true;
+                $kunciTambah = $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.';
+            }
+        }
+
         return [
             'pilihPemilik' => $this->bolehKelolaSemua() && ! $this->properti,
+            'tambahDikunci' => $tambahDikunci,
+            'kunciTambah' => $kunciTambah,
             'daftarPemilik' => $this->bolehKelolaSemua()
                 ? User::role('pemilik')->orderBy('nama')->get(['id', 'nama', 'email'])
                 : collect(),
@@ -338,6 +352,13 @@ new #[Layout('layouts.app')] class extends Component
             </h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lengkapi informasi kos agar menarik bagi pencari kos.</p>
         </div>
+
+        @if ($tambahDikunci ?? false)
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                {{ $kunciTambah }}
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+            </div>
+        @endif
 
         <form wire:submit="simpan" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-5 sm:p-8 space-y-5">
             <!-- Foto Cover -->

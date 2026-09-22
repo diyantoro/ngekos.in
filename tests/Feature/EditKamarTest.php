@@ -65,6 +65,7 @@ class EditKamarTest extends TestCase
     public function test_ubah_muncul_di_form_dan_kamar_baru_bisa_langsung_diedit(): void
     {
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
         $properti = Properti::where('pemilik_id', $pemilik->id)->firstOrFail();
 
         // Tambah kamar baru via komponen.

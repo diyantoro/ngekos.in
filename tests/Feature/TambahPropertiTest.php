@@ -25,6 +25,7 @@ class TambahPropertiTest extends TestCase
     public function test_tambah_properti_dengan_foto(): void
     {
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
 
         $component = Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form');
 
@@ -45,6 +46,7 @@ class TambahPropertiTest extends TestCase
     public function test_form_fasilitas_render_dan_centang_tersimpan(): void
     {
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
 
         $component = Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form');
 

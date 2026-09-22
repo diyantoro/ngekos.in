@@ -66,11 +66,10 @@
         'maintenance' => 'Manajemen perawatan',
         'multi_property' => 'Multi properti',
         'multi_user' => 'Multi pengguna',
-        'all_pro_features' => 'Semua fitur PRO',
-        'ai_assistant' => 'Asisten AI',
-        'whatsapp_automation' => 'Otomatisasi WhatsApp',
-        'advanced_business_analytics' => 'Business Analytics',
-        'staff_management' => 'Kelola staf',
+        'unlimited_property' => 'Properti tanpa batas',
+        'unlimited_room' => 'Kamar tanpa batas',
+        'laporan_24_bulan' => 'Laporan 24 bulan',
+        'excel_7_sheet' => 'Excel 7 sheet lengkap',
     ];
 
     $planFeatures = data_get($plans, "{$plan}.features", []);

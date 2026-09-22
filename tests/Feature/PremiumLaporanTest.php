@@ -275,7 +275,7 @@ class PremiumLaporanTest extends TestCase
         $this->assertSame(3, SubscriptionService::maxPeriode($user));
         $this->assertSame(3, SubscriptionService::clampPeriode($user, 24));
         $this->assertTrue(SubscriptionService::canExportPdf($user));
-        $this->assertFalse(SubscriptionService::canExportExcel($user));
+        $this->assertTrue(SubscriptionService::canExportExcel($user));
     }
 
     public function test_trial_habis_maka_limit_ditolak_walau_belum_penuh(): void
@@ -297,7 +297,7 @@ class PremiumLaporanTest extends TestCase
         $user = $this->pemilik(['email' => 'lama@test.id']);
 
         $this->assertTrue(SubscriptionService::trialExpired($user));
-        $this->assertFalse(SubscriptionService::canExportExcel($user));
+        $this->assertTrue(SubscriptionService::canExportExcel($user));
         $this->assertSame('basic', SubscriptionService::reportTier($user));
     }
 

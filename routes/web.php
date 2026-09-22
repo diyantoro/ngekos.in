@@ -92,13 +92,11 @@ Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group
         ->name('pemilik.laporan.excel');
 });
 
-// Ekspor rekap bulanan pemilik: PDF boleh semua paket (free ada watermark),
-// Excel hanya PRO/BUSINESS.
+// Ekspor rekap bulanan pemilik: PDF & Excel boleh semua paket (free/trial ada watermark).
 Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
     Route::get('pemilik/rekap/pdf', [PemilikRekapExportController::class, 'pdf'])
         ->name('pemilik.rekap.pdf');
     Route::get('pemilik/rekap/excel', [PemilikRekapExportController::class, 'excel'])
-        ->middleware('premium:export_report')
         ->name('pemilik.rekap.excel');
 });
 

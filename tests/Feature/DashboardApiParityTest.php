@@ -88,6 +88,7 @@ class DashboardApiParityTest extends TestCase
     public function test_api_pemilik_rekap_mengandung_pengeluaran_dan_laba(): void
     {
         $user = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($user);
 
         Sanctum::actingAs($user, ['*']);
 

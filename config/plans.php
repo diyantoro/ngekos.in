@@ -24,7 +24,7 @@ return [
             'tier' => 'basic',
             'max_periode' => 3,
             'pdf' => true,
-            'excel' => false,
+            'excel' => true,
             'watermark' => true,
         ],
     ],
@@ -66,12 +66,13 @@ return [
             'rooms' => null,
             'staff' => 10,
         ],
+        // Hanya fitur yang benar-benar ada di aplikasi + otomatis
+        // mewarisi semua fitur PRO via SubscriptionService::hasFeature().
         'features' => [
-            'all_pro_features',
-            'ai_assistant',
-            'whatsapp_automation',
-            'advanced_business_analytics',
-            'staff_management',
+            'unlimited_property',
+            'unlimited_room',
+            'laporan_24_bulan',
+            'excel_7_sheet',
         ],
         'report' => [
             'tier' => 'business',

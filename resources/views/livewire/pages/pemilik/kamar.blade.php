@@ -64,9 +64,16 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
+        $owner = $this->properti->pemilik ?? auth()->user();
+        $cek = SubscriptionService::checkLimit($owner, 'room');
+
         return [
             'kamars' => Kamar::with('fotos')->where('properti_id', $this->properti->id)->orderBy('nama')->get(),
             'kamarEdit' => $this->mode === 'ubah' && $this->kamarId ? Kamar::with('fotos')->find($this->kamarId) : null,
+            'bolehTambahKamar' => $cek['allowed'],
+            'kunciKamar' => $cek['allowed']
+                ? null
+                : $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.',
         ];
     }
 
@@ -320,6 +327,13 @@ new #[Layout('layouts.app')] class extends Component
             </div>
         @endif
 
+        @if (($mode ?? 'buat') === 'buat' && ! ($bolehTambahKamar ?? true))
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                {{ $kunciKamar }}
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+            </div>
+        @endif
+
         <!-- Form Kamar -->
         <form wire:submit="simpanKamar" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 space-y-5">
             <div class="flex items-center justify-between">
@@ -468,9 +482,16 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <div class="flex justify-end">
-                <x-primary-button wire:loading.attr="disabled">
-                    {{ $mode === 'ubah' ? 'Simpan Perubahan' : 'Tambah Kamar' }}
-                </x-primary-button>
+                @if (($mode ?? 'buat') === 'buat' && ! ($bolehTambahKamar ?? true))
+                    <a href="{{ route('langganan.plans') }}" wire:navigate
+                       class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
+                        Upgrade untuk Tambah Kamar
+                    </a>
+                @else
+                    <x-primary-button wire:loading.attr="disabled">
+                        {{ $mode === 'ubah' ? 'Simpan Perubahan' : 'Tambah Kamar' }}
+                    </x-primary-button>
+                @endif
             </div>
         </form>
 

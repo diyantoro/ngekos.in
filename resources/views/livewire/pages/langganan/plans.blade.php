@@ -35,15 +35,40 @@ new #[Layout('layouts.app')] class extends Component
 
         @if ($isFree && $sisaTrial !== null)
             <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO agar laporan & grafik lengkap tetap terbuka.
+                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar & laporan premium.
             </div>
-        @elseif ($isFree && $trialHabis)
+        @elseif ($isFree && $sisaTrial === null && $trialHabis)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar, halaman Laporan & unduh Excel dikunci. Upgrade ke PRO untuk membuka lagi.
+                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci. Upgrade ke PRO untuk membuka lagi.
             </div>
         @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        @php
+            $labelFitur = [
+                'basic_dashboard' => 'Dashboard dasar',
+                'basic_property' => 'Kelola properti',
+                'basic_room' => 'Kelola kamar',
+                'basic_tenant' => 'Kelola penyewa',
+                'basic_billing' => 'Tagihan bulanan',
+                'basic_report' => 'Laporan dasar',
+                'export_pdf_basic' => 'Unduh PDF dasar',
+                'advanced_analytics' => 'Analitik lanjutan',
+                'advanced_report' => 'Laporan premium',
+                'export_report' => 'Ekspor PDF/Excel',
+                'automatic_invoice' => 'Tagihan otomatis',
+                'automatic_fine' => 'Denda otomatis',
+                'broadcast' => 'Broadcast pengumuman',
+                'maintenance' => 'Manajemen perawatan',
+                'multi_property' => 'Multi properti',
+                'multi_user' => 'Multi pengguna',
+                'unlimited_property' => 'Properti tanpa batas',
+                'unlimited_room' => 'Kamar tanpa batas',
+                'laporan_24_bulan' => 'Laporan 24 bulan',
+                'excel_7_sheet' => 'Excel 7 sheet lengkap',
+            ];
+        @endphp
+        <p class="text-xs text-gray-400 dark:text-gray-500 md:hidden">Geser ke samping untuk melihat paket lain.</p>
+        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0">
             @foreach ($pakets as $key => $paket)
                 @php
                     $planColors = [
@@ -56,9 +81,9 @@ new #[Layout('layouts.app')] class extends Component
                             'accent' => 'text-slate-500',
                             'badge' => 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 ring-slate-200/60 dark:ring-slate-600/60',
                             'btn' => 'btn-secondary',
-                            'glow' => 'shadow-slate-400/20',
-                            'hoverGlow' => 'shadow-slate-400/40',
                             'accentGradient' => 'from-slate-400 to-slate-500',
+                            'restShadow' => '0 10px 30px -12px rgba(100, 116, 139, 0.25)',
+                            'hoverShadow' => '0 25px 50px -12px rgba(100, 116, 139, 0.45)',
                         ],
                         'pro' => [
                             'bg' => 'bg-gradient-to-br from-teal-50 via-teal-100/30 to-emerald-50 dark:from-teal-900/40 dark:via-teal-800/30 dark:to-emerald-900/40',
@@ -69,9 +94,9 @@ new #[Layout('layouts.app')] class extends Component
                             'accent' => 'text-teal-600 dark:text-teal-400',
                             'badge' => 'bg-teal-100/80 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 ring-teal-200/60 dark:ring-teal-700/60',
                             'btn' => 'btn-primary',
-                            'glow' => 'shadow-teal-400/20',
-                            'hoverGlow' => 'shadow-teal-400/40',
                             'accentGradient' => 'from-teal-500 to-emerald-500',
+                            'restShadow' => '0 10px 30px -12px rgba(45, 212, 191, 0.25)',
+                            'hoverShadow' => '0 25px 50px -12px rgba(45, 212, 191, 0.45)',
                         ],
                         'business' => [
                             'bg' => 'bg-gradient-to-br from-violet-50 via-violet-100/30 to-purple-50 dark:from-violet-900/40 dark:via-violet-800/30 dark:to-purple-900/40',
@@ -82,66 +107,47 @@ new #[Layout('layouts.app')] class extends Component
                             'accent' => 'text-violet-600 dark:text-violet-400',
                             'badge' => 'bg-violet-100/80 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 ring-violet-200/60 dark:ring-violet-700/60',
                             'btn' => 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white',
-                            'glow' => 'shadow-violet-400/20',
-                            'hoverGlow' => 'shadow-violet-400/40',
                             'accentGradient' => 'from-violet-500 to-purple-500',
+                            'restShadow' => '0 10px 30px -12px rgba(139, 92, 246, 0.25)',
+                            'hoverShadow' => '0 25px 50px -12px rgba(139, 92, 246, 0.45)',
                         ],
                     ];
                     $c = $planColors[$key] ?? $planColors['free'];
                     $isActive = $paketAktif === $key;
                     $isPopular = $key === 'pro';
-                    $glowHex = preg_replace('/shadow-/', '', $c['glow']);
-                    $hoverGlowHex = preg_replace('/shadow-/', '', $c['hoverGlow']);
-                    $transformOffset = $isActive ? '-4px' : '0';
-                    $activeBoxShadow = $isActive ? '0 10px 40px -10px ' . $glowHex : 'none';
                 @endphp
                 <div
-                    x-data="{ hovered: false, pressed: false, offset: @js($transformOffset), glow: @js($glowHex), hoverGlow: @js($hoverGlowHex), activeShadow: @js($activeBoxShadow) }"
+                    x-data="{ hovered: false, pressed: false }"
                     @mouseenter="hovered = true"
-                    @mouseleave="hovered = false"
+                    @mouseleave="hovered = false; pressed = false"
                     @mousedown="pressed = true"
                     @mouseup="pressed = false"
-                    @mouseleave="pressed = false"
-                    class="relative group card p-6 overflow-hidden transition-all duration-300 ease-out
+                    class="relative group flex h-full w-[84%] shrink-0 snap-center flex-col overflow-hidden rounded-2xl border p-6 transition-shadow duration-300 ease-out sm:w-[62%] md:w-auto
                         {{ $c['bg'] }} {{ $c['border'] }}
-                        {{ $isActive ? 'ring-2 ' . $c['ring'] . ' ' . $c['glow'] : '' }}
-                        hover:-translate-y-1.5 hover:{{ $c['hoverGlow'] }} hover:shadow-xl
-                        active:scale-[0.98] active:shadow-lg
-                        backdrop-blur-xl
-                        {{ $isPopular ? 'relative' : '' }}"
-                    style="transform: translateY({{ $isActive ? '-4px' : '0' }});"
-                    :style="`transform: translateY(${hovered ? '-8px' : (pressed ? '-2px' : offset)}) scale(${pressed ? 0.98 : 1}); box-shadow: ${hovered ? '0 25px 50px -12px ' + hoverGlow : (pressed ? '0 10px 20px -5px ' + glow : activeShadow)};`"
+                        {{ $isActive ? 'ring-2 ' . $c['ring'] : '' }}"
+                    :style="`transform: translateY(${hovered ? '-6px' : '0'}) scale(${pressed ? 0.98 : 1}); box-shadow: ${hovered ? @js($c['hoverShadow']) : @js($c['restShadow'])};`"
                 >
                     {{-- Accent bar at top --}}
-                    <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r {{ $c['accentGradient'] }} opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r {{ $c['accentGradient'] }}"></div>
 
-                    {{-- Glassmorphism overlay --}}
-                    <div class="absolute inset-0 bg-gradient-to-br from-white/50 via-transparent to-transparent dark:from-white/10 dark:via-transparent dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-
-                    {{-- Popular badge --}}
-                    @if ($isPopular)
-                        <div class="absolute -top-3 right-4 z-10">
-                            <span class="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg shadow-teal-500/30 animate-pulse-gentle">
-                                <span class="relative flex h-1.5 w-1.5">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-400"></span>
-                                </span>
-                                Populer
-                            </span>
-                        </div>
-                    @endif
-
-                    <div class="relative z-10">
+                    <div class="relative z-10 flex flex-1 flex-col pt-1">
                         <div class="flex items-center justify-between gap-2 mb-3">
-                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider {{ $c['badge'] }} backdrop-blur-sm">
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ring-1 {{ $c['badge'] }}">
                                 {{ $paket['name'] }}
                             </span>
-                            @if ($isActive)
-                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-700/60 backdrop-blur-sm">
-                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    Aktif
-                                </span>
-                            @endif
+                            <span class="inline-flex shrink-0 items-center gap-1.5">
+                                @if ($isPopular && ! $isActive)
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg shadow-teal-500/30">
+                                        Populer
+                                    </span>
+                                @endif
+                                @if ($isActive)
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-700/60">
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                        Aktif
+                                    </span>
+                                @endif
+                            </span>
                         </div>
 
                         <p class="text-sm font-bold uppercase tracking-wider {{ $c['title'] }} transition-colors duration-200 group-hover:text-gray-900 dark:group-hover:text-gray-100">{{ $paket['name'] }}</p>
@@ -164,16 +170,16 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                         </div>
 
-                        <ul class="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <ul class="mt-5 flex-1 space-y-2 text-sm text-gray-600 dark:text-gray-300">
                             @foreach ($paket['features'] ?? [] as $fitur)
-                                <li class="flex items-start gap-2 group relative transition-colors duration-200 hover:text-gray-900 dark:hover:text-gray-100">
-                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded {{ $key === 'free' ? 'bg-slate-400' : ($key === 'pro' ? 'bg-teal-500' : 'bg-violet-500') }} text-white text-[10px] font-bold transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">✓</span>
-                                    <span>{{ str($fitur)->replace('_', ' ')->title() }}</span>
+                                <li class="flex min-w-0 items-start gap-2 transition-colors duration-200 hover:text-gray-900 dark:hover:text-gray-100">
+                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded {{ $key === 'free' ? 'bg-slate-400' : ($key === 'pro' ? 'bg-teal-500' : 'bg-violet-500') }} text-white text-[10px] font-bold">✓</span>
+                                    <span class="min-w-0 break-words">{{ $labelFitur[$fitur] ?? str($fitur)->replace('_', ' ')->title() }}</span>
                                 </li>
                             @endforeach
                         </ul>
 
-                        <div class="mt-6 pt-4 border-t border-gray-100/60 dark:border-gray-800/60">
+                        <div class="mt-6 border-t border-gray-100/60 pt-4 dark:border-gray-800/60">
                             @if ($isActive)
                                 <span class="inline-flex items-center gap-1 rounded-xl {{ $c['badge'] }} px-4 py-2.5 text-xs font-bold transition-all duration-200">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>

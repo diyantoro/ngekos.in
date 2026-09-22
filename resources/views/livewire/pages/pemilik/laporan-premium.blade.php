@@ -150,10 +150,10 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         @if ($terkunci)
-            @if (($isFree ?? false) && ($trialHabis ?? false))
+            @if (($isFree ?? false) && ($sisaTrial ?? null) === null && ($trialHabis ?? false))
                 <div class="max-w-2xl mx-auto space-y-4">
                     <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                        Masa coba 7 hari sudah habis. Data tidak hilang, tapi halaman Laporan, tambah kos/kamar & unduh Excel dikunci.
+                        Masa coba 7 hari sudah habis. Data tidak hilang, tapi halaman Laporan & tambah kos/kamar dikunci.
                         <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
                     </div>
                     <x-premium-lock requiredPlan="pro" title="Laporan Premium" message="Tersedia di paket PRO." />

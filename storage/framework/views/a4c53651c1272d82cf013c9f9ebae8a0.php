@@ -1,5 +1,8 @@
 <?php
     $isHome = request()->routeIs('home') || request()->routeIs('dashboard*');
+    // Di dalam aplikasi (sudah login), Beranda = dashboard awal sesuai peran,
+    // bukan landing publik sebelum login.
+    $berandaUrl = auth()->check() ? route('dashboard') : route('home');
 ?>
 <div class="fixed bottom-0 left-0 right-0 z-50 sm:hidden safe-bottom">
     
@@ -55,7 +58,7 @@
             <div x-ref="nav" class="relative flex items-center justify-around w-full gap-1" role="navigation">
 
                 
-                <a href="<?php echo e(route('home')); ?>" wire:navigate
+                <a href="<?php echo e($berandaUrl); ?>" wire:navigate
                     data-nav-item
                     aria-current="<?php echo e($isHome ? 'page' : 'false'); ?>"
                     x-on:click="activeIndex = 0"

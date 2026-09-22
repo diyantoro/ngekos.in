@@ -156,6 +156,16 @@ class SubscriptionService
 
     public static function sisaTrialHari(User $user): ?int
     {
+        if (self::isExempt($user)) {
+            return null;
+        }
+
+        // Trial hanya relevan selama paket masih free.
+        // Begitu upgrade ke PRO/Business, sisa trial dianggap tidak ada.
+        if (self::getPlan($user) !== 'free') {
+            return null;
+        }
+
         $trial = self::trialAktif($user);
 
         if (! $trial || ! $trial->expires_at) {
@@ -171,16 +181,56 @@ class SubscriptionService
             return false;
         }
 
-        if (self::getPlan($user) !== 'free') {
+        // Masih masa coba hanya bila paket masih free DAN ada trial aktif.
+        // Begitu upgrade ke PRO/Business (atau trial kedaluwarsa),
+        // masa trial dianggap habis.
+        if (self::getPlan($user) === 'free' && self::trialAktif($user) !== null) {
             return false;
         }
 
-        return self::trialAktif($user) === null;
+        return true;
+    }
+
+    /**
+     * Halaman Laporan (Grafik & Rekap) dikunci bila paket free dan masa coba habis.
+     * Data tidak dihapus, tapi konten analitik + ekspor rekap tidak bisa dibuka
+     * sampai upgrade ke PRO/Business. Admin/super_admin selalu lolos.
+     */
+    public static function laporanDikunci(User $user): bool
+    {
+        if (self::isExempt($user)) {
+            return false;
+        }
+
+        return self::getPlan($user) === 'free' && self::trialExpired($user);
+    }
+
+    public static function cekLaporan(User $user): array
+    {
+        if (self::isExempt($user)) {
+            return ['allowed' => true, 'plan' => self::getPlan($user), 'required_plan' => null, 'message' => null];
+        }
+
+        if (self::laporanDikunci($user)) {
+            return [
+                'allowed' => false,
+                'plan' => 'free',
+                'required_plan' => 'pro',
+                'message' => 'Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci.',
+            ];
+        }
+
+        return ['allowed' => true, 'plan' => self::getPlan($user), 'required_plan' => null, 'message' => null];
     }
 
     public static function mulaiTrialFree(User $user): ?Subscription
     {
         if (self::pernahTrial($user)) {
+            return null;
+        }
+
+        // Jangan mulai trial baru bila sudah PRO/Business aktif.
+        if (self::getPlan($user) !== 'free') {
             return null;
         }
 
@@ -252,10 +302,6 @@ class SubscriptionService
     {
         if (self::isExempt($user)) {
             return true;
-        }
-
-        if (self::getPlan($user) === 'free') {
-            return false;
         }
 
         return (bool) (config('plans.'.self::reportPlanKey($user).'.report.excel', true));
@@ -369,6 +415,13 @@ class SubscriptionService
             'starts_at' => now(),
             'expires_at' => now()->addDays($hari),
         ]);
+
+        // Upgrade ke PRO/Business mengakhiri masa trial: tandai trial aktif lama sebagai expired
+        // agar trialAktif() null dan trialExpired() true.
+        Subscription::where('user_id', $request->user_id)
+            ->where('is_trial', true)
+            ->where('status', 'active')
+            ->update(['status' => 'expired']);
 
         $request->update([
             'status' => 'approved',

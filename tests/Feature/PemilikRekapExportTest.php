@@ -67,11 +67,41 @@ class PemilikRekapExportTest extends TestCase
         $this->assertNotEmpty($pdf);
     }
 
-    public function test_ekspor_excel_ditolak_free_dengan_403(): void
+    public function test_ekspor_excel_diizinkan_free_dan_trial(): void
     {
+        $bulan = now()->format('Y-m');
+
+        // Free tanpa trial (dianggap habis) ditolak 403.
         $this->actingAs($this->pemilik())
-            ->get(route('pemilik.rekap.excel'))
+            ->get(route('pemilik.rekap.excel', ['bulan' => $bulan]))
             ->assertForbidden();
+
+        \App\Services\SubscriptionService::mulaiTrialFree($this->pemilik());
+
+        $this->actingAs($this->pemilik())
+            ->get(route('pemilik.rekap.excel', ['bulan' => $bulan]))
+            ->assertOk();
+    }
+
+    public function test_ekspor_rekap_ditolak_setelah_trial_habis(): void
+    {
+        $bulan = now()->format('Y-m');
+        $pemilik = $this->pemilik();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+        \App\Models\Subscription::where('user_id', $pemilik->id)->update(['expires_at' => now()->subDay()]);
+
+        $this->actingAs($pemilik)
+            ->get(route('pemilik.rekap.pdf', ['bulan' => $bulan]))
+            ->assertForbidden();
+
+        $this->actingAs($pemilik)
+            ->get(route('pemilik.rekap.excel', ['bulan' => $bulan]))
+            ->assertForbidden();
+
+        $this->actingAs($pemilik)
+            ->get(route('pemilik.grafik'))
+            ->assertOk()
+            ->assertSee('Masa coba 7 hari sudah habis', false);
     }
 
     public function test_ekspor_excel_mengunduh_file_xlsx(): void
@@ -96,6 +126,7 @@ class PemilikRekapExportTest extends TestCase
 
     public function test_ekspor_pdf_bulan_tidak_valid_mengembalikan_422(): void
     {
+        \App\Services\SubscriptionService::mulaiTrialFree($this->pemilik());
         $this->actingAs($this->pemilik())
             ->from(route('dashboard.pemilik'))
             ->get(route('pemilik.rekap.pdf', ['bulan' => 'bukan-bulan']))

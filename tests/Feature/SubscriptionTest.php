@@ -100,7 +100,7 @@ class SubscriptionTest extends TestCase
         $this->assertFalse(SubscriptionService::hasFeature($free, 'export_report'));
         $this->assertTrue(SubscriptionService::hasFeature($pro, 'export_report'));
         $this->assertTrue(SubscriptionService::hasFeature($business, 'export_report'));
-        $this->assertTrue(SubscriptionService::hasFeature($business, 'ai_assistant'));
+        $this->assertTrue(SubscriptionService::hasFeature($business, 'unlimited_property'));
         $this->assertTrue(SubscriptionService::hasFeature($pro, 'basic_property'));
     }
 
@@ -165,7 +165,8 @@ class SubscriptionTest extends TestCase
         $this->assertStringContainsString('Siapa yang belum bayar', $content);
         $this->assertStringContainsString('Kos Pemasukan Terbesar', $content);
         $this->assertStringContainsString('Tren Transaksi', $content);
-        $this->assertStringContainsString('Excel · PRO', $content);
+        $this->assertStringContainsString(route('pemilik.rekap.excel'), $content);
+        $this->assertStringNotContainsString('Excel · PRO', $content);
 
         $laporan = $this->actingAs($user)->get(route('pemilik.laporan'))->getContent();
         $this->assertStringContainsString('Tersedia di paket PRO', $laporan);
@@ -291,7 +292,7 @@ class SubscriptionTest extends TestCase
         $this->assertNull(SubscriptionService::getFeatureRequiredPlan('basic_property'));
         $this->assertSame('pro', SubscriptionService::getFeatureRequiredPlan('advanced_analytics'));
         $this->assertSame('pro', SubscriptionService::getFeatureRequiredPlan('export_report'));
-        $this->assertSame('business', SubscriptionService::getFeatureRequiredPlan('ai_assistant'));
+        $this->assertSame('business', SubscriptionService::getFeatureRequiredPlan('unlimited_property'));
 
         $free = $this->pemilik(['email' => 'free2@test.id']);
         $cek = SubscriptionService::featureCheck($free, 'advanced_analytics');
@@ -318,7 +319,7 @@ class SubscriptionTest extends TestCase
 
         $this->assertTrue(SubscriptionService::hasFeature($business, 'advanced_analytics'));
         $this->assertTrue(SubscriptionService::hasFeature($business, 'basic_dashboard'));
-        $this->assertTrue(SubscriptionService::hasFeature($business, 'advanced_business_analytics'));
+        $this->assertTrue(SubscriptionService::hasFeature($business, 'laporan_24_bulan'));
     }
 
     public function test_downgrade_tidak_menghapus_data_dan_blokir_create_baru(): void
@@ -394,14 +395,33 @@ class SubscriptionTest extends TestCase
         $response->assertJsonStructure(['periode', 'bulan', 'ringkasan']);
     }
 
-    public function test_halaman_grafik_free_menampilkan_premium_lock_top_properti(): void
+    public function test_halaman_grafik_free_menampilkan_semua_grafik(): void
     {
         $user = $this->pemilik();
+        SubscriptionService::mulaiTrialFree($user);
 
         $content = $this->actingAs($user)->get(route('pemilik.grafik'))->getContent();
 
-        $this->assertStringContainsString('Perbandingan Properti', $content);
-        $this->assertStringContainsString('Tersedia di paket PRO', $content);
+        $this->assertStringContainsString('Kos Pemasukan Terbesar', $content);
+        $this->assertStringContainsString('Tren Transaksi', $content);
+        $this->assertStringContainsString('Tren Kamar Terisi', $content);
+        $this->assertStringNotContainsString('Tersedia di paket PRO', $content);
+    }
+
+    public function test_halaman_grafik_dikunci_setelah_trial_habis(): void
+    {
+        $user = $this->pemilik(['email' => 'grafiklock@test.id']);
+        SubscriptionService::mulaiTrialFree($user);
+        Subscription::where('user_id', $user->id)->update(['expires_at' => now()->subDay()]);
+
+        $this->assertTrue(SubscriptionService::laporanDikunci($user));
+
+        $content = $this->actingAs($user)->get(route('pemilik.grafik'))->getContent();
+
+        $this->assertStringContainsString('Masa coba 7 hari sudah habis', $content);
+        $this->assertStringContainsString('Grafik & Analitik', $content);
+        $this->assertStringNotContainsString('Uang Masuk vs Uang Keluar', $content);
+        $this->assertStringNotContainsString('Ekspor Rekap Bulanan', $content);
     }
 
     public function test_halaman_grafik_pro_tidak_menampilkan_premium_lock(): void
