@@ -7,6 +7,13 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
 {
+    public function mount(): void
+    {
+        if (! auth()->user()?->hasRole('pemilik')) {
+            $this->redirect(route('dashboard'));
+        }
+    }
+
     public function with(): array
     {
         $user = auth()->user();

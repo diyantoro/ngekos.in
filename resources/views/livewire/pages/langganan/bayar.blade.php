@@ -18,6 +18,10 @@ new #[Layout('layouts.app')] class extends Component
 
     public function mount(): void
     {
+        if (! auth()->user()?->hasRole('pemilik')) {
+            $this->redirect(route('dashboard'));
+        }
+
         if (! in_array($this->plan, ['pro', 'business'], true)) {
             $this->redirect(route('langganan.plans'));
         }
@@ -48,6 +52,14 @@ new #[Layout('layouts.app')] class extends Component
 
     public function bayar(): void
     {
+        $user = auth()->user();
+
+        if (! $user?->hasRole('pemilik')) {
+            $this->redirect(route('dashboard'));
+
+            return;
+        }
+
         $this->validate([
             'plan' => ['required', 'in:pro,business'],
             'bukti' => ['required', 'image', 'max:2048'],
@@ -55,7 +67,6 @@ new #[Layout('layouts.app')] class extends Component
             'bukti' => 'bukti pembayaran',
         ]);
 
-        $user = auth()->user();
         $path = $this->bukti->store('bukti', 'public');
 
         try {

@@ -42,15 +42,15 @@ Volt::route('pengguna', 'pages.super-admin.pengguna')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('pengguna');
 
-// Langganan premium (aktivasi manual oleh admin).
+// Langganan premium khusus pemilik (aktivasi manual oleh admin).
 Volt::route('langganan', 'pages.langganan.subscription')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'role:pemilik'])
     ->name('langganan.subscription');
 Volt::route('langganan/paket', 'pages.langganan.plans')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'role:pemilik'])
     ->name('langganan.plans');
 Volt::route('langganan/bayar/{plan}', 'pages.langganan.bayar')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'role:pemilik'])
     ->name('langganan.bayar');
 Volt::route('langganan/kelola', 'pages.super-admin.subscriptions')
     ->middleware(['auth', 'verified', 'role:super_admin'])

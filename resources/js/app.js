@@ -114,13 +114,12 @@ window.pasangCluster = async (markers, map) => {
     return new MarkerClusterer({ markers, map });
 };
 
-window.renderPendapatanChart = async (elementId, pendapatan, tagihan) => {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const { default: Chart } = await import('chart.js/auto');
-    const labels = Object.keys(pendapatan).length ? Object.keys(pendapatan) : Object.keys(tagihan);
-    if (!labels.length) return;
-    new Chart(el, {
+// Grafik pendapatan + status tagihan. WAJIB lewat renderChart agar instance lama
+// dihancurkan dulu — new Chart langsung menumpuk animation loop dan bikin scroll macet.
+window.renderPendapatanChart = (elementId, pendapatan, tagihan) => {
+    const labels = Object.keys(pendapatan || {}).length ? Object.keys(pendapatan) : Object.keys(tagihan || {});
+    if (!labels.length) return null;
+    return window.renderChart(elementId, {
         type: 'bar',
         data: {
             labels,

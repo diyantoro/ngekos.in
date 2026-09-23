@@ -157,7 +157,7 @@ new class extends Component
                 ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->count()],
             ],
             'pendapatanPerBulan' => Pembayaran::where('status', 'diverifikasi')
-                ->where('verified_at', '>=', now()->subMonths(5)->startOfMonth())
+                ->where('verified_at', '>=', $monthStart)
                 ->selectRaw(GrafikBulan::kolomBulan('verified_at').', SUM(jumlah) as total')
                 ->groupBy('bulan')
                 ->pluck('total', 'bulan')
@@ -169,7 +169,7 @@ new class extends Component
                 'propertiTanpaKamar' => Properti::whereDoesntHave('kamars')->count(),
                 'bantuanBaru' => PesanBantuan::jumlahBaru(),
             ],
-            'tagihanStatusPerBulan' => Tagihan::where('created_at', '>=', now()->subMonths(5)->startOfMonth())
+            'tagihanStatusPerBulan' => Tagihan::where('created_at', '>=', $monthStart)
                 ->selectRaw(GrafikBulan::kolomBulan('created_at').', SUM(jumlah + denda) as total, '.GrafikBulan::jumlahLunas())
                 ->groupBy('bulan')
                 ->get()
@@ -189,6 +189,7 @@ new class extends Component
             'chartTransaksiJumlah' => $chartTransaksiJumlah,
             'chartTransaksiNilai' => $chartTransaksiNilai,
             'topPropertis' => $topPropertis,
+            'periodeBulan' => $bulanCount,
         ];
     }
 
@@ -236,7 +237,7 @@ new class extends Component
     }
 }; ?>
 
-<div class="py-10" wire:poll.60000>
+<div class="py-10" wire:poll.visible.120s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <x-dashboard-greeting
             roleLabel="Super Admin"
@@ -431,11 +432,14 @@ new class extends Component
             subtitle="Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti"
         />
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+        <div id="pendapatan-data-super"
+            data-pendapatan='{{ json_encode($pendapatanPerBulan) }}'
+            data-tagihan='{{ json_encode($tagihanStatusPerBulan) }}'
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pendapatan &amp; Status Tagihan</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">6 bulan terakhir, seluruh properti</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $periodeBulan }} bulan terakhir, seluruh properti</p>
                 </div>
             </div>
             <canvas id="chart-pendapatan-super-admin" class="mt-4 max-h-72"></canvas>
@@ -589,8 +593,15 @@ new class extends Component
 
 @push('scripts')
     <script>
+        // Baca dari atribut data-* di DOM (bukan data inline saat load) agar data selalu
+        // segar setelah morph Livewire (poll / cari / ganti periode).
         function renderPendapatanSuperAdmin() {
-            window.renderPendapatanChart('chart-pendapatan-super-admin', @json($pendapatanPerBulan), @json($tagihanStatusPerBulan));
+            const wrap = document.getElementById('pendapatan-data-super');
+            if (!wrap) return;
+            let pendapatan = {}, tagihan = {};
+            try { pendapatan = JSON.parse(wrap.dataset.pendapatan || '{}'); } catch (e) { pendapatan = {}; }
+            try { tagihan = JSON.parse(wrap.dataset.tagihan || '{}'); } catch (e) { tagihan = {}; }
+            window.renderPendapatanChart('chart-pendapatan-super-admin', pendapatan, tagihan);
         }
 
         function renderGrowthSuperAdmin() {
@@ -626,14 +637,35 @@ new class extends Component
             window.transactionTrendChart('chart-trend-transaksi', labels, jumlah, nilai);
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => { renderPendapatanSuperAdmin(); renderGrowthSuperAdmin(); renderTransactionSuperAdmin(); });
-        } else {
-            renderPendapatanSuperAdmin();
-            renderGrowthSuperAdmin();
-            renderTransactionSuperAdmin();
-        }
-        document.addEventListener('livewire:navigated', () => { renderPendapatanSuperAdmin(); renderGrowthSuperAdmin(); renderTransactionSuperAdmin(); });
-        Livewire.on('chart:data-updated', () => requestAnimationFrame(() => { renderGrowthSuperAdmin(); renderTransactionSuperAdmin(); }));
+        // Render ulang semua chart dashboard super admin. Dijaga dengan penanda
+        // halaman agar listener basi dari navigasi SPA tidak merender halaman lain.
+        window.__renderAllSuperAdmin = function () {
+            if (!document.getElementById('chart-pendapatan-super-admin')) return;
+            renderPendapatanSuperAdmin(); renderGrowthSuperAdmin(); renderTransactionSuperAdmin();
+        };
+        // Antrean debounce: ketikan pencarian / poll / ganti periode menyatu jadi 1 render.
+        let __superAdminRenderTimer = null;
+        window.__queueRenderAllSuperAdmin = function () {
+            if (__superAdminRenderTimer) clearTimeout(__superAdminRenderTimer);
+            __superAdminRenderTimer = setTimeout(() => { try { window.__renderAllSuperAdmin(); } catch (e) {} }, 250);
+        };
+
+        (function pasangListenerSuperAdmin() {
+            const jalan = () => { try { window.__renderAllSuperAdmin && window.__renderAllSuperAdmin(); } catch (e) {} };
+            const antre = () => { try { window.__queueRenderAllSuperAdmin && window.__queueRenderAllSuperAdmin(); } catch (e) {} };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', jalan, { once: true });
+            } else {
+                jalan();
+            }
+            // Daftarkan sekali saja: navigasi SPA mengeksekusi ulang skrip ini,
+            // tanpa penjagaan listener menumpuk dan chart dirender berkali-kali.
+            if (!window.__superAdminDashListenerOn) {
+                window.__superAdminDashListenerOn = true;
+                document.addEventListener('livewire:navigated', jalan);
+                try { if (window.Livewire && typeof window.Livewire.hook === 'function') window.Livewire.hook('morph.updated', antre); } catch (e) {}
+                try { if (window.Livewire && typeof window.Livewire.on === 'function') window.Livewire.on('chart:data-updated', antre); } catch (e) {}
+            }
+        })();
     </script>
 @endpush

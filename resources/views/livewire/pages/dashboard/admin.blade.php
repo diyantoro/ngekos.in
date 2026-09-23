@@ -49,7 +49,6 @@ new class extends Component
         $id = auth()->id();
         $bulanCount = max(1, min(24, (int) $this->periode));
         $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
-        $enamBulan = now()->subMonths(5)->startOfMonth();
 
         $totalTugas = Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count();
         $pembayaranMenungguCount = Pembayaran::where('status', 'menunggu_verifikasi')
@@ -65,7 +64,7 @@ new class extends Component
 
         $pendapatanRows = Pembayaran::where('status', 'diverifikasi')
             ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
-            ->where('verified_at', '>=', $enamBulan)
+            ->where('verified_at', '>=', $monthStart)
             ->selectRaw(GrafikBulan::kolomBulan('verified_at').', SUM(jumlah) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan');
@@ -74,7 +73,7 @@ new class extends Component
             ->all();
 
         $tagihanRows = Tagihan::whereHas('penyewaan.properti', $this->kelolaan())
-            ->where('created_at', '>=', $enamBulan)
+            ->where('created_at', '>=', $monthStart)
             ->selectRaw(GrafikBulan::kolomBulan('created_at').', SUM(jumlah + denda) as total, '.GrafikBulan::jumlahLunas())
             ->groupBy('bulan')
             ->get()
@@ -161,6 +160,7 @@ new class extends Component
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
+            'periodeBulan' => $bulanCount,
         ];
     }
 
@@ -241,7 +241,7 @@ new class extends Component
     }
 }; ?>
 
-<div class="py-10" wire:poll.60000>
+<div class="py-10" wire:poll.visible.120s>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <x-dashboard-greeting
             roleLabel="Admin Properti"
@@ -336,7 +336,10 @@ new class extends Component
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="status-data-admin"
+            data-sewaan='{{ json_encode($statusPenyewaan) }}'
+            data-pembayaran='{{ json_encode($statusPembayaran) }}'
+            class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Distribusi Status Penyewaan</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Penyewaan aktif &amp; selesai pada properti kelolaan</p>
@@ -447,11 +450,14 @@ new class extends Component
             subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti yang Anda kelola"
         />
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
+        <div id="pendapatan-data-admin"
+            data-pendapatan='{{ json_encode($pendapatanPerBulan) }}'
+            data-tagihan='{{ json_encode($tagihanStatusPerBulan) }}'
+            class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pendapatan &amp; Status Tagihan</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">6 bulan terakhir, properti yang Anda kelola</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $periodeBulan }} bulan terakhir, properti yang Anda kelola</p>
                 </div>
             </div>
             <canvas id="chart-pendapatan-admin" class="mt-4 max-h-72"></canvas>
@@ -526,8 +532,15 @@ new class extends Component
 
 @push('scripts')
     <script>
+        // Baca dari atribut data-* di DOM (bukan data inline saat load) agar data selalu
+        // segar setelah morph Livewire (poll / cari / ganti periode).
         function renderPendapatanAdmin() {
-            window.renderPendapatanChart('chart-pendapatan-admin', @json($pendapatanPerBulan), @json($tagihanStatusPerBulan));
+            const wrap = document.getElementById('pendapatan-data-admin');
+            if (!wrap) return;
+            let pendapatan = {}, tagihan = {};
+            try { pendapatan = JSON.parse(wrap.dataset.pendapatan || '{}'); } catch (e) { pendapatan = {}; }
+            try { tagihan = JSON.parse(wrap.dataset.tagihan || '{}'); } catch (e) { tagihan = {}; }
+            window.renderPendapatanChart('chart-pendapatan-admin', pendapatan, tagihan);
         }
 
         function renderGrowthAdmin() {
@@ -565,8 +578,11 @@ new class extends Component
         }
 
         function renderStatusAdmin() {
-            const sewaanRaw = @json($statusPenyewaan);
-            const pembayaranRaw = @json($statusPembayaran);
+            const wrap = document.getElementById('status-data-admin');
+            if (!wrap) return;
+            let sewaanRaw = {}, pembayaranRaw = {};
+            try { sewaanRaw = JSON.parse(wrap.dataset.sewaan || '{}'); } catch (e) { sewaanRaw = {}; }
+            try { pembayaranRaw = JSON.parse(wrap.dataset.pembayaran || '{}'); } catch (e) { pembayaranRaw = {}; }
             const labelMap = {
                 aktif: 'Aktif', selesai: 'Selesai',
                 menunggu_verifikasi: 'Menunggu Verifikasi', diverifikasi: 'Diverifikasi', ditolak: 'Ditolak',
@@ -585,15 +601,35 @@ new class extends Component
             }
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => { renderPendapatanAdmin(); renderGrowthAdmin(); renderAnalyticsAdmin(); renderStatusAdmin(); });
-        } else {
-            renderPendapatanAdmin();
-            renderGrowthAdmin();
-            renderAnalyticsAdmin();
-            renderStatusAdmin();
-        }
-        document.addEventListener('livewire:navigated', () => { renderPendapatanAdmin(); renderGrowthAdmin(); renderAnalyticsAdmin(); renderStatusAdmin(); });
-        Livewire.on('chart:data-updated', () => requestAnimationFrame(() => { renderGrowthAdmin(); renderAnalyticsAdmin(); }));
+        // Render ulang semua chart dashboard admin. Dijaga dengan penanda halaman
+        // agar listener basi dari navigasi SPA tidak merender halaman lain.
+        window.__renderAllAdmin = function () {
+            if (!document.getElementById('chart-pendapatan-admin')) return;
+            renderPendapatanAdmin(); renderGrowthAdmin(); renderAnalyticsAdmin(); renderStatusAdmin();
+        };
+        // Antrean debounce: ketikan pencarian / poll / ganti periode menyatu jadi 1 render.
+        let __adminRenderTimer = null;
+        window.__queueRenderAllAdmin = function () {
+            if (__adminRenderTimer) clearTimeout(__adminRenderTimer);
+            __adminRenderTimer = setTimeout(() => { try { window.__renderAllAdmin(); } catch (e) {} }, 250);
+        };
+
+        (function pasangListenerAdmin() {
+            const jalan = () => { try { window.__renderAllAdmin && window.__renderAllAdmin(); } catch (e) {} };
+            const antre = () => { try { window.__queueRenderAllAdmin && window.__queueRenderAllAdmin(); } catch (e) {} };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', jalan, { once: true });
+            } else {
+                jalan();
+            }
+            // Daftarkan sekali saja: navigasi SPA mengeksekusi ulang skrip ini,
+            // tanpa penjagaan listener menumpuk dan chart dirender berkali-kali.
+            if (!window.__adminDashListenerOn) {
+                window.__adminDashListenerOn = true;
+                document.addEventListener('livewire:navigated', jalan);
+                try { if (window.Livewire && typeof window.Livewire.hook === 'function') window.Livewire.hook('morph.updated', antre); } catch (e) {}
+                try { if (window.Livewire && typeof window.Livewire.on === 'function') window.Livewire.on('chart:data-updated', antre); } catch (e) {}
+            }
+        })();
     </script>
 @endpush
