@@ -292,6 +292,23 @@ use Livewire\Volt\Component;
                         },
                     });
                 },
+                // Listener dokumen didaftarkan sekali saja (navigasi SPA membuat
+                // init() jalan ulang; tanpa penjagaan handler menumpuk).
+                __dengarTemaBeranda() {
+                    if (window.__berandaTemaOn) return;
+                    window.__berandaTemaOn = true;
+                    document.addEventListener('ngekos:theme-changed', () => {
+                        try { window.__berandaGrafikAktif && window.__berandaGrafikAktif(); } catch (e) {}
+                    });
+                },
+                __dengarNavigasiBeranda() {
+                    if (window.__berandaNavOn) return;
+                    window.__berandaNavOn = true;
+                    document.addEventListener('livewire:navigated', () => {
+                        if (!document.getElementById('chart-persebaran-kos')) return;
+                        try { window.__berandaGrafikAktif && window.__berandaGrafikAktif(); } catch (e) {}
+                    });
+                },
                 init() {
                     this.$nextTick(() => {
                         this.renderGrafik();
@@ -306,12 +323,15 @@ use Livewire\Volt\Component;
                             if (this.$store && this.$store.theme) {
                                 this.$watch(() => this.$store.theme.dark, () => this.$nextTick(() => this.renderGrafik()));
                             } else {
-                                document.addEventListener('ngekos:theme-changed', () => this.$nextTick(() => this.renderGrafik()));
+                                window.__berandaGrafikAktif = () => this.$nextTick(() => this.renderGrafik());
+                                this.__dengarTemaBeranda();
                             }
                         } catch (e) {
-                            document.addEventListener('ngekos:theme-changed', () => this.$nextTick(() => this.renderGrafik()));
+                            window.__berandaGrafikAktif = () => this.$nextTick(() => this.renderGrafik());
+                            this.__dengarTemaBeranda();
                         }
-                        document.addEventListener('livewire:navigated', () => this.$nextTick(() => this.renderGrafik()));
+                        window.__berandaGrafikAktif = () => this.$nextTick(() => this.renderGrafik());
+                        this.__dengarNavigasiBeranda();
                     });
                 },
             }" class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10">
@@ -573,10 +593,14 @@ use Livewire\Volt\Component;
             };
 
             (() => {
-                document.addEventListener('livewire:navigated', () => {
-                    window._mapBeranda = null;
-                    window._boundsBeranda = null;
-                });
+                // Didaftarkan sekali saja agar tidak menumpuk tiap navigasi SPA.
+                if (!window.__berandaPetaNavOn) {
+                    window.__berandaPetaNavOn = true;
+                    document.addEventListener('livewire:navigated', () => {
+                        window._mapBeranda = null;
+                        window._boundsBeranda = null;
+                    });
+                }
                 if (typeof window.loadNgekosMaps === 'function') { try { window.loadNgekosMaps(window.berandaBuatPeta || berandaBuatPeta); } catch (e) {} }
                 window.berandaBuatPeta = berandaBuatPeta;
                 window.berandaFallback = berandaFallback;

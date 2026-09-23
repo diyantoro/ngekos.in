@@ -36,6 +36,36 @@ use Livewire\Volt\Component;
 <?php unset($__componentOriginal41da67e197cd1dfc4360372319841e50); ?>
 <?php endif; ?>
 
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pesan): ?>
+            <?php if (isset($component)) { $__componentOriginalfdcd7a5a16c9274b4b57c957ab5de77a = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalfdcd7a5a16c9274b4b57c957ab5de77a = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.notifikasi-popup','data' => ['pesan' => $pesan,'judul' => 'Berhasil!']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('notifikasi-popup'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['pesan' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($pesan),'judul' => 'Berhasil!']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalfdcd7a5a16c9274b4b57c957ab5de77a)): ?>
+<?php $attributes = $__attributesOriginalfdcd7a5a16c9274b4b57c957ab5de77a; ?>
+<?php unset($__attributesOriginalfdcd7a5a16c9274b4b57c957ab5de77a); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalfdcd7a5a16c9274b4b57c957ab5de77a)): ?>
+<?php $component = $__componentOriginalfdcd7a5a16c9274b4b57c957ab5de77a; ?>
+<?php unset($__componentOriginalfdcd7a5a16c9274b4b57c957ab5de77a); ?>
+<?php endif; ?>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($galat): ?>
+            <div class="flex items-center justify-between gap-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                <span><?php echo e($galat); ?></span>
+                <button wire:click="$set('galat', null)" class="text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold">&times;</button>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
@@ -200,12 +230,12 @@ use Livewire\Volt\Component;
         </div>
 
         <div id="growth-data"
-            data-labels='<?php echo e(json_encode($bulanLabels)); ?>'
-            data-growth-total='<?php echo e(json_encode($chartGrowthTotal)); ?>'
-            data-growth-anak='<?php echo e(json_encode($chartGrowthAnak)); ?>'
-            data-growth-pemilik='<?php echo e(json_encode($chartGrowthPemilik)); ?>'
-            data-growth-properti='<?php echo e(json_encode($chartGrowthProperti)); ?>'
-            data-growth-penyewaan='<?php echo e(json_encode($chartGrowthPenyewaan)); ?>'
+            data-labels='<?php echo json_encode($bulanLabels, 15, 512) ?>'
+            data-growth-total='<?php echo json_encode($chartGrowthTotal, 15, 512) ?>'
+            data-growth-anak='<?php echo json_encode($chartGrowthAnak, 15, 512) ?>'
+            data-growth-pemilik='<?php echo json_encode($chartGrowthPemilik, 15, 512) ?>'
+            data-growth-properti='<?php echo json_encode($chartGrowthProperti, 15, 512) ?>'
+            data-growth-penyewaan='<?php echo json_encode($chartGrowthPenyewaan, 15, 512) ?>'
             class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -230,9 +260,9 @@ use Livewire\Volt\Component;
         </div>
 
         <div id="transaction-data"
-            data-labels='<?php echo e(json_encode($bulanLabels)); ?>'
-            data-total-transaksi='<?php echo e(json_encode($chartTransaksiJumlah)); ?>'
-            data-nilai-transaksi='<?php echo e(json_encode($chartTransaksiNilai)); ?>'
+            data-labels='<?php echo json_encode($bulanLabels, 15, 512) ?>'
+            data-total-transaksi='<?php echo json_encode($chartTransaksiJumlah, 15, 512) ?>'
+            data-nilai-transaksi='<?php echo json_encode($chartTransaksiNilai, 15, 512) ?>'
             class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -252,7 +282,7 @@ use Livewire\Volt\Component;
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Top Properti Berkinerja</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">5 properti dengan pendapatan terbesar, okupansi &amp; rating aktual</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">5 properti dengan pendapatan terbesar <?php echo e($periodeBulan); ?> bulan terakhir; okupansi &amp; rating aktual</p>
                 <div class="mt-4 space-y-4">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $topPropertis; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <div class="flex items-center gap-3">
@@ -362,14 +392,14 @@ use Livewire\Volt\Component;
 
         <?php if (isset($component)) { $__componentOriginald8164573f98476b0d8f7ee47884e7cb9 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald8164573f98476b0d8f7ee47884e7cb9 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-funnel','data' => ['stages' => $funnelStages,'title' => 'Grafik Pipeline','subtitle' => 'Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-funnel','data' => ['stages' => $funnelStages,'title' => 'Grafik Pipeline','subtitle' => 'Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti (keseluruhan)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashboard-funnel'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['stages' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($funnelStages),'title' => 'Grafik Pipeline','subtitle' => 'Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti']); ?>
+<?php $component->withAttributes(['stages' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($funnelStages),'title' => 'Grafik Pipeline','subtitle' => 'Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti (keseluruhan)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginald8164573f98476b0d8f7ee47884e7cb9)): ?>
@@ -382,8 +412,8 @@ use Livewire\Volt\Component;
 <?php endif; ?>
 
         <div id="pendapatan-data-super"
-            data-pendapatan='<?php echo e(json_encode($pendapatanPerBulan)); ?>'
-            data-tagihan='<?php echo e(json_encode($tagihanStatusPerBulan)); ?>'
+            data-pendapatan='<?php echo json_encode($pendapatanPerBulan, 15, 512) ?>'
+            data-tagihan='<?php echo json_encode($tagihanStatusPerBulan, 15, 512) ?>'
             class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>

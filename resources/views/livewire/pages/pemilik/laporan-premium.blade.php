@@ -115,7 +115,7 @@ new #[Layout('layouts.app')] class extends Component
                 <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">Laporan Premium</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ringkasan keuangan, tagihan belum bayar, kamar terisi & pemasukan tiap kos.</p>
                 @if (! ($terkunci ?? false) && ($data['tier'] ?? null))
-                    <span class="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ring-1 {{ ($data['tier'] ?? 'pro') === 'business' ? 'bg-violet-600 text-white ring-violet-600 shadow-lg shadow-violet-500/30' : 'bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/30' }}">
+                    <span class="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ring-1 {{ ($data['tier'] ?? 'pro') === 'business' ? 'bg-violet-500 text-white ring-violet-500 shadow-lg' : 'bg-teal-600 text-white ring-teal-600 shadow-lg' }}">
                         Paket {{ strtoupper($data['tier']) }}
                     </span>
                     @if (($data['tier'] ?? 'pro') === 'pro')
@@ -191,15 +191,15 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="min-w-0 flex-1">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Ekspor Laporan Premium</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Unduh laporan lengkap dalam PDF atau Excel. Nama file memuat tier paket. Paket BUSINESS mendapat 4 bagian tambahan: rincian tiap kos, transaksi detail, pertumbuhan bulanan, serta metode &amp; top penyewa.</p>
                 </div>
-                <form method="GET" class="flex flex-wrap items-center gap-2" target="_blank" rel="noopener">
+                <form method="GET" class="flex flex-wrap items-center gap-2 lg:justify-end" target="_blank" rel="noopener">
                     <input type="month" name="bulan" value="{{ $data['bulan'] }}"
-                        class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
-                    <select name="periode" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                        class="h-10 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                    <select name="periode" class="h-10 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
                         <option value="3" @selected((int) $periode === 3)>3 bulan</option>
                         @if (($maxPeriode ?? 12) >= 6)<option value="6" @selected((int) $periode === 6)>6 bulan</option>@endif
                         @if (($maxPeriode ?? 12) >= 12)<option value="12" @selected((int) $periode === 12)>12 bulan</option>@endif
@@ -208,16 +208,18 @@ new #[Layout('layouts.app')] class extends Component
                     @if ($propertiId)
                         <input type="hidden" name="properti_id" value="{{ $propertiId }}">
                     @endif
+                    <div class="flex items-center gap-2 shrink-0">
                     <button type="submit" formaction="{{ route('pemilik.laporan.pdf') }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 transition">
+                        class="inline-flex h-10 shrink-0 whitespace-nowrap items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 transition">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                         PDF
                     </button>
                     <button type="submit" formaction="{{ route('pemilik.laporan.excel') }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition">
+                        class="inline-flex h-10 shrink-0 whitespace-nowrap items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                         Excel
                     </button>
+                    </div>
                 </form>
             </div>
 
@@ -326,7 +328,7 @@ new #[Layout('layouts.app')] class extends Component
                             <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Pertumbuhan Bulan ke Bulan</h3>
                             <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · persen naik/turun vs bulan sebelumnya</p>
                         </div>
-                        <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                        <span class="shrink-0 whitespace-nowrap rounded-full bg-violet-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
@@ -363,7 +365,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Metode Pembayaran</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · transaksi terverifikasi</p>
                             </div>
-                            <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                            <span class="shrink-0 whitespace-nowrap rounded-full bg-violet-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
                         </div>
                         <div class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($data['metode_pembayaran'] ?? [] as $m)
@@ -383,7 +385,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Top 10 Penyewa</h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · pembayaran terbesar</p>
                             </div>
-                            <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                            <span class="shrink-0 whitespace-nowrap rounded-full bg-violet-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
                         </div>
                         <div class="divide-y divide-gray-100 dark:divide-gray-700">
                             @forelse ($data['top_penyewa'] ?? [] as $i => $p)

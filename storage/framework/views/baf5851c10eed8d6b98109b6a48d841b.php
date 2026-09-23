@@ -10,7 +10,7 @@
 <?php $component->withAttributes([]); ?>
      <?php $__env->slot('header', null, []); ?> 
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-100 leading-tight">
-            <?php echo e(__('Dashboard Admin')); ?>
+            <?php echo e(__('Dashboard Pemilik')); ?>
 
         </h2>
      <?php $__env->endSlot(); ?>
@@ -19,11 +19,11 @@
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('pages.dashboard.admin', []);
+[$__name, $__params] = $__split('pages.dashboard.pemilik', []);
 
 $__key = null;
 
-$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-711726237-0', $__key);
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1064074451-0', $__key);
 
 $__html = app('livewire')->mount($__name, $__params, $__key);
 
@@ -45,4 +45,4 @@ if (isset($__slots)) unset($__slots);
 <?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
 <?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
 <?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
-<?php endif; ?><?php /**PATH C:\laragon\www\Ngekos.in\resources\views/dashboard/admin.blade.php ENDPATH**/ ?>
+<?php endif; ?><?php /**PATH C:\laragon\www\Ngekos.in\resources\views/dashboard/pemilik.blade.php ENDPATH**/ ?>
