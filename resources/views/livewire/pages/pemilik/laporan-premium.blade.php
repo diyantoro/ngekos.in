@@ -114,6 +114,14 @@ new #[Layout('layouts.app')] class extends Component
                 </a>
                 <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">Laporan Premium</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ringkasan keuangan, tagihan belum bayar, kamar terisi & pemasukan tiap kos.</p>
+                @if (! ($terkunci ?? false) && ($data['tier'] ?? null))
+                    <span class="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ring-1 {{ ($data['tier'] ?? 'pro') === 'business' ? 'bg-violet-600 text-white ring-violet-600 shadow-lg shadow-violet-500/30' : 'bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/30' }}">
+                        Paket {{ strtoupper($data['tier']) }}
+                    </span>
+                    @if (($data['tier'] ?? 'pro') === 'pro')
+                        <a href="{{ route('langganan.plans') }}" wire:navigate class="ms-2 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">Naik ke BUSINESS untuk 4 bagian analisis tambahan →</a>
+                    @endif
+                @endif
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <input type="month" wire:model.live="bulan"
@@ -186,7 +194,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Ekspor Laporan Premium</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Unduh laporan lengkap (ringkasan, tagihan belum bayar, kos pemasukan terbesar & naik turun tiap bulan) dalam PDF atau Excel.</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Unduh laporan lengkap dalam PDF atau Excel. Nama file memuat tier paket. Paket BUSINESS mendapat 4 bagian tambahan: rincian tiap kos, transaksi detail, pertumbuhan bulanan, serta metode &amp; top penyewa.</p>
                 </div>
                 <form method="GET" class="flex flex-wrap items-center gap-2" target="_blank" rel="noopener">
                     <input type="month" name="bulan" value="{{ $data['bulan'] }}"
@@ -312,6 +320,88 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             @if (($data['tier'] ?? 'pro') === 'business')
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Pertumbuhan Bulan ke Bulan</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · persen naik/turun vs bulan sebelumnya</p>
+                        </div>
+                        <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                            <thead class="bg-gray-50 dark:bg-gray-700/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bulan</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pendapatan</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">±</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Untung</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">±</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @forelse ($data['pertumbuhan'] ?? [] as $p)
+                                    <tr>
+                                        <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $p['bulan'] }}</td>
+                                        <td class="px-4 py-3 text-sm text-right text-emerald-600 dark:text-emerald-400">Rp{{ number_format($p['pendapatan'], 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 text-sm text-right font-bold {{ $p['pendapatan_pct'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">{{ $p['pendapatan_pct'] }}%</td>
+                                        <td class="px-4 py-3 text-sm text-right text-teal-600 dark:text-teal-400">Rp{{ number_format($p['laba'], 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 text-sm text-right font-bold {{ $p['laba_pct'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">{{ $p['laba_pct'] }}%</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">Belum ada data.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Metode Pembayaran</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · transaksi terverifikasi</p>
+                            </div>
+                            <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                        </div>
+                        <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse ($data['metode_pembayaran'] ?? [] as $m)
+                                <div class="px-5 py-3.5 flex items-center justify-between gap-3">
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $m['label'] }} <span class="font-normal text-xs text-gray-500">· {{ $m['jumlah_transaksi'] }} transaksi</span></p>
+                                    <p class="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($m['total'], 0, ',', '.') }}</p>
+                                </div>
+                            @empty
+                                <p class="px-5 py-10 text-center text-sm text-gray-400">Belum ada data.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Top 10 Penyewa</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Khusus BUSINESS · pembayaran terbesar</p>
+                            </div>
+                            <span class="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Business</span>
+                        </div>
+                        <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse ($data['top_penyewa'] ?? [] as $i => $p)
+                                <div class="px-5 py-3 flex items-center gap-3">
+                                    <span class="shrink-0 h-7 w-7 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-extrabold flex items-center justify-center">{{ $i + 1 }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $p['nama'] }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $p['jumlah_transaksi'] }} transaksi</p>
+                                    </div>
+                                    <p class="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($p['total'], 0, ',', '.') }}</p>
+                                </div>
+                            @empty
+                                <p class="px-5 py-10 text-center text-sm text-gray-400">Belum ada data.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">

@@ -397,6 +397,9 @@ window.renderGrafikPemilik = () => {
 const inisialisasiGrafikPemilik = () => requestAnimationFrame(window.renderGrafikPemilik);
 
 const daftarkanGrafikPemilik = () => {
+    // Bundle dievaluasi sekali per full load; penjagaan ganda untuk HMR/evaluasi ulang.
+    if (window.__grafikPemilikOn) return;
+    window.__grafikPemilikOn = true;
     document.addEventListener('livewire:navigated', inisialisasiGrafikPemilik);
     try {
         if (window.Livewire) window.Livewire.on('chart:data-updated', inisialisasiGrafikPemilik);

@@ -822,6 +822,10 @@ new #[Layout('layouts.app')] class extends Component
 
     function pasangToggleLokasiForm() {
         if (typeof Livewire === 'undefined') return;
+        // @script dieksekusi ulang tiap navigasi SPA sementara objek Livewire
+        // tetap hidup — tanpa penjagaan handler menumpuk dan jalan berkali-kali.
+        if (window.__petaFormLokasiOn) return;
+        window.__petaFormLokasiOn = true;
         Livewire.on('minta-lokasi', cariDariKoordinatKiri);
     }
 
@@ -914,23 +918,27 @@ new #[Layout('layouts.app')] class extends Component
         initPetaForm();
     }
 
-    // Re-initialize after Livewire navigation
-    document.addEventListener('livewire:navigated', () => {
-        // Reset flag so map can be re-initialized
-        const el = document.getElementById('peta-properti-form');
-        if (el && el.dataset.terpasang) {
-            delete el.dataset.terpasang;
-        }
-        
-        // Re-init map
-        setTimeout(() => {
-            if (typeof window.loadNgekosMaps === 'function') {
-                window.loadNgekosMaps(initPetaForm);
-            } else {
-                initPetaForm();
+    // Re-initialize after Livewire navigation (didaftarkan sekali saja agar
+    // tidak menumpuk tiap navigasi SPA).
+    if (!window.__petaFormNavOn) {
+        window.__petaFormNavOn = true;
+        document.addEventListener('livewire:navigated', () => {
+            // Reset flag so map can be re-initialized
+            const el = document.getElementById('peta-properti-form');
+            if (el && el.dataset.terpasang) {
+                delete el.dataset.terpasang;
             }
-        }, 100);
-    });
+
+            // Re-init map
+            setTimeout(() => {
+                if (typeof window.loadNgekosMaps === 'function') {
+                    window.loadNgekosMaps(initPetaForm);
+                } else {
+                    initPetaForm();
+                }
+            }, 100);
+        });
+    }
 </script>
 @endscript
 

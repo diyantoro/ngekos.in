@@ -319,6 +319,11 @@ class SubscriptionService
     /**
      * Simpan langganan baru untuk user (dipakai Super Admin web & API).
      * Setiap penyimpanan menjadi satu baris => tercatat di subscription history.
+     *
+     * Periode yang "real": langganan aktif wajib punya tanggal mulai &
+     * berakhir yang logis (berakhir setelah mulai, durasi maks 366 hari,
+     * mulai maks 30 hari ke depan). Tanpa ini periode sembarangan bisa
+     * tersimpan dan merusak status paket pemilik.
      */
     public static function store(int $userId, array $attrs): Subscription
     {
@@ -328,6 +333,31 @@ class SubscriptionService
 
         if (! in_array($attrs['status'] ?? null, ['active', 'expired', 'cancelled'], true)) {
             throw new \InvalidArgumentException('Status tidak valid.');
+        }
+
+        if (($attrs['status'] ?? null) === 'active') {
+            try {
+                $mulai = ! empty($attrs['starts_at']) ? \Carbon\Carbon::parse($attrs['starts_at']) : null;
+                $akhir = ! empty($attrs['expires_at']) ? \Carbon\Carbon::parse($attrs['expires_at']) : null;
+            } catch (\Throwable $e) {
+                throw new \InvalidArgumentException('Tanggal periode tidak valid.');
+            }
+
+            if (! $mulai || ! $akhir) {
+                throw new \InvalidArgumentException('Langganan aktif wajib punya tanggal mulai & berakhir.');
+            }
+
+            if ($akhir->lte($mulai)) {
+                throw new \InvalidArgumentException('Tanggal berakhir harus setelah tanggal mulai.');
+            }
+
+            if ($mulai->diffInDays($akhir) > 366) {
+                throw new \InvalidArgumentException('Durasi langganan maksimal 366 hari.');
+            }
+
+            if ($mulai->gt(now()->addDays(30))) {
+                throw new \InvalidArgumentException('Tanggal mulai maksimal 30 hari ke depan.');
+            }
         }
 
         return Subscription::create([

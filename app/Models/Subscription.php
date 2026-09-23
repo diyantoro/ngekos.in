@@ -31,6 +31,11 @@ class Subscription extends Model
             return false;
         }
 
+        // Belum mulai (jadwal masa depan) belum dihitung aktif.
+        if ($this->starts_at && $this->starts_at->isFuture()) {
+            return false;
+        }
+
         return $this->expires_at === null || $this->expires_at->gte(now());
     }
 }

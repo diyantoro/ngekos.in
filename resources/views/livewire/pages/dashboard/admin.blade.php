@@ -36,11 +36,10 @@ new class extends Component
 
         $id = auth()->id();
 
+        // Ketat: admin hanya melihat properti yang ditugaskan kepadanya.
+        // Properti tanpa admin hanya terlihat oleh super admin (dashboard super-admin).
         return function ($query) use ($id) {
-            $query->where(function ($q) use ($id) {
-                $q->whereHas('admins', fn ($a) => $a->where('users.id', $id))
-                    ->orWhereDoesntHave('admins');
-            });
+            $query->whereHas('admins', fn ($a) => $a->where('users.id', $id));
         };
     }
 
@@ -50,7 +49,7 @@ new class extends Component
         $bulanCount = max(1, min(24, (int) $this->periode));
         $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
 
-        $totalTugas = Properti::whereHas('admins', fn ($q) => $q->where('id', $id))->count();
+        $totalTugas = Properti::where($this->kelolaan())->count();
         $pembayaranMenungguCount = Pembayaran::where('status', 'menunggu_verifikasi')
             ->whereHas('tagihan.penyewaan.properti', $this->kelolaan())
             ->count();
@@ -110,7 +109,7 @@ new class extends Component
                 'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
                     ->where('denda', '>', 0)
                     ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
-                'propertiTanpaKamar' => Properti::whereHas('admins', fn ($q) => $q->where('id', $id))
+                'propertiTanpaKamar' => Properti::where($this->kelolaan())
                     ->whereDoesntHave('kamars')->count(),
                 'bantuanBaru' => PesanBantuan::jumlahBaru(),
             ],
@@ -153,10 +152,12 @@ new class extends Component
                 ->pluck('total', 'bulan')->all(), true),
             'userGrowthMonth' => cache()->remember("admin.userGrowth.{$bulanCount}", 600, fn () => $this->userRoleSeries($bulanCount)),
             'statusPenyewaan' => Penyewaan::whereHas('properti', $this->kelolaan())
+                ->where('created_at', '>=', $monthStart)
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
             'statusPembayaran' => Pembayaran::whereHas('tagihan.penyewaan.properti', $this->kelolaan())
+                ->where('created_at', '>=', $monthStart)
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
@@ -281,10 +282,10 @@ new class extends Component
         </div>
 
         <div id="growth-data"
-            data-labels='{{ json_encode($bulanLabels) }}'
-            data-growth-properti='{{ json_encode($chartGrowthProperti) }}'
-            data-growth-penyewaan='{{ json_encode($chartGrowthPenyewaan) }}'
-            data-growth-pembayaran='{{ json_encode($chartGrowthPembayaran) }}'
+            data-labels='@json($bulanLabels)'
+            data-growth-properti='@json($chartGrowthProperti)'
+            data-growth-penyewaan='@json($chartGrowthPenyewaan)'
+            data-growth-pembayaran='@json($chartGrowthPembayaran)'
             class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -309,10 +310,10 @@ new class extends Component
         </div>
 
         <div id="analytics-data"
-            data-labels='{{ json_encode($bulanLabels) }}'
-            data-user-anak='{{ json_encode($userGrowthMonth['anak_kos']) }}'
-            data-user-pemilik='{{ json_encode($userGrowthMonth['pemilik']) }}'
-            data-nilai-transaksi='{{ json_encode($chartNilaiTransaksi) }}'
+            data-labels='@json($bulanLabels)'
+            data-user-anak='@json($userGrowthMonth['anak_kos'])'
+            data-user-pemilik='@json($userGrowthMonth['pemilik'])'
+            data-nilai-transaksi='@json($chartNilaiTransaksi)'
             class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -337,12 +338,12 @@ new class extends Component
         </div>
 
         <div id="status-data-admin"
-            data-sewaan='{{ json_encode($statusPenyewaan) }}'
-            data-pembayaran='{{ json_encode($statusPembayaran) }}'
+            data-sewaan='@json($statusPenyewaan)'
+            data-pembayaran='@json($statusPembayaran)'
             class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Distribusi Status Penyewaan</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Penyewaan aktif &amp; selesai pada properti kelolaan</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $periodeBulan }} bulan terakhir pada properti kelolaan</p>
                 @if (count($statusPenyewaan) > 0)
                     <canvas id="chart-status-penyewaan" class="mt-4 max-h-64"></canvas>
                 @else
@@ -351,7 +352,7 @@ new class extends Component
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Distribusi Status Pembayaran</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Menunggu verifikasi, diverifikasi, dan ditolak</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $periodeBulan }} bulan terakhir: menunggu verifikasi, diverifikasi, dan ditolak</p>
                 @if (count($statusPembayaran) > 0)
                     <canvas id="chart-status-pembayaran" class="mt-4 max-h-64"></canvas>
                 @else
@@ -447,12 +448,12 @@ new class extends Component
         <x-dashboard-funnel
             :stages="$funnelStages"
             title="Grafik Pipeline"
-            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti yang Anda kelola"
+            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, properti yang Anda kelola (keseluruhan)"
         />
 
         <div id="pendapatan-data-admin"
-            data-pendapatan='{{ json_encode($pendapatanPerBulan) }}'
-            data-tagihan='{{ json_encode($tagihanStatusPerBulan) }}'
+            data-pendapatan='@json($pendapatanPerBulan)'
+            data-tagihan='@json($tagihanStatusPerBulan)'
             class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>

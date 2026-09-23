@@ -80,7 +80,7 @@ return [
             'pdf' => true,
             'excel' => true,
             'watermark' => false,
-            'sheets' => ['ringkasan', 'tagihan_belum_bayar', 'kos_pemasukan_terbesar', 'naik_turun_bulanan', 'kategori_pengeluaran', 'rincian_tiap_kos', 'daftar_transaksi_detail'],
+            'sheets' => ['ringkasan', 'tagihan_belum_bayar', 'kos_pemasukan_terbesar', 'naik_turun_bulanan', 'kategori_pengeluaran', 'rincian_tiap_kos', 'daftar_transaksi_detail', 'pertumbuhan_bulanan', 'metode_top_penyewa'],
         ],
     ],
 ];

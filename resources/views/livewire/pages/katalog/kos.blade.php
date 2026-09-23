@@ -379,10 +379,14 @@ new #[Layout('layouts.publik')] class extends Component
                 });
             };
 
-            document.addEventListener('livewire:navigated', () => {
-                ngekosMap = null;
-                ngekosBounds = null;
-            });
+            // Didaftarkan sekali saja agar tidak menumpuk tiap navigasi SPA.
+            if (!window.__kosPetaNavOn) {
+                window.__kosPetaNavOn = true;
+                document.addEventListener('livewire:navigated', () => {
+                    ngekosMap = null;
+                    ngekosBounds = null;
+                });
+            }
             if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(inisialisasiPetaKos);
         </script>
     @endpush

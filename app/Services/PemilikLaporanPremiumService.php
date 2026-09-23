@@ -106,7 +106,7 @@ class PemilikLaporanPremiumService
 
         $belum = Tagihan::where('status', '!=', 'lunas')
             ->whereHas('penyewaan.properti', $scopePropertiId)
-            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama'])
+            ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.kamar.properti:id,nama'])
             ->orderBy('jatuh_tempo')
             ->limit(50)
             ->get();
@@ -146,6 +146,9 @@ class PemilikLaporanPremiumService
 
         $rincianTiapKos = [];
         $transaksiDetail = [];
+        $pertumbuhan = [];
+        $metodePembayaran = [];
+        $topPenyewa = [];
 
         if ($tier === 'business') {
             $pengeluaranProperti = Pengeluaran::where('tanggal', '>=', $mulaiTrend->toDateString())
@@ -186,6 +189,48 @@ class PemilikLaporanPremiumService
                     'metode' => $p->metode ?? '-',
                     'jumlah' => (float) $p->jumlah,
                 ])->values()->all();
+
+            // Pertumbuhan month-over-month dari tren yang sudah dihitung.
+            $pct = fn ($now, $prev) => $prev > 0 ? (int) round(($now - $prev) / $prev * 100) : ($now > 0 ? 100 : 0);
+            foreach (range(0, count($labels) - 1) as $i) {
+                $pertumbuhan[] = [
+                    'bulan' => $labels[$i],
+                    'pendapatan' => $pendapatan[$i],
+                    'pendapatan_pct' => $i === 0 ? 0 : $pct($pendapatan[$i], $pendapatan[$i - 1]),
+                    'pengeluaran' => $pengeluaran[$i],
+                    'pengeluaran_pct' => $i === 0 ? 0 : $pct($pengeluaran[$i], $pengeluaran[$i - 1]),
+                    'laba' => $laba[$i],
+                    'laba_pct' => $i === 0 ? 0 : $pct($laba[$i], $laba[$i - 1]),
+                    'okupansi' => $okupansi[$i],
+                ];
+            }
+
+            // Metode pembayaran terverifikasi pada rentang tren.
+            $metodePembayaran = Pembayaran::where('status', 'diverifikasi')
+                ->where('verified_at', '>=', $mulaiTrend)
+                ->whereHas('tagihan.penyewaan.properti', $scopePropertiId)
+                ->selectRaw("CASE WHEN metode = 'cash' THEN 'Tunai (Cash)' ELSE 'Transfer' END as label, COUNT(*) as jml, SUM(jumlah) as total")
+                ->groupBy('label')
+                ->get()
+                ->map(fn ($r) => [
+                    'label' => $r->label,
+                    'jumlah_transaksi' => (int) $r->jml,
+                    'total' => (int) round((float) $r->total),
+                ])->values()->all();
+
+            // Penyewa dengan total pembayaran terbesar pada rentang tren.
+            $topPenyewa = Pembayaran::where('status', 'diverifikasi')
+                ->where('verified_at', '>=', $mulaiTrend)
+                ->whereHas('tagihan.penyewaan.properti', $scopePropertiId)
+                ->with('anakKos:id,nama')
+                ->get(['anak_kos_id', 'jumlah'])
+                ->groupBy('anak_kos_id')
+                ->map(fn ($rows, $id) => [
+                    'nama' => $rows->first()?->anakKos?->nama ?? '-',
+                    'jumlah_transaksi' => $rows->count(),
+                    'total' => (int) round($rows->sum('jumlah')),
+                ])
+                ->sortByDesc('total')->values()->take(10)->all();
         }
 
         return [
@@ -209,6 +254,7 @@ class PemilikLaporanPremiumService
             'tagihan_belum' => $belum->map(fn (Tagihan $t) => [
                 'id' => $t->id,
                 'anak_kos_nama' => $t->penyewaan?->anakKos?->nama ?? '-',
+                'kos_nama' => $t->penyewaan?->kamar?->properti?->nama ?? $t->penyewaan?->properti?->nama ?? '-',
                 'kamar_nama' => $t->penyewaan?->kamar?->nama,
                 'periode' => $t->periode,
                 'jumlah' => (float) $t->jumlah,
@@ -218,6 +264,9 @@ class PemilikLaporanPremiumService
             'top_properti' => $topProperti,
             'rincian_tiap_kos' => $rincianTiapKos,
             'transaksi_detail' => $transaksiDetail,
+            'pertumbuhan' => $pertumbuhan,
+            'metode_pembayaran' => $metodePembayaran,
+            'top_penyewa' => $topPenyewa,
         ];
     }
 }

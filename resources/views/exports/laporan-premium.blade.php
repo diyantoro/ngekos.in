@@ -21,8 +21,9 @@
 <body>
     <div class="header">
         <h1>Laporan Premium Pemilik Kos</h1>
+        <p>Paket {{ strtoupper($tier ?? 'pro') }} &bull; {{ $pemilik_nama ?? '' }}</p>
         <p>{{ $periode }} ({{ $bulan }})</p>
-        <p>Rentang bulan: {{ $periode_trend }}</p>
+        <p>Rentang bulan: {{ $periode_trend }} ({{ $bulan_count ?? 0 }} bulan)</p>
     </div>
 
     <h2>Ringkasan</h2>
@@ -49,10 +50,11 @@
     @if (count($tagihan_belum) > 0)
         <h2>Siapa yang belum bayar (maks 50)</h2>
         <table>
-            <tr><th>Penyewa</th><th>Kamar</th><th>Periode</th><th>Jumlah + Denda (Rp)</th><th>Jatuh Tempo</th></tr>
+            <tr><th>Penyewa</th><th>Kos</th><th>Kamar</th><th>Periode</th><th>Jumlah + Denda (Rp)</th><th>Jatuh Tempo</th></tr>
             @foreach ($tagihan_belum as $t)
                 <tr>
                     <td>{{ $t['anak_kos_nama'] }}</td>
+                    <td>{{ $t['kos_nama'] ?? '-' }}</td>
                     <td>{{ $t['kamar_nama'] }}</td>
                     <td>{{ $t['periode'] }}</td>
                     <td>{{ number_format($t['jumlah'] + $t['denda'], 0, ',', '.') }}</td>
@@ -105,6 +107,96 @@
         </table>
     @endif
 
-    <div class="footer">Dibuat pada {{ now()->translatedFormat('d F Y H:i') }} &bull; Ngekos.in</div>
+    @if (($tier ?? 'pro') === 'business')
+        <h2>Rincian Tiap Kos (Khusus BUSINESS)</h2>
+        <table>
+            <tr><th>Nama Kos</th><th>Total Kamar</th><th>Terisi</th><th>Okupansi</th><th>Pendapatan (Rp)</th><th>Pengeluaran (Rp)</th><th>Untung Bersih (Rp)</th></tr>
+            @forelse ($rincian_tiap_kos ?? [] as $p)
+                <tr>
+                    <td>{{ $p['nama'] }}</td>
+                    <td>{{ $p['total_kamar'] }}</td>
+                    <td>{{ $p['kamar_terisi'] }}</td>
+                    <td>{{ $p['tingkat_terisi'] }}%</td>
+                    <td>{{ number_format($p['pendapatan'], 0, ',', '.') }}</td>
+                    <td>{{ number_format($p['pengeluaran'], 0, ',', '.') }}</td>
+                    <td>{{ number_format($p['untung_bersih'], 0, ',', '.') }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="7">Belum ada data.</td></tr>
+            @endforelse
+        </table>
+
+        <h2>Daftar Transaksi Detail (Khusus BUSINESS, maks 100)</h2>
+        <table>
+            <tr><th>Tanggal</th><th>Penyewa</th><th>Kos</th><th>Kamar</th><th>Periode</th><th>Metode</th><th>Jumlah (Rp)</th></tr>
+            @forelse (array_slice($transaksi_detail ?? [], 0, 100) as $t)
+                <tr>
+                    <td class="nowrap">{{ $t['tanggal'] }}</td>
+                    <td>{{ $t['penyewa'] }}</td>
+                    <td>{{ $t['kos'] }}</td>
+                    <td>{{ $t['kamar'] }}</td>
+                    <td>{{ $t['periode'] }}</td>
+                    <td>{{ $t['metode'] }}</td>
+                    <td>{{ number_format($t['jumlah'], 0, ',', '.') }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="7">Belum ada data.</td></tr>
+            @endforelse
+        </table>
+        @if (count($transaksi_detail ?? []) > 100)
+            <p style="font-size: 10px; color: #9ca3af;">… dan {{ count($transaksi_detail) - 100 }} transaksi lainnya — lihat file Excel untuk daftar lengkap.</p>
+        @endif
+
+        <h2>Pertumbuhan Bulan ke Bulan (Khusus BUSINESS)</h2>
+        <table>
+            <tr><th>Bulan</th><th>Pendapatan (Rp)</th><th>± %</th><th>Pengeluaran (Rp)</th><th>± %</th><th>Untung Bersih (Rp)</th><th>± %</th></tr>
+            @forelse ($pertumbuhan ?? [] as $p)
+                <tr>
+                    <td>{{ $p['bulan'] }}</td>
+                    <td>{{ number_format($p['pendapatan'], 0, ',', '.') }}</td>
+                    <td>{{ $p['pendapatan_pct'] }}%</td>
+                    <td>{{ number_format($p['pengeluaran'], 0, ',', '.') }}</td>
+                    <td>{{ $p['pengeluaran_pct'] }}%</td>
+                    <td>{{ number_format($p['laba'], 0, ',', '.') }}</td>
+                    <td>{{ $p['laba_pct'] }}%</td>
+                </tr>
+            @empty
+                <tr><td colspan="7">Belum ada data.</td></tr>
+            @endforelse
+        </table>
+
+        <h2>Metode Pembayaran (Khusus BUSINESS)</h2>
+        <table>
+            <tr><th>Metode</th><th>Jumlah Transaksi</th><th>Total (Rp)</th></tr>
+            @forelse ($metode_pembayaran ?? [] as $m)
+                <tr>
+                    <td>{{ $m['label'] }}</td>
+                    <td>{{ $m['jumlah_transaksi'] }}</td>
+                    <td>{{ number_format($m['total'], 0, ',', '.') }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="3">Belum ada data.</td></tr>
+            @endforelse
+        </table>
+
+        <h2>Top 10 Penyewa (Khusus BUSINESS)</h2>
+        <table>
+            <tr><th>#</th><th>Penyewa</th><th>Transaksi</th><th>Total Bayar (Rp)</th></tr>
+            @forelse ($top_penyewa ?? [] as $i => $p)
+                <tr>
+                    <td>{{ $i + 1 }}</td>
+                    <td>{{ $p['nama'] }}</td>
+                    <td>{{ $p['jumlah_transaksi'] }}</td>
+                    <td>{{ number_format($p['total'], 0, ',', '.') }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="4">Belum ada data.</td></tr>
+            @endforelse
+        </table>
+    @else
+        <p style="font-size: 10px; color: #9ca3af; text-align: center;">Rincian tiap kos, daftar transaksi detail, pertumbuhan bulanan, metode pembayaran &amp; top penyewa hanya tersedia di paket BUSINESS.</p>
+    @endif
+
+    <div class="footer">Paket {{ strtoupper($tier ?? 'pro') }} &bull; Dibuat pada {{ now()->translatedFormat('d F Y H:i') }} &bull; Ngekos.in</div>
 </body>
 </html>

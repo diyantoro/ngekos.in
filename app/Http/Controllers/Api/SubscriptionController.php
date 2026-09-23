@@ -53,8 +53,8 @@ class SubscriptionController extends Controller
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'plan' => ['required', 'in:free,pro,business'],
             'status' => ['required', 'in:active,expired,cancelled'],
-            'starts_at' => ['nullable', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'starts_at' => ['required_if:status,active', 'nullable', 'date'],
+            'expires_at' => ['required_if:status,active', 'nullable', 'date', 'after:starts_at'],
         ]);
 
         $subscription = SubscriptionService::store((int) $validated['user_id'], [

@@ -19,7 +19,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?string $startsAt = null;
 
-    public ?string $expiresAt = null;
+    public int $durasiHari = 30;
 
     public ?string $pesan = null;
 
@@ -40,25 +40,64 @@ new #[Layout('layouts.app')] class extends Component
                 ->latest()
                 ->limit(50)
                 ->get(),
+            'pratinjauAkhir' => $this->hitungAkhir(),
         ];
+    }
+
+    private function hitungAkhir(): ?string
+    {
+        // Nilai dari <select> datang sebagai string — cast dulu agar cocok
+        // dengan daftar durasi dan pratinjau langsung menyesuaikan.
+        $durasi = (int) $this->durasiHari;
+
+        try {
+            $mulai = ! empty($this->startsAt) ? \Carbon\Carbon::parse($this->startsAt)->startOfDay() : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        if (! $mulai || ! in_array($durasi, [30, 90, 180, 365], true)) {
+            return null;
+        }
+
+        return $mulai->translatedFormat('d M Y').' → '.$mulai->copy()->addDays($durasi)->translatedFormat('d M Y')." ({$durasi} hari)";
     }
 
     public function simpan(): void
     {
+        $this->pesan = null;
+        $this->galat = null;
+
         $this->validate([
             'userId' => ['required', 'integer', 'exists:users,id'],
             'plan' => ['required', 'in:free,pro,business'],
             'status' => ['required', 'in:active,expired,cancelled'],
-            'startsAt' => ['nullable', 'date'],
-            'expiresAt' => ['nullable', 'date', 'after_or_equal:startsAt'],
+            'startsAt' => ['required', 'date'],
+            'durasiHari' => ['required', 'integer', 'in:30,90,180,365'],
+        ], [], [
+            'userId' => 'user',
+            'startsAt' => 'tanggal mulai',
+            'durasiHari' => 'durasi',
         ]);
 
+        $user = User::find($this->userId);
+
+        if (! $user || ! $user->hasRole('pemilik')) {
+            $this->galat = 'Langganan hanya bisa diberikan ke akun pemilik kos.';
+
+            return;
+        }
+
+        $mulai = \Carbon\Carbon::parse($this->startsAt)->startOfDay();
+        $durasi = (int) $this->durasiHari;
+        $akhir = $mulai->copy()->addDays($durasi);
+
         try {
-            SubscriptionService::store((int) $this->userId, [
+            SubscriptionService::store($user->id, [
                 'plan' => $this->plan,
                 'status' => $this->status,
-                'starts_at' => $this->startsAt,
-                'expires_at' => $this->expiresAt,
+                'starts_at' => $mulai,
+                'expires_at' => $akhir,
             ]);
         } catch (\InvalidArgumentException $e) {
             $this->galat = $e->getMessage();
@@ -66,10 +105,16 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        $this->reset(['userId', 'startsAt', 'expiresAt']);
+        $namaPlan = strtoupper($this->plan);
+        $namaUser = $user->nama;
+        $teksMulai = $mulai->translatedFormat('d M Y');
+        $teksAkhir = $akhir->translatedFormat('d M Y');
+
+        $this->reset(['userId', 'startsAt']);
+        $this->durasiHari = 30;
         $this->plan = 'pro';
         $this->status = 'active';
-        $this->pesan = 'Langganan berhasil disimpan.';
+        $this->pesan = "Langganan {$namaPlan} untuk {$namaUser} disimpan: {$teksMulai} s.d. {$teksAkhir}.";
     }
 
     public function perpanjang(int $id): void
@@ -129,7 +174,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Langganan Premium</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Aktivasi manual paket Free / Pro / Business.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Aktivasi manual paket Free / Pro / Business. Tanggal berakhir dihitung otomatis dari tanggal mulai + durasi.</p>
         </div>
 
         @if ($pesan)
@@ -176,14 +221,22 @@ new #[Layout('layouts.app')] class extends Component
                 <button type="submit" class="btn-primary w-full rounded-xl px-4 py-2 text-xs font-semibold text-white">Simpan</button>
             </div>
             <div>
-                <x-input-label for="startsAt" value="Start date" />
-                <input wire:model="startsAt" id="startsAt" type="date" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
+                <x-input-label for="startsAt" value="Tanggal mulai" />
+                <input wire:model.live="startsAt" id="startsAt" type="date" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
                 <x-input-error :messages="$errors->get('startsAt')" class="mt-2" />
             </div>
             <div>
-                <x-input-label for="expiresAt" value="End date" />
-                <input wire:model="expiresAt" id="expiresAt" type="date" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                <x-input-error :messages="$errors->get('expiresAt')" class="mt-2" />
+                <x-input-label for="durasiHari" value="Durasi" />
+                <select wire:model.live="durasiHari" id="durasiHari" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
+                    <option value="30">30 hari (1 bulan)</option>
+                    <option value="90">90 hari (3 bulan)</option>
+                    <option value="180">180 hari (6 bulan)</option>
+                    <option value="365">365 hari (1 tahun)</option>
+                </select>
+                <x-input-error :messages="$errors->get('durasiHari')" class="mt-2" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Periode otomatis: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $pratinjauAkhir ?? '— isi tanggal mulai —' }}</span>
+                </p>
             </div>
         </form>
 

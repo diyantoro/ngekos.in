@@ -19,6 +19,10 @@ new class extends Component
 
     public string $periode = '6';
 
+    public ?string $pesan = null;
+
+    public ?string $galat = null;
+
     public function updatedPeriode(): void
     {
         $this->dispatch('chart:data-updated');
@@ -44,7 +48,7 @@ new class extends Component
             ->where('model_has_roles.model_type', (new User)->getMorphClass())
             ->where('roles.name', 'anak_kos')
             ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(*) as total')
+            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(DISTINCT users.id) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $pemilikPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
@@ -53,7 +57,7 @@ new class extends Component
             ->where('model_has_roles.model_type', (new User)->getMorphClass())
             ->where('roles.name', 'pemilik')
             ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(*) as total')
+            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(DISTINCT users.id) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $propertiPerBulan = Properti::where('created_at', '>=', $monthStart)
@@ -83,11 +87,13 @@ new class extends Component
             ->join('tagihans', 'tagihans.id', '=', 'pembayarans.tagihan_id')
             ->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
             ->where('pembayarans.status', 'diverifikasi')
+            ->where('pembayarans.verified_at', '>=', $monthStart)
             ->selectRaw('penyewaans.properti_id as properti_id, SUM(pembayarans.jumlah) as total')
             ->groupBy('penyewaans.properti_id')
             ->pluck('total', 'properti_id');
 
         $penyewaanProperti = Penyewaan::query()
+            ->where('created_at', '>=', $monthStart)
             ->selectRaw('properti_id, count(*) as total')
             ->groupBy('properti_id')
             ->pluck('total', 'properti_id');
@@ -131,7 +137,7 @@ new class extends Component
             'kamarTerisi' => Kamar::where('status', 'terisi')->count(),
             'penyewaanAktif' => Penyewaan::where('status', 'aktif')->count(),
             'pendapatan' => (int) Pembayaran::where('status', 'diverifikasi')->sum('jumlah'),
-            'propertis' => $this->tab === 'properti' ? Properti::select(['id', 'nama', 'pemilik_id', 'alamat'])
+            'propertis' => $this->tab === 'properti' ? Properti::select(['id', 'nama', 'pemilik_id', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
                 ->withCount(['kamars', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
                 ->when($this->cari, fn ($q) => $q->where('nama', 'like', "%{$this->cari}%"))
@@ -222,18 +228,28 @@ new class extends Component
 
     public function verifikasiPembayaran(int $id): void
     {
+        $this->reset(['pesan', 'galat']);
+
         $pembayaran = Pembayaran::with('anakKos', 'tagihan')
             ->find($id);
 
         if (! $pembayaran || $pembayaran->status !== 'menunggu_verifikasi') {
+            $this->galat = 'Pembayaran tidak ditemukan atau sudah diproses.';
+
             return;
         }
 
         try {
-            \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'diverifikasi');
+            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'diverifikasi');
         } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
             return;
         }
+
+        $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
+            . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.'
+            . ($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim." : '');
     }
 }; ?>
 
@@ -244,6 +260,17 @@ new class extends Component
             description="Akses penuh ke seluruh data lintas properti, pengguna, dan konfigurasi sistem."
             icon='<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>'
         />
+
+        @if ($pesan)
+            <x-notifikasi-popup :pesan="$pesan" judul="Berhasil!" />
+        @endif
+
+        @if ($galat)
+            <div class="flex items-center justify-between gap-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                <span>{{ $galat }}</span>
+                <button wire:click="$set('galat', null)" class="text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold">&times;</button>
+            </div>
+        @endif
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <x-stat-card label="Total Pengguna" :value="$totalUser" tone="teal"
@@ -266,12 +293,12 @@ new class extends Component
         </div>
 
         <div id="growth-data"
-            data-labels='{{ json_encode($bulanLabels) }}'
-            data-growth-total='{{ json_encode($chartGrowthTotal) }}'
-            data-growth-anak='{{ json_encode($chartGrowthAnak) }}'
-            data-growth-pemilik='{{ json_encode($chartGrowthPemilik) }}'
-            data-growth-properti='{{ json_encode($chartGrowthProperti) }}'
-            data-growth-penyewaan='{{ json_encode($chartGrowthPenyewaan) }}'
+            data-labels='@json($bulanLabels)'
+            data-growth-total='@json($chartGrowthTotal)'
+            data-growth-anak='@json($chartGrowthAnak)'
+            data-growth-pemilik='@json($chartGrowthPemilik)'
+            data-growth-properti='@json($chartGrowthProperti)'
+            data-growth-penyewaan='@json($chartGrowthPenyewaan)'
             class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -296,9 +323,9 @@ new class extends Component
         </div>
 
         <div id="transaction-data"
-            data-labels='{{ json_encode($bulanLabels) }}'
-            data-total-transaksi='{{ json_encode($chartTransaksiJumlah) }}'
-            data-nilai-transaksi='{{ json_encode($chartTransaksiNilai) }}'
+            data-labels='@json($bulanLabels)'
+            data-total-transaksi='@json($chartTransaksiJumlah)'
+            data-nilai-transaksi='@json($chartTransaksiNilai)'
             class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -318,7 +345,7 @@ new class extends Component
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Top Properti Berkinerja</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">5 properti dengan pendapatan terbesar, okupansi &amp; rating aktual</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">5 properti dengan pendapatan terbesar {{ $periodeBulan }} bulan terakhir; okupansi &amp; rating aktual</p>
                 <div class="mt-4 space-y-4">
                     @forelse ($topPropertis as $index => $p)
                         <div class="flex items-center gap-3">
@@ -429,12 +456,12 @@ new class extends Component
         <x-dashboard-funnel
             :stages="$funnelStages"
             title="Grafik Pipeline"
-            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti"
+            subtitle="Kunjungan → Penyewa → Tagihan → Lunas, seluruh properti (keseluruhan)"
         />
 
         <div id="pendapatan-data-super"
-            data-pendapatan='{{ json_encode($pendapatanPerBulan) }}'
-            data-tagihan='{{ json_encode($tagihanStatusPerBulan) }}'
+            data-pendapatan='@json($pendapatanPerBulan)'
+            data-tagihan='@json($tagihanStatusPerBulan)'
             class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
