@@ -4,6 +4,7 @@ use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
 use App\Support\FacilityHelper;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -132,6 +133,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public function simpan(): void
     {
+        Log::info('Simpan kos dipanggil.', ['user_id' => auth()->id()]);
+
         $this->normalizeKosong();
 
         if ($this->bolehKelolaSemua() && $this->properti === null) {
@@ -163,11 +166,11 @@ new #[Layout('layouts.app')] class extends Component
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:aktif,nonaktif',
             'galeriBaru' => ['nullable', 'array', 'max:10'],
-            'galeriBaru.*' => ['image', 'max:4096'],
+            'galeriBaru.*' => ['image', 'max:8192'],
         ], [
             'galeriBaru.max' => 'Maksimal 10 foto tambahan sekaligus.',
             'galeriBaru.*.image' => 'Setiap file galeri harus berupa gambar.',
-            'galeriBaru.*.max' => 'Ukuran tiap foto galeri maksimal 4MB.',
+            'galeriBaru.*.max' => 'Ukuran tiap foto galeri maksimal 8MB. Kecilkan dulu foto dari HP bila perlu.',
         ]);
 
         $fasilitasString = FacilityHelper::normalizeString(
@@ -191,33 +194,44 @@ new #[Layout('layouts.app')] class extends Component
             'status' => $this->status,
         ];
 
-        if ($this->fotoBaru) {
-            $data['foto'] = $this->fotoBaru->store('properti', 'public');
-            if ($this->properti?->foto) {
-                Storage::disk('public')->delete($this->properti->foto);
-            }
-        }
-
-        if ($this->properti) {
-            $this->properti->update($data);
-            $properti = $this->properti->refresh();
-            session()->flash('sukses', "Perubahan kos \"{$data['nama']}\" berhasil disimpan.");
-        } else {
-            $targetUser = $this->bolehKelolaSemua() ? User::find($this->pemilikId) : auth()->user();
-            $cek = SubscriptionService::checkLimit($targetUser ?? auth()->user(), 'property');
-
-            if (! $cek['allowed']) {
-                $this->addError('nama', $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.');
-
-                return;
+        try {
+            if ($this->fotoBaru) {
+                $data['foto'] = $this->fotoBaru->store('properti', 'public');
+                if ($this->properti?->foto) {
+                    Storage::disk('public')->delete($this->properti->foto);
+                }
             }
 
-            $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->id();
-            $properti = Properti::create($data);
-            session()->flash('sukses', "Kos baru \"$data[nama]\" berhasil ditambahkan.");
-        }
+            if ($this->properti) {
+                $this->properti->update($data);
+                $properti = $this->properti->refresh();
+                session()->flash('sukses', "Perubahan kos \"{$data['nama']}\" berhasil disimpan.");
+            } else {
+                $targetUser = $this->bolehKelolaSemua() ? User::find($this->pemilikId) : auth()->user();
+                $cek = SubscriptionService::checkLimit($targetUser ?? auth()->user(), 'property');
 
-        $this->sinkronGaleri($properti);
+                if (! $cek['allowed']) {
+                    $this->addError('nama', $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.');
+
+                    return;
+                }
+
+                $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->id();
+                $properti = Properti::create($data);
+                session()->flash('sukses', "Kos baru \"$data[nama]\" berhasil ditambahkan.");
+            }
+
+            $this->sinkronGaleri($properti);
+        } catch (\Throwable $e) {
+            Log::error('Gagal menyimpan kos.', [
+                'user_id' => auth()->id(),
+                'properti_id' => $this->properti?->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->addError('simpan', 'Gagal menyimpan kos karena kesalahan server. Coba lagi, dan bila terus gagal hubungi admin dengan menyebutkan waktu kejadian.');
+
+            return;
+        }
 
         $this->redirect(route('pemilik.properti', absolute: false), navigate: true);
     }
@@ -361,6 +375,16 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         <form wire:submit="simpan" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-5 sm:p-8 space-y-5">
+            @if ($errors->any())
+                <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                    <p class="font-bold">Belum tersimpan, periksa lagi:</p>
+                    <ul class="mt-1 list-disc ps-5 space-y-0.5">
+                        @foreach ($errors->all() as $pesan)
+                            <li>{{ $pesan }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             <!-- Foto Cover -->
             <div x-data="{
                 cropper: null,
@@ -453,7 +477,7 @@ new #[Layout('layouts.app')] class extends Component
             <!-- Galeri Foto (maks 10, bisa digeser di halaman detail) -->
             <div x-data="photoCropManager()" x-init="init()">
                 <x-input-label for="galeriBaru" value="Galeri Foto (maks 10 foto)" />
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tambah beberapa foto sekaligus. Setiap foto bisa di-crop sebelum disimpan. Foto pertama menjadi cover.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tambah beberapa foto sekaligus (maks 10 foto, maks 8MB per foto). Setiap foto bisa di-crop sebelum disimpan. Foto pertama menjadi cover.</p>
                 <input x-ref="fileInput" type="file" accept="image/*" multiple @change="onFilesSelected($event)"
                     class="mt-2 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
                 <x-input-error :messages="$errors->get('galeriBaru')" class="mt-2" />
@@ -822,7 +846,7 @@ new #[Layout('layouts.app')] class extends Component
 
     function pasangToggleLokasiForm() {
         if (typeof Livewire === 'undefined') return;
-        // @script dieksekusi ulang tiap navigasi SPA sementara objek Livewire
+        // Blok ini dieksekusi ulang tiap navigasi SPA sementara objek Livewire
         // tetap hidup — tanpa penjagaan handler menumpuk dan jalan berkali-kali.
         if (window.__petaFormLokasiOn) return;
         window.__petaFormLokasiOn = true;

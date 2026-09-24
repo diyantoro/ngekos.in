@@ -143,15 +143,18 @@ class SubscriptionTest extends TestCase
         $this->assertSame(7, SubscriptionService::trialDays());
     }
 
-    public function test_trial_habis_maka_tambah_dikunci(): void
+    public function test_trial_habis_maka_tambah_tetap_ikut_batas_free(): void
     {
         $user = $this->pemilik(['email' => 'trialhabisx@test.id']);
         SubscriptionService::mulaiTrialFree($user);
         Subscription::where('user_id', $user->id)->update(['expires_at' => now()->subDay()]);
 
         $this->assertTrue(SubscriptionService::trialExpired($user));
-        $this->assertFalse(SubscriptionService::checkLimit($user, 'property')['allowed']);
-        $this->assertFalse(SubscriptionService::checkLimit($user, 'room')['allowed']);
+        // Free murni tetap boleh tambah sampai batas paket walau trial habis.
+        $this->assertTrue(SubscriptionService::checkLimit($user, 'property')['allowed']);
+        $this->assertTrue(SubscriptionService::checkLimit($user, 'room')['allowed']);
+        // Laporan premium tetap dikunci.
+        $this->assertTrue(SubscriptionService::laporanDikunci($user));
     }
 
     public function test_grafik_free_partial_dan_lock_laporan(): void
@@ -168,8 +171,9 @@ class SubscriptionTest extends TestCase
         $this->assertStringContainsString(route('pemilik.rekap.excel'), $content);
         $this->assertStringNotContainsString('Excel · PRO', $content);
 
+        // Trial klaim = PRO penuh: laporan premium ikut terbuka.
         $laporan = $this->actingAs($user)->get(route('pemilik.laporan'))->getContent();
-        $this->assertStringContainsString('Tersedia di paket PRO', $laporan);
+        $this->assertStringNotContainsString('Tersedia di paket PRO', $laporan);
     }
 
     public function test_pro_max_5_property_dan_100_room(): void

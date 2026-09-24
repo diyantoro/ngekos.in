@@ -30,7 +30,27 @@ class SubscriptionController extends Controller
             'property_limit' => SubscriptionService::limitFor($plan, 'property'),
             'room_used' => SubscriptionService::usage($user, 'room'),
             'room_limit' => SubscriptionService::limitFor($plan, 'room'),
+            'sisa_trial' => SubscriptionService::sisaTrialHari($user),
+            'trial_expired' => SubscriptionService::trialExpired($user),
+            'bisa_klaim_trial' => SubscriptionService::bisaKlaimTrial($user),
+            'pernah_trial' => SubscriptionService::pernahTrial($user),
         ]);
+    }
+
+    public function klaimTrial(Request $request): JsonResponse
+    {
+        $hasil = SubscriptionService::klaimTrialFree($request->user());
+
+        if (! $hasil) {
+            return response()->json([
+                'message' => 'Trial tidak dapat diklaim. Mungkin sudah pernah dipakai atau paket Anda bukan Free.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Trial PRO 7 hari aktif. Tanpa kartu kredit.',
+            'subscription' => $hasil,
+        ], 201);
     }
 
     public function index(): JsonResponse

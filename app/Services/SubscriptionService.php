@@ -10,6 +10,15 @@ use App\Models\User;
 
 class SubscriptionService
 {
+    /**
+     * Fitur PRO yang ikut terbuka selama trial Free 7 hari yang diklaim.
+     * Trial = PRO penuh agar pemilik merasakan nilai paket berbayar.
+     */
+    public const FITUR_TRIAL_PRO = [
+        'advanced_analytics',
+        'advanced_report',
+        'export_report',
+    ];
     public static function getSubscription(User $user): ?Subscription
     {
         return Subscription::where('user_id', $user->id)->latest('id')->first();
@@ -37,6 +46,11 @@ class SubscriptionService
         $plans = config('plans', []);
 
         if (in_array($feature, $plans[$plan]['features'] ?? [], true)) {
+            return true;
+        }
+
+        // Trial yang diklaim = PRO penuh.
+        if (self::trialAktif($user) !== null && in_array($feature, self::FITUR_TRIAL_PRO, true)) {
             return true;
         }
 
@@ -130,6 +144,52 @@ class SubscriptionService
         }
     }
 
+    /**
+     * Total revenue platform (rupiah) dari upgrade paket yang disetujui.
+     * Satu-satunya nominal tercatat di subscription_requests.amount;
+     * baris tanpa amount dihitung 0. Status selain approved diabaikan.
+     */
+    public static function platformRevenue(): int
+    {
+        return (int) (SubscriptionRequest::where('status', 'approved')->sum('amount') ?? 0);
+    }
+
+    public static function jumlahUpgradeApproved(): int
+    {
+        return (int) SubscriptionRequest::where('status', 'approved')->count();
+    }
+
+    /**
+     * Konversi premium: pemilik berlangganan PRO/Business aktif
+     * dibagi total pemilik. Trial Free tidak dihitung premium.
+     *
+     * @return array{total_pemilik:int, premium_aktif:int, persen:float}
+     */
+    public static function konversiPremium(): array
+    {
+        $pemilikIds = User::role('pemilik')->pluck('id');
+        $total = $pemilikIds->count();
+
+        if ($total === 0) {
+            return ['total_pemilik' => 0, 'premium_aktif' => 0, 'persen' => 0.0];
+        }
+
+        $premium = Subscription::whereIn('user_id', $pemilikIds)
+            ->whereIn('plan', ['pro', 'business'])
+            ->where('status', 'active')
+            ->get()
+            ->filter(fn (Subscription $s) => $s->isActive())
+            ->pluck('user_id')
+            ->unique()
+            ->count();
+
+        return [
+            'total_pemilik' => $total,
+            'premium_aktif' => $premium,
+            'persen' => round($premium / $total * 100, 1),
+        ];
+    }
+
     public static function history(User $user, int $limit = 20)
     {
         return Subscription::where('user_id', $user->id)->latest()->limit($limit)->get();
@@ -216,7 +276,7 @@ class SubscriptionService
                 'allowed' => false,
                 'plan' => 'free',
                 'required_plan' => 'pro',
-                'message' => 'Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci.',
+                'message' => 'Masa coba 7 hari sudah habis atau belum diklaim. Data tidak hilang, tapi halaman Laporan dikunci.',
             ];
         }
 
@@ -246,6 +306,43 @@ class SubscriptionService
         ]);
     }
 
+    /**
+     * Apakah user boleh mengklaim trial 7 hari sekarang?
+     * Syarat: pemilik, bukan exempt, masih free, belum pernah trial, tidak ada trial aktif.
+     */
+    public static function bisaKlaimTrial(User $user): bool
+    {
+        if (self::isExempt($user)) {
+            return false;
+        }
+
+        if (! $user->hasRole('pemilik')) {
+            return false;
+        }
+
+        if (self::getPlan($user) !== 'free') {
+            return false;
+        }
+
+        if (self::pernahTrial($user)) {
+            return false;
+        }
+
+        return self::trialAktif($user) === null;
+    }
+
+    /**
+     * Klaim trial 7 hari (sekali per akun). Return null bila tidak eligible.
+     */
+    public static function klaimTrialFree(User $user): ?Subscription
+    {
+        if (! self::bisaKlaimTrial($user)) {
+            return null;
+        }
+
+        return self::mulaiTrialFree($user);
+    }
+
     public static function reportTier(User $user): string
     {
         if (self::isExempt($user)) {
@@ -255,7 +352,8 @@ class SubscriptionService
         return match (self::getPlan($user)) {
             'business' => 'business',
             'pro' => 'pro',
-            default => 'basic',
+            // Trial klaim = tier PRO agar laporan premium + 12 bulan terbuka.
+            default => self::trialAktif($user) !== null ? 'pro' : 'basic',
         };
     }
 
@@ -268,7 +366,8 @@ class SubscriptionService
         return match (self::getPlan($user)) {
             'business' => 'business',
             'pro' => 'pro',
-            default => 'free',
+            // Trial klaim memakai batas & sheet paket PRO.
+            default => self::trialAktif($user) !== null ? 'pro' : 'free',
         };
     }
 
@@ -310,6 +409,11 @@ class SubscriptionService
     public static function perluWatermark(User $user): bool
     {
         if (self::isExempt($user)) {
+            return false;
+        }
+
+        // Selama trial klaim aktif, tanpa watermark seperti paket PRO.
+        if (self::trialAktif($user) !== null) {
             return false;
         }
 
@@ -484,21 +588,9 @@ class SubscriptionService
         $limit = self::limitFor($plan, $resource);
         $used = self::usage($user, $resource);
 
-        if ($plan === 'free' && self::trialExpired($user)) {
-            $label = match ($resource) {
-                'property', 'properties', 'properti' => 'properti',
-                default => 'kamar',
-            };
-
-            return [
-                'allowed' => false,
-                'used' => $used,
-                'limit' => $limit,
-                'plan' => $plan,
-                'required_plan' => 'pro',
-                'message' => 'Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah '.$label.' dikunci.',
-            ];
-        }
+        // Free murni tetap boleh tambah sampai batas paket (1 properti / 10 kamar)
+        // walau belum/tidak klaim trial. Trial hanya membuka fitur premium,
+        // bukan syarat tambah dasar. Habis trial -> kembali ke batas Free.
 
         if ($limit === null) {
             return ['allowed' => true, 'used' => $used, 'limit' => null, 'plan' => $plan, 'required_plan' => null, 'message' => null];

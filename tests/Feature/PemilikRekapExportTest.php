@@ -51,7 +51,8 @@ class PemilikRekapExportTest extends TestCase
             'application/pdf',
             $response->headers->get('Content-Type') ?? ''
         );
-        $this->assertSame('basic', $response->headers->get('X-Report-Tier'));
+        // Trial klaim = tier PRO.
+        $this->assertSame('pro', $response->headers->get('X-Report-Tier'));
     }
 
     public function test_ekspor_pdf_trial_ada_watermark(): void

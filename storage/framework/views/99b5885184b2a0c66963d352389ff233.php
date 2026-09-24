@@ -8,6 +8,7 @@ use App\Models\PesanBantuan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use App\Support\GrafikBulan;
 use Livewire\Volt\Component;
 
@@ -315,19 +316,19 @@ use Livewire\Volt\Component;
             <div class="space-y-6">
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Platform Revenue</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Booking fee, transaction fee, premium, boost, dan layanan berbayar</p>
-                    <div class="mt-4 rounded-xl bg-teal-50/60 dark:bg-teal-500/5 ring-1 ring-teal-100 dark:ring-teal-500/20 px-4 py-6 text-center">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Data belum tersedia</p>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Model monetisasi (premium / boost / promoted listing) belum berjalan, sehingga belum ada sumber revenue platform.</p>
-                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Total upgrade paket PRO/Business yang disetujui</p>
+                    <p class="mt-3 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">Rp<?php echo e(number_format($platformRevenue ?? 0, 0, ',', '.')); ?></p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"><?php echo e($upgradeApproved ?? 0); ?> transaksi upgrade disetujui</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Premium Conversion</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Free users → premium users → conversion rate</p>
-                    <div class="mt-4 rounded-xl bg-teal-50/60 dark:bg-teal-500/5 ring-1 ring-teal-100 dark:ring-teal-500/20 px-4 py-6 text-center">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Data belum tersedia</p>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Belum ada langganan premium aktif di database. Grafik akan tampil otomatis begitu data tersedia.</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Pemilik berlangganan PRO/Business aktif</p>
+                    <?php $konversi = $konversiPremium ?? ['total_pemilik' => 0, 'premium_aktif' => 0, 'persen' => 0]; ?>
+                    <p class="mt-3 text-3xl font-extrabold text-teal-600 dark:text-teal-400"><?php echo e($konversi['persen']); ?>%</p>
+                    <div class="mt-2 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500" style="width: <?php echo e(min(100, max(0, (float) $konversi['persen']))); ?>%"></div>
                     </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"><?php echo e($konversi['premium_aktif']); ?> dari <?php echo e($konversi['total_pemilik']); ?> pemilik memakai paket premium</p>
                 </div>
             </div>
         </div>

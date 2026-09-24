@@ -99,9 +99,7 @@ class AuthController extends Controller
         $user = User::create($data);
         $user->assignRole($validated['peran']);
 
-        if ($validated['peran'] === 'pemilik') {
-            \App\Services\SubscriptionService::mulaiTrialFree($user);
-        }
+        // Pemilik baru = Free murni. Trial 7 hari diklaim manual via /subscription/claim-trial.
 
         $token = $user->createToken('mobile-token')->plainTextToken;
 

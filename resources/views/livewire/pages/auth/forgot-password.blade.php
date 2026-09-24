@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -24,9 +25,26 @@ new #[Layout('layouts.guest')] class extends Component
             $user = User::query()->where('email', $this->email)->first();
 
             if ($user) {
-                $token = Password::broker()->createToken($user);
+                try {
+                    $token = Password::broker()->createToken($user);
 
-                $user->notify(new ResetPassword($token));
+                    $user->notify(new ResetPassword($token));
+                } catch (\Throwable $e) {
+                    Log::warning('Gagal kirim email reset password (dev fallback).', [
+                        'email' => $this->email,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    // Fallback via mailer log agar tidak 500 saat SMTP mati.
+                    $mailerSebelumnya = config('mail.default');
+                    config(['mail.default' => 'log']);
+                    try {
+                        $token = Password::broker()->createToken($user);
+                        $user->notify(new ResetPassword($token));
+                    } finally {
+                        config(['mail.default' => $mailerSebelumnya]);
+                    }
+                }
 
                 $otp = \App\Services\OtpService::buat($user->email);
 
@@ -45,9 +63,51 @@ new #[Layout('layouts.guest')] class extends Component
             }
         }
 
-        $status = Password::sendResetLink(
-            $this->only('email')
-        );
+        try {
+            $status = Password::sendResetLink(
+                $this->only('email')
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gagal kirim email reset password, fallback ke mailer log.', [
+                'email' => $this->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Coba ulang dengan mailer log agar token tetap dibuat
+            // dan tidak melempar 500 (mis. Mailpit/SMTP mati di local).
+            // Catatan: percobaan pertama sudah membuat token di DB sebelum
+            // SMTP gagal, jadi hapus dulu agar retry tidak kena throttle 60 detik.
+            $penggunaFallback = User::query()->where('email', $this->email)->first();
+            if ($penggunaFallback) {
+                try {
+                    Password::broker()->getRepository()->delete($penggunaFallback);
+                } catch (\Throwable $eHapus) {
+                    Log::debug('Gagal hapus token reset sebelum retry.', [
+                        'email' => $this->email,
+                        'error' => $eHapus->getMessage(),
+                    ]);
+                }
+            }
+
+            $mailerSebelumnya = config('mail.default');
+            config(['mail.default' => 'log']);
+            try {
+                $status = Password::sendResetLink($this->only('email'));
+            } catch (\Throwable $e2) {
+                Log::error('Fallback mailer log reset password ikut gagal.', [
+                    'email' => $this->email,
+                    'error' => $e2->getMessage(),
+                ]);
+                // Tetap tampilkan pesan generik agar tidak bocor
+                // apakah email terdaftar + tidak 500.
+                $this->reset('email');
+                session()->flash('status', __('Jika email terdaftar, kami telah mengirim tautan reset password.'));
+
+                return;
+            } finally {
+                config(['mail.default' => $mailerSebelumnya]);
+            }
+        }
 
         if ($status != Password::RESET_LINK_SENT) {
             $this->addError('email', __($status));

@@ -16,6 +16,7 @@ use App\Services\KwitansiService;
 use App\Services\PatunganService;
 use App\Services\PembayaranService;
 use App\Services\PemilikRekapService;
+use App\Services\SubscriptionService;
 use App\Services\TagihanService;
 use App\Support\GrafikBulan;
 use Illuminate\Http\JsonResponse;
@@ -1167,8 +1168,9 @@ class DashboardController extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status')
                 ->toArray(),
-            'platform_revenue' => null,
-            'premium_conversion' => null,
+            'platform_revenue' => SubscriptionService::platformRevenue(),
+            'upgrade_approved' => SubscriptionService::jumlahUpgradeApproved(),
+            'premium_conversion' => SubscriptionService::konversiPremium(),
             'propertis' => $propertis->map(fn (Properti $p) => [
                 'id' => $p->id,
                 'nama' => $p->nama,

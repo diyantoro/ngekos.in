@@ -43,6 +43,79 @@ class TambahPropertiTest extends TestCase
         $this->assertNotNull($properti->foto);
     }
 
+    public function test_pendaftar_baru_tanpa_trial_bisa_tambah_kos_pertama(): void
+    {
+        $pemilik = User::factory()->create();
+        $pemilik->assignRole('pemilik');
+        $pemilik = $pemilik->refresh();
+
+        // Free murni tanpa klaim trial tetap boleh tambah kos pertama.
+        $this->assertSame('free', \App\Services\SubscriptionService::getPlan($pemilik));
+        $this->assertTrue(\App\Services\SubscriptionService::checkLimit($pemilik, 'property')['allowed']);
+
+        Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
+            ->set('nama', 'Kos Pertama')
+            ->set('status', 'aktif')
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('propertis', [
+            'pemilik_id' => $pemilik->id,
+            'nama' => 'Kos Pertama',
+        ]);
+    }
+
+    public function test_widget_fasilitas_tanpa_alpine_toggle_tersimpan(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+
+        $component = Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form');
+
+        // Widget harus memakai wire:model (bukan entangle Alpine) agar ceklis
+        // tetap sinkron walau form di-render ulang.
+        $component->assertSee('wire:model.live="fasilitasTerpilih"', false);
+
+        $component->set('fasilitasTerpilih', ['WiFi', 'AC'])
+            ->set('nama', 'Kos Fasilitas')
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('propertis', [
+            'pemilik_id' => $pemilik->id,
+            'fasilitas' => 'WiFi, AC',
+        ]);
+    }
+
+    public function test_simpan_kos_dengan_foto_dan_galeri_tanpa_trial(): void
+    {
+        $pemilik = User::factory()->create();
+        $pemilik->assignRole('pemilik');
+        $pemilik = $pemilik->refresh();
+
+        $this->assertSame('free', \App\Services\SubscriptionService::getPlan($pemilik));
+
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
+            ->set('nama', 'Kos Repro Penuh')
+            ->set('kota', 'Jakarta')
+            ->set('status', 'aktif')
+            ->set('fotoBaru', UploadedFile::fake()->image('cover.jpg', 800, 600))
+            ->set('galeriBaru', [
+                UploadedFile::fake()->image('g1.jpg', 800, 600),
+                UploadedFile::fake()->image('g2.jpg', 800, 600),
+            ])
+            ->set('fasilitasTerpilih', ['WiFi', 'AC'])
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('propertis', [
+            'pemilik_id' => $pemilik->id,
+            'nama' => 'Kos Repro Penuh',
+        ]);
+    }
+
     public function test_form_fasilitas_render_dan_centang_tersimpan(): void
     {
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();

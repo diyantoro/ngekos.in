@@ -131,6 +131,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Langganan premium
     Route::get('/plans', [SubscriptionController::class, 'plans']);
     Route::get('/subscription', [SubscriptionController::class, 'show']);
+    Route::post('/subscription/claim-trial', [SubscriptionController::class, 'klaimTrial'])
+        ->middleware(['role:pemilik', 'throttle:5,1']);
     Route::get('/subscription/history', [SubscriptionController::class, 'history']);
     Route::get('/dashboard/pemilik/analytics', [DashboardController::class, 'analytics'])
         ->middleware(['role:pemilik|admin|super_admin', 'premium:advanced_analytics']);

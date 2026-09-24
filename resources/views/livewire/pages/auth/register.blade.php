@@ -48,9 +48,8 @@ new #[Layout('layouts.guest')] class extends Component
         $user = User::create($data);
         $user->assignRole($validated['peran']);
 
-        if ($validated['peran'] === 'pemilik') {
-            \App\Services\SubscriptionService::mulaiTrialFree($user);
-        }
+        // Pemilik baru = Free murni. Trial 7 hari tidak otomatis,
+        // harus diklaim manual sekali via halaman Langganan/Grafik.
 
         event(new Registered($user));
         Auth::login($user);

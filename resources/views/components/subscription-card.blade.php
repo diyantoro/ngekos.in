@@ -8,6 +8,7 @@
     'status' => null,
     'sisaTrial' => null,
     'trialHabis' => null,
+    'bisaKlaim' => null,
 ])
 
 @php
@@ -30,6 +31,13 @@
     }
     if ($trialHabis === null && $user) {
         $trialHabis = SubscriptionService::trialExpired($user);
+    }
+    if ($bisaKlaim === null && $user) {
+        try {
+            $bisaKlaim = SubscriptionService::bisaKlaimTrial($user);
+        } catch (\Throwable $e) {
+            $bisaKlaim = false;
+        }
     }
 
     $isFree = $plan === 'free';
@@ -114,7 +122,12 @@
             <h2 class="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">{{ $planName }}</h2>
             <p class="mt-1.5 max-w-md text-sm leading-relaxed text-slate-500 dark:text-slate-400">{{ $deskripsi }}</p>
 
-            @if ($isFree && $sisaTrial !== null)
+            @if ($isFree && ($bisaKlaim ?? false))
+                <p class="mt-2 max-w-md rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-3 py-2 text-xs leading-relaxed text-teal-700 dark:text-teal-300">
+                    <span class="font-bold">Gratis 7 hari fitur PRO, sekali per akun.</span>
+                    <a href="{{ route('langganan.subscription') }}" wire:navigate class="font-bold underline hover:no-underline">Klaim Trial 7 Hari</a>
+                </p>
+            @elseif ($isFree && $sisaTrial !== null)
                 <p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/30">
                     Sisa masa coba {{ $sisaTrial }} hari
                 </p>

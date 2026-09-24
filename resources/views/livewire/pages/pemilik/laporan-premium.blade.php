@@ -36,6 +36,19 @@ new #[Layout('layouts.app')] class extends Component
         $this->dispatch('laporan:data-updated');
     }
 
+    public function klaimTrial(): void
+    {
+        $hasil = SubscriptionService::klaimTrialFree(auth()->user());
+
+        if (! $hasil) {
+            session()->flash('galat', 'Trial tidak dapat diklaim. Mungkin sudah pernah dipakai atau paket Anda bukan Free.');
+
+            return;
+        }
+
+        session()->flash('status', 'Trial PRO 7 hari aktif. Tanpa kartu kredit.');
+    }
+
     public function with(): array
     {
         $user = auth()->user();
@@ -45,6 +58,7 @@ new #[Layout('layouts.app')] class extends Component
         $sisaTrial = SubscriptionService::sisaTrialHari($user);
         $trialHabis = SubscriptionService::trialExpired($user);
         $tier = SubscriptionService::reportTier($user);
+        $bisaKlaim = SubscriptionService::bisaKlaimTrial($user);
 
         if (! $cek['allowed']) {
             return [
@@ -57,6 +71,7 @@ new #[Layout('layouts.app')] class extends Component
                 'isFree' => $isFree,
                 'sisaTrial' => $sisaTrial,
                 'trialHabis' => $trialHabis,
+                'bisaKlaim' => $bisaKlaim,
                 'daftarProperti' => Properti::where('pemilik_id', $user->id)->orderBy('nama')->get(['id', 'nama'])->map(fn ($p) => ['id' => $p->id, 'nama' => $p->nama]),
                 'data' => null,
             ];
@@ -161,10 +176,25 @@ new #[Layout('layouts.app')] class extends Component
             @if (($isFree ?? false) && ($sisaTrial ?? null) === null && ($trialHabis ?? false))
                 <div class="max-w-2xl mx-auto space-y-4">
                     <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                        Masa coba 7 hari sudah habis. Data tidak hilang, tapi halaman Laporan & tambah kos/kamar dikunci.
+                        Masa coba 7 hari sudah habis atau belum diklaim. Data tidak hilang, tapi halaman Laporan dikunci. Tambah kos/kamar tetap bisa sampai batas paket Free.
                         <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
                     </div>
-                    <x-premium-lock requiredPlan="pro" title="Laporan Premium" message="Tersedia di paket PRO." />
+                    @if (($bisaKlaim ?? false))
+                        <div class="rounded-2xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 p-6 text-center">
+                            <p class="text-base font-extrabold text-teal-800 dark:text-teal-200">Gratis 7 hari fitur PRO, sekali per akun</p>
+                            <p class="mt-1 text-sm text-teal-700 dark:text-teal-200/80">Tanpa kartu kredit. Buka laporan premium, grafik 12 bulan, dan ekspor tanpa watermark.</p>
+                            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                <button wire:click="klaimTrial" wire:loading.attr="disabled" class="inline-flex items-center rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-500 disabled:opacity-50">
+                                    Klaim Trial 7 Hari
+                                </button>
+                                <a href="{{ route('langganan.plans') }}" wire:navigate class="inline-flex items-center rounded-xl ring-1 ring-teal-300 dark:ring-teal-500/40 px-5 py-2.5 text-sm font-bold text-teal-700 dark:text-teal-200 hover:bg-teal-100/60 dark:hover:bg-teal-500/10">
+                                    Upgrade PRO
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        <x-premium-lock requiredPlan="pro" title="Laporan Premium" message="Tersedia di paket PRO." />
+                    @endif
                 </div>
             @else
             <div class="max-w-2xl mx-auto">

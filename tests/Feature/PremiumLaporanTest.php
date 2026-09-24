@@ -271,14 +271,19 @@ class PremiumLaporanTest extends TestCase
         $this->assertTrue(SubscriptionService::pernahTrial($user));
         $this->assertNotNull(SubscriptionService::sisaTrialHari($user));
         $this->assertFalse(SubscriptionService::trialExpired($user));
-        $this->assertSame('basic', SubscriptionService::reportTier($user));
-        $this->assertSame(3, SubscriptionService::maxPeriode($user));
-        $this->assertSame(3, SubscriptionService::clampPeriode($user, 24));
+        // Trial klaim = PRO penuh.
+        $this->assertTrue(SubscriptionService::hasFeature($user, 'advanced_report'));
+        $this->assertTrue(SubscriptionService::hasFeature($user, 'export_report'));
+        $this->assertSame('pro', SubscriptionService::reportTier($user));
+        $this->assertSame('pro', SubscriptionService::reportPlanKey($user));
+        $this->assertSame(12, SubscriptionService::maxPeriode($user));
+        $this->assertSame(12, SubscriptionService::clampPeriode($user, 24));
         $this->assertTrue(SubscriptionService::canExportPdf($user));
         $this->assertTrue(SubscriptionService::canExportExcel($user));
+        $this->assertFalse(SubscriptionService::perluWatermark($user));
     }
 
-    public function test_trial_habis_maka_limit_ditolak_walau_belum_penuh(): void
+    public function test_trial_habis_maka_limit_ikut_batas_free(): void
     {
         $user = $this->pemilik(['email' => 'trialhabis@test.id']);
         SubscriptionService::mulaiTrialFree($user);
@@ -286,10 +291,11 @@ class PremiumLaporanTest extends TestCase
 
         $this->assertTrue(SubscriptionService::trialExpired($user));
 
+        // Free murni tetap boleh tambah sampai batas paket walau trial habis.
         $cek = SubscriptionService::checkLimit($user, 'property');
 
-        $this->assertFalse($cek['allowed']);
-        $this->assertSame('pro', $cek['required_plan']);
+        $this->assertTrue($cek['allowed']);
+        $this->assertTrue(SubscriptionService::laporanDikunci($user));
     }
 
     public function test_user_lama_tanpa_subscription_dianggap_habis(): void

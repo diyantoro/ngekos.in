@@ -147,6 +147,7 @@ new class extends Component
                     'status' => SubscriptionService::getSubscription($user)?->status,
                     'sisaTrial' => SubscriptionService::sisaTrialHari($user),
                     'trialHabis' => SubscriptionService::trialExpired($user),
+                    'bisaKlaim' => SubscriptionService::bisaKlaimTrial($user),
                 ];
             })(),
             'propertis' => $this->tab === 'sewaan' ? collect() : Properti::where('pemilik_id', $id)
@@ -250,6 +251,7 @@ new class extends Component
             :status="$langganan['status'] ?? null"
             :sisaTrial="$langganan['sisaTrial'] ?? null"
             :trialHabis="$langganan['trialHabis'] ?? null"
+            :bisaKlaim="$langganan['bisaKlaim'] ?? false"
         />
 
         <x-promo-premium />

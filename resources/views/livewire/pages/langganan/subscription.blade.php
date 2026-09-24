@@ -14,6 +14,20 @@ new #[Layout('layouts.app')] class extends Component
         }
     }
 
+    public function klaimTrial(): void
+    {
+        $user = auth()->user();
+        $hasil = SubscriptionService::klaimTrialFree($user);
+
+        if (! $hasil) {
+            session()->flash('galat', 'Trial tidak dapat diklaim. Mungkin sudah pernah dipakai atau paket Anda bukan Free.');
+
+            return;
+        }
+
+        session()->flash('status', 'Trial PRO 7 hari aktif sampai '.$hasil->expires_at?->translatedFormat('d F Y').'. Tanpa kartu kredit.');
+    }
+
     public function with(): array
     {
         $user = auth()->user();
@@ -32,6 +46,8 @@ new #[Layout('layouts.app')] class extends Component
             'isFree' => $isFree,
             'sisaTrial' => SubscriptionService::sisaTrialHari($user),
             'trialHabis' => SubscriptionService::trialExpired($user),
+            'bisaKlaim' => SubscriptionService::bisaKlaimTrial($user),
+            'pernahTrial' => SubscriptionService::pernahTrial($user),
             'permintaan' => SubscriptionRequest::where('user_id', $user->id)
                 ->where('status', 'pending')
                 ->latest('id')
@@ -60,6 +76,28 @@ new #[Layout('layouts.app')] class extends Component
             </div>
         @endif
 
+        @if (session('status'))
+            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
+                {{ session('status') }}
+            </div>
+        @endif
+
+        @if (session('galat'))
+            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                {{ session('galat') }}
+            </div>
+        @endif
+
+        @if ($isFree && ($bisaKlaim ?? false))
+            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
+                <p class="font-bold">Gratis 7 hari fitur PRO, sekali per akun. Tanpa kartu kredit.</p>
+                <p class="mt-0.5">Coba laporan premium, ekspor PDF/Excel tanpa watermark, dan grafik 12 bulan.</p>
+                <button wire:click="klaimTrial" wire:loading.attr="disabled" class="mt-2 inline-flex items-center rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-500 disabled:opacity-50">
+                    Klaim Trial 7 Hari
+                </button>
+            </div>
+        @endif
+
         @if ($isFree && $sisaTrial !== null)
             <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
                 Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar & laporan premium.
@@ -67,7 +105,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
         @elseif ($isFree && $sisaTrial === null && $trialHabis)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                Masa coba 7 hari sudah habis. Data tidak hilang, tapi tambah kos/kamar & halaman Laporan dikunci.
+                Masa coba 7 hari sudah habis atau belum diklaim. Data tidak hilang, tapi halaman Laporan dikunci. Tambah kos/kamar tetap bisa sampai batas paket Free.
                 <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
             </div>
         @endif

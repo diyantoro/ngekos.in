@@ -163,7 +163,8 @@ class DashboardApiParityTest extends TestCase
                 'top_propertis',
                 'sewaan_status',
                 'platform_revenue',
-                'premium_conversion',
+                'upgrade_approved',
+                'premium_conversion' => ['total_pemilik', 'premium_aktif', 'persen'],
                 'propertis',
                 'checkouts',
             ])
@@ -175,8 +176,12 @@ class DashboardApiParityTest extends TestCase
         $this->assertSame(count($response['transaction_growth']['jumlah']), 6);
         $this->assertSame(count($response['transaction_growth']['nilai']), 6);
         $this->assertNotEmpty($response['top_propertis']);
-        $this->assertNull($response['platform_revenue']);
-        $this->assertNull($response['premium_conversion']);
+        // Seeder tanpa upgrade approved & tanpa premium: revenue 0, konversi 0 dari 2 pemilik.
+        $this->assertSame(0, $response['platform_revenue']);
+        $this->assertSame(0, $response['upgrade_approved']);
+        $this->assertSame(2, $response['premium_conversion']['total_pemilik']);
+        $this->assertSame(0, $response['premium_conversion']['premium_aktif']);
+        $this->assertEquals(0, $response['premium_conversion']['persen']);
     }
 
     public function test_api_pemilik_bisa_verifikasi_pembayaran_dan_membalas_chat(): void

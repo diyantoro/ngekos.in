@@ -81,4 +81,33 @@ class LoginFlowTest extends TestCase
         $response = $this->get('/dashboard/super-admin');
         $response->assertOk();
     }
+
+    public function test_intended_milik_peran_lain_tidak_menyebabkan_403(): void
+    {
+        // Tamu membuka halaman khusus pemilik -> disimpan sebagai intended.
+        $this->get(route('langganan.subscription'))->assertRedirect(route('login'));
+
+        Volt::test('pages.auth.login', ['peran' => 'anak_kos'])
+            ->set('form.email', 'admin.ngekos@gmail.com')
+            ->set('form.password', 'Admin.ngekos123')
+            ->call('login')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('dashboard.admin'));
+
+        $this->get(route('dashboard.admin'))->assertOk();
+    }
+
+    public function test_intended_yang_boleh_diakses_tetap_dihormati(): void
+    {
+        $this->get(route('pemilik.properti'))->assertRedirect(route('login'));
+
+        Volt::test('pages.auth.login', ['peran' => 'pemilik'])
+            ->set('form.email', 'pemilik1@ngekos.test')
+            ->set('form.password', 'password')
+            ->call('login')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('pemilik.properti'));
+
+        $this->get(route('pemilik.properti'))->assertOk();
+    }
 }

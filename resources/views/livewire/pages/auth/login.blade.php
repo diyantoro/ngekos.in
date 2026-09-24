@@ -1,6 +1,8 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -25,10 +27,7 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
 
-        $this->redirectIntended(
-            default: $this->dashboardRoute(),
-            navigate: true,
-        );
+        $this->redirect($this->tujuanAman(), navigate: true);
     }
 
     /**
@@ -45,6 +44,59 @@ new #[Layout('layouts.guest')] class extends Component
             'admin' => route('dashboard.admin', absolute: false),
             default => route('dashboard.anak-kos', absolute: false),
         };
+    }
+
+    /**
+     * Tujuan redirect setelah login yang aman dari 403.
+     *
+     * `url.intended` bisa menunjuk ke halaman milik peran lain
+     * (mis. sesi/bookmark lama) sehingga user langsung menabrak
+     * "User does not have the right roles." tepat setelah login.
+     * Hormati intended hanya bila user boleh mengaksesnya dan
+     * URL-nya internal; selain itu ke dashboard sesuai role.
+     */
+    protected function tujuanAman(): string
+    {
+        $default = $this->dashboardRoute();
+        $intended = session()->pull('url.intended', $default);
+
+        if (! is_string($intended) || $intended === '') {
+            return $default;
+        }
+
+        // Tolak URL eksternal (jaga-jaga open redirect).
+        $hostIntended = (string) parse_url($intended, PHP_URL_HOST);
+        if ($hostIntended !== '' && $hostIntended !== request()->getHost()) {
+            return $default;
+        }
+
+        try {
+            $route = Route::getRoutes()->match(
+                Request::create(parse_url($intended, PHP_URL_PATH) ?: '/', 'GET')
+            );
+        } catch (\Throwable) {
+            return $default;
+        }
+
+        $user = auth()->user();
+
+        foreach ((array) $route->gatherMiddleware() as $middleware) {
+            if (! is_string($middleware)) {
+                continue;
+            }
+
+            [$nama, $parameter] = array_pad(explode(':', $middleware, 2), 2, null);
+
+            if ($nama === 'role' && is_string($parameter) && $parameter !== '') {
+                $butuh = preg_split('/[|,]/', $parameter, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                if ($butuh !== [] && ! $user->hasAnyRole($butuh)) {
+                    return $default;
+                }
+            }
+        }
+
+        return $intended;
     }
 }; ?>
 
