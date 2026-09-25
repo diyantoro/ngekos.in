@@ -9,6 +9,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Mail\Message;
@@ -128,6 +129,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'nama' => 'sometimes|string|max:255',
             'no_hp' => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
         if ($request->filled('current_password')) {
@@ -145,6 +147,16 @@ class AuthController extends Controller
             $berjalan = $request->user()->currentAccessToken();
 
             $user->tokens()->where('id', '!=', $berjalan?->id)->delete();
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            $data['avatar'] = $request->file('avatar')->store('avatar', 'public');
+        } else {
+            unset($data['avatar']);
         }
 
         $user->update($data);

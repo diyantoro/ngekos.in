@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -100,5 +104,92 @@ class ProfileTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertNotNull($user->fresh());
+    }
+
+    #[DataProvider('peranPenggunaProvider')]
+    public function test_foto_profil_bisa_diganti_lewat_web(string $peran): void
+    {
+        $this->seed([RolesAndPermissionsSeeder::class]);
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $user->assignRole($peran);
+
+        $this->actingAs($user);
+
+        $component = Volt::test('profile.update-profile-information-form')
+            ->set('nama', $user->nama)
+            ->set('email', $user->email)
+            ->set('fotoProfil', UploadedFile::fake()->image('avatar.png', 800, 600))
+            ->call('updateProfileInformation');
+
+        $component->assertHasNoErrors();
+
+        $avatar = $user->refresh()->avatar;
+
+        $this->assertNotNull($avatar);
+        Storage::disk('public')->assertExists($avatar);
+    }
+
+    public function test_foto_profil_lama_dihapus_saat_diganti(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $lama = UploadedFile::fake()->image('lama.png')->store('avatar', 'public');
+        $user->update(['avatar' => $lama]);
+
+        $this->actingAs($user);
+
+        Volt::test('profile.update-profile-information-form')
+            ->set('nama', $user->nama)
+            ->set('email', $user->email)
+            ->set('fotoProfil', UploadedFile::fake()->image('baru.png'))
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        Storage::disk('public')->assertMissing($lama);
+        Storage::disk('public')->assertExists($user->refresh()->avatar);
+    }
+
+    #[DataProvider('peranPenggunaProvider')]
+    public function test_foto_profil_bisa_diganti_lewat_api(string $peran): void
+    {
+        $this->seed([RolesAndPermissionsSeeder::class]);
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $user->assignRole($peran);
+        $token = $user->createToken('test')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/user/profile', [
+                'nama' => $user->nama,
+            ]);
+
+        // Tanpa file: avatar tidak berubah (tetap null), nama tetap tersimpan.
+        $response->assertOk();
+        $this->assertNull($user->refresh()->avatar);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/user/profile?_method=PUT', [
+                'avatar' => UploadedFile::fake()->image('avatar.png', 800, 600),
+            ]);
+
+        $response->assertOk();
+
+        $avatar = $user->refresh()->avatar;
+
+        $this->assertNotNull($avatar);
+        Storage::disk('public')->assertExists($avatar);
+        $this->assertStringContainsString('/storage/', $response->json('user.avatar'));
+    }
+
+    public static function peranPenggunaProvider(): array
+    {
+        return [
+            'pemilik' => ['pemilik'],
+            'anak_kos' => ['anak_kos'],
+        ];
     }
 }

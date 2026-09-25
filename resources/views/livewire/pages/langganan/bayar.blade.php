@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Pengaturan;
+use App\Services\LanggananNotifier;
 use App\Services\SubscriptionService;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -33,19 +34,13 @@ new #[Layout('layouts.app')] class extends Component
         $qrisImage = (string) Pengaturan::ambil('pay.qris_image', '');
         $harga = (int) config("plans.{$this->plan}.price", 0);
 
-        // Mode demo: kalau admin belum mengisi QRIS, tampilkan QRIS contoh agar
-        // alur upgrade tetap jalan dan bisa diuji end-to-end.
-        $isDemo = $qris === '' && $qrisImage === '';
-        $demoQris = '00020101021126680014ID.CO.QRIS.WWW0010DEMOQRIS0102115000000000000057 302ID5204000053033605405' . str_pad((string) $harga, 8, '0', STR_PAD_LEFT) . '5802ID5907NGEKOS-6007NGEKOS 61021000162070703A016304';
-
         return [
             'plan' => $this->plan,
             'nama' => (string) data_get(config('plans'), "{$this->plan}.name"),
             'harga' => $harga,
-            'qris' => $qris !== '' ? $qris : $demoQris,
+            'qris' => $qris,
             'qrisImage' => $qrisImage,
-            'qrisAktif' => $qris !== '' || $qrisImage !== '' || $isDemo,
-            'isDemo' => $isDemo,
+            'qrisAktif' => $qris !== '' || $qrisImage !== '',
             'petunjuk' => (string) Pengaturan::ambil('pay.petunjuk', ''),
         ];
     }
@@ -67,14 +62,26 @@ new #[Layout('layouts.app')] class extends Component
             'bukti' => 'bukti pembayaran',
         ]);
 
+        // Nominal dikunci server-side sesuai harga paket, tidak bisa diubah user.
+        $harga = (int) config("plans.{$this->plan}.price", 0);
+
         $path = $this->bukti->store('bukti', 'public');
 
         try {
-            SubscriptionService::requestUpgrade($user, $this->plan, null, [
-                'amount' => (int) config("plans.{$this->plan}.price", 0),
+            $permintaan = SubscriptionService::requestUpgrade($user, $this->plan, null, [
+                'amount' => $harga,
                 'payment_method' => 'qris',
                 'bukti_path' => $path,
             ]);
+
+            // Langsung terkonfirmasi: paket aktif tanpa menunggu persetujuan admin.
+            SubscriptionService::approveRequest($permintaan);
+
+            try {
+                LanggananNotifier::sebarkanPembayaranBaru($permintaan);
+            } catch (\Throwable $e) {
+                report($e);
+            }
         } catch (\InvalidArgumentException $e) {
             $this->galat = $e->getMessage();
             $this->reset('bukti');
@@ -90,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Bayar {{ $nama }}</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan QRIS lalu unggah bukti pembayaran. Admin akan memverifikasi dan mengaktifkan paket Anda.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan QRIS sebesar nominal di bawah lalu unggah bukti pembayaran. Paket langsung aktif otomatis setelah terkirim.</p>
         </div>
 
         @if ($galat)
@@ -113,17 +120,20 @@ new #[Layout('layouts.app')] class extends Component
             <div class="card p-6 space-y-4">
                 <div class="flex flex-col items-center gap-3">
                     @if ($qrisImage)
-                        <img src="{{ asset('storage/'.$qrisImage) }}" alt="QRIS {{ $nama }}"
+                        <img id="gambarQris" src="{{ asset('storage/'.$qrisImage) }}" alt="QRIS {{ $nama }}"
                             class="h-52 w-52 rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-2">
                     @else
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data={{ urlencode($qris) }}"
+                        <img id="gambarQris" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data={{ urlencode($qris) }}"
                             alt="QRIS {{ $nama }}"
                             class="h-52 w-52 rounded-xl ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-2"
                             loading="lazy">
-                        <p class="max-w-md break-all rounded-xl bg-gray-50 dark:bg-gray-700/50 ring-1 ring-gray-200 dark:ring-gray-600 p-4 text-xs text-gray-600 dark:text-gray-300 font-mono">
-                            {{ $qris }}
-                        </p>
                     @endif
+                    <a id="unduhQrisBtn" href="{{ route('langganan.qris-unduh', ['plan' => $plan]) }}" download
+                        class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-500 transition active:scale-[0.98] shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Unduh QRIS
+                    </a>
+                    <p class="text-xs text-gray-400">Bayar tepat <span class="font-bold text-gray-700 dark:text-gray-200">Rp{{ number_format($harga, 0, ',', '.') }}</span> sesuai nominal di atas.</p>
                 </div>
 
                 @if ($petunjuk)
@@ -145,7 +155,7 @@ new #[Layout('layouts.app')] class extends Component
                     class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white hover:bg-teal-500 transition disabled:opacity-50 active:scale-[0.98]">
                     Kirim Pembayaran
                 </button>
-                <p class="text-center text-xs text-gray-400">Setelah terkirim, status berubah menjadi "Menunggu Persetujuan" hingga admin memverifikasi.</p>
+                <p class="text-center text-xs text-gray-400">Setelah terkirim, paket langsung aktif otomatis.</p>
             </form>
         @endif
 

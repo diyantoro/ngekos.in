@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KtpPenyewaanController;
 use App\Http\Controllers\KwitansiController;
+use App\Http\Controllers\QrisController;
 use App\Http\Controllers\PemilikLaporanPremiumController;
 use App\Http\Controllers\PemilikRekapExportController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,9 @@ Volt::route('langganan/paket', 'pages.langganan.plans')
 Volt::route('langganan/bayar/{plan}', 'pages.langganan.bayar')
     ->middleware(['auth', 'verified', 'role:pemilik'])
     ->name('langganan.bayar');
+Route::get('langganan/bayar/{plan}/qris-unduh', [QrisController::class, 'unduh'])
+    ->middleware(['auth', 'verified', 'role:pemilik'])
+    ->name('langganan.qris-unduh');
 Volt::route('langganan/kelola', 'pages.super-admin.subscriptions')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('langganan.kelola');

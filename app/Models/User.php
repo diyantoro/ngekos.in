@@ -51,6 +51,7 @@ class User extends Authenticatable
             'chat_baru' => 'Pemberitahuan pesan chat baru',
             'bantuan_balasan' => 'Notifikasi push saat admin membalas pesan bantuan',
             'bantuan_baru' => 'Push saat ada pesan bantuan baru (admin)',
+            'langganan_baru' => 'Push saat ada pembayaran langganan baru (admin)',
         ];
     }
 

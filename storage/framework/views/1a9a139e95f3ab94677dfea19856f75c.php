@@ -92,4 +92,4 @@ unset($__defined_vars, $__key, $__value); ?>
     <style>
         @keyframes funnelGrow { from { width: 0; } }
     </style>
-</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views/components/dashboard-funnel.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\components\dashboard-funnel.blade.php ENDPATH**/ ?>

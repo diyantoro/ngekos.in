@@ -416,4 +416,4 @@ use Livewire\Volt\Component;
             </div>
         </div>
     </div>
-</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\livewire/pages/super-admin/subscriptions.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\livewire\pages\super-admin\subscriptions.blade.php ENDPATH**/ ?>

@@ -51,7 +51,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Pilih Paket</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Paket saat ini: <span class="font-bold text-gray-900 dark:text-gray-100">{{ strtoupper($paketAktif) }}</span>. Bayar via QRIS lalu admin memverifikasi pembayaran Anda.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Paket saat ini: <span class="font-bold text-gray-900 dark:text-gray-100">{{ strtoupper($paketAktif) }}</span>. Bayar via QRIS, paket langsung aktif otomatis.</p>
         </div>
 
         @if (session('status'))

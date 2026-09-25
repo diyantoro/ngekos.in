@@ -8,9 +8,14 @@ use App\Models\Properti;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
+use App\Notifications\LanggananDibayarNotification;
 use App\Services\SubscriptionService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Volt\Volt;
 use Tests\TestCase;
 
 class SubscriptionTest extends TestCase
@@ -597,9 +602,44 @@ class SubscriptionTest extends TestCase
 
         $content = $this->actingAs($user)->get(route('langganan.bayar', 'pro'))->assertOk()->getContent();
 
-        // Mode demo: QRIS contoh tetap tampil agar alur upgrade bisa diuji end-to-end.
-        $this->assertStringContainsString('DEMOQRIS', $content);
-        $this->assertStringContainsString('Kirim Pembayaran', $content);
+        $this->assertStringContainsString('Admin belum mengatur pembayaran QRIS', $content);
+        $this->assertStringNotContainsString('DEMOQRIS', $content);
+        $this->assertStringNotContainsString('Unduh QRIS', $content);
+    }
+
+    public function test_bayar_langsung_terkonfirmasi_dan_notifikasi_admin(): void
+    {
+        Notification::fake();
+        Storage::fake('public');
+
+        Pengaturan::simpanBanyak([
+            'pay.qris' => 'QRISTESTCODE-000201010211',
+            'pay.qris_image' => '',
+        ]);
+
+        $pemilik = $this->pemilik();
+        $pemilik->markEmailAsVerified();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+
+        $component = Volt::actingAs($pemilik)->test('pages.langganan.bayar', ['plan' => 'pro']);
+        $component->set('bukti', UploadedFile::fake()->image('bukti.png'));
+        $component->call('bayar')->assertHasNoErrors();
+        $component->assertRedirect(route('langganan.plans'));
+
+        $this->assertSame('pro', SubscriptionService::getPlan($pemilik));
+        $this->assertDatabaseHas('subscription_requests', [
+            'user_id' => $pemilik->id,
+            'requested_plan' => 'pro',
+            'status' => 'approved',
+            'amount' => 49000,
+        ]);
+        Notification::assertSentTo($admin, LanggananDibayarNotification::class);
+        Notification::assertSentTo($superAdmin, LanggananDibayarNotification::class);
     }
 
     public function test_halaman_kelola_super_admin_menampilkan_permintaan_dan_aksi(): void
