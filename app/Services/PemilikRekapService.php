@@ -11,7 +11,7 @@ use InvalidArgumentException;
 
 class PemilikRekapService
 {
-    public static function data(int $userId, ?string $bulan = null, string $tier = 'basic'): array
+    public static function data(int $userId, ?string $bulan = null, string $tier = 'basic', ?int $propertiId = null): array
     {
         try {
             $periodeMulai = $bulan
@@ -27,10 +27,13 @@ class PemilikRekapService
             'kamars as total_kamar',
             'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
         ])->where('pemilik_id', $userId)
+            ->when($propertiId, fn ($q) => $q->where('id', $propertiId))
             ->orderBy('nama')
             ->get();
 
-        $sewaans = Penyewaan::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
+        $sewaans = Penyewaan::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->when($propertiId, fn ($q) => $q->where('properti_id', $propertiId))
             ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama'])
             ->where('tanggal_masuk', '<=', $periodeAkhir->toDateString())
             ->where(function ($q) use ($periodeMulai) {
@@ -41,7 +44,8 @@ class PemilikRekapService
 
         $transaksi = Pembayaran::where('status', 'diverifikasi')
             ->whereBetween('verified_at', [$periodeMulai, $periodeAkhir])
-            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId))
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
             ->with(['anakKos:id,nama', 'tagihan:id,periode'])
             ->orderBy('verified_at', 'desc')
             ->get();
@@ -53,11 +57,15 @@ class PemilikRekapService
 
         $pendapatan = (int) $transaksi->sum(fn ($t) => (float) $t->jumlah);
 
-        $pengeluaran = (int) Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
+        $pengeluaran = (int) Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->when($propertiId, fn ($q) => $q->where('properti_id', $propertiId))
             ->whereBetween('tanggal', [$periodeMulai->toDateString(), $periodeAkhir->toDateString()])
             ->sum('jumlah');
 
-        $kategoriPengeluaran = Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId))
+        $kategoriPengeluaran = Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $userId)
+                ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId)))
+            ->when($propertiId, fn ($q) => $q->where('properti_id', $propertiId))
             ->whereBetween('tanggal', [$periodeMulai->toDateString(), $periodeAkhir->toDateString()])
             ->get(['kategori', 'jumlah'])
             ->groupBy('kategori')

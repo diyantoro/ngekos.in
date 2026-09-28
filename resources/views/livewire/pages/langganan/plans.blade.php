@@ -48,39 +48,47 @@ new #[Layout('layouts.app')] class extends Component
 }; ?>
 
 <div class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div>
-            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Pilih Paket</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Paket saat ini: <span class="font-bold text-gray-900 dark:text-gray-100">{{ strtoupper($paketAktif) }}</span>. Bayar via QRIS, paket langsung aktif otomatis.</p>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="text-center max-w-xl mx-auto">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-brand-700 dark:text-brand-300">Harga jujur, tanpa biaya tersembunyi</p>
+            <h1 class="mt-1 text-xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-gray-100">Pilih Paket Sesuai Bisnis Kosmu</h1>
+            <p class="mt-2 text-sm text-slate-500 dark:text-gray-400">Paket saat ini: <span class="font-bold text-slate-900 dark:text-gray-100">{{ strtoupper($paketAktif) }}</span> &middot; Bayar via QRIS, paket langsung aktif otomatis.</p>
         </div>
 
         @if (session('status'))
-            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
+            <div class="rounded-xl bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/30 px-4 py-3 text-sm text-brand-800 dark:text-brand-200">
                 {{ session('status') }}
             </div>
         @endif
 
         @if (session('galat'))
-            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+            <div class="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm text-red-800 dark:text-red-200">
                 {{ session('galat') }}
             </div>
         @endif
 
         @if ($isFree && ($bisaKlaim ?? false))
-            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
-                <p class="font-bold">Belum pernah klaim trial? Gratis 7 hari fitur PRO, sekali per akun.</p>
-                <button wire:click="klaimTrial" wire:loading.attr="disabled" class="mt-2 inline-flex items-center rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-500 disabled:opacity-50">
-                    Klaim Trial 7 Hari
-                </button>
+            <div class="relative overflow-hidden rounded-2xl bg-brand-800 px-5 py-5 text-white shadow-lg shadow-brand-900/25">
+                <div class="absolute -right-8 -top-12 h-36 w-36 rounded-full bg-emerald-400/20"></div>
+                <div class="absolute right-20 -bottom-14 h-28 w-28 rounded-full bg-amber-400/25"></div>
+                <div class="relative flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="flex-1">
+                        <p class="text-sm font-bold">Coba PRO gratis 7 hari, sekali per akun.</p>
+                        <p class="text-xs text-brand-100 mt-0.5">Tanpa kartu kredit. Batal kapan saja, data tetap aman.</p>
+                    </div>
+                    <button wire:click="klaimTrial" wire:loading.attr="disabled" class="btn-accent shrink-0 !text-xs disabled:opacity-50">
+                        Klaim Trial 7 Hari
+                    </button>
+                </div>
             </div>
         @endif
 
         @if ($isFree && $sisaTrial !== null)
-            <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar & laporan premium.
+            <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                Masa coba gratis tinggal <strong>{{ $sisaTrial }} hari</strong>. Upgrade ke PRO untuk limit lebih besar &amp; laporan premium.
             </div>
         @elseif ($isFree && $sisaTrial === null && $trialHabis)
-            <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+            <div class="rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-4 py-3 text-sm text-red-800 dark:text-red-200">
                 Masa coba 7 hari sudah habis atau belum diklaim. Data tidak hilang, tapi halaman Laporan dikunci. Tambah kos/kamar tetap bisa sampai batas paket Free. Upgrade ke PRO untuk membuka lagi.
             </div>
         @endif
@@ -102,172 +110,189 @@ new #[Layout('layouts.app')] class extends Component
                 'broadcast' => 'Broadcast pengumuman',
                 'maintenance' => 'Manajemen perawatan',
                 'multi_property' => 'Multi properti',
-                'multi_user' => 'Multi pengguna',
                 'unlimited_property' => 'Properti tanpa batas',
                 'unlimited_room' => 'Kamar tanpa batas',
                 'laporan_24_bulan' => 'Laporan 24 bulan',
                 'excel_7_sheet' => 'Excel 7 sheet lengkap',
             ];
         @endphp
-        <p class="text-xs text-gray-400 dark:text-gray-500 md:hidden">Geser ke samping untuk melihat paket lain.</p>
-        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0">
+        <p class="text-xs text-slate-400 dark:text-gray-500 text-center md:hidden">Geser ke samping untuk melihat paket lain.</p>
+        <div class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 scrollbar-hide md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0 md:items-stretch">
             @foreach ($pakets as $key => $paket)
                 @php
-                    $planColors = [
+                    $planStyles = [
                         'free' => [
-                            'bg' => 'bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50 dark:from-slate-900/60 dark:via-slate-800/50 dark:to-gray-900/60',
-                            'border' => 'border-slate-200/60 dark:border-slate-700/60',
-                            'ring' => 'ring-slate-400',
-                            'title' => 'text-slate-600 dark:text-slate-400',
-                            'price' => 'text-slate-900 dark:text-slate-100',
-                            'accent' => 'text-slate-500',
-                            'badge' => 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 ring-slate-200/60 dark:ring-slate-600/60',
-                            'btn' => 'btn-secondary',
-                            'accentGradient' => 'from-slate-400 to-slate-500',
-                            'restShadow' => '0 10px 30px -12px rgba(100, 116, 139, 0.25)',
-                            'hoverShadow' => '0 25px 50px -12px rgba(100, 116, 139, 0.45)',
+                            'card' => 'bg-white dark:bg-gray-800 border-stone-200 dark:border-gray-700 shadow-sm',
+                            'medal' => 'bg-slate-900 text-white',
+                            'name' => 'text-slate-500 dark:text-gray-400',
+                            'price' => 'text-slate-900 dark:text-gray-100',
+                            'limitBox' => 'bg-stone-100 dark:bg-gray-700/60',
+                            'limitNum' => 'text-slate-900 dark:text-gray-100',
+                            'check' => 'bg-emerald-600 text-white',
+                            'btn' => 'btn-secondary w-full',
+                            'tab' => null,
                         ],
                         'pro' => [
-                            'bg' => 'bg-gradient-to-br from-teal-50 via-teal-100/30 to-emerald-50 dark:from-teal-900/40 dark:via-teal-800/30 dark:to-emerald-900/40',
-                            'border' => 'border-teal-200/60 dark:border-teal-800/60',
-                            'ring' => 'ring-teal-500',
-                            'title' => 'text-teal-700 dark:text-teal-300',
-                            'price' => 'text-teal-800 dark:text-teal-200',
-                            'accent' => 'text-teal-600 dark:text-teal-400',
-                            'badge' => 'bg-teal-100/80 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 ring-teal-200/60 dark:ring-teal-700/60',
-                            'btn' => 'btn-primary',
-                            'accentGradient' => 'from-teal-500 to-emerald-500',
-                            'restShadow' => '0 10px 30px -12px rgba(45, 212, 191, 0.25)',
-                            'hoverShadow' => '0 25px 50px -12px rgba(45, 212, 191, 0.45)',
+                            'card' => 'bg-gradient-to-b from-brand-50 via-white to-white dark:from-brand-500/10 dark:via-gray-800 dark:to-gray-800 border-2 border-brand-600 dark:border-brand-500 shadow-xl shadow-brand-900/15',
+                            'medal' => 'bg-brand-600 text-white shadow-md shadow-brand-600/40',
+                            'name' => 'text-brand-700 dark:text-brand-300',
+                            'price' => 'text-brand-800 dark:text-brand-100',
+                            'limitBox' => 'bg-brand-600/10 dark:bg-brand-500/10 border border-brand-600/15 dark:border-brand-500/20',
+                            'limitNum' => 'text-brand-800 dark:text-brand-100',
+                            'check' => 'bg-brand-600 text-white',
+                            'btn' => 'btn-primary w-full',
+                            'tab' => 'PALING POPULER',
                         ],
                         'business' => [
-                            'bg' => 'bg-gradient-to-br from-violet-50 via-violet-100/30 to-purple-50 dark:from-violet-900/40 dark:via-violet-800/30 dark:to-purple-900/40',
-                            'border' => 'border-violet-200/60 dark:border-violet-800/60',
-                            'ring' => 'ring-violet-500',
-                            'title' => 'text-violet-700 dark:text-violet-300',
-                            'price' => 'text-violet-800 dark:text-violet-200',
-                            'accent' => 'text-violet-600 dark:text-violet-400',
-                            'badge' => 'bg-violet-100/80 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 ring-violet-200/60 dark:ring-violet-700/60',
-                            'btn' => 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white',
-                            'accentGradient' => 'from-violet-500 to-purple-500',
-                            'restShadow' => '0 10px 30px -12px rgba(139, 92, 246, 0.25)',
-                            'hoverShadow' => '0 25px 50px -12px rgba(139, 92, 246, 0.45)',
+                            'card' => 'bg-brand-950 dark:bg-gray-800 border-brand-950 dark:border-gray-700 shadow-xl shadow-brand-950/30',
+                            'medal' => 'bg-amber-400 text-brand-950 shadow-md shadow-amber-400/30',
+                            'name' => 'text-amber-300',
+                            'price' => 'text-white',
+                            'limitBox' => 'bg-white/10 border border-white/10',
+                            'limitNum' => 'text-amber-300',
+                            'check' => 'bg-amber-400 text-brand-950',
+                            'btn' => 'btn-accent w-full',
+                            'tab' => 'UNTUK BISNIS BESAR',
                         ],
                     ];
-                    $c = $planColors[$key] ?? $planColors['free'];
+                    $c = $planStyles[$key] ?? $planStyles['free'];
                     $isActive = $paketAktif === $key;
-                    $isPopular = $key === 'pro';
+                    $gelap = $key === 'business';
+                    $teksIsi = $gelap ? 'text-brand-100/90' : 'text-slate-600 dark:text-gray-300';
+                    $teksKuat = $gelap ? 'text-white' : 'text-slate-900 dark:text-gray-100';
                 @endphp
-                <div
-                    x-data="{ hovered: false, pressed: false }"
-                    @mouseenter="hovered = true"
-                    @mouseleave="hovered = false; pressed = false"
-                    @mousedown="pressed = true"
-                    @mouseup="pressed = false"
-                    class="relative group flex h-full w-[84%] shrink-0 snap-center flex-col overflow-hidden rounded-2xl border p-6 transition-shadow duration-300 ease-out sm:w-[62%] md:w-auto
-                        {{ $c['bg'] }} {{ $c['border'] }}
-                        {{ $isActive ? 'ring-2 ' . $c['ring'] : '' }}"
-                    :style="`transform: translateY(${hovered ? '-6px' : '0'}) scale(${pressed ? 0.98 : 1}); box-shadow: ${hovered ? @js($c['hoverShadow']) : @js($c['restShadow'])};`"
-                >
-                    {{-- Accent bar at top --}}
-                    <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r {{ $c['accentGradient'] }}"></div>
-
-                    <div class="relative z-10 flex flex-1 flex-col pt-1">
-                        <div class="flex items-center justify-between gap-2 mb-3">
-                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ring-1 {{ $c['badge'] }}">
-                                {{ $paket['name'] }}
-                            </span>
-                            <span class="inline-flex shrink-0 items-center gap-1.5">
-                                @if ($isPopular && ! $isActive)
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg shadow-teal-500/30">
-                                        Populer
-                                    </span>
-                                @endif
-                                @if ($isActive)
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/40 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-700/60">
-                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                        Aktif
-                                    </span>
-                                @endif
+                <div class="relative flex h-full w-[84%] shrink-0 snap-center flex-col overflow-hidden rounded-2xl border sm:w-[62%] md:w-auto {{ $c['card'] }} {{ $isActive ? 'ring-2 ring-offset-2 ring-brand-600 dark:ring-offset-gray-900' : '' }}">
+                    @if ($key === 'business')
+                        <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-400/10 pointer-events-none"></div>
+                        <div class="absolute -left-12 -bottom-14 h-44 w-44 rounded-full bg-emerald-400/10 pointer-events-none"></div>
+                    @endif
+                    @if ($c['tab'])
+                        <div class="relative shrink-0 px-3 py-2 text-center text-[10px] font-bold tracking-widest {{ $key === 'business' ? 'bg-amber-400 text-brand-950' : 'bg-brand-700 text-white' }}">
+                            <span class="inline-flex items-center gap-1.5">
+                                <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
+                                {{ $c['tab'] }}
                             </span>
                         </div>
+                    @endif
 
-                        <p class="text-sm font-bold uppercase tracking-wider {{ $c['title'] }} transition-colors duration-200 group-hover:text-gray-900 dark:group-hover:text-gray-100">{{ $paket['name'] }}</p>
-                        <p class="mt-2 text-3xl font-extrabold {{ $c['price'] }} transition-all duration-300">
-                            @if (($paket['price'] ?? 0) > 0)
-                                Rp{{ number_format($paket['price'], 0, ',', '.') }}<span class="text-sm font-medium text-gray-500 dark:text-gray-400">/bulan</span>
+                    <div class="relative flex flex-1 flex-col p-6">
+                    <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl {{ $c['medal'] }}">
+                            @if ($key === 'business')
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>
+                            @elseif ($key === 'pro')
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>
                             @else
-                                <span class="{{ $c['accent'] }}">Gratis</span>
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
                             @endif
-                        </p>
-
-                        <div class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-lg bg-gradient-to-br {{ $c['accentGradient'] }} text-white text-[10px] font-bold transition-transform duration-300 group-hover:scale-110">🏠</span>
-                                <span>Property: <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $paket['limits']['properties'] ?? 'Unlimited' }}</span></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-lg bg-gradient-to-br {{ $c['accentGradient'] }} text-white text-[10px] font-bold transition-transform duration-300 group-hover:scale-110">🚪</span>
-                                <span>Kamar: <span class="font-semibold text-gray-900 dark:text-gray-100">{{ $paket['limits']['rooms'] ?? 'Unlimited' }}</span></span>
-                            </div>
+                        </span>
+                        <div>
+                            <p class="text-sm font-bold uppercase tracking-widest {{ $c['name'] }}">{{ $paket['name'] }}</p>
+                            <p class="text-[11px] {{ $gelap ? 'text-brand-200/70' : 'text-slate-400 dark:text-gray-500' }}">
+                                @if ($key === 'free') Mulai tanpa modal @elseif ($key === 'pro') Buat kos yang bertumbuh @else Kelola banyak properti @endif
+                            </p>
                         </div>
+                        @if ($isActive)
+                            <span class="shrink-0 inline-flex items-center gap-1 self-start rounded-full bg-brand-700 px-2.5 py-1 text-[10px] font-bold text-white">
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                Paketmu
+                            </span>
+                        @endif
+                    </div>
+                    </div>
 
-                        <ul class="mt-5 flex-1 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                            @foreach ($paket['features'] ?? [] as $fitur)
-                                <li class="flex min-w-0 items-start gap-2 transition-colors duration-200 hover:text-gray-900 dark:hover:text-gray-100">
-                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded {{ $key === 'free' ? 'bg-slate-400' : ($key === 'pro' ? 'bg-teal-500' : 'bg-violet-500') }} text-white text-[10px] font-bold">✓</span>
-                                    <span class="min-w-0 break-words">{{ $labelFitur[$fitur] ?? str($fitur)->replace('_', ' ')->title() }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
+                    <p class="mt-4 flex items-baseline gap-1">
+                        @if (($paket['price'] ?? 0) > 0)
+                            <span class="text-3xl font-bold tracking-tight {{ $c['price'] }}">Rp{{ number_format($paket['price'], 0, ',', '.') }}</span>
+                            <span class="text-sm font-medium {{ $gelap ? 'text-brand-200/70' : 'text-slate-400 dark:text-gray-500' }}">/bulan</span>
+                        @else
+                            <span class="text-3xl font-bold tracking-tight {{ $c['price'] }}">Gratis</span>
+                            <span class="text-sm font-medium {{ $gelap ? 'text-brand-200/70' : 'text-slate-400 dark:text-gray-500' }}">selamanya</span>
+                        @endif
+                    </p>
 
-                        <div class="mt-6 border-t border-gray-100/60 pt-4 dark:border-gray-800/60">
-                            @if ($isActive)
-                                <span class="inline-flex items-center gap-1 rounded-xl {{ $c['badge'] }} px-4 py-2.5 text-xs font-bold transition-all duration-200">
-                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    Paket Aktif
+                    <div class="mt-4 grid grid-cols-2 gap-2">
+                        @foreach ([['Properti', $paket['limits']['properties'] ?? null], ['Kamar', $paket['limits']['rooms'] ?? null]] as [$labelLimit, $nilaiLimit])
+                            <div class="rounded-xl {{ $c['limitBox'] }} px-2 py-2.5 text-center">
+                                @if ($nilaiLimit === null)
+                                    <p class="text-xs font-bold leading-6 {{ $c['limitNum'] }}">Tanpa batas</p>
+                                @else
+                                    <p class="text-xl font-bold {{ $c['limitNum'] }}">{{ $nilaiLimit }}</p>
+                                @endif
+                                <p class="text-[10px] font-semibold uppercase tracking-wider {{ $gelap ? 'text-brand-200/70' : 'text-slate-400 dark:text-gray-500' }}">{{ $labelLimit }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <ul class="mt-5 flex-1 space-y-2.5 text-sm {{ $teksIsi }}">
+                        @if ($key === 'pro')
+                            <li class="flex min-w-0 items-start gap-2.5">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full {{ $c['check'] }}">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                 </span>
-                            @elseif ($permintaan?->status === 'pending')
-                                <span class="inline-flex items-center gap-2 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 px-4 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200/60 dark:ring-amber-700/60 animate-pulse-gentle">
-                                    <span class="relative flex h-1.5 w-1.5">
-                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
-                                        <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                                    </span>
-                                    Menunggu Persetujuan
+                                <span class="min-w-0 break-words"><strong class="{{ $teksKuat }}">Semua fitur Free</strong>, plus:</span>
+                            </li>
+                        @elseif ($key === 'business')
+                            <li class="flex min-w-0 items-start gap-2.5">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full {{ $c['check'] }}">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                 </span>
-                            @else
-                                <a href="{{ route('langganan.bayar', $key) }}" wire:navigate
-                                   class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold {{ $c['btn'] }}
-                                          transition-all duration-200
-                                          hover:shadow-lg hover:shadow-teal-500/25
-                                          active:scale-[0.97]
-                                          focus:outline-none focus:ring-2 focus:ring-offset-2 {{ $isActive ? 'focus:ring-teal-500' : 'focus:ring-violet-500' }}">
-                                    <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-                                    Upgrade ke {{ $paket['name'] }}
-                                </a>
-                            @endif
-                        </div>
+                                <span class="min-w-0 break-words"><strong class="{{ $teksKuat }}">Semua fitur Pro</strong>, plus:</span>
+                            </li>
+                        @endif
+                        @foreach ($paket['features'] ?? [] as $fitur)
+                            <li class="flex min-w-0 items-start gap-2.5">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full {{ $c['check'] }}">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                </span>
+                                <span class="min-w-0 break-words">{{ $labelFitur[$fitur] ?? str($fitur)->replace('_', ' ')->title() }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <div class="mt-6 {{ $gelap ? 'border-white/10' : 'border-stone-200 dark:border-gray-700' }} border-t pt-5">
+                        @if ($isActive)
+                            <span class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg {{ $gelap ? 'bg-white/10 text-white' : 'bg-brand-50 dark:bg-brand-500/10 text-brand-800 dark:text-brand-200' }} px-4 py-2.5 text-xs font-bold">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                Paket Aktif
+                            </span>
+                        @elseif ($permintaan?->status === 'pending')
+                            <span class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+                                Menunggu Persetujuan
+                            </span>
+                        @else
+                            <a href="{{ route('langganan.bayar', $key) }}" wire:navigate class="{{ $c['btn'] }}">
+                                @if ($key === 'free') Pilih Gratis @else Upgrade ke {{ $paket['name'] }} @endif
+                            </a>
+                        @endif
+                    </div>
                     </div>
                 </div>
             @endforeach
         </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-x-8 gap-y-2 pt-2 text-xs text-slate-500 dark:text-gray-400">
+            <span class="inline-flex items-center gap-1.5">
+                <svg class="h-4 w-4 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Bayar via QRIS, aktif otomatis
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <svg class="h-4 w-4 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Data aman, tidak hilang saat ganti paket
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <svg class="h-4 w-4 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Batal kapan saja
+            </span>
+        </div>
+        <p class="text-center text-[11px] text-slate-400 dark:text-gray-500 max-w-2xl mx-auto">
+            Jumlah penyewa tidak dibatasi paket.
+        </p>
     </div>
 </div>
 
 <style>
-.animate-pulse-gentle {
-    animation: pulse-gentle 2s ease-in-out infinite;
-}
-@keyframes pulse-gentle {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-.animate-ping {
-    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-@keyframes ping {
-    75%, 100% { transform: scale(2); opacity: 0; }
-}
 .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

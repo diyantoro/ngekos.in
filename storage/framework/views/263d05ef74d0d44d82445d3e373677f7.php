@@ -32,7 +32,7 @@ unset($__defined_vars, $__key, $__value); ?>
     $daftar = collect($fotos)->filter()->values()->all();
 ?>
 
-<div x-data="{ aktif: 0, total: <?php echo e(count($daftar)); ?>, ticking: false }" class="relative <?php echo e($kelas); ?> bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden group">
+<div x-data="{ aktif: 0, total: <?php echo e(count($daftar)); ?>, ticking: false }" class="relative <?php echo e($kelas); ?> bg-stone-200 dark:bg-gray-800 overflow-hidden group">
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($daftar) > 0): ?>
         <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain scroll-smooth"
             x-ref="track"

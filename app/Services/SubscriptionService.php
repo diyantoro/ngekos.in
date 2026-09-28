@@ -78,9 +78,11 @@ class SubscriptionService
 
     public static function usage(User $user, string $resource): int
     {
+        $id = $user->id;
+
         return match ($resource) {
-            'property', 'properties', 'properti' => Properti::where('pemilik_id', $user->id)->count(),
-            'room', 'rooms', 'kamar' => Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $user->id))->count(),
+            'property', 'properties', 'properti' => Properti::where('pemilik_id', $id)->count(),
+            'room', 'rooms', 'kamar' => Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $id))->count(),
             default => 0,
         };
     }
@@ -616,4 +618,5 @@ class SubscriptionService
             'message' => "Batas {$label} paket {$planName} telah tercapai.",
         ];
     }
+
 }

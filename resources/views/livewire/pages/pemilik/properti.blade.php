@@ -37,7 +37,7 @@ new #[Layout('layouts.app')] class extends Component
                 ? null
                 : $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.',
             'propertis' => Properti::query()
-                ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->id()))
+                ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->user()->id))
                 ->with('fotos')
                 ->withCount(['kamars as total_kamar', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
                 ->orderBy('nama')
@@ -48,7 +48,7 @@ new #[Layout('layouts.app')] class extends Component
     public function ubahStatus(int $id, string $status): void
     {
         $properti = Properti::where('id', $id)
-            ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->id()))
+            ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->user()->id))
             ->first();
 
         if (! $properti) {
@@ -65,7 +65,7 @@ new #[Layout('layouts.app')] class extends Component
     public function hapusProperti(int $id): void
     {
         $properti = Properti::where('id', $id)
-            ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->id()))
+            ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->user()->id))
             ->first();
 
         if (! $properti) {

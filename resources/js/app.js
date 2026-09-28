@@ -569,92 +569,131 @@ if (document.readyState === 'loading') {
 document.addEventListener('livewire:navigated', initReveal);
 document.addEventListener('alpine:navigated', initReveal);
 
-const initPromo = () => {
-    document.querySelectorAll('[data-promo]').forEach((root) => {
-        if (root.dataset.promoDone === '1') return;
-        root.dataset.promoDone = '1';
-        const track = root.querySelector('[data-promo-track]');
-        const slides = Array.from(root.querySelectorAll('[data-promo-slide]'));
-        if (!track || slides.length < 2) return;
-        let index = 0;
-        let timer = null;
-        const delay = 4500;
-        const dotsWrap = root.querySelector('[data-promo-dots]');
-        const count = root.querySelector('[data-promo-count]');
-        const dots = [];
-        if (dotsWrap) {
-            dotsWrap.innerHTML = '';
-            slides.forEach((_, i) => {
-                const b = document.createElement('button');
-                b.type = 'button';
-                b.setAttribute('aria-label', 'Ke promo ' + (i + 1));
-                b.addEventListener('click', () => { go(i); restart(); });
-                dotsWrap.appendChild(b);
-                dots.push(b);
-            });
-        }
-        const paint = () => dots.forEach((d, i) => {
-            d.className = 'h-1.5 rounded-full transition-all duration-300 '
-                + (i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80');
+// Carousel iklan partner: auto-slide tiap 4,5 dtk, jeda saat hover/fokus/disembunyi.
+// Dibuat tahan morph Livewire & navigasi SPA: tiap init merobohkan state lama
+// (timer, observer, listener) lalu membangun ulang dari kondisi DOM saat ini,
+// sehingga banner tidak macet setelah Livewire me-render ulang halaman.
+const initPromoRoot = (root) => {
+    const track = root.querySelector('[data-promo-track]');
+    const slides = Array.from(root.querySelectorAll('[data-promo-slide]'));
+    if (!track || slides.length < 2) return;
+
+    // Robohkan state sebelumnya agar timer/listener tidak menumpuk atau mati suri.
+    try { root._promo && root._promo.destroy(); } catch (e) {}
+    root._promo = null;
+
+    const ac = new AbortController();
+    const signal = ac.signal;
+    const dotsWrap = root.querySelector('[data-promo-dots]');
+    const count = root.querySelector('[data-promo-count]');
+    const delay = 4500;
+    const dots = [];
+    // Lanjutkan dari posisi terakhir bila ada (mis. morph terjadi di tengah jalan).
+    let index = Number.parseInt(root.dataset.promoIndex || '0', 10);
+    if (!Number.isFinite(index) || index < 0 || index >= slides.length) index = 0;
+    let timer = null;
+    let terlihat = true;
+    let observer = null;
+
+    if (dotsWrap) {
+        dotsWrap.innerHTML = '';
+        slides.forEach((_, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('aria-label', 'Ke promo ' + (i + 1));
+            b.addEventListener('click', () => { go(i); restart(); }, { signal });
+            dotsWrap.appendChild(b);
+            dots.push(b);
         });
-        const render = () => {
-            track.style.transform = 'translateX(-' + index * 100 + '%)';
-            slides.forEach((s, i) => {
-                const on = i === index;
-                s.classList.toggle('promo-active', on);
-                s.setAttribute('aria-hidden', on ? 'false' : 'true');
-            });
-            paint();
-            if (count) count.textContent = (index + 1) + ' / ' + slides.length;
-        };
-        const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        let terlihat = true;
-        const next = () => { index = (index + 1) % slides.length; render(); };
-        const prev = () => { index = (index - 1 + slides.length) % slides.length; render(); };
-        const go = (i) => { index = ((i % slides.length) + slides.length) % slides.length; render(); };
-        const start = () => {
-            if (timer || hematGerak || !terlihat || document.hidden) return;
-            timer = setInterval(next, delay);
-        };
-        const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
-        const restart = () => { stop(); start(); };
-        if ('IntersectionObserver' in window) {
-            new IntersectionObserver((entries) => {
-                entries.forEach((e) => {
-                    terlihat = e.isIntersecting;
-                    if (terlihat) start(); else stop();
-                });
-            }, { threshold: 0.1 }).observe(root);
-        }
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) stop(); else start();
-        });
-        root.querySelector('[data-promo-next]')?.addEventListener('click', () => { next(); restart(); });
-        root.querySelector('[data-promo-prev]')?.addEventListener('click', () => { prev(); restart(); });
-        root.addEventListener('mouseenter', stop);
-        root.addEventListener('mouseleave', start);
-        root.addEventListener('focusin', stop);
-        root.addEventListener('focusout', start);
-        let sx = null;
-        root.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; stop(); }, { passive: true });
-        root.addEventListener('touchend', (e) => {
-            if (sx !== null) {
-                const d = e.changedTouches[0].clientX - sx;
-                if (Math.abs(d) > 40) {
-                    if (d < 0) next(); else prev();
-                }
-                sx = null;
-            }
-            start();
-        }, { passive: true });
-        root.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight') { next(); restart(); }
-            else if (e.key === 'ArrowLeft') { prev(); restart(); }
-        });
-        render();
-        start();
+    }
+    const paint = () => dots.forEach((d, i) => {
+        d.className = 'h-1.5 rounded-full transition-all duration-300 '
+            + (i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80');
     });
+    const render = () => {
+        root.dataset.promoIndex = String(index);
+        track.style.transform = 'translateX(-' + index * 100 + '%)';
+        slides.forEach((s, i) => {
+            const on = i === index;
+            s.classList.toggle('promo-active', on);
+            s.setAttribute('aria-hidden', on ? 'false' : 'true');
+        });
+        paint();
+        if (count) count.textContent = (index + 1) + ' / ' + slides.length;
+    };
+    const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const next = () => { index = (index + 1) % slides.length; render(); };
+    const prev = () => { index = (index - 1 + slides.length) % slides.length; render(); };
+    const go = (i) => { index = ((i % slides.length) + slides.length) % slides.length; render(); };
+    const start = () => {
+        if (timer || hematGerak || !terlihat || document.hidden) return;
+        timer = setInterval(next, delay);
+    };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const restart = () => { stop(); start(); };
+    if ('IntersectionObserver' in window) {
+        observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                terlihat = e.isIntersecting;
+                if (terlihat) start(); else stop();
+            });
+        }, { threshold: 0.1 });
+        observer.observe(root);
+    }
+    const nextBtn = root.querySelector('[data-promo-next]');
+    if (nextBtn) nextBtn.addEventListener('click', () => { next(); restart(); }, { signal });
+    const prevBtn = root.querySelector('[data-promo-prev]');
+    if (prevBtn) prevBtn.addEventListener('click', () => { prev(); restart(); }, { signal });
+    root.addEventListener('mouseenter', stop, { signal });
+    root.addEventListener('mouseleave', start, { signal });
+    root.addEventListener('focusin', stop, { signal });
+    root.addEventListener('focusout', start, { signal });
+    let sx = null;
+    root.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; stop(); }, { signal, passive: true });
+    root.addEventListener('touchend', (e) => {
+        if (sx !== null) {
+            const d = e.changedTouches[0].clientX - sx;
+            if (Math.abs(d) > 40) {
+                if (d < 0) next(); else prev();
+            }
+            sx = null;
+        }
+        start();
+    }, { signal, passive: true });
+    root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') { next(); restart(); }
+        else if (e.key === 'ArrowLeft') { prev(); restart(); }
+    }, { signal });
+
+    root._promo = {
+        start,
+        stop,
+        destroy() {
+            stop();
+            try { observer && observer.disconnect(); } catch (e) {}
+            try { ac.abort(); } catch (e) {}
+        },
+    };
+    root.dataset.promoDone = '1';
+    render();
+    start();
 };
+
+const initPromo = () => {
+    document.querySelectorAll('[data-promo]').forEach(initPromoRoot);
+};
+
+// Satu listener global (bukan per-banner) agar tidak menumpuk tiap re-init.
+if (!window.__promoVisibilityOn) {
+    window.__promoVisibilityOn = true;
+    document.addEventListener('visibilitychange', () => {
+        document.querySelectorAll('[data-promo]').forEach((root) => {
+            if (!root._promo) return;
+            if (document.hidden) root._promo.stop();
+            else root._promo.start();
+        });
+    });
+}
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPromo);

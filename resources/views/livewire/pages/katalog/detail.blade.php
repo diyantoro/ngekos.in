@@ -381,13 +381,13 @@ new #[Layout('layouts.publik')] class extends Component
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
             Kembali
         </a>
-        @auth
+        @if (auth()->user()?->hasAnyRole(['anak_kos', 'pemilik']))
             <a href="{{ route('chat.room', ['properti' => $properti->id]) }}" wire:navigate
                class="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-xl bg-black/40 backdrop-blur-sm px-3 py-2 text-sm font-medium text-white hover:bg-black/60 transition">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>
                 Chat
             </a>
-        @endauth
+        @endif
     </x-galeri-kos>
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -446,7 +446,7 @@ new #[Layout('layouts.publik')] class extends Component
                         @endif
                     </button>
                     <x-status-badge :status="$properti->status" />
-                    <span class="inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-500/10 px-2.5 py-0.5 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                    <span class="inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-500/10 px-2.5 py-0.5 text-xs font-medium text-brand-800 dark:text-brand-200 border border-brand-200 dark:border-brand-500/30">
                         {{ $properti->kamar_tersedia }}/{{ $properti->total_kamar }} tersedia
                     </span>
                 </div>
@@ -494,7 +494,7 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
 
             @if (! auth()->check() || auth()->user()->hasRole('anak_kos'))
-                <div class="mt-4 rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-100 dark:ring-teal-500/30 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="mt-4 rounded-xl bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/30 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Punya pertanyaan?</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Tanya langsung pemiliknya lewat chat.</p>
@@ -537,8 +537,8 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
             @endif
 
-        <!-- Iklan Partner -->
-        <div class="mt-6">
+        <!-- Iklan Partner (wire:ignore: carousel jalan via JS, jangan di-morph Livewire) -->
+        <div class="mt-6" wire:ignore>
             <x-promo-ads />
         </div>
 

@@ -47,7 +47,7 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSee('Kos Melati')
             ->assertSee('Pembayaran Menunggu Verifikasi')
             ->assertSee('Paket Premium Kos')
-            ->assertSee('Segera hadir');
+            ->assertSee('Tingkat Okupansi');
     }
 
     public function test_admin_dashboard_renders_component_and_can_verify_payment(): void
@@ -92,15 +92,20 @@ class DashboardRenderCheckTest extends TestCase
         $this->assertEquals('tersedia', $sewaan->kamar->status);
     }
 
-    public function test_anak_kos_dashboard_shows_penyewaan_and_tagihan(): void
+    public function test_anak_kos_dashboard_tanpa_stat_atas_tetap_ada_tiga_tab(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->first();
 
         $this->actingAs($user)
             ->get(route('dashboard.anak-kos'))
             ->assertOk()
-            ->assertSee('Penyewaan Aktif')
-            ->assertSee('Tagihan Belum Bayar');
+            ->assertDontSee('Penyewaan Aktif')
+            ->assertDontSee('Tagihan Belum Bayar')
+            ->assertDontSee('Pesan Belum Dibaca')
+            ->assertSee('Sewa Saya')
+            ->assertSee('Tagihan Saya')
+            ->assertSee('Pembayaran Saya')
+            ->assertSee('Mau cari kos di mana?');
     }
 
     public function test_anak_kos_bisa_bayar_tunai_tanpa_bukti(): void
@@ -235,22 +240,26 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSee('Transaksi Terverifikasi');
     }
 
-    public function test_anak_kos_dashboard_menampilkan_favorit_pesan_dan_rekomendasi(): void
+    public function test_anak_kos_dashboard_menampilkan_katalog_dan_riwayat(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->first();
 
         $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
 
-        $component->assertViewHas('jumlahFavorit')
-            ->assertViewHas('pesanBelumDibaca')
-            ->assertViewHas('tagihanBerikutnya')
-            ->assertViewHas('rekomendasi');
+        $component->assertViewHas('tagihanBerikutnya')
+            ->assertViewHas('rekomendasi')
+            ->assertViewHas('kosPromo')
+            ->assertViewHas('pembayarans')
+            ->assertViewMissing('penyewaanAktif')
+            ->assertViewMissing('tagihanBelumBayar')
+            ->assertViewMissing('jumlahFavorit')
+            ->assertViewMissing('pesanBelumDibaca');
 
         $this->actingAs($user)
             ->get(route('dashboard.anak-kos'))
             ->assertOk()
-            ->assertSee('Pesan Belum Dibaca')
-            ->assertSee('Rekomendasi untukmu');
+            ->assertSee('Rekomendasi kos buat kamu')
+            ->assertSee('Sewa & tagihanku');
     }
 
     public function test_dashboard_route_blocked_for_wrong_role(): void

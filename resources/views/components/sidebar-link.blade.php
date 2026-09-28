@@ -1,40 +1,21 @@
 @props(['active', 'color' => 'teal'])
 
 @php
-$colorMap = [
-    'teal' => ['bg' => 'from-white/25 via-white/10 to-emerald-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'sky' => ['bg' => 'from-white/25 via-white/10 to-cyan-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-cyan-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'amber' => ['bg' => 'from-white/25 via-white/10 to-amber-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'rose' => ['bg' => 'from-white/25 via-white/10 to-rose-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'emerald' => ['bg' => 'from-white/25 via-white/10 to-emerald-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'cyan' => ['bg' => 'from-white/25 via-white/10 to-cyan-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-cyan-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'indigo' => ['bg' => 'from-white/25 via-white/10 to-indigo-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'purple' => ['bg' => 'from-white/25 via-white/10 to-purple-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'violet' => ['bg' => 'from-white/25 via-white/10 to-violet-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'orange' => ['bg' => 'from-white/25 via-white/10 to-orange-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-    'gray' => ['bg' => 'from-white/25 via-white/10 to-gray-300/25 dark:from-teal-400/25 dark:via-teal-400/10 dark:to-emerald-400/25', 'text' => 'text-white dark:text-teal-100', 'ring' => 'ring-white/50 dark:ring-teal-400/30', 'icon' => 'text-white dark:text-teal-200'],
-];
+// Sidebar terang yang tenang: teks slate, aktif = latar brand-50 + teks brand-800.
+// Parameter $color dipertahankan agar pemanggil lama tidak error, tapi tidak lagi
+// dipakai untuk gradasi warna-warni.
+$isActive = (bool) ($active ?? false);
 
-$c = $colorMap[$color] ?? $colorMap['teal'];
-
-// Active state: soft white bg over teal sidebar, white text/icon, rounded-2xl
-$activeClasses = ($active ?? false)
-    ? 'inline-flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r ' . $c['bg'] . ' px-3 py-2.5 text-sm font-semibold ' . $c['text'] . ' ring-1 ring-inset ' . $c['ring'] . ' border border-white/25 dark:border-teal-400/30 shadow-sm shadow-teal-900/20 dark:shadow-teal-500/20 focus:outline-none transition-all duration-200 relative'
-    // Inactive state: translucent white text, hover = white bg
-    : 'inline-flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-white/85 dark:text-teal-100 hover:bg-white/10 dark:hover:bg-white/10 hover:text-white dark:hover:text-white focus:outline-none transition-all duration-200 active:scale-[0.98] relative';
-
-$hoverOverlay = 'absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 dark:from-teal-400/10 dark:via-transparent dark:to-teal-400/10 opacity-0 transition-opacity duration-200 pointer-events-none';
+$activeClasses = $isActive
+    ? 'inline-flex w-full items-center gap-3 rounded-lg bg-brand-50 px-3 py-2.5 text-sm font-semibold text-brand-800 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20 focus:outline-none transition relative'
+    : 'inline-flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white focus:outline-none transition relative';
 @endphp
 
 <a {{ $attributes->merge(['class' => $activeClasses]) }} wire:navigate>
-    {{-- Hover overlay --}}
-    <div class="{{ $hoverOverlay }} group-hover:opacity-100"></div>
-    
-    {{-- Active left accent bar --}}
-    @if ($active ?? false)
-        <div class="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-0.5 rounded-r-full bg-white dark:bg-teal-300 opacity-90"></div>
+    @if ($isActive)
+        <span class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-700 dark:bg-brand-400"></span>
     @endif
-    
-    <span class="relative shrink-0 transition-all duration-200 {{ $active ? $c['icon'] . ' scale-110' : 'text-white/70 dark:text-teal-300 group-hover:text-white dark:group-hover:text-teal-200 group-hover:scale-110' }}">{{ $slot }}</span>
-    <span class="relative flex-1 truncate transition-colors duration-200">{{ $label ?? '' }}</span>
+
+    <span class="relative shrink-0 {{ $isActive ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 dark:text-gray-500' }}">{{ $slot }}</span>
+    <span class="relative flex-1 truncate">{{ $label ?? '' }}</span>
 </a>

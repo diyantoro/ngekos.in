@@ -685,7 +685,7 @@ use Livewire\WithFileUploads;
             <div class="flex justify-end">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($mode ?? 'buat') === 'buat' && ! ($bolehTambahKamar ?? true)): ?>
                     <a href="<?php echo e(route('langganan.plans')); ?>" wire:navigate
-                       class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
+                       class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-900 transition">
                         Upgrade untuk Tambah Kamar
                     </a>
                 <?php else: ?>

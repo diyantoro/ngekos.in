@@ -9,7 +9,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] class extends Component
 {
-    public ?int $filterPropertiId = null;
+    public ?int $propertiId = null;
 
     public string $mode = 'buat';
 
@@ -38,7 +38,7 @@ new #[Layout('layouts.app')] class extends Component
 
         if ($properti && $this->propertisTerkelola()->contains('id', $properti)) {
             $this->properti_id = $properti;
-            $this->filterPropertiId = $properti;
+            $this->propertiId = $properti;
         }
     }
 
@@ -50,8 +50,8 @@ new #[Layout('layouts.app')] class extends Component
 
         $query = Pengeluaran::with('properti')->whereIn('properti_id', $propertiIds);
 
-        if ($this->filterPropertiId) {
-            $query->where('properti_id', $this->filterPropertiId);
+        if ($this->propertiId) {
+            $query->where('properti_id', $this->propertiId);
         }
 
         $total = (int) $query->pluck('jumlah')->sum();
@@ -136,7 +136,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->mode = 'buat';
         $this->pengeluaranId = null;
-        $this->properti_id = $this->filterPropertiId ?: null;
+        $this->properti_id = $this->propertiId ?: null;
         $this->kategori = 'lainnya';
         $this->keterangan = null;
         $this->jumlah = '';
@@ -232,8 +232,8 @@ new #[Layout('layouts.app')] class extends Component
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Riwayat ({{ $pengeluarans->count() }}) · Total <span class="text-rose-600 dark:text-rose-400">Rp{{ number_format($total, 0, ',', '.') }}</span></h2>
-                <select wire:model.live="filterPropertiId" class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm">
-                    <option value="">Semua kos</option>
+                <select wire:model.live="propertiId" class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm">
+                    <option value="">Semua Properti</option>
                     @foreach ($propertis as $properti)
                         <option value="{{ $properti->id }}">{{ $properti->nama }}</option>
                     @endforeach

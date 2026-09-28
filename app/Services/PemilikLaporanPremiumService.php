@@ -54,7 +54,7 @@ class PemilikLaporanPremiumService
 
         $totalKamar = (int) $daftarProperti->when($propertiId, fn ($c) => $c->where('id', $propertiId))->sum('total_kamar');
 
-        $rekapBulan = PemilikRekapService::data($userId, $periodeMulai->format('Y-m'));
+        $rekapBulan = PemilikRekapService::data($userId, $periodeMulai->format('Y-m'), $tier === 'business' ? 'business' : 'basic', $propertiId);
 
         $mulaiTrend = now()->startOfMonth()->subMonths($bulanCount - 1);
 

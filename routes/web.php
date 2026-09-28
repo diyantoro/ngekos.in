@@ -27,15 +27,15 @@ Volt::route('bantuan/masuk', 'pages.bantuan.masuk')
     ->middleware(['auth', 'verified', 'role:super_admin|admin'])
     ->name('bantuan.masuk');
 
-// Chat penyewa <-> pemilik kos.
+// Chat penyewa <-> pemilik kos (khusus peran yang memakai fitur chat).
 Volt::route('chat', 'pages.chat.index')
-    ->middleware('auth')
+    ->middleware(['auth', 'role:anak_kos|pemilik'])
     ->name('chat.index');
 Volt::route('chat/{properti}', 'pages.chat.room')
-    ->middleware('auth')
+    ->middleware(['auth', 'role:anak_kos|pemilik'])
     ->name('chat.room');
 Volt::route('chat/{properti}/anak-kos/{anakKos}', 'pages.chat.room')
-    ->middleware('auth')
+    ->middleware(['auth', 'role:anak_kos|pemilik'])
     ->name('chat.room.anak');
 
 // Kelola pengguna & peran (khusus super admin).
@@ -60,7 +60,7 @@ Volt::route('langganan/kelola', 'pages.super-admin.subscriptions')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('langganan.kelola');
 
-// Kelola kos (pemilik pemiliknya sendiri; admin/super admin mengelola semuanya).
+// Kelola kos (pemilik mengelola kos miliknya sendiri; admin/super admin mengelola semuanya).
 Volt::route('pemilik/properti', 'pages.pemilik.properti')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
     ->name('pemilik.properti');

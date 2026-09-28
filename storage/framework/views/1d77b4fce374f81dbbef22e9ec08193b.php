@@ -17,7 +17,7 @@ use Livewire\Volt\Component;
                    class="shrink-0 h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 transition">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 </a>
-                <span class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-teal-500 via-emerald-500 to-green-500 flex items-center justify-center text-sm font-extrabold text-white uppercase">
+                <span class="shrink-0 h-10 w-10 rounded-full bg-brand-800 flex items-center justify-center text-sm font-bold text-white uppercase">
                     <?php echo e(mb_substr($lawan?->nama ?? '?', 0, 1)); ?>
 
                 </span>

@@ -112,7 +112,6 @@ unset($__defined_vars, $__key, $__value); ?>
         'broadcast' => 'Broadcast pengumuman',
         'maintenance' => 'Manajemen perawatan',
         'multi_property' => 'Multi properti',
-        'multi_user' => 'Multi pengguna',
         'unlimited_property' => 'Properti tanpa batas',
         'unlimited_room' => 'Kamar tanpa batas',
         'laporan_24_bulan' => 'Laporan 24 bulan',

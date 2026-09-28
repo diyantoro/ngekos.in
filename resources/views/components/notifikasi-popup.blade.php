@@ -14,7 +14,7 @@
             x-transition:enter-end="opacity-100 scale-100"
             class="relative w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
 
-            <div class="h-1.5 bg-gradient-to-r from-teal-500 via-emerald-500 to-green-500"></div>
+            <div class="h-1 bg-brand-700"></div>
 
             <div class="px-6 py-7 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">

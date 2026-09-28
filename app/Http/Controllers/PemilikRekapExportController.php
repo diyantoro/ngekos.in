@@ -28,7 +28,7 @@ class PemilikRekapExportController extends Controller
         }
 
         try {
-            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user));
+            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user), $request->query('properti_id') ? (int) $request->query('properti_id') : null);
         } catch (InvalidArgumentException $e) {
             abort(422, $e->getMessage());
         }
@@ -63,7 +63,7 @@ class PemilikRekapExportController extends Controller
         }
 
         try {
-            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user));
+            $data = PemilikRekapService::data($user->id, $request->query('bulan'), SubscriptionService::reportTier($user), $request->query('properti_id') ? (int) $request->query('properti_id') : null);
         } catch (InvalidArgumentException $e) {
             abort(422, $e->getMessage());
         }

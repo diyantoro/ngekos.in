@@ -40,7 +40,7 @@ use Livewire\Volt\Component;
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $percakapans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <a href="<?php echo e($c['url']); ?>" wire:navigate class="flex items-center gap-4 p-4 sm:p-5 hover:bg-teal-50/50 dark:hover:bg-teal-500/10 transition">
-                        <span class="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-teal-500 via-emerald-500 to-green-500 flex items-center justify-center text-base font-extrabold text-white uppercase">
+                        <span class="h-12 w-12 shrink-0 rounded-full bg-brand-800 flex items-center justify-center text-base font-bold text-white uppercase">
                             <?php echo e(mb_substr($c['lawan']?->nama ?? '?', 0, 1)); ?>
 
                         </span>

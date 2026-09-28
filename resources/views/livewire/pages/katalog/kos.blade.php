@@ -5,9 +5,12 @@ use App\Support\Koordinat;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.publik')] class extends Component
 {
+    use WithPagination;
+
     #[Url(history: true)]
     public string $cari = '';
 
@@ -15,16 +18,37 @@ new #[Layout('layouts.publik')] class extends Component
     public string $kota = '';
 
     #[Url(history: true)]
-    public ?int $hargaMax = null;
+    public $hargaMax = null;
 
     #[Url(history: true)]
     public int $kapasitas = 1;
+
+    public function updatedCari(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedKota(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedHargaMax($value): void
+    {
+        $this->hargaMax = ($value === '' || $value === null) ? null : (int) $value;
+        $this->resetPage();
+    }
+
+    public function updatedKapasitas(): void
+    {
+        $this->resetPage();
+    }
 
     public function with(): array
     {
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli'])
+            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'tipe_hunian'])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
@@ -80,17 +104,17 @@ new #[Layout('layouts.publik')] class extends Component
 
 <div x-data="{ openFilter: false, tampilkanPeta: false }">
     <!-- Search Header -->
-    <section class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-b border-gray-100/80 dark:border-gray-800 sticky top-14 z-30">
+    <section class="bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800 sticky top-14 z-30">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
             <!-- Search Bar -->
             <div class="flex items-center gap-2">
-                <div class="flex-1 flex items-center gap-2 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl px-3 py-2.5 transition-all duration-200 focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:shadow-sm">
-                    <svg class="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                <div class="flex-1 flex items-center gap-2 bg-stone-100 dark:bg-gray-800 rounded-lg px-3 py-2.5 transition focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-brand-500/30">
+                    <svg class="h-4 w-4 text-slate-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
-                        class="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
+                        class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
                 <button @click="openFilter = !openFilter"
-                    class="shrink-0 flex items-center justify-center h-10 w-10 rounded-xl transition-all duration-200 relative {{ ($kota || $hargaMax || $kapasitas > 1) ? 'bg-teal-50 text-teal-600 ring-1 ring-teal-200 dark:bg-teal-500/10 dark:text-teal-400 dark:ring-teal-500/30' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600' }}">
+                    class="shrink-0 flex items-center justify-center h-10 w-10 rounded-lg transition relative {{ ($kota || $hargaMax || $kapasitas > 1) ? 'bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:border-brand-500/30' : 'bg-stone-100 text-slate-500 hover:bg-stone-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600' }}">
                     <svg class="h-5 w-5 transition-transform duration-200" :class="openFilter ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
                     @if ($kota || $hargaMax || $kapasitas > 1)
                         <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-teal-600 text-[9px] font-bold text-white flex items-center justify-center shadow-sm">
@@ -158,8 +182,8 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
     </section>
 
-    <!-- Iklan Partner -->
-    <div class="max-w-7xl mx-auto px-4 pt-4">
+    <!-- Iklan Partner (wire:ignore: carousel jalan via JS, jangan di-morph Livewire) -->
+    <div class="max-w-7xl mx-auto px-4 pt-4" wire:ignore>
         <x-promo-ads />
     </div>
 
@@ -195,10 +219,10 @@ new #[Layout('layouts.publik')] class extends Component
         <div wire:loading.remove class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @forelse ($propertis as $properti)
                 <a href="{{ route('kos.detail', $properti) }}" wire:navigate
-                   class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-teal-200 dark:hover:ring-teal-800 transition-all duration-200">
+                   class="group bg-white dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700 overflow-hidden hover:shadow-card-hover hover:border-brand-200 transition">
                     <div class="flex sm:block">
                         <!-- Image -->
-                        <div class="relative h-32 sm:h-44 w-28 sm:w-full shrink-0 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
+                        <div class="relative h-32 sm:h-44 w-28 sm:w-full shrink-0 bg-stone-200 dark:bg-gray-800">
                             @php $coverKos = $properti->fotoCover(); @endphp
                             @if ($coverKos)
                                 <img src="{{ $coverKos }}" alt="{{ $properti->nama }}" loading="lazy" decoding="async"
@@ -215,8 +239,13 @@ new #[Layout('layouts.publik')] class extends Component
                                 </span>
                             @endif
                             @if ($properti->kamar_tersedia > 0)
-                                <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
-                                    {{ $properti->kamar_tersedia }} Kamar
+                                <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-brand-700 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                    Sisa {{ $properti->kamar_tersedia }} kamar
+                                </span>
+                            @endif
+                            @if ($properti->tipe_hunian)
+                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white {{ $properti->tipe_hunian === 'putri' ? 'bg-rose-700' : ($properti->tipe_hunian === 'putra' ? 'bg-slate-700' : 'bg-brand-800') }}">
+                                    {{ ucfirst($properti->tipe_hunian) }}
                                 </span>
                             @endif
                         </div>
@@ -224,7 +253,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <!-- Info -->
                         <div class="flex-1 p-3 sm:p-4 flex flex-col justify-between">
                             <div>
-                                <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition line-clamp-1">{{ $properti->nama }}</h3>
+                                <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-gray-100 group-hover:text-brand-800 dark:group-hover:text-brand-200 transition line-clamp-1">{{ $properti->nama }}</h3>
                                 @if ($properti->total_ulasan > 0)
                                     <p class="mt-0.5 flex items-center gap-1 text-xs">
                                         <x-star-rating :rating="round($properti->rating_ulasan)" size="h-3 w-3" />
@@ -239,10 +268,10 @@ new #[Layout('layouts.publik')] class extends Component
                                 @if ($properti->fasilitas)
                                     <div class="mt-1.5 flex flex-wrap gap-1">
                                         @foreach (array_slice(array_filter(array_map('trim', explode(',', $properti->fasilitas))), 0, 3) as $f)
-                                            <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-medium text-teal-700 dark:text-teal-300">{{ $f }}</span>
+                                            <span class="inline-flex items-center rounded bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-800 dark:text-brand-200">{{ $f }}</span>
                                         @endforeach
                                         @if (count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) > 3)
-                                            <span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:text-gray-400">+{{ count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) - 3 }}</span>
+                                            <span class="inline-flex items-center rounded bg-stone-100 dark:bg-gray-700 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:text-gray-400">+{{ count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) - 3 }}</span>
                                         @endif
                                     </div>
                                 @endif
@@ -272,7 +301,7 @@ new #[Layout('layouts.publik')] class extends Component
                     <p class="text-gray-500 dark:text-gray-400 font-medium text-sm">Tidak menemukan kos?</p>
                     <p class="mt-1 text-xs text-gray-400 dark:text-gray-500 max-w-sm mx-auto">Coba ubah kata kunci, pilih kota lain, atau perbesar budget pencarian Anda.</p>
                     <button wire:click="$set('cari', ''); $set('kota', ''); $set('hargaMax', null); $set('kapasitas', 1)"
-                        class="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition shadow-sm">
+                        class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800 transition">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
                         Reset Semua Filter
                     </button>
@@ -290,13 +319,14 @@ new #[Layout('layouts.publik')] class extends Component
 
         <!-- CTA untuk pemilik -->
         @guest
-            <div class="mt-10 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 sm:p-10 text-center">
-                <h2 class="text-lg sm:text-2xl font-extrabold text-white">Punya Kos? Daftar Sekarang</h2>
-                <p class="mt-2 text-teal-100 text-xs sm:text-sm max-w-md mx-auto">
+            <div class="mt-10 bg-brand-900 rounded-xl p-6 sm:p-10 text-center">
+                <p class="text-xs font-semibold uppercase tracking-widest text-brand-200">Untuk pemilik kos</p>
+                <h2 class="mt-2 text-lg sm:text-2xl font-bold tracking-tight text-white">Punya Kos? Daftarkan Sekarang</h2>
+                <p class="mt-2 text-brand-100 text-xs sm:text-sm max-w-md mx-auto">
                     Daftarkan kos Anda gratis, kelola kamar, dan balas chat pencari kos.
                 </p>
                 <a href="{{ route('register') }}" wire:navigate
-                   class="mt-4 inline-flex items-center rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-teal-600 hover:bg-teal-50 transition shadow-lg">
+                   class="mt-4 inline-flex items-center rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 hover:bg-brand-50 transition">
                     Daftar sebagai Pemilik Kos
                 </a>
             </div>

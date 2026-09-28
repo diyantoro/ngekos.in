@@ -5,7 +5,6 @@ use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -16,14 +15,14 @@ use Livewire\WithFileUploads;
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <?php if (isset($component)) { $__componentOriginal41da67e197cd1dfc4360372319841e50 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal41da67e197cd1dfc4360372319841e50 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-greeting','data' => ['roleLabel' => 'Anak Kos','description' => 'Pantau penyewaan, tagihan, dan riwayat pembayaranmu di sini.','icon' => '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-greeting','data' => ['roleLabel' => 'Anak Kos','description' => 'Sewa, tagihan, dan riwayat bayarmu semuanya di sini. Scroll ke bawah buat cari kos.','icon' => '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('dashboard-greeting'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['roleLabel' => 'Anak Kos','description' => 'Pantau penyewaan, tagihan, dan riwayat pembayaranmu di sini.','icon' => '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>']); ?>
+<?php $component->withAttributes(['roleLabel' => 'Anak Kos','description' => 'Sewa, tagihan, dan riwayat bayarmu semuanya di sini. Scroll ke bawah buat cari kos.','icon' => '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal41da67e197cd1dfc4360372319841e50)): ?>
@@ -35,26 +34,34 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginal41da67e197cd1dfc4360372319841e50); ?>
 <?php endif; ?>
 
-        <?php if (isset($component)) { $__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.promo-ads','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('promo-ads'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes([]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f)): ?>
-<?php $attributes = $__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f; ?>
-<?php unset($__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f)): ?>
-<?php $component = $__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f; ?>
-<?php unset($__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f); ?>
-<?php endif; ?>
+        <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-3 sm:p-4 border-t-4 !border-t-brand-700">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Mau cari kos di mana?</p>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Ketik nama lokasi, area, atau alamat — misal "Tembalang" atau "Kukusan".</p>
+            <form action="<?php echo e(route('kos.index')); ?>" method="GET" class="mt-3 flex items-center gap-2">
+                <div class="flex-1 flex items-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-700/60 px-3 py-2.5">
+                    <svg class="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                    <input type="text" name="cari" placeholder="Masukan nama lokasi/area/alamat"
+                        class="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 border-0 focus:ring-0 focus:outline-none p-0">
+                </div>
+                <button type="submit" class="btn-primary shrink-0 !rounded-xl !px-6">Cari</button>
+            </form>
+            <div class="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = ['UGM Jogja' => 'Pogung', 'UNDIP Semarang' => 'Tembalang', 'UI Depok' => 'Kukusan', 'UNPAD Jatinangor' => 'Jatinangor', 'UB Malang' => 'Lowokwaru', 'UNAIR Surabaya' => 'Bratang', 'ITB Bandung' => 'Dago', 'Udayana Bali' => 'Denpasar']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $label => $kata): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route('kos.index')); ?>?cari=<?php echo e(urlencode($kata)); ?>"
+                        class="shrink-0 whitespace-nowrap rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-brand-700 hover:text-white transition"><?php echo e($label); ?></a>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+        </div>
+
+        <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Area kos terpopuler</p>
+            <div class="mt-2.5 flex flex-wrap gap-2">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = ['Yogyakarta', 'Jakarta', 'Bandung', 'Surabaya', 'Malang', 'Semarang', 'Medan', 'Denpasar']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kotaPop): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route('kos.index')); ?>?cari=<?php echo e(urlencode($kotaPop)); ?>"
+                        class="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:border-brand-600 hover:bg-brand-700 hover:text-white transition">Kos <?php echo e($kotaPop); ?></a>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+        </div>
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pesan): ?>
             <?php if (isset($component)) { $__componentOriginalfdcd7a5a16c9274b4b57c957ab5de77a = $component; } ?>
@@ -86,122 +93,16 @@ use Livewire\WithFileUploads;
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.stat-card','data' => ['label' => 'Penyewaan Aktif','value' => $penyewaanAktif,'tone' => 'emerald','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('stat-card'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['label' => 'Penyewaan Aktif','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($penyewaanAktif),'tone' => 'emerald','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $attributes = $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $component = $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-            <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.stat-card','data' => ['label' => 'Tagihan Belum Bayar','value' => $tagihanBelumBayar,'tone' => 'amber','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('stat-card'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['label' => 'Tagihan Belum Bayar','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($tagihanBelumBayar),'tone' => 'amber','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $attributes = $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $component = $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-            <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.stat-card','data' => ['label' => 'Total Sudah Dibayar','value' => 'Rp' . number_format($totalBayar, 0, ',', '.'),'tone' => 'cyan','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('stat-card'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['label' => 'Total Sudah Dibayar','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('Rp' . number_format($totalBayar, 0, ',', '.')),'tone' => 'cyan','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $attributes = $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $component = $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.stat-card','data' => ['label' => 'Favorit','value' => $jumlahFavorit,'tone' => 'rose','href' => ''.e(route('favorit')).'','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('stat-card'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['label' => 'Favorit','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($jumlahFavorit),'tone' => 'rose','href' => ''.e(route('favorit')).'','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $attributes = $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $component = $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-            <?php if (isset($component)) { $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.stat-card','data' => ['label' => 'Pesan Belum Dibaca','value' => $pesanBelumDibaca,'tone' => 'sky','href' => ''.e(route('chat.index')).'','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.13.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('stat-card'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['label' => 'Pesan Belum Dibaca','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($pesanBelumDibaca),'tone' => 'sky','href' => ''.e(route('chat.index')).'','icon' => '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.13.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg>']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $attributes = $__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__attributesOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682)): ?>
-<?php $component = $__componentOriginal527fae77f4db36afc8c8b7e9f5f81682; ?>
-<?php unset($__componentOriginal527fae77f4db36afc8c8b7e9f5f81682); ?>
-<?php endif; ?>
-        </div>
-
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($tagihanBerikutnya): ?>
             <?php
                 $sisaBanner = \App\Services\TagihanService::selisihHari($tagihanBerikutnya);
                 $telatBanner = \App\Services\TagihanService::hariTelat($tagihanBerikutnya);
                 $dendaHarianBanner = \App\Services\TagihanService::dendaPerHari($tagihanBerikutnya);
             ?>
-            <div class="rounded-2xl bg-gradient-to-r p-5 text-white shadow-sm <?php echo e($telatBanner > 0 || $sisaBanner <= 3 ? 'from-rose-600 to-red-600 dark:from-rose-700 dark:to-red-700' : ($sisaBanner <= 7 ? 'from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600' : 'from-teal-600 to-emerald-600 dark:from-teal-700 dark:to-emerald-700')); ?>">
+            <div class="rounded-xl p-5 text-white <?php echo e($telatBanner > 0 || $sisaBanner <= 3 ? 'bg-red-800 dark:bg-red-900' : ($sisaBanner <= 7 ? 'bg-amber-800 dark:bg-amber-900' : 'bg-brand-900 dark:bg-brand-950')); ?>">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <span class="shrink-0 h-11 w-11 rounded-2xl bg-white/15 text-white flex items-center justify-center">
+                        <span class="shrink-0 h-11 w-11 rounded-lg bg-white/10 text-white flex items-center justify-center border border-white/15">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </span>
                         <div>
@@ -229,9 +130,9 @@ use Livewire\WithFileUploads;
                         </div>
                     </div>
                     <div class="shrink-0 text-end">
-                        <p class="text-2xl font-extrabold text-white">Rp<?php echo e(number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.')); ?></p>
+                        <p class="text-2xl font-bold tracking-tight text-white">Rp<?php echo e(number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.')); ?></p>
                         <button wire:click="bayarTagihan(<?php echo e($tagihanBerikutnya->id); ?>)" wire:loading.attr="disabled"
-                            class="mt-1.5 inline-flex items-center rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-white/25 transition">
+                            class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
                             Bayar Sekarang
                         </button>
                     </div>
@@ -264,11 +165,11 @@ use Livewire\WithFileUploads;
             <div>
                 <div class="flex items-end justify-between gap-4">
                     <div>
-                        <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Rekomendasi untukmu</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kos lain di area yang sedang kamu tempati</p>
+                        <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Rekomendasi kos buat kamu</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kos lain di area yang sedang kamu tempati — harga bulan pertama udah termasuk diskon</p>
                     </div>
                     <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
-                        class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300">
+                        class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
                         Lihat Semua
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </a>
@@ -276,28 +177,52 @@ use Livewire\WithFileUploads;
 
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $rekomendasi; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $k): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
+                            $sisaK = $k->total_kamar - $k->kamar_terisi;
+                            $hargaK = $k->harga ?? $k->harga_termurah;
+                            $diskonK = $k->harga_asli && $hargaK && $k->harga_asli > $hargaK ? $k->harga_asli - $hargaK : 0;
+                            $fasilitasK = array_filter(array_map('trim', explode('·', str_replace(',', '·', $k->fasilitas ?? ''))));
+                        ?>
                         <a href="<?php echo e(route('kos.detail', $k)); ?>" wire:navigate
-                            class="group rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
-                            <div class="relative h-28 bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-500/10 dark:to-cyan-500/10 overflow-hidden">
+                            class="group rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 overflow-hidden hover:shadow-card-hover transition">
+                            <div class="relative h-28 bg-stone-200 dark:bg-gray-800 overflow-hidden">
                                 <?php $coverRekom = $k->fotoCover(); ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($coverRekom): ?>
                                     <img src="<?php echo e($coverRekom); ?>" alt="<?php echo e($k->nama); ?>" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                 <?php else: ?>
                                     <div class="h-full w-full flex items-center justify-center">
-                                        <svg class="h-8 w-8 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                                        <svg class="h-8 w-8 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
                                     </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($k->galeriUrls()) > 1): ?>
-                                    <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm"><?php echo e(count($k->galeriUrls())); ?> foto</span>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($k->tipe_hunian): ?>
+                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white <?php echo e($k->tipe_hunian === 'putri' ? 'bg-pink-600' : ($k->tipe_hunian === 'putra' ? 'bg-sky-700' : 'bg-violet-700')); ?>"><?php echo e(ucfirst($k->tipe_hunian)); ?></span>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white <?php echo e($k->kamar_terisi < $k->total_kamar ? 'bg-emerald-600' : 'bg-gray-800'); ?>">
-                                    <?php echo e($k->kamar_terisi < $k->total_kamar ? ($k->total_kamar - $k->kamar_terisi) . ' Kamar' : 'Penuh'); ?>
+                                <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white <?php echo e($sisaK > 0 ? 'bg-emerald-600' : 'bg-gray-800'); ?>">
+                                    <?php echo e($sisaK > 0 ? 'Sisa ' . $sisaK . ' kamar' : 'Penuh'); ?>
 
                                 </span>
                             </div>
                             <div class="p-3">
-                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-teal-700 dark:group-hover:text-teal-300 transition"><?php echo e($k->nama); ?></p>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"><?php echo e($k->kota); ?><?php echo e($k->alamat ? ', ' . $k->alamat : ''); ?></p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($k->total_ulasan ?? 0) > 0): ?>
+                                    <p class="flex items-center gap-1 text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                                        <svg class="h-3 w-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
+                                        <?php echo e(number_format($k->rating_ulasan, 1, ',', '.')); ?>
+
+                                    </p>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <p class="mt-0.5 text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-300 transition"><?php echo e($k->nama); ?></p>
+                                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate"><?php echo e($k->kota); ?><?php echo e($k->alamat ? ', ' . $k->alamat : ''); ?></p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($fasilitasK !== []): ?>
+                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500 truncate"><?php echo e(implode('·', array_slice($fasilitasK, 0, 5))); ?></p>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hargaK): ?>
+                                    <div class="mt-1.5">
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($diskonK > 0): ?>
+                                            <p class="text-[11px] text-gray-400">Diskon <?php echo e(number_format($diskonK / 1000, 0)); ?>rb <span class="line-through">Rp<?php echo e(number_format($k->harga_asli, 0, ',', '.')); ?></span></p>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp<?php echo e(number_format($hargaK, 0, ',', '.')); ?> <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
+                                    </div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                         </a>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -305,19 +230,74 @@ use Livewire\WithFileUploads;
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($kosPromo ?? collect())->isNotEmpty()): ?>
+            <div>
+                <div class="flex items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Kos yang lagi promo</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Diskon bulan pertama, lumayan buat hemat awal ngekos</p>
+                    </div>
+                    <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
+                        class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
+                        Lihat Semua
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </a>
+                </div>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $kosPromo; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kp): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
+                            $sisaP = $kp->total_kamar - $kp->kamar_terisi;
+                            $fasilitasP = array_filter(array_map('trim', explode('·', str_replace(',', '·', $kp->fasilitas ?? ''))));
+                        ?>
+                        <a href="<?php echo e(route('kos.detail', $kp)); ?>" wire:navigate
+                            class="group rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
+                            <div class="relative h-28 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-500/10 dark:to-orange-500/10 overflow-hidden">
+                                <?php $coverPromo = $kp->fotoCover(); ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($coverPromo): ?>
+                                    <img src="<?php echo e($coverPromo); ?>" alt="<?php echo e($kp->nama); ?>" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                <?php else: ?>
+                                    <div class="h-full w-full flex items-center justify-center">
+                                        <svg class="h-8 w-8 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                                    </div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kp->tipe_hunian): ?>
+                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white <?php echo e($kp->tipe_hunian === 'putri' ? 'bg-pink-600' : ($kp->tipe_hunian === 'putra' ? 'bg-sky-700' : 'bg-violet-700')); ?>"><?php echo e(ucfirst($kp->tipe_hunian)); ?></span>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <span class="absolute <?php echo e($kp->tipe_hunian ? 'top-9' : 'top-2'); ?> right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white <?php echo e($sisaP > 0 ? 'bg-emerald-600' : 'bg-gray-800'); ?>"><?php echo e($sisaP > 0 ? 'Sisa ' . $sisaP . ' kamar' : 'Penuh'); ?></span>
+                            </div>
+                            <div class="p-3">
+                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-300 transition"><?php echo e($kp->nama); ?></p>
+                                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate"><?php echo e($kp->kota); ?><?php echo e($kp->alamat ? ', ' . $kp->alamat : ''); ?></p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($fasilitasP !== []): ?>
+                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500 truncate"><?php echo e(implode('·', array_slice($fasilitasP, 0, 5))); ?></p>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kp->harga): ?>
+                                    <p class="mt-1.5 text-[11px] text-gray-400">Diskon <?php echo e(number_format(($kp->harga_asli - $kp->harga) / 1000, 0)); ?>rb <span class="line-through">Rp<?php echo e(number_format($kp->harga_asli, 0, ',', '.')); ?></span></p>
+                                    <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp<?php echo e(number_format($kp->harga, 0, ',', '.')); ?> <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </div>
+                        </a>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <div>
+            <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Sewa &amp; tagihanku</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Riwayat pembayaranmu ada di tab paling kanan.</p>
+            <div class="mt-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1">
                     <button wire:click="$set('tab', 'sewaan')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'sewaan' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'sewaan' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
                         Sewa Saya
                     </button>
                     <button wire:click="$set('tab', 'tagihan')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'tagihan' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'tagihan' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
                         Tagihan Saya
                     </button>
                     <button wire:click="$set('tab', 'pembayaran')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'pembayaran' ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
+                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'pembayaran' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
                         Pembayaran Saya
                     </button>
                 </div>
@@ -338,7 +318,7 @@ use Livewire\WithFileUploads;
                                 $riwayatKeluar = $sewaan->anggotas->where('status', 'keluar')->sortByDesc('tanggal_keluar')->first();
                                 $tampilBannerStay = $sewaan->status === 'aktif' && ! $isPatungan && $riwayatKeluar && $riwayatKeluar->tanggal_keluar && $riwayatKeluar->tanggal_keluar->diffInDays(now()) <= 30;
                             ?>
-                            <div class="rounded-xl ring-1 <?php echo e($sewaan->status === 'aktif' ? 'ring-teal-100 dark:ring-teal-500/30' : 'ring-gray-100 dark:ring-gray-700 opacity-75'); ?> p-4 sm:p-5">
+                            <div class="rounded-xl ring-1 <?php echo e($sewaan->status === 'aktif' ? 'ring-brand-100 dark:ring-brand-500/30' : 'ring-gray-100 dark:ring-gray-700 opacity-75'); ?> p-4 sm:p-5">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100">
@@ -378,8 +358,8 @@ use Livewire\WithFileUploads;
                                         </p>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isPatungan): ?>
                                             <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                                                <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
-                                                    <span class="h-4 w-4 rounded-full bg-teal-600 text-[9px] font-bold text-white flex items-center justify-center"><?php echo e(mb_substr($sewaan->anakKos?->nama ?? '?', 0, 1)); ?></span>
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-200 dark:ring-brand-500/30 px-2.5 py-1 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
+                                                    <span class="h-4 w-4 rounded-full bg-brand-700 text-[9px] font-bold text-white flex items-center justify-center"><?php echo e(mb_substr($sewaan->anakKos?->nama ?? '?', 0, 1)); ?></span>
                                                     <?php echo e($sewaan->anakKos?->nama ?? '-'); ?> · utama
                                                 </span>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $anggotaAktif; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -422,8 +402,8 @@ use Livewire\WithFileUploads;
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($tampilBannerStay): ?>
-                                    <div class="mt-3 flex items-start gap-2 rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3">
-                                        <p class="text-xs text-teal-800 dark:text-teal-200"><span class="font-bold"><?php echo e($riwayatKeluar->user?->nama ?? 'Teman sekamarmu'); ?> sudah keluar, kamu tetap stay.</span> Mulai tagihan berikutnya porsimu 100%. Kamar tetap terisi. Kabar ini juga masuk ke menu Pesan.</p>
+                                    <div class="mt-3 flex items-start gap-2 rounded-xl bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-200 dark:ring-brand-500/30 px-4 py-3">
+                                        <p class="text-xs text-brand-800 dark:text-brand-200"><span class="font-bold"><?php echo e($riwayatKeluar->user?->nama ?? 'Teman sekamarmu'); ?> sudah keluar, kamu tetap stay.</span> Mulai tagihan berikutnya porsimu 100%. Kamar tetap terisi. Kabar ini juga masuk ke menu Pesan.</p>
                                     </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -469,8 +449,8 @@ use Livewire\WithFileUploads;
                             </div>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <div class="py-10 text-center">
-                                <p class="text-sm text-gray-400 dark:text-gray-500">Belum ada penyewaan aktif.</p>
-                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Cari kos di halaman <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="text-teal-600 dark:text-teal-400 hover:underline font-medium">Cari Kos</a> untuk mulai menyewa.</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500">Belum ada sewa aktif.</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Ketemu kos yang cocok di atas? Klik kartunya, terus ajukan sewa — <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="text-brand-700 dark:text-brand-300 hover:underline font-medium">cari kos</a> dulu.</p>
                             </div>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
@@ -531,7 +511,7 @@ use Livewire\WithFileUploads;
                                             <?php elseif($sisaHari <= 7): ?>
                                                 <span class="mt-1 block w-fit rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Sisa <?php echo e($sisaHari); ?> hari</span>
                                             <?php else: ?>
-                                                <span class="mt-1 block w-fit rounded-full bg-teal-50 dark:bg-teal-500/10 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-500/30">Sisa <?php echo e($sisaHari); ?> hari</span>
+                                                <span class="mt-1 block w-fit rounded-full bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 text-[10px] font-bold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30">Sisa <?php echo e($sisaHari); ?> hari</span>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </td>
@@ -569,7 +549,7 @@ use Livewire\WithFileUploads;
                                     </td>
                                 </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Tidak ada tagihan.</td></tr>
+                                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada tagihan. Kalau kamu lagi ngekos, tagihan bulanannya muncul di sini.</td></tr>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </tbody>
                     </table>
@@ -597,7 +577,7 @@ use Livewire\WithFileUploads;
                                     <td class="px-4 py-4 text-sm">
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pembayaran->bukti): ?>
                                             <a href="<?php echo e(Storage::url($pembayaran->bukti)); ?>" target="_blank" rel="noopener"
-                                                class="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline">
+                                                class="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 dark:text-brand-300 hover:text-brand-800 dark:hover:text-brand-200 hover:underline">
                                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 Lihat
                                             </a>
@@ -630,7 +610,7 @@ use Livewire\WithFileUploads;
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pembayaran->status === 'diverifikasi'): ?>
                                             <div class="flex justify-end">
                                                 <a href="<?php echo e(route('pembayaran.kwitansi', $pembayaran)); ?>" target="_blank" rel="noopener"
-                                                    class="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition">
+                                                    class="inline-flex items-center gap-1 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition">
                                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                                                     <?php echo e($pembayaran->nomor_kwitansi ?? 'Unduh'); ?>
 
@@ -642,13 +622,14 @@ use Livewire\WithFileUploads;
                                     </td>
                                 </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pembayaran.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada riwayat pembayaran. Semua pembayaranmu yang udah diverifikasi tercatat di sini.</td></tr>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </tbody>
                     </table>
                     </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
+        </div>
         </div>
     </div>
 
@@ -704,7 +685,7 @@ use Livewire\WithFileUploads;
                                 Jatuh tempo hari ini — bayar sebelum lewat hari ini
                             </p>
                         <?php else: ?>
-                            <p class="mt-1.5 inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-500/10 px-2.5 py-1 text-[11px] font-bold text-teal-700 dark:text-teal-300 ring-1 ring-teal-200 dark:ring-teal-500/30">
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-500/10 px-2.5 py-1 text-[11px] font-bold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30">
                                 Sisa <?php echo e($sisaModal); ?> hari (bayar sebelum <?php echo e($jatuhModal); ?>)
                             </p>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -730,12 +711,12 @@ use Livewire\WithFileUploads;
                         <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Metode Pembayaran</label>
                         <div class="grid grid-cols-2 gap-2">
                             <button type="button" wire:click="ubahMetodeBayar('transfer')"
-                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition <?php echo e($metodeBayar === 'transfer' ? 'border-teal-600 bg-teal-50 text-teal-700 ring-1 ring-teal-600 dark:bg-teal-500/10 dark:text-teal-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'); ?>">
+                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition <?php echo e($metodeBayar === 'transfer' ? 'border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600 dark:bg-brand-500/10 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'); ?>">
                                 <span class="block text-xs font-bold">Transfer</span>
                                 <span class="block text-[11px] font-normal opacity-70">Unggah bukti transfer</span>
                             </button>
                             <button type="button" wire:click="ubahMetodeBayar('cash')"
-                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition <?php echo e($metodeBayar === 'cash' ? 'border-teal-600 bg-teal-50 text-teal-700 ring-1 ring-teal-600 dark:bg-teal-500/10 dark:text-teal-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'); ?>">
+                                class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition <?php echo e($metodeBayar === 'cash' ? 'border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600 dark:bg-brand-500/10 dark:text-brand-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'); ?>">
                                 <span class="block text-xs font-bold">Tunai (Cash)</span>
                                 <span class="block text-[11px] font-normal opacity-70">Bayar langsung ke admin/pemilik</span>
                             </button>
@@ -762,7 +743,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Bukti Transfer (JPG/PNG/WEBP/PDF, maks 2MB)</label>
                             <input type="file" wire:model="bukti" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 dark:file:bg-brand-500/10 file:px-4 file:py-2 file:text-brand-700 dark:file:text-brand-300 file:font-semibold hover:file:bg-brand-100 dark:hover:file:bg-brand-500/20">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['bukti'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -771,13 +752,13 @@ $message = $__bag->first($__errorArgs[0]); ?> <p class="mt-1 text-xs font-medium
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <div wire:loading wire:target="bukti" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
+                            <div wire:loading wire:target="bukti" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand-600">
                                 <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 Mengunggah bukti...
                             </div>
                         </div>
                     <?php else: ?>
-                        <p class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-100 dark:ring-teal-500/20 px-4 py-3 text-xs text-teal-800 dark:text-teal-200">
+                        <p class="rounded-xl bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-100 dark:ring-brand-500/20 px-4 py-3 text-xs text-brand-800 dark:text-brand-200">
                             Tidak perlu unggah bukti. Status pembayaran menunggu konfirmasi admin/pemilik setelah tunai diterima.
                         </p>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -809,7 +790,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <form wire:submit="simpanKtpSusulan" class="p-5 space-y-4">
                     <div>
                         <input type="file" wire:model="ktpSusulan" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 dark:file:bg-brand-500/10 file:px-4 file:py-2 file:text-brand-700 dark:file:text-brand-300 file:font-semibold hover:file:bg-brand-100 dark:hover:file:bg-brand-500/20">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['ktpSusulan'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -818,7 +799,7 @@ $message = $__bag->first($__errorArgs[0]); ?> <p class="mt-1 text-xs font-medium
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <div wire:loading wire:target="ktpSusulan" class="mt-2 text-xs font-medium text-teal-600">Mengunggah KTP...</div>
+                        <div wire:loading wire:target="ktpSusulan" class="mt-2 text-xs font-medium text-brand-600">Mengunggah KTP...</div>
                     </div>
                     <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
                         <button type="button" wire:click="tutupModalKtp"
@@ -826,7 +807,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             Batal
                         </button>
                         <button type="submit" wire:loading.attr="disabled" wire:target="simpanKtpSusulan"
-                            class="flex-1 inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                            class="flex-1 inline-flex items-center justify-center rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition disabled:opacity-50">
                             Simpan KTP
                         </button>
                     </div>
@@ -862,7 +843,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto KTP Teman (wajib)</label>
                         <input type="file" wire:model="ktpTeman" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
+                            class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 dark:file:bg-brand-500/10 file:px-4 file:py-2 file:text-brand-700 dark:file:text-brand-300 file:font-semibold hover:file:bg-brand-100 dark:hover:file:bg-brand-500/20">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['ktpTeman'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :

@@ -14,7 +14,7 @@ class Properti extends Model
 
     protected $fillable = [
         'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
-        'harga', 'harga_mingguan', 'harga_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
+        'harga', 'harga_mingguan', 'harga_harian', 'jenis_harga', 'harga_asli', 'status', 'tipe_hunian', 'foto',
     ];
 
     protected function casts(): array

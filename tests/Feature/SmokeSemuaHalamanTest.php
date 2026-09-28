@@ -82,7 +82,8 @@ class SmokeSemuaHalamanTest extends TestCase
         $this->actingAs($user)->get(route('pemilik.kamar', $properti->id))->assertOk();
         $this->actingAs($user)->get(route('pemilik.pengeluaran'))->assertOk();
         $this->actingAs($user)->get(route('bantuan.masuk'))->assertOk();
-        $this->actingAs($user)->get(route('chat.index'))->assertOk();
+        // Fitur chat khusus anak kos & pemilik; admin/super admin ditolak.
+        $this->actingAs($user)->get(route('chat.index'))->assertForbidden();
         $this->actingAs($user)->get(route('pengaturan'))->assertOk();
     }
 

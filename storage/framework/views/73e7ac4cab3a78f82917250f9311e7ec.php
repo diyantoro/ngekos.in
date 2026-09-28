@@ -44,9 +44,9 @@ use Illuminate\Support\Facades\Auth;
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $favorits; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden hover:shadow-md hover:ring-rose-200 dark:hover:ring-rose-800 transition-all duration-200">
+                        <div class="group bg-white dark:bg-gray-800 rounded-xl border border-stone-200 dark:border-gray-700 overflow-hidden hover:shadow-card-hover transition">
                             <a href="<?php echo e(route('kos.detail', $properti)); ?>" wire:navigate>
-                                <div class="relative h-40 bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20">
+                                <div class="relative h-40 bg-stone-200 dark:bg-gray-800">
                                     <?php $coverFav = $properti->fotoCover(); ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($coverFav): ?>
                                         <img src="<?php echo e($coverFav); ?>" alt="<?php echo e($properti->nama); ?>" loading="lazy" decoding="async" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\Auth;
                                         <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm"><?php echo e(count($properti->galeriUrls())); ?> foto</span>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($properti->kamar_tersedia > 0): ?>
-                                        <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm">
+                                        <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-brand-700 px-1.5 py-0.5 text-[9px] font-bold text-white">
                                             <?php echo e($properti->kamar_tersedia); ?> Kamar
                                         </span>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

@@ -8,7 +8,7 @@ use Livewire\Volt\Component;
 <div x-data="{ terbuka: false, tetapBawah: true, scroll(paksa = false) { $nextTick(() => { const el = document.getElementById('chat-riwayat'); if (!el) return; if (paksa || this.tetapBawah) el.scrollTo({ top: el.scrollHeight, behavior: 'auto' }); }); } }"
      x-init="(() => { const pasang = () => { try { if ($wire && $wire.$watch && !window.__chatbotWatch) { window.__chatbotWatch = true; $wire.$watch('percakapan', () => scroll()); } } catch (e) {} }; pasang(); $watch('terbuka', (v) => { if (v) { tetapBawah = true; scroll(true); } }); if (window.Livewire) { document.addEventListener('livewire:initialized', pasang); } })()" @keydown.escape.window="terbuka = false" @click.away="terbuka = false" wire:ignore.self class="fixed right-4 sm:right-5 z-[60] bottom-24 sm:bottom-6 <?php echo e($tampil ? '' : 'hidden'); ?>">
     <button type="button" @click="terbuka = !terbuka"
-            class="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 via-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-300/60 ring-2 ring-white/60 hover:scale-105 hover:shadow-xl hover:shadow-emerald-300/70 transition"
+            class="relative flex h-14 w-14 items-center justify-center rounded-full bg-brand-800 text-white border border-brand-900 hover:bg-brand-900 transition"
             :aria-label="terbuka ? 'Tutup chatbot bantuan' : 'Buka chatbot bantuan'"
             :aria-expanded="terbuka.toString()">
         <svg x-show="!terbuka" class="h-7 w-7" viewBox="0 0 24 24">
@@ -30,10 +30,10 @@ use Livewire\Volt\Component;
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-gray-200 dark:ring-gray-600 flex flex-col"
-         style="max-height: min(70vh, 30rem); height: 30rem;"
-         role="dialog" aria-label="Chatbot bantuan Ngekos.in">
-        <div class="flex items-center justify-between bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3">
+          class="absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 flex flex-col"
+          style="max-height: min(70vh, 30rem); height: 30rem;"
+          role="dialog" aria-label="Chatbot bantuan Ngekos.in">
+        <div class="flex items-center justify-between bg-brand-900 px-4 py-3">
             <div class="flex items-center gap-2.5">
                 <div class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
                     <svg class="h-5 w-5 text-white" viewBox="0 0 24 24">

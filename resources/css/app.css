@@ -14,42 +14,48 @@
         -webkit-tap-highlight-color: transparent;
     }
 
-    ::selection {
-        background-color: rgb(13 148 136 / 0.2);
-        color: #0f766e;
+    body {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
     }
 
-    /* Focus visibility global untuk keyboard users */
+    ::selection {
+        background-color: rgb(15 84 80 / 0.16);
+        color: #0c3835;
+    }
+
     :focus-visible {
-        outline: 2px solid rgb(20 184 166 / 0.6);
+        outline: 2px solid rgb(20 104 92 / 0.55);
         outline-offset: 2px;
     }
 }
 
 @layer components {
     .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-500/20 transition-all duration-200 hover:from-teal-500 hover:to-emerald-500 hover:shadow-lg hover:shadow-teal-500/25 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-900/25 transition hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-900/25 active:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
+    }
+
+    .btn-accent {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-5 py-2.5 text-sm font-bold text-brand-950 shadow-md shadow-amber-500/30 transition hover:bg-amber-300 active:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none;
     }
 
     .btn-secondary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-semibold text-stone-700 transition hover:border-stone-400 hover:bg-stone-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700;
     }
 
     .card {
-        @apply bg-white dark:bg-gray-800 rounded-2xl shadow-card ring-1 ring-gray-100/80 dark:ring-gray-700/80 transition-all duration-300;
+        @apply bg-white dark:bg-gray-800 rounded-xl shadow-card border border-stone-200/80 dark:border-gray-700;
     }
 
     .gradient-text {
-        @apply bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent;
+        @apply text-brand-800 dark:text-brand-200;
     }
 
     .section-fade {
-        animation: fadeInUp 0.6s ease-out both;
+        /* no-op: konten langsung tampil */
     }
 
-    .stagger-1 { animation-delay: 0.1s; }
-    .stagger-2 { animation-delay: 0.2s; }
-    .stagger-3 { animation-delay: 0.3s; }
+    .stagger-1, .stagger-2, .stagger-3 { animation: none; }
 }
 
 @layer utilities {
@@ -92,24 +98,14 @@
     }
 
     .fade-up {
-        animation: fadeInUp 0.7s ease-out both;
+        /* no-op: konten langsung tampil */
     }
 
-    .animate-float-slow {
-        animation: floatSlow 8s ease-in-out infinite;
-    }
-
-    .animate-float-reverse {
-        animation: floatSlow 11s ease-in-out infinite reverse;
-    }
-
-    .animate-blob {
-        animation: blob 14s ease-in-out infinite;
-    }
-
+    .animate-float-slow,
+    .animate-float-reverse,
+    .animate-blob,
     .hero-gradient {
-        background-size: 200% 200%;
-        animation: gradientShift 9s ease infinite;
+        animation: none;
     }
 }
 
@@ -172,28 +168,16 @@
 }
 
 .text-gradient {
-    background-image: linear-gradient(90deg, #a7f3d0 0%, #5eead4 35%, #a5f3fc 70%, #c4b5fd 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: inherit;
 }
 
 .animate-shine {
-    position: relative;
-    overflow: hidden;
+    position: static;
+    overflow: visible;
 }
 
 .animate-shine::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -80%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-    transform: skewX(-18deg);
-    animation: shine 3.6s ease-in-out infinite;
-    pointer-events: none;
+    content: none;
 }
 
 @keyframes shine {
@@ -208,12 +192,11 @@
     }
 }
 
-/* ===== Reveal on scroll ===== */
+/* ===== Reveal on scroll (dimatikan: konten langsung tampil) ===== */
 
 .reveal {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    opacity: 1;
+    transform: none;
 }
 
 .reveal.is-revealed {

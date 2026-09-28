@@ -1,4 +1,4 @@
-@props(['suffixClass' => 'text-teal-700 dark:text-teal-400'])
+@props(['suffixClass' => 'text-brand-700 dark:text-brand-300'])
 
 @php
     $nama = \App\Models\Pengaturan::namaSitus();

@@ -1,49 +1,35 @@
 @props(['label', 'value', 'icon', 'tone' => 'teal', 'hint' => null, 'href' => null])
 
 @php
-    $tones = [
-        'teal' => 'from-teal-500 to-emerald-500',
-        'cyan' => 'from-cyan-500 to-sky-500',
-        'emerald' => 'from-emerald-500 to-green-500',
-        'sky' => 'from-sky-500 to-blue-500',
-        'amber' => 'from-amber-500 to-orange-500',
-        'rose' => 'from-rose-500 to-pink-500',
-    ];
-    $shadows = [
-        'teal' => 'shadow-teal-500/20',
-        'cyan' => 'shadow-cyan-500/20',
-        'sky' => 'shadow-sky-500/20',
-        'emerald' => 'shadow-emerald-500/20',
-        'amber' => 'shadow-amber-500/20',
-        'rose' => 'shadow-rose-500/20',
-    ];
-    $bgTones = [
-        'teal' => 'bg-teal-50 text-teal-600 dark:bg-teal-900/40 dark:text-teal-300',
-        'cyan' => 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-300',
-        'emerald' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300',
-        'sky' => 'bg-sky-50 text-sky-600 dark:bg-sky-900/40 dark:text-sky-300',
-        'amber' => 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-300',
-        'rose' => 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300',
+    // Disederhanakan: hanya 3 rumpun nada agar dashboard terlihat dikerjakan
+    // manusia, bukan template AI warna-warni.
+    $iconTones = [
+        'teal' => 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+        'cyan' => 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+        'emerald' => 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+        'sky' => 'bg-stone-100 text-stone-600 dark:bg-gray-700 dark:text-gray-300',
+        'amber' => 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+        'rose' => 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
     ];
 @endphp
 
 @if ($href)
-    <a href="{{ $href }}" wire:navigate class="block card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4 transition cursor-pointer">
+    <a href="{{ $href }}" wire:navigate class="block card group p-5 flex items-center gap-4 transition hover:shadow-card-hover">
 @else
-    <div class="card group hover:shadow-card-hover hover:-translate-y-0.5 p-5 flex items-center gap-4">
+    <div class="card p-5 flex items-center gap-4">
 @endif
-    <div class="shrink-0 h-12 w-12 rounded-xl flex items-center justify-center bg-gradient-to-br {{ $tones[$tone] }} text-white shadow-lg {{ $shadows[$tone] ?? 'shadow-teal-500/20' }} transition-transform duration-300 group-hover:scale-110">
+    <div class="shrink-0 h-11 w-11 rounded-lg flex items-center justify-center {{ $iconTones[$tone] ?? $iconTones['teal'] }}">
         {!! $icon !!}
     </div>
     <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $label }}</p>
-        <p class="mt-0.5 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-gray-100 break-words leading-snug">{{ $value }}</p>
+        <p class="truncate text-xs font-medium text-slate-500 dark:text-gray-400">{{ $label }}</p>
+        <p class="mt-0.5 text-xl font-bold text-slate-900 dark:text-gray-100 break-words leading-snug tracking-tight">{{ $value }}</p>
         @if ($hint)
-            <p class="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">{!! $hint !!}</p>
+            <p class="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400">{!! $hint !!}</p>
         @endif
     </div>
     @if ($href)
-        <svg class="ml-auto h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        <svg class="ml-auto h-5 w-5 shrink-0 text-slate-300 dark:text-gray-600 group-hover:text-brand-600 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
     @endif
 @if ($href)
     </a>

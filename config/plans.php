@@ -9,7 +9,6 @@ return [
         'limits' => [
             'properties' => 1,
             'rooms' => 10,
-            'staff' => 1,
         ],
         'features' => [
             'basic_dashboard',
@@ -35,7 +34,6 @@ return [
         'limits' => [
             'properties' => 5,
             'rooms' => 100,
-            'staff' => 3,
         ],
         'features' => [
             'advanced_analytics',
@@ -46,7 +44,6 @@ return [
             'broadcast',
             'maintenance',
             'multi_property',
-            'multi_user',
         ],
         'report' => [
             'tier' => 'pro',
@@ -64,7 +61,6 @@ return [
         'limits' => [
             'properties' => null,
             'rooms' => null,
-            'staff' => 10,
         ],
         // Hanya fitur yang benar-benar ada di aplikasi + otomatis
         // mewarisi semua fitur PRO via SubscriptionService::hasFeature().

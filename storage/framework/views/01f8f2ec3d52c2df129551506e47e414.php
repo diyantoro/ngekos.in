@@ -60,8 +60,8 @@ unset($__defined_vars, $__key, $__value); ?>
     <div>
         <div class="flex items-end justify-between gap-4">
             <div>
-                <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Kos Trending</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kos paling laris &amp; banyak dicari</p>
+                <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Lagi banyak dicari</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kos yang paling sering dilihat anak kos minggu ini</p>
             </div>
             <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
                 class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300">
@@ -73,8 +73,8 @@ unset($__defined_vars, $__key, $__value); ?>
         <div class="mt-4 flex gap-4 overflow-x-auto scrollbar-hide overscroll-x-contain scroll-smooth pb-2 -mb-2 snap-x snap-proximity">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $trending; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <a href="<?php echo e(route('kos.detail', $p)); ?>" wire:navigate
-                    class="group w-[280px] shrink-0 snap-start rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-100 dark:ring-gray-700 shadow-sm overflow-hidden hover:shadow-md transition">
-                    <div class="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-500/10 dark:to-amber-500/10 overflow-hidden">
+                    class="group w-[280px] shrink-0 snap-start rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 overflow-hidden hover:shadow-card-hover transition">
+                    <div class="relative h-36 bg-stone-200 dark:bg-gray-800 overflow-hidden">
                         <?php $coverTrend = $p->fotoCover(); ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($coverTrend): ?>
                             <img src="<?php echo e($coverTrend); ?>" alt="<?php echo e($p->nama); ?>" loading="lazy" decoding="async"
@@ -88,12 +88,12 @@ unset($__defined_vars, $__key, $__value); ?>
                             <span class="absolute bottom-2 left-2 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm"><?php echo e(count($p->galeriUrls())); ?> foto</span>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">
+                        <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-700 px-2 py-1 text-[10px] font-bold text-white">
                             <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2l.967 4.602L15 6.5l-3.5 3.198L13.2 14 10 11.5 6.8 14l1.7-4.302L5 6.5l4.033-.898L10 2z" /></svg>
                             Trending
                         </span>
 
-                        <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white <?php echo e($p->kamar_tersedia > 0 ? 'bg-emerald-600' : 'bg-gray-800'); ?>">
+                        <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white <?php echo e($p->kamar_tersedia > 0 ? 'bg-brand-700' : 'bg-slate-800'); ?>">
                             <?php echo e($p->kamar_tersedia > 0 ? $p->kamar_tersedia . ' Kamar' : 'Penuh'); ?>
 
                         </span>

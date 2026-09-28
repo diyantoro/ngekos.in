@@ -52,10 +52,10 @@ new #[Layout('layouts.publik')] class extends Component
 
 <div>
     <!-- Header -->
-    <section class="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600">
+    <section class="bg-brand-900">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
-            <h1 class="text-3xl font-extrabold text-white">Pusat Bantuan</h1>
-            <p class="mt-2 text-teal-100">Temukan jawaban, atau hubungi admin kami langsung.</p>
+            <h1 class="text-3xl font-bold tracking-tight text-white">Pusat Bantuan</h1>
+            <p class="mt-2 text-brand-100">Temukan jawaban, atau hubungi admin kami langsung.</p>
         </div>
     </section>
 
@@ -124,12 +124,12 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
 
             <div class="space-y-5">
-                <div class="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 sm:p-8 text-white">
+                <div class="bg-brand-900 rounded-xl p-6 sm:p-8 text-white">
                     <h3 class="text-base font-bold">Kamu sudah login?</h3>
-                    <p class="mt-1 text-sm text-teal-100">Lihat riwayat pesan bantuanmu dan balasan dari admin di satu tempat.</p>
+                    <p class="mt-1 text-sm text-brand-100">Lihat riwayat pesan bantuanmu dan balasan dari admin di satu tempat.</p>
                     @auth
                         <a href="{{ route('bantuan.riwayat') }}" wire:navigate
-                           class="mt-4 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-teal-600 hover:bg-teal-50 transition">
+                           class="mt-4 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50 transition">
                             Buka Riwayat Bantuan
                         </a>
                     @else

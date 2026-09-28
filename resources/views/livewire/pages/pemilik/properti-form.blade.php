@@ -80,7 +80,7 @@ new #[Layout('layouts.app')] class extends Component
     {
         if ($this->properti) {
             abort_unless(
-                $this->properti->pemilik_id === auth()->id() || $this->bolehKelolaSemua(),
+                $this->properti->pemilik_id === auth()->user()->id || $this->bolehKelolaSemua(),
                 403
             );
 
@@ -216,7 +216,7 @@ new #[Layout('layouts.app')] class extends Component
                     return;
                 }
 
-                $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->id();
+                $data['pemilik_id'] = $this->bolehKelolaSemua() ? $this->pemilikId : auth()->user()->id;
                 $properti = Properti::create($data);
                 session()->flash('sukses', "Kos baru \"$data[nama]\" berhasil ditambahkan.");
             }
@@ -275,7 +275,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         abort_unless(
-            $this->properti->pemilik_id === auth()->id() || $this->bolehKelolaSemua(),
+            $this->properti->pemilik_id === auth()->user()->id || $this->bolehKelolaSemua(),
             403
         );
 

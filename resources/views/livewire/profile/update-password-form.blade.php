@@ -12,6 +12,8 @@ new class extends Component
     public string $password = '';
     public string $password_confirmation = '';
 
+    public ?string $pesan = null;
+
     /**
      * Update the password for the currently authenticated user.
      */
@@ -34,11 +36,17 @@ new class extends Component
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
+        $this->pesan = 'Password berhasil diperbarui.';
+
         $this->dispatch('password-updated');
     }
 }; ?>
 
 <section>
+    @if ($pesan)
+        <x-notifikasi-popup :pesan="$pesan" judul="Berhasil!" />
+    @endif
+
     <header>
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
             Perbarui Password

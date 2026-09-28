@@ -4,7 +4,7 @@
     $daftar = collect($fotos)->filter()->values()->all();
 @endphp
 
-<div x-data="{ aktif: 0, total: {{ count($daftar) }}, ticking: false }" class="relative {{ $kelas }} bg-gradient-to-br from-teal-100 via-emerald-100 to-cyan-100 dark:from-teal-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 overflow-hidden group">
+<div x-data="{ aktif: 0, total: {{ count($daftar) }}, ticking: false }" class="relative {{ $kelas }} bg-stone-200 dark:bg-gray-800 overflow-hidden group">
     @if (count($daftar) > 0)
         <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain scroll-smooth"
             x-ref="track"
