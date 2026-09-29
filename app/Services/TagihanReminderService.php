@@ -64,7 +64,7 @@ class TagihanReminderService
         Tagihan::query()
             ->where('status', '!=', 'lunas')
             ->whereHas('penyewaan', fn ($q) => $q->where('status', 'aktif'))
-            ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,pemilik_id', 'penyewaan.anggotas', 'penyewaan.anakKos:id,nama,email'])
+            ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,pemilik_id', 'penyewaan.anggotas', 'penyewaan.anakKos:id,nama,email', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
             ->chunkById(100, function ($tagihans) use ($pada, &$hasil) {
                 foreach ($tagihans as $tagihan) {
                     $hasil['cek']++;
@@ -80,6 +80,63 @@ class TagihanReminderService
         return $hasil;
     }
 
+    /**
+     * Daftar jenis yang wajib dikirim pada tanggal $pada, termasuk susulan.
+     * H-3/H-1/H0 dikirim sekali per tagihan; kalau scheduler mati tepat di
+     * hari H-nya, dikirim susulan di run berikutnya (selama tagihannya sudah
+     * ada saat tanggal pengingat itu). Telat tetap harian.
+     *
+     * @return array<int, array{jenis: string, susulan: bool}>
+     */
+    public static function jenisTertunggak(Tagihan $tagihan, int $selisih, ?Carbon $pada = null): array
+    {
+        $pada ??= Carbon::today();
+
+        if ($selisih < 0) {
+            $sudahHariIni = TagihanPengingat::where('tagihan_id', $tagihan->id)
+                ->where('jenis', self::JENIS_TELAT)
+                ->whereDate('tanggal_kirim', $pada->toDateString())
+                ->exists();
+
+            return $sudahHariIni ? [] : [['jenis' => self::JENIS_TELAT, 'susulan' => false]];
+        }
+
+        if ($selisih > 3) {
+            return [];
+        }
+
+        $daftar = [];
+        $dibuat = $tagihan->created_at ? $tagihan->created_at->copy()->startOfDay() : $pada->copy()->startOfDay();
+        $jatuh = $tagihan->jatuh_tempo ? $tagihan->jatuh_tempo->copy()->startOfDay() : $pada->copy()->startOfDay();
+
+        $sudahKirim = fn (string $jenis) => TagihanPengingat::where('tagihan_id', $tagihan->id)
+            ->where('jenis', $jenis)
+            ->exists();
+
+        // H-3: relevan saat selisih <= 3. Susulan bila tagihan sudah ada saat tanggal H-3.
+        if ($selisih <= 3 && ! $sudahKirim(self::JENIS_H3)) {
+            $tglH3 = $jatuh->copy()->subDays(3);
+            if (! $dibuat->greaterThan($tglH3)) {
+                $daftar[] = ['jenis' => self::JENIS_H3, 'susulan' => $selisih !== 3];
+            }
+        }
+
+        // H-1: relevan saat selisih <= 1.
+        if ($selisih <= 1 && ! $sudahKirim(self::JENIS_H1)) {
+            $tglH1 = $jatuh->copy()->subDay();
+            if (! $dibuat->greaterThan($tglH1)) {
+                $daftar[] = ['jenis' => self::JENIS_H1, 'susulan' => $selisih !== 1];
+            }
+        }
+
+        // H0: tepat hari H.
+        if ($selisih === 0 && ! $sudahKirim(self::JENIS_H0)) {
+            $daftar[] = ['jenis' => self::JENIS_H0, 'susulan' => false];
+        }
+
+        return $daftar;
+    }
+
     public static function prosesSatu(Tagihan $tagihan, ?Carbon $pada = null): bool
     {
         $pada ??= Carbon::today();
@@ -89,23 +146,14 @@ class TagihanReminderService
         }
 
         $selisih = TagihanService::selisihHari($tagihan, $pada);
-        $jenis = self::jenisUntukSelisih($selisih);
+        $daftar = self::jenisTertunggak($tagihan, $selisih, $pada);
 
-        if ($jenis === null) {
-            return false;
-        }
-
-        $sudah = TagihanPengingat::where('tagihan_id', $tagihan->id)
-            ->where('jenis', $jenis)
-            ->whereDate('tanggal_kirim', $pada->toDateString())
-            ->exists();
-
-        if ($sudah) {
+        if ($daftar === []) {
             return false;
         }
 
         TagihanService::sinkronDenda($tagihan, $pada);
-        $tagihan->loadMissing(['penyewaan.kamar', 'penyewaan.properti', 'penyewaan.anggotas', 'penyewaan.anakKos']);
+        $tagihan->loadMissing(['penyewaan.kamar', 'penyewaan.properti', 'penyewaan.anggotas', 'penyewaan.anakKos', 'pembayarans']);
 
         $penyewaan = $tagihan->penyewaan;
         $penghuniIds = $penyewaan->idPenghuniAktif();
@@ -121,64 +169,91 @@ class TagihanReminderService
         $namaKos = (string) ($penyewaan->properti?->nama ?? '-');
         $namaKamar = (string) ($penyewaan->kamar?->nama ?? '-');
 
-        foreach ($penghuniIds as $uid) {
-            $user = $users->get($uid);
-
-            if (! $user) {
-                continue;
+        // Jangan ingatkan penghuni yang porsinya sudah lunas / sudah ajukan pembayaran.
+        $targetIds = array_values(array_filter($penghuniIds, function ($uid) use ($tagihan) {
+            if (TagihanService::wajibBayar($tagihan, (int) $uid) <= 0) {
+                return false;
             }
 
-            $porsi = $isPatungan ? PatunganService::porsiTagihan($penyewaan, $tagihan) : null;
+            $menunggu = $tagihan->relationLoaded('pembayarans')
+                ? $tagihan->pembayarans->where('anak_kos_id', (int) $uid)->where('status', 'menunggu_verifikasi')->isNotEmpty()
+                : $tagihan->pembayarans()->where('anak_kos_id', (int) $uid)->where('status', 'menunggu_verifikasi')->exists();
 
-            try {
-                ChatPesan::notifikasiTagihan(
-                    (int) $penyewaan->properti_id,
-                    (int) $uid,
-                    $pengirimId,
-                    self::isiChat($tagihan, $jenis, $rincian, $namaKos, $namaKamar, $isPatungan, $porsi),
-                );
-            } catch (\Throwable $e) {
-                Log::warning('Gagal kirim chat pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
-            }
+            return ! $menunggu;
+        }));
 
-            try {
-                PushNotifier::sendToUser(
-                    $user,
-                    ['title' => self::judulPush($jenis), 'body' => self::isiPush($tagihan, $jenis, $rincian, $isPatungan, $porsi)],
-                    ['type' => 'pengingat_tagihan', 'tagihan_id' => (string) $tagihan->id, 'jenis' => $jenis],
-                    self::kunciPreferensi($jenis),
-                );
-            } catch (\Throwable $e) {
-                Log::warning('Gagal kirim push pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
-            }
-
-            if ($user->notif(self::kunciPreferensi($jenis)) && $user->email) {
-                try {
-                    Mail::to($user->email)->queue(new PengingatTagihanMail(
-                        $tagihan, $jenis, $rincian, $namaKos, $namaKamar, $isPatungan, $porsi,
-                    ));
-                } catch (\Throwable $e) {
-                    Log::warning('Gagal antre email pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
-                }
-            }
+        if ($targetIds === []) {
+            return false;
         }
 
-        TagihanPengingat::create([
-            'tagihan_id' => $tagihan->id,
-            'jenis' => $jenis,
-            'tanggal_kirim' => $pada->toDateString(),
-            'meta' => [
-                'selisih' => $selisih,
-                'total' => $rincian['total'],
-                'denda' => $rincian['denda'],
-                'hari_telat' => $rincian['hari_telat'],
-            ],
-        ]);
+        $terkirim = false;
 
-        return true;
+        foreach ($daftar as $item) {
+            $jenis = $item['jenis'];
+            $susulan = $item['susulan'];
+
+            foreach ($targetIds as $uid) {
+                $user = $users->get($uid);
+
+                if (! $user) {
+                    continue;
+                }
+
+                $porsi = $isPatungan ? PatunganService::porsiTagihan($penyewaan, $tagihan) : null;
+
+                try {
+                    ChatPesan::notifikasiTagihan(
+                        (int) $penyewaan->properti_id,
+                        (int) $uid,
+                        $pengirimId,
+                        self::isiChat($tagihan, $jenis, $rincian, $namaKos, $namaKamar, $isPatungan, $porsi, $susulan),
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Gagal kirim chat pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
+                }
+
+                try {
+                    PushNotifier::sendToUser(
+                        $user,
+                        ['title' => self::judulPush($jenis), 'body' => self::isiPush($tagihan, $jenis, $rincian, $isPatungan, $porsi)],
+                        ['type' => 'pengingat_tagihan', 'tagihan_id' => (string) $tagihan->id, 'jenis' => $jenis],
+                        self::kunciPreferensi($jenis),
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Gagal kirim push pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
+                }
+
+                if ($user->notif(self::kunciPreferensi($jenis)) && $user->email) {
+                    try {
+                        Mail::to($user->email)->queue(new PengingatTagihanMail(
+                            $tagihan, $jenis, $rincian, $namaKos, $namaKamar, $isPatungan, $porsi,
+                        ));
+                    } catch (\Throwable $e) {
+                        Log::warning('Gagal antre email pengingat tagihan #'.$tagihan->id.': '.$e->getMessage());
+                    }
+                }
+            }
+
+            TagihanPengingat::create([
+                'tagihan_id' => $tagihan->id,
+                'jenis' => $jenis,
+                'tanggal_kirim' => $pada->toDateString(),
+                'meta' => [
+                    'selisih' => $selisih,
+                    'susulan' => $susulan,
+                    'total' => $rincian['total'],
+                    'denda' => $rincian['denda'],
+                    'hari_telat' => $rincian['hari_telat'],
+                ],
+            ]);
+
+            $terkirim = true;
+        }
+
+        return $terkirim;
     }
 
-    public static function isiChat(Tagihan $tagihan, string $jenis, array $rincian, string $namaKos, string $namaKamar, bool $isPatungan, ?float $porsi): string
+    public static function isiChat(Tagihan $tagihan, string $jenis, array $rincian, string $namaKos, string $namaKamar, bool $isPatungan, ?float $porsi, bool $susulan = false): string
     {
         $jatuh = $tagihan->jatuh_tempo?->translatedFormat('d F Y') ?? '-';
         $total = TagihanService::rupiah($rincian['total']);
@@ -203,6 +278,10 @@ class TagihanReminderService
 
         if ($isPatungan && $porsi !== null) {
             $isi .= ' Porsi kamu (patungan): '.TagihanService::rupiah($porsi).'.';
+        }
+
+        if ($susulan) {
+            $isi .= ' (Pesan susulan: pengingat sebelumnya terlewat karena jadwal otomatis tidak jalan.)';
         }
 
         return $isi.' Bayar lewat dashboard (tab Tagihan Saya). Terima kasih.';

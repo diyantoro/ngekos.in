@@ -23,7 +23,7 @@ new #[Layout('layouts.guest')] class extends Component
     {
         $this->validate();
 
-        $this->form->authenticate();
+        $this->form->authenticate($this->peran);
 
         Session::regenerate();
 

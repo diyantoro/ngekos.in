@@ -35,9 +35,16 @@ class DashboardController extends Controller
 
         $penyewaanAktif = Penyewaan::where($scopeSewa)->where('status', 'aktif')->count();
 
-        $tagihanBelumBayar = Tagihan::whereHas('penyewaan', $scopeSewa)
+        $kandidatBelum = Tagihan::whereHas('penyewaan', $scopeSewa)
             ->where('status', '!=', 'lunas')
-            ->count();
+            ->with(['penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+            ->orderBy('jatuh_tempo')
+            ->limit(200)
+            ->get()
+            ->each(fn ($t) => $t->status !== 'lunas' ? $t->setAttribute('denda', TagihanService::dendaBerjalan($t)) : null);
+
+        // Hitung hanya yang porsi user-nya masih > 0 (patungan yang sudah lunas porsi tidak dihitung).
+        $tagihanBelumBayar = $kandidatBelum->filter(fn ($t) => TagihanService::wajibBayar($t, $id) > 0)->count();
 
         $totalDibayar = (int) Pembayaran::where('anak_kos_id', $id)
             ->where('status', 'diverifikasi')
@@ -59,11 +66,11 @@ class DashboardController extends Controller
 
         $idFavorit = $request->user()->favorits()->pluck('propertis.id');
 
-        $tagihanBerikutnya = Tagihan::where('status', '!=', 'lunas')
-            ->whereHas('penyewaan', $scopeSewa)
-            ->with(['penyewaan.kamar.properti'])
-            ->orderBy('jatuh_tempo')
-            ->first();
+        $tagihanBerikutnya = $kandidatBelum->first(fn ($t) => TagihanService::wajibBayar($t, $id) > 0)
+            ?? $kandidatBelum->first();
+        if ($tagihanBerikutnya) {
+            $tagihanBerikutnya->loadMissing('penyewaan.kamar.properti');
+        }
 
         $rekomendasi = Properti::query()
             ->where('status', 'aktif')
@@ -85,8 +92,9 @@ class DashboardController extends Controller
             'total_dibayar' => $totalDibayar,
             'jumlah_favorit' => $jumlahFavorit,
             'pesan_belum_dibaca' => $pesanBelumDibaca,
-            'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya) {
+            'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya, $id) {
                 TagihanService::sinkronDenda($tagihanBerikutnya);
+                $rincian = TagihanService::rincian($tagihanBerikutnya);
 
                 return [
                     'id' => $tagihanBerikutnya->id,
@@ -99,6 +107,9 @@ class DashboardController extends Controller
                     'jatuh_tempo' => $tagihanBerikutnya->jatuh_tempo?->toDateString(),
                     'properti' => $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama,
                     'kamar' => $tagihanBerikutnya->penyewaan?->kamar?->nama,
+                    'mode_hunian' => $tagihanBerikutnya->penyewaan?->mode_hunian ?? 'tunggal',
+                    'porsi_saya' => $rincian['porsi'],
+                    'wajib_bayar_saya' => TagihanService::wajibBayar($tagihanBerikutnya, $id),
                 ];
             })() : null,
             'rekomendasi' => $rekomendasi->values()->map(fn (Properti $p) => [
@@ -259,6 +270,10 @@ class DashboardController extends Controller
 
         $wajibAwal = TagihanService::wajibBayar($tagihanAwal, $request->user()->id);
 
+        if ($wajibAwal <= 0) {
+            return response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422);
+        }
+
         $validated = $request->validate([
             'tagihan_id' => 'required|exists:tagihans,id',
             'metode' => 'required|in:transfer,cash',
@@ -294,6 +309,10 @@ class DashboardController extends Controller
         $rincian = TagihanService::rincian($tagihan);
         $isPatungan = (bool) $tagihan->penyewaan?->isPatungan();
         $wajib = TagihanService::wajibBayar($tagihan, $request->user()->id);
+
+        if ($wajib <= 0) {
+            return response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422);
+        }
 
         if ((float) $validated['jumlah'] < $wajib) {
             $kurang = TagihanService::rupiah($wajib - (float) $validated['jumlah']);

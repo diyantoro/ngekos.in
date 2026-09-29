@@ -87,9 +87,18 @@
 
     $propText = $propertyLimit === null ? $propertyUsed.' / Unlimited' : $propertyUsed.' / '.$propertyLimit;
     $roomText = $roomLimit === null ? $roomUsed.' / Unlimited' : $roomUsed.' / '.$roomLimit;
+
+    $topBar = match ($plan) {
+        'pro' => 'from-teal-400 via-emerald-500 to-cyan-500',
+        'business' => 'from-amber-300 via-amber-400 to-orange-400',
+        default => 'from-slate-300 via-slate-400 to-slate-500',
+    };
+    $propPct = $propertyLimit ? min(100, (int) round($propertyUsed / max(1, $propertyLimit) * 100)) : 0;
+    $roomPct = $roomLimit ? min(100, (int) round($roomUsed / max(1, $roomLimit) * 100)) : 0;
 @endphp
 
-<div class="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_10px_40px_rgba(13,148,136,0.08)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_48px_rgba(13,148,136,0.14)] dark:border-slate-700/60 dark:bg-slate-900">
+<div class="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_10px_40px_rgba(13,148,136,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_56px_rgba(13,148,136,0.18)] dark:border-slate-700/60 dark:bg-slate-900">
+    <div class="h-1.5 w-full bg-gradient-to-r {{ $topBar }}"></div>
     {{-- soft decoration --}}
     <div class="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-teal-100/50 blur-3xl dark:bg-teal-500/10" aria-hidden="true"></div>
     <div class="pointer-events-none absolute -bottom-28 right-1/3 h-56 w-56 rounded-full bg-cyan-100/50 blur-3xl dark:bg-cyan-500/10" aria-hidden="true"></div>
@@ -137,26 +146,49 @@
                 <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">Aktif sampai {{ $expiresAt }}</p>
             @endif
 
-            {{-- usage ringkas --}}
-            <div class="mt-5 flex items-center gap-6">
-                <div class="flex items-center gap-2.5">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl text-blue-600 dark:text-blue-400">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" /></svg>
-                    </span>
-                    <span>
-                        <span class="block text-xs font-medium text-slate-400 dark:text-slate-500">Property</span>
-                        <span class="block text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{{ $propText }}</span>
-                    </span>
+            {{-- usage ringkas + progress --}}
+            <div class="mt-5 grid grid-cols-2 gap-3">
+                <div class="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-3">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/25">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" /></svg>
+                        </span>
+                        <span>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Properti</span>
+                            <span class="block text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{{ $propText }}</span>
+                        </span>
+                    </div>
+                    @if ($propertyLimit !== null)
+                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all" style="width: {{ $propPct }}%"></div>
+                        </div>
+                    @else
+                        <p class="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            Tanpa batas
+                        </p>
+                    @endif
                 </div>
-                <span class="h-10 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true"></span>
-                <div class="flex items-center gap-2.5">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-xl text-blue-600 dark:text-blue-400">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12h5.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H2.25A2.25 2.25 0 010 18v-3.75A2.25 2.25 0 012.25 12zM21.75 12H18a2.25 2.25 0 00-2.25 2.25V18a2.25 2.25 0 002.25 2.25h3.75A2.25 2.25 0 0024 18v-3.75a2.25 2.25 0 00-2.25-2.25zM8.25 12h7.5M8.25 12V5.625c0-.621.504-1.125 1.125-1.125H18a2.25 2.25 0 012.25 2.25V12" /></svg>
-                    </span>
-                    <span>
-                        <span class="block text-xs font-medium text-slate-400 dark:text-slate-500">Kamar</span>
-                        <span class="block text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{{ $roomText }}</span>
-                    </span>
+                <div class="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-3">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                        </span>
+                        <span>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Kamar</span>
+                            <span class="block text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{{ $roomText }}</span>
+                        </span>
+                    </div>
+                    @if ($roomLimit !== null)
+                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all" style="width: {{ $roomPct }}%"></div>
+                        </div>
+                    @else
+                        <p class="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            Tanpa batas
+                        </p>
+                    @endif
                 </div>
             </div>
 

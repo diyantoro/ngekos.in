@@ -24,10 +24,16 @@ class LoginForm extends Form
     /**
      * Attempt to authenticate the request's credentials.
      *
+     * @param  string|null  $peran  Peran yang dipilih di halaman login (anak_kos|pemilik).
+     *
      * @throws ValidationException
      */
-    public function authenticate(): void
+    public function authenticate(?string $peran = null): void
     {
+        // Normalisasi: spasi / huruf besar di email sering bikin
+        // "tidak bisa login lagi" padahal akun masih aktif.
+        $this->email = Str::lower(trim($this->email));
+
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {
@@ -44,6 +50,31 @@ class LoginForm extends Form
             throw ValidationException::withMessages([
                 'form.email' => 'Akun Anda dinonaktifkan. Silakan hubungi admin atau super admin.',
             ]);
+        }
+
+        // Samakan dengan API mobile: anak kos ↔ pemilik tidak boleh
+        // saling "login dari halaman peran lain". Tanpa ini, anak kos bisa
+        // "login dari pemilik" (atau sebaliknya) karena Auth::attempt lolos
+        // lalu redirect diam-diam ke dashboard role aslinya.
+        // Admin/super admin tetap boleh masuk lewat halaman mana pun
+        // (mereka tidak punya halaman login sendiri), begitu juga
+        // akun lama tanpa role agar tidak terkunci.
+        if (in_array($peran, ['anak_kos', 'pemilik'], true)) {
+            $user = Auth::user();
+
+            $cocok = $user->hasRole($peran)
+                || $user->hasAnyRole(['admin', 'super_admin'])
+                || ! $user->hasAnyRole(['anak_kos', 'pemilik']);
+
+            if (! $cocok) {
+                Auth::guard('web')->logout();
+
+                $label = $peran === 'pemilik' ? 'Pemilik Kos' : 'Pencari Kos';
+
+                throw ValidationException::withMessages([
+                    'form.email' => "Akun ini bukan {$label}. Silakan masuk lewat peran yang sesuai.",
+                ]);
+            }
         }
 
         RateLimiter::clear($this->throttleKey());
@@ -75,6 +106,6 @@ class LoginForm extends Form
      */
     protected function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
+        return Str::transliterate(Str::lower(trim($this->email)).'|'.request()->ip());
     }
 }

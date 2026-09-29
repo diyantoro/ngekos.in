@@ -8,8 +8,29 @@ export default {
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
+        './resources/views/livewire/**/*.blade.php',
     ],
-
+    safelist: [
+        {
+            pattern: /bg-(white|gray-700)/,
+            variants: ['dark'],
+        },
+        {
+            pattern: /text-(gray-900|gray-100)/,
+            variants: ['dark'],
+        },
+        {
+            pattern: /placeholder:text-(gray-400|gray-500)/,
+            variants: ['dark'],
+        },
+        {
+            pattern: /border-(gray-300|gray-600)/,
+            variants: ['dark'],
+        },
+        {
+            pattern: /focus:ring-teal-500\/20/,
+        },
+    ],
     theme: {
         extend: {
             fontFamily: {

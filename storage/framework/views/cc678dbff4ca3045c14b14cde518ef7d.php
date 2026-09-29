@@ -98,6 +98,13 @@ use Livewire\WithFileUploads;
                 $sisaBanner = \App\Services\TagihanService::selisihHari($tagihanBerikutnya);
                 $telatBanner = \App\Services\TagihanService::hariTelat($tagihanBerikutnya);
                 $dendaHarianBanner = \App\Services\TagihanService::dendaPerHari($tagihanBerikutnya);
+                $isPatunganBanner = (bool) $tagihanBerikutnya->penyewaan?->isPatungan();
+                $nominalBanner = ($wajibBerikutnya ?? 0) > 0 ? ($wajibBerikutnya ?? 0) : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
+                // Fallback bila variable lama tidak terisi (mis. cache view): hitung ulang.
+                if (! isset($wajibBerikutnya)) {
+                    $wajibBerikutnya = \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, auth()->id());
+                    $nominalBanner = $wajibBerikutnya > 0 ? $wajibBerikutnya : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
+                }
             ?>
             <div class="rounded-xl p-5 text-white <?php echo e($telatBanner > 0 || $sisaBanner <= 3 ? 'bg-red-800 dark:bg-red-900' : ($sisaBanner <= 7 ? 'bg-amber-800 dark:bg-amber-900' : 'bg-brand-900 dark:bg-brand-950')); ?>">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -130,11 +137,18 @@ use Livewire\WithFileUploads;
                         </div>
                     </div>
                     <div class="shrink-0 text-end">
-                        <p class="text-2xl font-bold tracking-tight text-white">Rp<?php echo e(number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.')); ?></p>
-                        <button wire:click="bayarTagihan(<?php echo e($tagihanBerikutnya->id); ?>)" wire:loading.attr="disabled"
-                            class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
-                            Bayar Sekarang
-                        </button>
+                        <p class="text-2xl font-bold tracking-tight text-white">Rp<?php echo e(number_format($nominalBanner, 0, ',', '.')); ?></p>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isPatunganBanner): ?>
+                            <p class="text-[11px] text-white/80">Porsimu (50%) · total penuh Rp<?php echo e(number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.')); ?></p>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($wajibBerikutnya ?? 0) > 0): ?>
+                            <button wire:click="bayarTagihan(<?php echo e($tagihanBerikutnya->id); ?>)" wire:loading.attr="disabled"
+                                class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
+                                Bayar Sekarang
+                            </button>
+                        <?php else: ?>
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-emerald-400/20 px-2.5 py-1 text-[11px] font-bold">Porsimu lunas · menunggu teman sekamar</p>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -309,7 +323,10 @@ use Livewire\WithFileUploads;
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $sewaans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sewaan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <?php
                                 $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
-                                $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
+                                $uidSaya = auth()->id();
+                                // Patungan: hitung sisa porsi saya saja, bukan total penuh 1 kamar.
+                                $sisa = $belumLunas->sum(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya));
+                                $sisaTagihanSaya = $belumLunas->filter(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya) > 0);
                                 $isUtama = $sewaan->anak_kos_id === auth()->id();
                                 $ktpSaya = $isUtama ? $sewaan->ktp_path : $sewaan->anggotas->firstWhere('user_id', auth()->id())?->ktp_path;
                                 $anggotaAktif = $sewaan->anggotas->where('status', 'aktif');
@@ -419,11 +436,11 @@ use Livewire\WithFileUploads;
 
                                 <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($belumLunas->isEmpty()): ?>
-                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua tagihan lunas</span>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sisaTagihanSaya->isEmpty()): ?>
+                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua porsimu lunas<?php echo e($belumLunas->isNotEmpty() && $isPatungan ? ' · menunggu teman sekamar' : ''); ?></span>
                                         <?php else: ?>
-                                            <?php $terdekat = $belumLunas->sortBy('jatuh_tempo')->first(); ?>
-                                            <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa tagihan Rp<?php echo e(number_format($sisa, 0, ',', '.')); ?></span> (<?php echo e($belumLunas->count()); ?> tagihan) &mdash; bayar lewat tab Tagihan Saya
+                                            <?php $terdekat = $sisaTagihanSaya->sortBy('jatuh_tempo')->first(); ?>
+                                            <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa porsimu Rp<?php echo e(number_format($sisa, 0, ',', '.')); ?></span> (<?php echo e($sisaTagihanSaya->count()); ?> tagihan) &mdash; bayar lewat tab Tagihan Saya
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($terdekat?->jatuh_tempo): ?>
                                                 <span class="mt-1 block">Terdekat: <span class="font-semibold text-gray-700 dark:text-gray-200"><?php echo e($terdekat->periode); ?>, jatuh tempo <?php echo e($terdekat->jatuh_tempo->translatedFormat('d M Y')); ?></span></span>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -536,13 +553,19 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
 <?php endif; ?></td>
                                     <td class="px-4 py-4">
-                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($tagihan->status !== 'lunas'): ?>
+                                        <?php
+                                            $wajibSaya = $tagihan->penyewaan ? \App\Services\TagihanService::wajibBayar($tagihan, auth()->id()) : 0;
+                                        ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($tagihan->status !== 'lunas' && $wajibSaya > 0): ?>
                                             <div class="flex justify-end">
                                                 <button wire:click="bayarTagihan(<?php echo e($tagihan->id); ?>)" wire:loading.attr="disabled"
                                                     class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition">
-                                                    Bayar Sekarang
+                                                    Bayar Rp<?php echo e(number_format($wajibSaya, 0, ',', '.')); ?>
+
                                                 </button>
                                             </div>
+                                        <?php elseif($tagihan->status !== 'lunas' && $isPatunganTagihan): ?>
+                                            <span class="block text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Porsimu lunas · menunggu teman</span>
                                         <?php else: ?>
                                             <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

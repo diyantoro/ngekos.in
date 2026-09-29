@@ -26,9 +26,14 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
             'role' => 'nullable|string|in:anak_kos,pemilik',
+            // Alias: aplikasi mobile ada yang mengirim `peran` (seperti di register).
+            'peran' => 'nullable|string|in:anak_kos,pemilik',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // Samakan dengan login web: abaikan spasi / huruf besar di email.
+        $email = strtolower(trim((string) $request->email));
+
+        $user = User::where('email', $email)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
@@ -50,14 +55,18 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($request->filled('role')) {
-            $label = match ($request->role) {
+        // Terima `role` maupun `peran` agar cek peran tidak bisa
+        // dilewati hanya karena beda nama field dari sisi klien.
+        $diminta = $request->input('role', $request->input('peran'));
+
+        if (is_string($diminta) && $diminta !== '') {
+            $label = match ($diminta) {
                 'anak_kos' => 'Pencari Kos',
                 'pemilik' => 'Pemilik Kos',
                 default => 'peran tersebut',
             };
 
-            $cocok = match ($request->role) {
+            $cocok = match ($diminta) {
                 'anak_kos' => $user->hasRole('anak_kos'),
                 'pemilik' => $user->hasRole('pemilik'),
                 default => true,

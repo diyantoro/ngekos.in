@@ -234,7 +234,7 @@ new class extends Component
 
         <form wire:submit="kirim" class="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-2.5 border-t border-gray-100 dark:border-gray-700">
             <input type="text" wire:model="input" placeholder="Ketik pertanyaanmu..." maxlength="500" autocomplete="off"
-                   class="flex-1 rounded-full border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
+                   class="flex-1 rounded-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm focus:border-teal-500 focus:ring-teal-500 focus:ring-2 focus:ring-teal-500/20">
             <button type="submit" wire:loading.attr="disabled" wire:target="kirim" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white hover:bg-teal-500 transition disabled:opacity-50" aria-label="Kirim">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
             </button>

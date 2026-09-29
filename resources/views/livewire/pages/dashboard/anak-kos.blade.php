@@ -53,12 +53,13 @@ new class extends Component
 
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
 
-        $tagihanBerikutnya = Tagihan::where('status', '!=', 'lunas')
+        $kandidatBerikutnya = Tagihan::where('status', '!=', 'lunas')
             ->whereHas('penyewaan', $scopeSewa)
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
-            ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id'])
+            ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
             ->orderBy('jatuh_tempo')
-            ->first();
+            ->limit(10)
+            ->get();
 
         $dendaGlobal = (float) \App\Models\Pengaturan::dendaPerHari();
         $olesDenda = function ($tagihan) use ($dendaGlobal) {
@@ -69,10 +70,14 @@ new class extends Component
             $tagihan->setAttribute('denda', \App\Services\TagihanService::dendaBerjalan($tagihan));
         };
 
-        if ($tagihanBerikutnya) {
-            $tagihanBerikutnya->loadMissing('penyewaan.properti:id,denda_per_hari');
-            $olesDenda($tagihanBerikutnya);
-        }
+        $kandidatBerikutnya->each($olesDenda);
+
+        // Banner harus menunjuk ke tagihan yang porsi user-nya masih > 0.
+        // Kalau porsi user sudah lunas tapi teman belum bayar, tagihan itu dilewati
+        // agar tidak dikira "masih ada tagihan" / nominal dobel.
+        $tagihanBerikutnya = $kandidatBerikutnya->first(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $id) > 0)
+            ?? $kandidatBerikutnya->first();
+        $wajibBerikutnya = $tagihanBerikutnya ? \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, $id) : 0;
 
         $tagihans = $this->tab === 'tagihan'
             ? Tagihan::whereHas('penyewaan', $scopeSewa)
@@ -104,6 +109,7 @@ new class extends Component
                     ->get()
                 : collect(),
             'tagihanBerikutnya' => $tagihanBerikutnya,
+            'wajibBerikutnya' => $wajibBerikutnya,
             'rekomendasi' => (function () use ($id, $propertiTerpakai, $idFavorit, $kotaAktif) {
                 $ids = cache()->remember("anak-kos.rekomendasi.{$id}", 600, fn () => Properti::query()
                     ->where('status', 'aktif')
@@ -349,6 +355,12 @@ new class extends Component
 
         \App\Services\TagihanService::sinkronDenda($tagihan);
 
+        if (\App\Services\TagihanService::wajibBayar($tagihan, auth()->id()) <= 0) {
+            $this->galat = 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.';
+
+            return;
+        }
+
         $sudahAda = $tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists();
 
         if ($sudahAda) {
@@ -392,6 +404,13 @@ new class extends Component
 
         $rincian = \App\Services\TagihanService::rincian($tagihan);
         $wajib = \App\Services\TagihanService::wajibBayar($tagihan, auth()->id());
+
+        if ($wajib <= 0) {
+            $this->tutupModalBayar();
+            $this->galat = 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.';
+
+            return;
+        }
 
         $sudahAda = $tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists();
 
@@ -493,6 +512,13 @@ new class extends Component
                 $sisaBanner = \App\Services\TagihanService::selisihHari($tagihanBerikutnya);
                 $telatBanner = \App\Services\TagihanService::hariTelat($tagihanBerikutnya);
                 $dendaHarianBanner = \App\Services\TagihanService::dendaPerHari($tagihanBerikutnya);
+                $isPatunganBanner = (bool) $tagihanBerikutnya->penyewaan?->isPatungan();
+                $nominalBanner = ($wajibBerikutnya ?? 0) > 0 ? ($wajibBerikutnya ?? 0) : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
+                // Fallback bila variable lama tidak terisi (mis. cache view): hitung ulang.
+                if (! isset($wajibBerikutnya)) {
+                    $wajibBerikutnya = \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, auth()->id());
+                    $nominalBanner = $wajibBerikutnya > 0 ? $wajibBerikutnya : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
+                }
             @endphp
             <div class="rounded-xl p-5 text-white {{ $telatBanner > 0 || $sisaBanner <= 3 ? 'bg-red-800 dark:bg-red-900' : ($sisaBanner <= 7 ? 'bg-amber-800 dark:bg-amber-900' : 'bg-brand-900 dark:bg-brand-950') }}">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -521,11 +547,18 @@ new class extends Component
                         </div>
                     </div>
                     <div class="shrink-0 text-end">
-                        <p class="text-2xl font-bold tracking-tight text-white">Rp{{ number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.') }}</p>
-                        <button wire:click="bayarTagihan({{ $tagihanBerikutnya->id }})" wire:loading.attr="disabled"
-                            class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
-                            Bayar Sekarang
-                        </button>
+                        <p class="text-2xl font-bold tracking-tight text-white">Rp{{ number_format($nominalBanner, 0, ',', '.') }}</p>
+                        @if ($isPatunganBanner)
+                            <p class="text-[11px] text-white/80">Porsimu (50%) · total penuh Rp{{ number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.') }}</p>
+                        @endif
+                        @if (($wajibBerikutnya ?? 0) > 0)
+                            <button wire:click="bayarTagihan({{ $tagihanBerikutnya->id }})" wire:loading.attr="disabled"
+                                class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
+                                Bayar Sekarang
+                            </button>
+                        @else
+                            <p class="mt-1.5 inline-flex items-center rounded-full bg-emerald-400/20 px-2.5 py-1 text-[11px] font-bold">Porsimu lunas · menunggu teman sekamar</p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -679,7 +712,10 @@ new class extends Component
                         @forelse ($sewaans as $sewaan)
                             @php
                                 $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
-                                $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
+                                $uidSaya = auth()->id();
+                                // Patungan: hitung sisa porsi saya saja, bukan total penuh 1 kamar.
+                                $sisa = $belumLunas->sum(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya));
+                                $sisaTagihanSaya = $belumLunas->filter(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya) > 0);
                                 $isUtama = $sewaan->anak_kos_id === auth()->id();
                                 $ktpSaya = $isUtama ? $sewaan->ktp_path : $sewaan->anggotas->firstWhere('user_id', auth()->id())?->ktp_path;
                                 $anggotaAktif = $sewaan->anggotas->where('status', 'aktif');
@@ -750,11 +786,11 @@ new class extends Component
 
                                 <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        @if ($belumLunas->isEmpty())
-                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua tagihan lunas</span>
+                                        @if ($sisaTagihanSaya->isEmpty())
+                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua porsimu lunas{{ $belumLunas->isNotEmpty() && $isPatungan ? ' · menunggu teman sekamar' : '' }}</span>
                                         @else
-                                            @php $terdekat = $belumLunas->sortBy('jatuh_tempo')->first(); @endphp
-                                            <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa tagihan Rp{{ number_format($sisa, 0, ',', '.') }}</span> ({{ $belumLunas->count() }} tagihan) &mdash; bayar lewat tab Tagihan Saya
+                                            @php $terdekat = $sisaTagihanSaya->sortBy('jatuh_tempo')->first(); @endphp
+                                            <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa porsimu Rp{{ number_format($sisa, 0, ',', '.') }}</span> ({{ $sisaTagihanSaya->count() }} tagihan) &mdash; bayar lewat tab Tagihan Saya
                                             @if ($terdekat?->jatuh_tempo)
                                                 <span class="mt-1 block">Terdekat: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $terdekat->periode }}, jatuh tempo {{ $terdekat->jatuh_tempo->translatedFormat('d M Y') }}</span></span>
                                             @endif
@@ -844,13 +880,18 @@ new class extends Component
                                     </td>
                                     <td class="px-4 py-4"><x-status-badge :status="$tagihan->status" /></td>
                                     <td class="px-4 py-4">
-                                        @if ($tagihan->status !== 'lunas')
+                                        @php
+                                            $wajibSaya = $tagihan->penyewaan ? \App\Services\TagihanService::wajibBayar($tagihan, auth()->id()) : 0;
+                                        @endphp
+                                        @if ($tagihan->status !== 'lunas' && $wajibSaya > 0)
                                             <div class="flex justify-end">
                                                 <button wire:click="bayarTagihan({{ $tagihan->id }})" wire:loading.attr="disabled"
                                                     class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition">
-                                                    Bayar Sekarang
+                                                    Bayar Rp{{ number_format($wajibSaya, 0, ',', '.') }}
                                                 </button>
                                             </div>
+                                        @elseif ($tagihan->status !== 'lunas' && $isPatunganTagihan)
+                                            <span class="block text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Porsimu lunas · menunggu teman</span>
                                         @else
                                             <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
                                         @endif
