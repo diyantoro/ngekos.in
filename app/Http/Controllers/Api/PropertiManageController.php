@@ -201,14 +201,18 @@ class PropertiManageController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
-            'harga_sewa_bulanan' => 'required|numeric|min:0',
-            'harga_sewa_mingguan' => 'nullable|numeric|min:0',
-            'harga_sewa_harian' => 'nullable|numeric|min:0',
+            'harga_sewa_bulanan' => 'required|numeric|gt:0',
+            'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
+            'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
+        ], [
+            'harga_sewa_bulanan.gt' => 'Harga sewa bulanan harus lebih dari Rp0.',
+            'harga_sewa_mingguan.gt' => 'Harga sewa mingguan harus lebih dari Rp0 atau dikosongkan.',
+            'harga_sewa_harian.gt' => 'Harga sewa harian harus lebih dari Rp0 atau dikosongkan.',
         ]);
 
         $owner = $properti->pemilik;
@@ -263,14 +267,18 @@ class PropertiManageController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
-            'harga_sewa_bulanan' => 'required|numeric|min:0',
-            'harga_sewa_mingguan' => 'nullable|numeric|min:0',
-            'harga_sewa_harian' => 'nullable|numeric|min:0',
+            'harga_sewa_bulanan' => 'required|numeric|gt:0',
+            'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
+            'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
+        ], [
+            'harga_sewa_bulanan.gt' => 'Harga sewa bulanan harus lebih dari Rp0.',
+            'harga_sewa_mingguan.gt' => 'Harga sewa mingguan harus lebih dari Rp0 atau dikosongkan.',
+            'harga_sewa_harian.gt' => 'Harga sewa harian harus lebih dari Rp0 atau dikosongkan.',
         ]);
 
         $data = [
@@ -347,9 +355,9 @@ class PropertiManageController extends Controller
             'fasilitas' => 'nullable|string',
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'nullable|numeric|min:0',
-            'harga_mingguan' => 'nullable|numeric|min:0',
-            'harga_harian' => 'nullable|numeric|min:0',
+            'harga' => 'nullable|numeric|gt:0',
+            'harga_mingguan' => 'nullable|numeric|gt:0',
+            'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:aktif,nonaktif',
             'foto' => 'nullable|image|max:2048',

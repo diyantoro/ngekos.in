@@ -25,13 +25,13 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|integer|min:1|max:10')]
     public int $kapasitas = 1;
 
-    #[Validate('required|numeric|min:0')]
+    #[Validate('required|numeric|gt:0')]
     public string $harga = '';
 
-    #[Validate('nullable|numeric|min:0')]
+    #[Validate('nullable|numeric|gt:0')]
     public ?string $harga_harian = null;
 
-    #[Validate('nullable|numeric|min:0')]
+    #[Validate('nullable|numeric|gt:0')]
     public ?string $harga_mingguan = null;
 
     #[Validate('nullable|numeric|min:0')]
@@ -128,9 +128,9 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'nama' => 'required|string|max:100',
             'kapasitas' => 'required|integer|min:1|max:10',
-            'harga' => 'required|numeric|min:0',
-            'harga_mingguan' => 'nullable|numeric|min:0',
-            'harga_harian' => 'nullable|numeric|min:0',
+            'harga' => 'required|numeric|gt:0',
+            'harga_mingguan' => 'nullable|numeric|gt:0',
+            'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'fotoBaru' => 'nullable|image|max:2048',

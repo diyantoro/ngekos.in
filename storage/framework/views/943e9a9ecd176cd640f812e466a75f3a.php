@@ -186,9 +186,9 @@ use Livewire\WithFileUploads;
                             $termurahBulan = $termurah['bulan'] ?? null;
                             $termurahMinggu = $termurah['minggu'] ?? null;
                             $termurahHari = $termurah['hari'] ?? null;
-                            $adaDiskonDetail = $properti->harga_asli && $termurahBulan && $properti->harga_asli > $termurahBulan;
+                            $adaDiskonDetail = $properti->harga_asli && (float) $termurahBulan > 0 && $properti->harga_asli > $termurahBulan;
                         ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($termurahBulan): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((float) $termurahBulan > 0): ?>
                             <?php if (isset($component)) { $__componentOriginal9b7fa0d7349cf7f9eb91e881f4695d51 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal9b7fa0d7349cf7f9eb91e881f4695d51 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.harga-tiga-periode','data' => ['bulanan' => $termurahBulan,'mingguan' => $termurahMinggu,'harian' => $termurahHari,'asli' => $adaDiskonDetail ? $properti->harga_asli : null,'varian' => 'baris']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -687,8 +687,8 @@ use Livewire\WithFileUploads;
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?php echo e($properti->nama); ?>
 
                             &middot; Rp<?php echo e(number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.')); ?>/bulan
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamarModal?->harga_sewa_mingguan): ?> &middot; Rp<?php echo e(number_format($kamarModal->harga_sewa_mingguan, 0, ',', '.')); ?>/minggu <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamarModal?->harga_sewa_harian): ?> &middot; Rp<?php echo e(number_format($kamarModal->harga_sewa_harian, 0, ',', '.')); ?>/hari <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></p>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((float) $kamarModal?->harga_sewa_mingguan > 0): ?> &middot; Rp<?php echo e(number_format($kamarModal->harga_sewa_mingguan, 0, ',', '.')); ?>/minggu <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((float) $kamarModal?->harga_sewa_harian > 0): ?> &middot; Rp<?php echo e(number_format($kamarModal->harga_sewa_harian, 0, ',', '.')); ?>/hari <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></p>
                     </div>
                     <button type="button" wire:click="tutupModalSewa"
                         class="shrink-0 h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 flex items-center justify-center transition">&times;</button>

@@ -52,7 +52,7 @@ new #[Layout('layouts.publik')] class extends Component
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
+            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan');
 
         if ($this->cari) {
             $query->where(fn ($q) => $q
@@ -281,9 +281,9 @@ new #[Layout('layouts.publik')] class extends Component
                                 <div class="text-end">
                                     @php
                                         $hargaTampil = $properti->harga ?? $properti->harga_termurah;
-                                        $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
+                                        $adaDiskon = $properti->harga_asli && (float) $hargaTampil > 0 && $properti->harga_asli > $hargaTampil;
                                     @endphp
-                                    @if ($hargaTampil)
+                                    @if ((float) $hargaTampil > 0)
                                         <x-harga-tiga-periode :bulanan="$hargaTampil" :mingguan="$properti->harga_mingguan" :harian="$properti->harga_harian" :asli="$adaDiskon ? $properti->harga_asli : null" />
                                     @else
                                         <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>

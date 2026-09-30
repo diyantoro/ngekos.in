@@ -67,7 +67,7 @@ endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <div class="flex items-end gap-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 p-2 focus-within:ring-teal-400 transition">
                 <textarea wire:model="isiPesan" rows="1" maxlength="1000" placeholder="Tulis pesan..."
-                    class="flex-1 resize-none border-0 focus:ring-0 text-sm max-h-32"></textarea>
+                    class="flex-1 resize-none border-0 focus:ring-0 text-sm max-h-32 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"></textarea>
                 <button type="submit" wire:loading.attr="disabled"
                     class="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                     Kirim

@@ -93,9 +93,9 @@ new #[Layout('layouts.publik')] class extends Component
                 ->limit(20)
                 ->get(),
             'termurah' => [
-                'bulan' => $tersedia->min('harga_sewa_bulanan'),
-                'minggu' => $tersedia->whereNotNull('harga_sewa_mingguan')->min('harga_sewa_mingguan'),
-                'hari' => $tersedia->whereNotNull('harga_sewa_harian')->min('harga_sewa_harian'),
+                'bulan' => $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->min('harga_sewa_bulanan'),
+                'minggu' => $tersedia->filter(fn ($k) => (float) $k->harga_sewa_mingguan > 0)->min('harga_sewa_mingguan'),
+                'hari' => $tersedia->filter(fn ($k) => (float) $k->harga_sewa_harian > 0)->min('harga_sewa_harian'),
             ],
         ];
     }
@@ -468,9 +468,9 @@ new #[Layout('layouts.publik')] class extends Component
                             $termurahBulan = $termurah['bulan'] ?? null;
                             $termurahMinggu = $termurah['minggu'] ?? null;
                             $termurahHari = $termurah['hari'] ?? null;
-                            $adaDiskonDetail = $properti->harga_asli && $termurahBulan && $properti->harga_asli > $termurahBulan;
+                            $adaDiskonDetail = $properti->harga_asli && (float) $termurahBulan > 0 && $properti->harga_asli > $termurahBulan;
                         @endphp
-                        @if ($termurahBulan)
+                        @if ((float) $termurahBulan > 0)
                             <x-harga-tiga-periode :bulanan="$termurahBulan" :mingguan="$termurahMinggu" :harian="$termurahHari" :asli="$adaDiskonDetail ? $properti->harga_asli : null" varian="baris" />
                         @else
                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
@@ -759,8 +759,8 @@ new #[Layout('layouts.publik')] class extends Component
                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Sewa Kamar {{ $kamarModal?->nama }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $properti->nama }}
                             &middot; Rp{{ number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.') }}/bulan
-                            @if ($kamarModal?->harga_sewa_mingguan) &middot; Rp{{ number_format($kamarModal->harga_sewa_mingguan, 0, ',', '.') }}/minggu @endif
-                            @if ($kamarModal?->harga_sewa_harian) &middot; Rp{{ number_format($kamarModal->harga_sewa_harian, 0, ',', '.') }}/hari @endif</p>
+                            @if ((float) $kamarModal?->harga_sewa_mingguan > 0) &middot; Rp{{ number_format($kamarModal->harga_sewa_mingguan, 0, ',', '.') }}/minggu @endif
+                            @if ((float) $kamarModal?->harga_sewa_harian > 0) &middot; Rp{{ number_format($kamarModal->harga_sewa_harian, 0, ',', '.') }}/hari @endif</p>
                     </div>
                     <button type="button" wire:click="tutupModalSewa"
                         class="shrink-0 h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 flex items-center justify-center transition">&times;</button>

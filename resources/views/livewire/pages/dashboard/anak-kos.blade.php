@@ -140,7 +140,7 @@ new class extends Component
                         'ulasans as total_ulasan',
                     ])
                     ->withAvg('ulasans as rating_ulasan', 'rating')
-                    ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan')
+                    ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
                     ->get()
                     ->sortBy(fn ($p) => array_search($p->id, $ids))
                     ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi)

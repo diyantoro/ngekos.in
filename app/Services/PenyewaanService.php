@@ -78,6 +78,10 @@ class PenyewaanService
                 throw new DomainException('Kamar ini belum menetapkan harga sewa mingguan.');
             }
 
+            if (! $isHarian && ! $isMingguan && (! $kamarTerkunci->harga_sewa_bulanan || (float) $kamarTerkunci->harga_sewa_bulanan <= 0)) {
+                throw new DomainException('Kamar ini belum menetapkan harga sewa bulanan.');
+            }
+
             if (! $ktpPath) {
                 throw new DomainException('Foto KTP wajib diunggah sebelum memesan kamar.');
             }

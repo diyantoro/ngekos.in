@@ -408,4 +408,4 @@ use Livewire\WithPagination;
             if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(inisialisasiPetaKos);
         </script>
     <?php $__env->stopPush(); ?>
-</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\livewire\pages\katalog\kos.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\livewire/pages/katalog/kos.blade.php ENDPATH**/ ?>

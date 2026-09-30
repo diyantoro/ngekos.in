@@ -26,7 +26,7 @@ new #[Layout('layouts.publik')] class extends Component
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan');
+            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan');
 
         if ($this->cari) {
             $query->where(fn ($q) => $q

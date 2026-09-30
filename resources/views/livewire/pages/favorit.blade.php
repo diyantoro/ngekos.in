@@ -13,7 +13,7 @@ new #[Layout('layouts.app')] class extends Component
             'favorits' => Auth::user()->favorits()->with(['fotos'])->withCount([
                 'kamars as total_kamar',
                 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
-            ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')], 'harga_sewa_bulanan')->get(),
+            ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')->get(),
         ];
     }
 
