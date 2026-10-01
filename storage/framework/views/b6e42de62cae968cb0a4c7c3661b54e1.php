@@ -30,8 +30,8 @@ use Livewire\Volt\Component;
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-          class="absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 flex flex-col"
-          style="max-height: min(70vh, 30rem); height: 30rem;"
+           class="absolute bottom-16 right-0 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 flex flex-col"
+           style="max-height: min(calc(100dvh - 12rem), 30rem); height: min(30rem, calc(100dvh - 12rem));"
           role="dialog" aria-label="Chatbot bantuan Ngekos.in">
         <div class="flex items-center justify-between bg-brand-900 px-4 py-3">
             <div class="flex items-center gap-2.5">

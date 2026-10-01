@@ -93,10 +93,10 @@ if (isset($__slots)) unset($__slots);
 <?php endif; ?>
             </div>
         <?php else: ?>
-        <div class="min-h-screen flex flex-col">
+        <div class="min-h-screen flex flex-col overflow-x-clip">
 
             <!-- Top Header (Desktop + Mobile simplified) -->
-            <header x-data="{ open: false }" class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800 pt-safe">
+            <header x-data="{ open: false }" @keydown.escape.window="open = false" class="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800 pt-safe">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6">
                     <div class="flex items-center justify-between h-16">
                         <a href="<?php echo e(route('home')); ?>" wire:navigate class="flex items-center gap-2.5 shrink-0 group">
@@ -202,14 +202,14 @@ if (isset($__slots)) unset($__slots);
                         </nav>
 
                         <!-- Mobile hamburger -->
-                        <div class="flex items-center sm:hidden gap-1">
+                        <div class="flex items-center sm:hidden gap-0.5">
                             <button @click="toggleNgekosTheme()" type="button" aria-label="Ganti tema"
-                                class="flex items-center justify-center h-10 w-10 rounded-lg text-slate-500 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 transition">
+                                class="flex items-center justify-center h-11 w-11 rounded-lg text-slate-500 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 active:bg-stone-200 dark:active:bg-gray-700 transition">
                                 <svg class="h-5 w-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
                                 <svg class="hidden h-5 w-5 text-amber-500 dark:block" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
                             </button>
-                            <button type="button" @click="open = !open"
-                                class="flex items-center justify-center h-10 w-10 rounded-lg text-slate-500 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 transition">
+                            <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-controls="menu-mobile" aria-label="Menu navigasi"
+                                class="flex items-center justify-center h-11 w-11 rounded-lg text-slate-500 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 active:bg-stone-200 dark:active:bg-gray-700 transition">
                                 <svg class="h-5 w-5 transition-transform duration-200" :class="open ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path :class="{'hidden': open}" stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                                     <path :class="{'hidden': !open}" stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -220,11 +220,11 @@ if (isset($__slots)) unset($__slots);
                 </div>
 
                 <!-- Mobile dropdown -->
-                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+                <div id="menu-mobile" x-show="open" x-cloak @click.outside="open = false" x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 -translate-y-2 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
                      x-transition:leave="transition ease-in duration-150"
                      x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-2 scale-95"
-                     class="sm:hidden border-t border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+                     class="sm:hidden border-t border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
                     <div class="px-4 py-3 space-y-1">
                         <a href="<?php echo e(route('kos.index')); ?>" wire:navigate @click="open = false"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition <?php echo e(request()->routeIs('kos.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800'); ?>">
@@ -266,7 +266,7 @@ if (isset($__slots)) unset($__slots);
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <div class="px-4 pb-4 pt-2 border-t border-stone-200 space-y-2">
+                    <div class="px-4 pb-5 pt-2 border-t border-stone-200 dark:border-gray-800 pb-safe space-y-2">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->guard()->check()): ?>
                             <a href="<?php echo e(route('dashboard')); ?>" wire:navigate @click="open = false"
                                class="flex items-center justify-center gap-2 btn-primary w-full">
@@ -307,13 +307,13 @@ if (isset($__slots)) unset($__slots);
             </header>
 
             <!-- Main Content -->
-            <main class="flex-1">
+            <main class="flex-1 min-w-0">
                 <?php echo e($slot); ?>
 
             </main>
 
             <!-- Footer -->
-            <footer class="bg-white dark:bg-gray-900 border-t border-stone-200 dark:border-gray-800 mt-10">
+            <footer class="bg-white dark:bg-gray-900 border-t border-stone-200 dark:border-gray-800 mt-10 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 border-b border-stone-200 dark:border-gray-800">
                         <div class="flex items-center gap-3">

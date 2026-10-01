@@ -52,40 +52,40 @@ use Livewire\Volt\Component;
             <div class="absolute inset-0 opacity-[0.07]" style="background-image:url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"></div>
         </div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-10 sm:pt-16 sm:pb-14 grid lg:grid-cols-[1.1fr_.9fr] gap-10 items-center">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-8 sm:pt-16 sm:pb-14 grid lg:grid-cols-[1.1fr_.9fr] gap-8 lg:gap-10 items-center">
             <!-- Kolom teks -->
-            <div>
-                <p class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 backdrop-blur px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-amber-300">
-                    <span class="h-2 w-2 rounded-full bg-emerald-400 beranda-pulse-dot"></span>
-                    Ngekos.in #LebihDariHunian
+            <div class="min-w-0">
+                <p class="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 border border-white/15 backdrop-blur px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-amber-300">
+                    <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-400 beranda-pulse-dot"></span>
+                    <span class="truncate">Ngekos.in #LebihDariHunian</span>
                 </p>
-                <h1 class="mt-4 text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-[1.1]">
+                <h1 class="mt-3 sm:mt-4 text-[28px] sm:text-5xl font-extrabold tracking-tight text-white leading-[1.15] sm:leading-[1.1]">
                     Cari <span class="text-amber-300">Kos Impianmu</span>,<br class="hidden sm:block">
                     Semudah Rebahan.
                 </h1>
-                <p class="mt-3 text-sm sm:text-lg text-brand-100 max-w-xl leading-relaxed">
+                <p class="mt-2.5 sm:mt-3 text-sm sm:text-lg text-brand-100 max-w-xl leading-relaxed">
                     Foto asli, harga transparan, chat langsung pemilik. Saat ini ada
-                    <span class="font-bold text-white"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?> kamar</span> di
-                    <span class="font-bold text-white"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?> kos aktif</span> menunggumu.
+                    <span class="font-bold text-white whitespace-nowrap"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?> kamar</span> di
+                    <span class="font-bold text-white whitespace-nowrap"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?> kos aktif</span> menunggumu.
                 </p>
 
                 <form action="<?php echo e(route('kos.index')); ?>" method="GET"
-                      class="mt-6 max-w-2xl bg-white dark:bg-gray-800 rounded-2xl p-2 flex items-center gap-2 shadow-2xl shadow-black/25 ring-1 ring-white/20">
-                    <div class="flex-1 flex items-center gap-2 px-3">
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10">
-                            <svg class="h-5 w-5 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                      class="mt-5 sm:mt-6 max-w-2xl bg-white dark:bg-gray-800 rounded-2xl p-1.5 sm:p-2 flex items-center gap-1.5 sm:gap-2 shadow-2xl shadow-black/25 ring-1 ring-white/20">
+                    <div class="flex-1 min-w-0 flex items-center gap-2 px-2 sm:px-3">
+                        <span class="hidden min-[360px]:flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10">
+                            <svg class="h-4 w-4 sm:h-5 sm:w-5 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                         </span>
-                        <input type="search" name="cari" value="<?php echo e(request('cari', $cari)); ?>" placeholder="Mau ngekos di mana? Coba “Jogja”, “Depok”…"
+                        <input type="search" name="cari" value="<?php echo e(request('cari', $cari)); ?>" placeholder="Mau ngekos di mana?"
                             autocomplete="off" enterkeyhint="search"
-                            class="w-full border-0 bg-transparent text-sm sm:text-base text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:ring-0 focus:outline-none py-3">
+                            class="w-full min-w-0 border-0 bg-transparent text-base text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:ring-0 focus:outline-none py-3">
                     </div>
-                    <button type="submit" class="btn-accent shrink-0 !px-6 !py-3 !rounded-xl !text-sm">
+                    <button type="submit" class="btn-accent shrink-0 !px-4 sm:!px-6 !py-3 !rounded-xl !text-sm">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                         <span class="hidden sm:inline">Cari Kos</span><span class="sm:hidden">Cari</span>
                     </button>
                 </form>
 
-                <div class="mt-4 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <div class="mt-3.5 sm:mt-4 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
                     <span class="shrink-0 text-xs font-semibold text-brand-100">Populer:</span>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarKota->take(6); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kota): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <a href="<?php echo e(route('kos.index', ['kota' => $kota])); ?>" wire:navigate
@@ -97,18 +97,18 @@ use Livewire\Volt\Component;
                 </div>
 
                 <!-- Statistik mini -->
-                <div class="mt-6 grid grid-cols-3 max-w-xl gap-3">
-                    <div class="rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-3 py-3 sm:px-4">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?>+</p>
-                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium">Kamar Tersedia</p>
+                <div class="mt-5 sm:mt-6 grid grid-cols-3 max-w-xl gap-2 sm:gap-3">
+                    <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?>+</p>
+                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kamar Tersedia</p>
                     </div>
-                    <div class="rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-3 py-3 sm:px-4">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?>+</p>
-                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium">Kos Aktif</p>
+                    <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?>+</p>
+                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kos Aktif</p>
                     </div>
-                    <div class="rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-3 py-3 sm:px-4">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white"><?php echo e($daftarKota->count()); ?>+</p>
-                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium">Kota di Indonesia</p>
+                    <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e($daftarKota->count()); ?>+</p>
+                        <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kota di Indonesia</p>
                     </div>
                 </div>
             </div>
@@ -159,16 +159,16 @@ use Livewire\Volt\Component;
     </section>
 
     <!-- Strip kepercayaan -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['Foto Asli & Akurat', 'Semua foto dari pemilik langsung', 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z|M15 13a3 3 0 11-6 0 3 3 0 016 0z'],
                 ['Harga Transparan', 'Tanpa biaya tersembunyi', 'M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
                 ['Chat Langsung', 'Tanya pemilik, gratis & cepat', 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z'],
                 ['Pembayaran Aman', 'Bukti sewa & kwitansi resmi', 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
             ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$judulFitur, $descFitur, $iconFitur]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 px-4 py-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
+                <div class="flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 px-3 sm:px-4 py-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition">
+                    <span class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = explode('|', $iconFitur); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pathFitur): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <path stroke-linecap="round" stroke-linejoin="round" d="<?php echo e($pathFitur); ?>" />
@@ -185,21 +185,21 @@ use Livewire\Volt\Component;
     </section>
 
     <!-- Promo -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-10">
-        <div class="flex items-end justify-between gap-3">
-            <div>
-                <p class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300">
-                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg>
-                    Hemat s.d. 800rb
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-8 sm:mt-10">
+        <div class="flex items-end justify-between gap-2 sm:gap-3">
+            <div class="min-w-0">
+                <p class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300 truncate">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg>
+                    <span class="truncate">Hemat s.d. 800rb</span>
                 </p>
-                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100">Promo spesial buat kamu</h2>
+                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Promo spesial buat kamu</h2>
                 <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Klaim sebelum kehabisan — diperbarui tiap bulan</p>
             </div>
-            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-300 dark:border-gray-700 px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
+            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </a>
         </div>
-        <div class="mt-4 flex gap-3 overflow-x-auto scrollbar-hide snap-x pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['Pindah Kos Jadi Lebih Ringan', 'Diskon s.d. 800 RIBU!', 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z'],
                 ['Voucher Ngekos 100RB', 'Udah siap buat kamu!', 'M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z'],
@@ -209,7 +209,7 @@ use Livewire\Volt\Component;
                 ['Kos di ' . ($kotaRekomendasi ?? 'Kotamu'), 'Banyak pilihan kamar tersedia', 'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z|M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z'],
             ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$judulPromo, $subPromo, $iconPromo]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
-                   class="snap-start shrink-0 w-[250px] sm:w-[290px] rounded-2xl bg-brand-900 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-5 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition overflow-hidden relative group">
+                   class="snap-start snap-always shrink-0 w-[72vw] max-w-[250px] sm:w-[290px] sm:max-w-none rounded-2xl bg-brand-900 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-4 sm:p-5 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition overflow-hidden relative group">
                     <div class="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition duration-500"></div>
                     <span class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-brand-950">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -283,42 +283,39 @@ use Livewire\Volt\Component;
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($propertiPromo->isNotEmpty()): ?>
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10"
         x-data="{ hari: '–', jam: '–', mnt: '–', dtk: '–', init() { const akhir = <?php echo \Illuminate\Support\Js::from($akhirPromo)->toHtml() ?>; const tick = () => { let s = Math.max(0, akhir - Math.floor(Date.now() / 1000)); this.hari = Math.floor(s / 86400); const p = (n) => String(n).padStart(2, '0'); this.jam = p(Math.floor(s % 86400 / 3600)); this.mnt = p(Math.floor(s % 3600 / 60)); this.dtk = p(s % 60); }; tick(); setInterval(tick, 1000); } }">
-        <div class="relative overflow-hidden rounded-2xl bg-brand-950 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-5 sm:p-6 text-white shadow-lg">
+        <div class="relative overflow-hidden rounded-2xl bg-brand-950 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-4 sm:p-6 text-white shadow-lg">
             <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-400/20 blur-2xl"></div>
             <div class="absolute right-1/3 -bottom-12 h-32 w-32 rounded-full bg-brand-500/20 blur-2xl"></div>
-            <div class="relative flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400 text-brand-950">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+            <div class="relative flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-brand-950">
+                        <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                     </span>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-extrabold tracking-tight">Promo Ngebut</h2>
-                        <p class="text-xs sm:text-sm text-brand-100">Diskon khusus bulan ini — siapa cepat dia dapat</p>
+                    <div class="min-w-0">
+                        <h2 class="text-base sm:text-xl font-extrabold tracking-tight">Promo Ngebut</h2>
+                        <p class="text-xs sm:text-sm text-brand-100 truncate sm:whitespace-normal">Diskon khusus bulan ini — siapa cepat dia dapat</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 text-center">
-                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-1.5 min-w-12"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="hari"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Hari</p></div>
-                    <span class="font-bold text-brand-100">:</span>
-                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-1.5 min-w-12"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="jam"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Jam</p></div>
-                    <span class="font-bold text-brand-100">:</span>
-                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-1.5 min-w-12"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="mnt"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Mnt</p></div>
-                    <span class="font-bold text-brand-100">:</span>
-                    <div class="rounded-xl bg-amber-400 px-2.5 py-1.5 min-w-12 text-brand-950"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="dtk"></p><p class="text-[10px] uppercase tracking-wider font-bold">Dtk</p></div>
+                <div class="grid w-full sm:w-auto grid-cols-4 items-center gap-1 sm:flex sm:gap-1.5 text-center">
+                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-1.5 sm:px-2.5 py-1.5 min-w-0"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="hari"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Hari</p></div>
+                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-1.5 sm:px-2.5 py-1.5 min-w-0"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="jam"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Jam</p></div>
+                    <div class="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-1.5 sm:px-2.5 py-1.5 min-w-0"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="mnt"></p><p class="text-[10px] uppercase tracking-wider text-brand-100">Mnt</p></div>
+                    <div class="rounded-xl bg-amber-400 px-1.5 sm:px-2.5 py-1.5 min-w-0 text-brand-950"><p class="text-base sm:text-lg font-extrabold tabular-nums" x-text="dtk"></p><p class="text-[10px] uppercase tracking-wider font-bold">Dtk</p></div>
                 </div>
             </div>
         </div>
-        <div class="mt-4 flex gap-3 overflow-x-auto scrollbar-hide snap-x pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $propertiPromo; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start w-[240px] sm:w-[260px] shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('kartu-kos'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start w-[240px] sm:w-[260px] shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']); ?>
+<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
@@ -335,32 +332,32 @@ use Livewire\Volt\Component;
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- Rekomendasi kos -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10">
-        <div class="flex items-end justify-between gap-3">
-            <div>
-                <p class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300">
-                    <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
-                    Pilihan penghuni
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
+        <div class="flex items-end justify-between gap-2 sm:gap-3">
+            <div class="min-w-0">
+                <p class="inline-flex max-w-full items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
+                    <span class="truncate">Pilihan penghuni</span>
                 </p>
-                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100">Rekomendasi kos di <?php echo e($kotaRekomendasi ?? 'kotamu'); ?></h2>
+                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Rekomendasi kos di <?php echo e($kotaRekomendasi ?? 'kotamu'); ?></h2>
                 <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Kos dengan kamar tersedia terbanyak & rating terbaik</p>
             </div>
-            <a href="<?php echo e($kotaRekomendasi ? route('kos.index', ['kota' => $kotaRekomendasi]) : route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-300 dark:border-gray-700 px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
+            <a href="<?php echo e($kotaRekomendasi ? route('kos.index', ['kota' => $kotaRekomendasi]) : route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </a>
         </div>
-        <div class="mt-4 flex gap-3 overflow-x-auto scrollbar-hide snap-x pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $propertiList->take(8); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start w-[240px] sm:w-[260px] shrink-0 hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('kartu-kos'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start w-[240px] sm:w-[260px] shrink-0 hover:-translate-y-1 transition']); ?>
+<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 hover:-translate-y-1 transition']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
@@ -381,15 +378,15 @@ use Livewire\Volt\Component;
     </section>
 
     <!-- Kos yang lagi promo -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10">
-        <div class="flex items-end justify-between gap-3">
-            <div>
-                <h2 class="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100">Jelajahi semua kos</h2>
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 scroll-mb-24">
+        <div class="flex items-end justify-between gap-2 sm:gap-3">
+            <div class="min-w-0">
+                <h2 class="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Jelajahi semua kos</h2>
                 <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400"><?php echo e($propertiList->count()); ?> kos terbaru menunggumu — harga bulan pertama sudah termasuk diskon</p>
             </div>
-            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 text-xs sm:text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 hover:underline">Lihat katalog lengkap →</a>
+            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 whitespace-nowrap text-xs sm:text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 hover:underline">Lihat katalog lengkap →</a>
         </div>
-        <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $propertiList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
@@ -721,8 +718,8 @@ use Livewire\Volt\Component;
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- CTA penutup + Tentang Ngekos.in -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-2">
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 p-8 sm:p-12 text-center shadow-2xl">
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-2">
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 p-6 sm:p-12 text-center shadow-2xl">
             <div class="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-emerald-400/20 blur-3xl"></div>
             <div class="absolute -right-16 -bottom-16 h-56 w-56 rounded-full bg-amber-400/20 blur-3xl"></div>
             <div class="relative max-w-2xl mx-auto">

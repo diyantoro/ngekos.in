@@ -42,8 +42,8 @@ unset($__defined_vars, $__key, $__value); ?>
     $sisa = (int) ($p->kamar_tersedia ?? 0);
 ?>
 
-<a href="<?php echo e(route('kos.detail', $p)); ?>" wire:navigate <?php echo e($attributes->merge(['class' => 'group bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-card-hover hover:border-brand-200 transition'])); ?>>
-    <div class="relative h-36 bg-stone-200 dark:bg-gray-700 overflow-hidden">
+<a href="<?php echo e(route('kos.detail', $p)); ?>" wire:navigate <?php echo e($attributes->merge(['class' => 'group min-w-0 bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-card-hover hover:border-brand-200 transition'])); ?>>
+    <div class="relative h-28 sm:h-36 bg-stone-200 dark:bg-gray-700 overflow-hidden">
         <?php $cover = $p->fotoCover(); ?>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($cover): ?>
             <img src="<?php echo e($cover); ?>" alt="<?php echo e($p->nama); ?>" loading="lazy" decoding="async" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
@@ -53,16 +53,16 @@ unset($__defined_vars, $__key, $__value); ?>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sisa > 0 && $sisa <= 3): ?>
-            <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md shadow-red-600/40">
+            <span class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 inline-flex items-center rounded-full bg-red-600 px-1.5 sm:px-2 py-0.5 text-[10px] font-bold text-white shadow-md shadow-red-600/40">
                 Sisa <?php echo e($sisa); ?> kamar
             </span>
         <?php elseif($sisa > 3): ?>
-            <span class="absolute top-2 right-2 inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md shadow-emerald-600/40">
+            <span class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 inline-flex items-center rounded-full bg-emerald-600 px-1.5 sm:px-2 py-0.5 text-[10px] font-bold text-white shadow-md shadow-emerald-600/40">
                 <?php echo e($sisa); ?> Kamar
             </span>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div>
-    <div class="p-3">
+    <div class="p-2.5 sm:p-3">
         <div class="flex items-center gap-1.5">
             <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-white <?php echo e($warnaTipe); ?>"><?php echo e($labelTipe); ?></span>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($totalUlasan > 0): ?>
@@ -84,7 +84,7 @@ unset($__defined_vars, $__key, $__value); ?>
                 <p class="text-xs text-slate-400 dark:text-gray-500 line-through">Rp<?php echo e(number_format($p->harga_asli, 0, ',', '.')); ?></p>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hargaTampil): ?>
-                <p class="text-base font-extrabold text-brand-700 dark:text-brand-200">Rp<?php echo e(number_format($hargaTampil, 0, ',', '.')); ?></p>
+                <p class="text-sm sm:text-base font-extrabold text-brand-700 dark:text-brand-200 tabular-nums truncate">Rp<?php echo e(number_format($hargaTampil, 0, ',', '.')); ?></p>
                 <p class="text-[10px] text-slate-400 dark:text-gray-500"><?php echo e($labelDiskon ? '(Bulan pertama)' : '/bulan'); ?></p>
             <?php else: ?>
                 <p class="text-xs font-medium text-slate-400">Penuh</p>

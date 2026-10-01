@@ -68,7 +68,7 @@
     <div class="relative overflow-hidden {{ $variant === 'hero' ? '' : 'rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15' }}">
         <div class="promo-track" data-promo-track>
             @foreach ($ads as $ad)
-                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-6 py-4 sm:px-9 sm:py-5 min-h-[220px] sm:min-h-[300px] flex items-center' : 'px-6 py-6 sm:px-9 sm:py-7' }}"
+                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-4 py-3.5 sm:px-9 sm:py-5 min-h-[148px] sm:min-h-[300px] flex items-center' : 'px-6 py-6 sm:px-9 sm:py-7' }}"
                     data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
@@ -77,19 +77,19 @@
                     <div class="absolute top-6 right-1/4 h-8 w-8 rounded-full border border-white/25"></div>
                     <div class="absolute -bottom-6 right-1/3 h-12 w-12 rounded-full border border-white/20"></div>
 
-                    <div class="relative flex items-center justify-between gap-4 w-full {{ $variant === 'hero' ? 'max-w-7xl mx-auto' : '' }}">
+                    <div class="relative flex items-center justify-between gap-3 sm:gap-4 w-full {{ $variant === 'hero' ? 'max-w-7xl mx-auto' : '' }}">
                         <div class="min-w-0 max-w-xl" data-promo-anim>
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
                                 <svg class="h-3 w-3 {{ $ad['accent'] }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                                 Iklan Partner
                             </span>
-                            <p class="mt-2 {{ $variant === 'hero' ? 'text-xl sm:text-2xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm">{{ $ad['brand'] }}</p>
-                            <p class="mt-0.5 {{ $variant === 'hero' ? 'text-sm sm:text-base' : 'text-sm' }} font-bold text-white/95">{{ $ad['tagline'] }}</p>
-                            <p class="mt-1 {{ $variant === 'hero' ? 'text-xs sm:text-sm' : 'text-xs' }} leading-snug text-white/80 line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
+                            <p class="mt-1.5 sm:mt-2 {{ $variant === 'hero' ? 'text-lg sm:text-2xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm truncate">{{ $ad['brand'] }}</p>
+                            <p class="mt-0.5 {{ $variant === 'hero' ? 'text-[13px] sm:text-base' : 'text-sm' }} font-bold text-white/95 truncate">{{ $ad['tagline'] }}</p>
+                            <p class="mt-0.5 sm:mt-1 {{ $variant === 'hero' ? 'text-xs sm:text-sm' : 'text-xs' }} leading-snug text-white/80 line-clamp-1 sm:line-clamp-2 max-w-md">{{ $ad['desc'] }}</p>
                         </div>
                         <div class="shrink-0 relative" data-promo-anim>
-                            <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-12 w-12 sm:h-14 sm:w-14' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
-                                <svg class="h-6 w-6 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
+                            <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-11 w-11 sm:h-14 sm:w-14' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                <svg class="h-5 w-5 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon']] ?? $icons['wifi'] !!}</svg>
                             </div>
                             <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>
                         </div>
@@ -100,12 +100,12 @@
     </div>
 
     @if ($total > 1)
-        <button type="button" data-promo-prev aria-label="Promo sebelumnya"
-            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
+        <button type="button" data-promo-prev aria-label="Promo sebelumnya" tabindex="-1"
+            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
         </button>
-        <button type="button" data-promo-next aria-label="Promo berikutnya"
-            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
+        <button type="button" data-promo-next aria-label="Promo berikutnya" tabindex="-1"
+            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 hidden sm:flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/45 active:scale-95 sm:opacity-0 sm:group-hover/promo:opacity-100">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </button>
 
