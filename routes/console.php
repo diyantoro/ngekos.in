@@ -7,3 +7,6 @@ Schedule::command('app:proses-tagihan')->dailyAt('00:05');
 
 // Pengingat H-3 / H-1 / H0 + peringatan telat harian via chat + push + email.
 Schedule::command('app:kirim-pengingat-tagihan')->dailyAt('07:00');
+
+// Langganan kedaluwarsa -> status expired + semua kamar pemilik dihapus (soft-delete).
+Schedule::command('app:proses-langganan-expired')->dailyAt('00:10');

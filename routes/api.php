@@ -139,9 +139,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/pemilik/rekap-premium', [DashboardController::class, 'rekapPremium'])
         ->middleware(['role:pemilik|admin|super_admin', 'premium:advanced_report']);
     Route::get('/subscriptions', [SubscriptionController::class, 'index'])
-        ->middleware('role:super_admin');
+        ->middleware('role:super_admin|admin');
     Route::post('/subscriptions', [SubscriptionController::class, 'store'])
-        ->middleware('role:super_admin');
+        ->middleware('role:super_admin|admin');
 
     // Pengguna (super admin)
     Route::get('/pengguna', [PenggunaController::class, 'index'])

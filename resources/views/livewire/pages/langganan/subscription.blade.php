@@ -38,8 +38,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'plan' => $plan,
             'subscription' => $subscription,
-            'propertyUsed' => SubscriptionService::usage($user, 'property'),
-            'propertyLimit' => SubscriptionService::limitFor($plan, 'property'),
+
             'roomUsed' => SubscriptionService::usage($user, 'room'),
             'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
             'riwayat' => SubscriptionService::history($user),
@@ -105,8 +104,8 @@ new #[Layout('layouts.app')] class extends Component
             </div>
         @elseif ($isFree && $sisaTrial === null && $trialHabis)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
-                Masa coba 7 hari sudah habis atau belum diklaim. Data tidak hilang, tapi halaman Laporan dikunci. Tambah kos/kamar tetap bisa sampai batas paket Free.
-                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                Masa Free 7 hari sudah habis. Silakan update ke langganan berbayar agar kamar Anda bisa tetap diiklankan. Jika tidak diupgrade, semua kamar akan otomatis dihapus (tidak diiklankan) oleh sistem.
+                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade sekarang</a>
             </div>
         @endif
 
@@ -124,10 +123,7 @@ new #[Layout('layouts.app')] class extends Component
                     <p class="text-gray-500 dark:text-gray-400">Tanggal berakhir</p>
                     <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $subscription?->expires_at?->translatedFormat('d F Y') ?? '—' }}</p>
                 </div>
-                <div>
-                    <p class="text-gray-500 dark:text-gray-400">Penggunaan property</p>
-                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $propertyUsed }} / {{ $propertyLimit ?? '∞' }}</p>
-                </div>
+
                 <div>
                     <p class="text-gray-500 dark:text-gray-400">Penggunaan kamar</p>
                     <p class="font-semibold text-gray-900 dark:text-gray-100">{{ $roomUsed }} / {{ $roomLimit ?? '∞' }}</p>

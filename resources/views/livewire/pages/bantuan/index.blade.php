@@ -61,11 +61,11 @@ new #[Layout('layouts.publik')] class extends Component
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         <!-- FAQ -->
-        <div>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-2 ring-stone-300 border-2 border-stone-300 dark:ring-gray-600 dark:border-gray-600 p-6 sm:p-8">
             <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Pertanyaan yang Sering Diajukan</h2>
             <div class="mt-4 space-y-3">
                 @foreach (config('faq', []) as $index => $item)
-                    <div x-data="{ buka: false }" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                    <div x-data="{ buka: false }" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-stone-300 border border-stone-300 dark:ring-gray-600 dark:border-gray-600 overflow-hidden">
                         <button type="button" @click="buka = !buka"
                             class="w-full flex items-center justify-between gap-4 px-5 py-4 text-left">
                             <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ ucfirst($item['kata_kunci'][0]) }}</span>
@@ -81,7 +81,7 @@ new #[Layout('layouts.publik')] class extends Component
 
         <!-- Hubungi Admin -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 sm:p-8">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-2 ring-stone-300 border-2 border-stone-300 dark:ring-gray-600 dark:border-gray-600 p-6 sm:p-8">
                 <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Hubungi Admin</h2>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tidak menemukan jawaban? Kirim pesan, admin atau super admin akan membalasmu.</p>
 
@@ -112,7 +112,7 @@ new #[Layout('layouts.publik')] class extends Component
                     <div>
                         <x-input-label for="pesan" value="Pesan" />
                         <textarea wire:model="pesan" id="pesan" rows="5" placeholder="Ceritakan masalah atau pertanyaanmu..."
-                            class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
+                            class="mt-1 block w-full rounded-md border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                         <x-input-error :messages="$errors->get('pesan')" class="mt-2" />
                     </div>
 
@@ -140,7 +140,7 @@ new #[Layout('layouts.publik')] class extends Component
                     @endauth
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-6 sm:p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-2 ring-stone-300 border-2 border-stone-300 dark:ring-gray-600 dark:border-gray-600 p-6 sm:p-8">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Hubungi Admin</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Coba chatbot di pojok kanan bawah untuk jawaban instan, atau gunakan form di samping untuk pesan langsung ke admin.</p>
                     <div class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">

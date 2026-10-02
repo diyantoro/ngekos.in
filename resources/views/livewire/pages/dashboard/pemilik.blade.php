@@ -15,7 +15,7 @@ new class extends Component
 {
     public string $cari = '';
 
-    public string $tab = 'properti';
+    public string $tab = 'sewaan';
 
     public ?int $propertiId = null;
 
@@ -53,7 +53,7 @@ new class extends Component
             $lalu = now()->subMonth();
 
             return [
-                'totalProperti' => Properti::where('pemilik_id', $id)->when($propertiId, fn ($q) => $q->where('id', $propertiId))->count(),
+
                 'totalKamar' => $totalKamar,
                 'kamarTerisi' => (int) ($statusKamar['terisi'] ?? 0),
                 'kamarTersedia' => (int) ($statusKamar['tersedia'] ?? 0),
@@ -95,6 +95,7 @@ new class extends Component
         $pendapatanBulanLalu = $ringkas['pendapatanBulanLalu'];
         $pengeluaranBulanIni = $ringkas['pengeluaranBulanIni'];
         $pengeluaranBulanLalu = $ringkas['pengeluaranBulanLalu'];
+        $kamarAktif = $ringkas['penyewaanAktif'] ?? $ringkas['kamarTerisi'] ?? $ringkas['totalKamar'] ?? 0;
 
         $labaBersihBulanIni = $pendapatanBulanIni - $pengeluaranBulanIni;
         $labaBersihBulanLalu = $pendapatanBulanLalu - $pengeluaranBulanLalu;
@@ -129,7 +130,7 @@ new class extends Component
             ->get();
 
         return [
-            'totalProperti' => $ringkas['totalProperti'],
+
             'totalKamar' => $totalKamar,
             'kamarTerisi' => $kamarTerisi,
             'kamarTersedia' => $kamarTersedia,
@@ -312,7 +313,7 @@ new class extends Component
             <h2 class="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-gray-100">Sekilas kos-kosanmu</h2>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 !mt-3">
-            <x-stat-card label="Properti Saya" :value="$totalProperti" tone="cyan"
+            <x-stat-card label="Kamar Aktif" :value="$kamarAktif ?? ($ringkas['penyewaanAktif'] ?? $totalKamar ?? 0)" tone="cyan"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>' />
             <x-stat-card label="Total Kamar" :value="$totalKamar" tone="sky"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>' />

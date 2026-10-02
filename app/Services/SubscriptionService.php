@@ -68,8 +68,8 @@ class SubscriptionService
     public static function limitFor(string $plan, string $resource): ?int
     {
         $key = match ($resource) {
-            'property', 'properties', 'properti' => 'properties',
             'room', 'rooms', 'kamar' => 'rooms',
+            'property', 'properties', 'properti' => 'rooms',
             default => $resource,
         };
 
@@ -461,6 +461,11 @@ class SubscriptionService
                 throw new \InvalidArgumentException('Durasi langganan maksimal 366 hari.');
             }
 
+            // Paket Free dikunci 7 hari (trial). Pro/Business bebas 1-366 hari.
+            if (($attrs['plan'] ?? null) === 'free' && (int) $mulai->diffInDays($akhir) !== self::trialDays()) {
+                throw new \InvalidArgumentException('Paket Free hanya berlaku '.self::trialDays().' hari.');
+            }
+
             if ($mulai->gt(now()->addDays(30))) {
                 throw new \InvalidArgumentException('Tanggal mulai maksimal 30 hari ke depan.');
             }
@@ -580,6 +585,71 @@ class SubscriptionService
         ]);
     }
 
+    /**
+     * Paket Free hanya berlaku 7 hari (trial). Setelah habis, pemilik wajib
+     * beli Pro/Business: tambah kamar/properti selalu ditolak sampai upgrade.
+     */
+    public static function freeExpired(User $user): bool
+    {
+        if (self::isExempt($user)) {
+            return false;
+        }
+
+        return self::getPlan($user) === 'free' && self::trialExpired($user);
+    }
+
+    /**
+     * Tangani satu langganan yang kedaluwarsa: tandai expired + hapus
+     * (soft-delete) SEMUA kamar milik user agar tidak bisa diiklankan lagi.
+     * Dipakai command harian app:proses-langganan-expired.
+     */
+    public static function handleExpired(Subscription $subscription): int
+    {
+        $dihapus = 0;
+
+        if ($subscription->status === 'active') {
+            $subscription->update(['status' => 'expired']);
+        }
+
+        $user = User::find($subscription->user_id);
+
+        if (! $user) {
+            return 0;
+        }
+
+        $kamarIds = Kamar::whereHas('properti', fn ($q) => $q->where('pemilik_id', $user->id))->pluck('id');
+
+        foreach ($kamarIds as $id) {
+            $kamar = Kamar::find($id);
+            if ($kamar && ! $kamar->trashed()) {
+                $kamar->delete();
+                $dihapus++;
+            }
+        }
+
+        return $dihapus;
+    }
+
+    /**
+     * Proses semua langganan aktif yang sudah lewat expires_at.
+     * Return ['kedaluwarsa' => int, 'kamar_dihapus' => int].
+     */
+    public static function prosesExpired(): array
+    {
+        $kedaluwarsa = Subscription::where('status', 'active')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<', now())
+            ->get();
+
+        $totalKamar = 0;
+
+        foreach ($kedaluwarsa as $sub) {
+            $totalKamar += self::handleExpired($sub);
+        }
+
+        return ['kedaluwarsa' => $kedaluwarsa->count(), 'kamar_dihapus' => $totalKamar];
+    }
+
     public static function checkLimit(User $user, string $resource): array
     {
         if (self::isExempt($user)) {
@@ -587,12 +657,21 @@ class SubscriptionService
         }
 
         $plan = self::getPlan($user);
+
+        // Free yang masa 7 harinya habis: blokir total, wajib upgrade.
+        if ($plan === 'free' && self::trialExpired($user)) {
+            return [
+                'allowed' => false,
+                'used' => self::usage($user, $resource),
+                'limit' => self::limitFor($plan, $resource),
+                'plan' => $plan,
+                'required_plan' => 'pro',
+                'message' => 'Masa Free 7 hari sudah habis. Silakan upgrade ke Pro/Business untuk menambah kamar.',
+            ];
+        }
+
         $limit = self::limitFor($plan, $resource);
         $used = self::usage($user, $resource);
-
-        // Free murni tetap boleh tambah sampai batas paket (1 properti / 10 kamar)
-        // walau belum/tidak klaim trial. Trial hanya membuka fitur premium,
-        // bukan syarat tambah dasar. Habis trial -> kembali ke batas Free.
 
         if ($limit === null) {
             return ['allowed' => true, 'used' => $used, 'limit' => null, 'plan' => $plan, 'required_plan' => null, 'message' => null];
@@ -603,10 +682,6 @@ class SubscriptionService
         }
 
         $required = $plan === 'free' ? 'pro' : 'business';
-        $label = match ($resource) {
-            'property', 'properties', 'properti' => 'properti',
-            default => 'kamar',
-        };
         $planName = config("plans.{$plan}.name", ucfirst($plan));
 
         return [
@@ -615,7 +690,7 @@ class SubscriptionService
             'limit' => $limit,
             'plan' => $plan,
             'required_plan' => $required,
-            'message' => "Batas {$label} paket {$planName} telah tercapai.",
+            'message' => "Batas kamar paket {$planName} telah tercapai.",
         ];
     }
 

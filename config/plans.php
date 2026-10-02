@@ -7,8 +7,7 @@ return [
         'name' => 'Free',
         'price' => 0,
         'limits' => [
-            'properties' => 1,
-            'rooms' => 10,
+            'rooms' => 1,
         ],
         'features' => [
             'basic_dashboard',
@@ -32,8 +31,7 @@ return [
         'name' => 'Pro',
         'price' => 49000,
         'limits' => [
-            'properties' => 5,
-            'rooms' => 100,
+            'rooms' => 5,
         ],
         'features' => [
             'advanced_analytics',
@@ -59,8 +57,7 @@ return [
         'name' => 'Business',
         'price' => 99000,
         'limits' => [
-            'properties' => null,
-            'rooms' => null,
+            'rooms' => 10,
         ],
         // Hanya fitur yang benar-benar ada di aplikasi + otomatis
         // mewarisi semua fitur PRO via SubscriptionService::hasFeature().

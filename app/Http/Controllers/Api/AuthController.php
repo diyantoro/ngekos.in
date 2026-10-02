@@ -92,10 +92,12 @@ class AuthController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users',
-            'no_hp' => 'nullable|string|max:20',
+            'no_hp' => 'nullable|string|regex:/^08[0-9]{8,12}$/|max:15',
             'peran' => 'required|in:anak_kos,pemilik',
             'password' => 'required|string|confirmed|min:8',
             'avatar' => 'nullable|image|max:2048',
+        ], [
+            'no_hp.regex' => 'Nomor HP harus diawali 08 dan terdiri dari 10-14 digit angka.',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -109,7 +111,10 @@ class AuthController extends Controller
         $user = User::create($data);
         $user->assignRole($validated['peran']);
 
-        // Pemilik baru = Free murni. Trial 7 hari diklaim manual via /subscription/claim-trial.
+        // Pemilik baru otomatis dapat Free 7 hari (1 kamar). Setelah habis wajib beli Pro/Business.
+        if ($validated['peran'] === 'pemilik') {
+            \App\Services\SubscriptionService::mulaiTrialFree($user);
+        }
 
         $token = $user->createToken('mobile-token')->plainTextToken;
 
@@ -137,8 +142,10 @@ class AuthController extends Controller
 
         $data = $request->validate([
             'nama' => 'sometimes|string|max:255',
-            'no_hp' => 'nullable|string|max:20',
+            'no_hp' => 'nullable|string|regex:/^08[0-9]{8,12}$/|max:15',
             'avatar' => 'nullable|image|max:2048',
+        ], [
+            'no_hp.regex' => 'Nomor HP harus diawali 08 dan terdiri dari 10-14 digit angka.',
         ]);
 
         if ($request->filled('current_password')) {

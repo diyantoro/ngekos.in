@@ -101,10 +101,6 @@ class TagihanReminderService
             return $sudahHariIni ? [] : [['jenis' => self::JENIS_TELAT, 'susulan' => false]];
         }
 
-        if ($selisih > 3) {
-            return [];
-        }
-
         $daftar = [];
         $dibuat = $tagihan->created_at ? $tagihan->created_at->copy()->startOfDay() : $pada->copy()->startOfDay();
         $jatuh = $tagihan->jatuh_tempo ? $tagihan->jatuh_tempo->copy()->startOfDay() : $pada->copy()->startOfDay();
@@ -113,24 +109,24 @@ class TagihanReminderService
             ->where('jenis', $jenis)
             ->exists();
 
-        // H-3: relevan saat selisih <= 3. Susulan bila tagihan sudah ada saat tanggal H-3.
-        if ($selisih <= 3 && ! $sudahKirim(self::JENIS_H3)) {
+        // H-3: dari H-3 sampai H0 (otomatis). Kirim susulan jika tagihan sudah ada sebelum/tepat tanggal H-3 tapi belum dikirim.
+        if (! $sudahKirim(self::JENIS_H3) && $selisih <= 3) {
             $tglH3 = $jatuh->copy()->subDays(3);
             if (! $dibuat->greaterThan($tglH3)) {
                 $daftar[] = ['jenis' => self::JENIS_H3, 'susulan' => $selisih !== 3];
             }
         }
 
-        // H-1: relevan saat selisih <= 1.
-        if ($selisih <= 1 && ! $sudahKirim(self::JENIS_H1)) {
+        // H-1: dari H-1 sampai H0
+        if (! $sudahKirim(self::JENIS_H1) && $selisih <= 1) {
             $tglH1 = $jatuh->copy()->subDay();
             if (! $dibuat->greaterThan($tglH1)) {
                 $daftar[] = ['jenis' => self::JENIS_H1, 'susulan' => $selisih !== 1];
             }
         }
 
-        // H0: tepat hari H.
-        if ($selisih === 0 && ! $sudahKirim(self::JENIS_H0)) {
+        // H0: jatuh tempo
+        if (! $sudahKirim(self::JENIS_H0) && $selisih === 0) {
             $daftar[] = ['jenis' => self::JENIS_H0, 'susulan' => false];
         }
 

@@ -57,7 +57,7 @@ Route::get('langganan/bayar/{plan}/qris-unduh', [QrisController::class, 'unduh']
     ->middleware(['auth', 'verified', 'role:pemilik'])
     ->name('langganan.qris-unduh');
 Volt::route('langganan/kelola', 'pages.super-admin.subscriptions')
-    ->middleware(['auth', 'verified', 'role:super_admin'])
+    ->middleware(['auth', 'verified', 'role:super_admin|admin'])
     ->name('langganan.kelola');
 
 // Kelola kos (pemilik mengelola kos miliknya sendiri; admin/super admin mengelola semuanya).

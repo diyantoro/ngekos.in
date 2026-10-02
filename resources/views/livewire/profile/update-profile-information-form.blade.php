@@ -37,8 +37,10 @@ new class extends Component
         $validated = $this->validate([
             'nama' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
-            'no_hp' => ['nullable', 'string', 'max:20'],
+            'no_hp' => ['nullable', 'string', 'regex:/^08[0-9]{8,12}$/', 'max:15'],
             'fotoProfil' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'no_hp.regex' => 'Nomor HP harus diawali 08 dan terdiri dari 10-14 digit angka.',
         ]);
 
         if ($this->fotoProfil) {
@@ -184,7 +186,7 @@ new class extends Component
 
         <div>
             <x-input-label for="no_hp" :value="__('No. HP')" />
-            <x-text-input wire:model="no_hp" id="no_hp" name="no_hp" type="text" class="mt-1 block w-full" autocomplete="tel" />
+            <x-text-input wire:model="no_hp" id="no_hp" name="no_hp" type="tel" class="mt-1 block w-full" autocomplete="tel" inputmode="tel" pattern="08[0-9]{8,12}" maxlength="15" />
             <x-input-error class="mt-2" :messages="$errors->get('no_hp')" />
         </div>
 

@@ -46,8 +46,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function hitungAkhir(): ?string
     {
-        // Nilai dari <select> datang sebagai string — cast dulu agar cocok
-        // dengan daftar durasi dan pratinjau langsung menyesuaikan.
+        // Durasi bebas 1-366 hari, pratinjau langsung menyesuaikan.
         $durasi = (int) $this->durasiHari;
 
         try {
@@ -56,7 +55,7 @@ new #[Layout('layouts.app')] class extends Component
             return null;
         }
 
-        if (! $mulai || ! in_array($durasi, [30, 90, 180, 365], true)) {
+        if (! $mulai || $durasi < 1 || $durasi > 366) {
             return null;
         }
 
@@ -73,7 +72,7 @@ new #[Layout('layouts.app')] class extends Component
             'plan' => ['required', 'in:free,pro,business'],
             'status' => ['required', 'in:active,expired,cancelled'],
             'startsAt' => ['required', 'date'],
-            'durasiHari' => ['required', 'integer', 'in:30,90,180,365'],
+            'durasiHari' => ['required', 'integer', 'min:1', 'max:366'],
         ], [], [
             'userId' => 'user',
             'startsAt' => 'tanggal mulai',
@@ -125,9 +124,15 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        SubscriptionService::perpanjang($subscription, 30);
+        $hari = (int) $this->durasiHari;
 
-        $this->pesan = 'Langganan diperpanjang 30 hari.';
+        if ($hari < 1 || $hari > 366) {
+            $hari = 30;
+        }
+
+        SubscriptionService::perpanjang($subscription, $hari);
+
+        $this->pesan = "Langganan diperpanjang {$hari} hari.";
     }
 
     public function akhiri(int $id): void
@@ -151,9 +156,15 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        SubscriptionService::approveRequest($request, 30);
+        $hari = (int) $this->durasiHari;
 
-        $this->pesan = 'Permintaan upgrade '.strtoupper($request->requested_plan).' untuk '.$request->user?->nama.' disetujui. Langganan aktif 30 hari.';
+        if ($hari < 1 || $hari > 366) {
+            $hari = 30;
+        }
+
+        SubscriptionService::approveRequest($request, $hari);
+
+        $this->pesan = 'Permintaan upgrade '.strtoupper($request->requested_plan).' untuk '.$request->user?->nama." disetujui. Langganan aktif {$hari} hari.";
     }
 
     public function tolak(int $id): void
@@ -226,13 +237,13 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('startsAt')" class="mt-2" />
             </div>
             <div>
-                <x-input-label for="durasiHari" value="Durasi" />
-                <select wire:model.live="durasiHari" id="durasiHari" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                    <option value="30">30 hari (1 bulan)</option>
-                    <option value="90">90 hari (3 bulan)</option>
-                    <option value="180">180 hari (6 bulan)</option>
-                    <option value="365">365 hari (1 tahun)</option>
-                </select>
+                <x-input-label for="durasiHari" value="Durasi (hari)" />
+                <input wire:model.live="durasiHari" id="durasiHari" type="number" min="1" max="366" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
+                <div class="mt-1 flex flex-wrap gap-1">
+                    @foreach ([7, 30, 90, 180, 365] as $preset)
+                        <button type="button" wire:click="$set('durasiHari', {{ $preset }})" class="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 hover:bg-stone-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">{{ $preset }}</button>
+                    @endforeach
+                </div>
                 <x-input-error :messages="$errors->get('durasiHari')" class="mt-2" />
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Periode otomatis: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $pratinjauAkhir ?? '— isi tanggal mulai —' }}</span>
@@ -245,7 +256,7 @@ new #[Layout('layouts.app')] class extends Component
 
         <div class="card p-5">
             <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">Permintaan Upgrade</h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ajuan pemilik. Setujui untuk mengaktifkan paket 30 hari, atau tolak.</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Ajuan pemilik. Setujui untuk mengaktifkan paket sesuai durasi di atas, atau tolak.</p>
             <div class="mt-4 divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse ($permintaan as $r)
                     <div class="py-3 flex flex-wrap items-center justify-between gap-3">
@@ -276,7 +287,7 @@ new #[Layout('layouts.app')] class extends Component
                             <x-status-badge :status="$r->status" />
                             @if ($r->status === 'pending')
                                 <button type="button" wire:click="setujui({{ $r->id }})"
-                                    wire:confirm="Setujui upgrade {{ strtoupper($r->requested_plan) }} untuk {{ $r->user?->nama }} (aktif 30 hari)?" 
+                                    wire:confirm="Setujui upgrade {{ strtoupper($r->requested_plan) }} untuk {{ $r->user?->nama }} (aktif sesuai durasi di atas)?"
                                     class="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">Setujui</button>
                                 <span class="mx-1 text-gray-300">·</span>
                                 <button type="button" wire:click="tolak({{ $r->id }})"
@@ -313,7 +324,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <td class="px-4 py-3 text-sm">{{ $s->starts_at?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-4 py-3 text-sm">{{ $s->expires_at?->translatedFormat('d M Y') ?? '—' }}</td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                                    <button type="button" wire:click="perpanjang({{ $s->id }})" wire:confirm="Perpanjang {{ strtoupper($s->plan) }} {{ $s->user?->nama }} 30 hari?" class="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">+30 hari</button>
+                                    <button type="button" wire:click="perpanjang({{ $s->id }})" wire:confirm="Perpanjang {{ strtoupper($s->plan) }} {{ $s->user?->nama }} sesuai durasi di atas?" class="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">+ Perpanjang</button>
                                     <span class="mx-1 text-gray-300">·</span>
                                     <button type="button" wire:click="akhiri({{ $s->id }})" wire:confirm="Akhiri langganan {{ $s->user?->nama }}? Data tetap tersimpan." class="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline">Akhiri</button>
                                 </td>
