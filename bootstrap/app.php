@@ -21,14 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'premium' => \App\Http\Middleware\EnsurePremiumFeature::class,
         ]);
 
+        // Laravel already registers HandleCors globally for web and API requests.
         $middleware->web(append: [
-            \Illuminate\Http\Middleware\HandleCors::class,
             \App\Http\Middleware\EnsureUserAktif::class,
             \App\Http\Middleware\SecurityHeaders::class,
-        ]);
-
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
         $middleware->api(append: [

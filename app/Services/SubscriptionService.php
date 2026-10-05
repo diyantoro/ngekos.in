@@ -7,6 +7,9 @@ use App\Models\Properti;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Context;
 
 class SubscriptionService
 {
@@ -19,20 +22,63 @@ class SubscriptionService
         'advanced_report',
         'export_report',
     ];
+
+    /**
+     * Seluruh baris Subscription milik user, diurutkan id terbaru -> terlama.
+     *
+     * Halaman laporan/grafik memanggil rantai method di bawah dozens kali
+     * dalam satu render (getPlan -> trialAktif -> pernahTrial -> reportTier ->
+     * reportPlanKey -> maxPeriode -> ...). Tanpa memo, tiap panggilan menembak
+     * query `subscriptions` sendiri. Satu query per user per request cukup
+     * karena datanya hanya berubah lewat model event yang memanggil
+     * Subscription::flushMemo().
+     */
+    private static function langgananUser(User $user)
+    {
+        $memo = Context::get(Subscription::MEMO_KEY, []);
+
+        if (! array_key_exists($user->id, $memo)) {
+            $memo[$user->id] = Subscription::where('user_id', $user->id)
+                ->orderByDesc('id')
+                ->get();
+
+            Context::add(Subscription::MEMO_KEY, $memo);
+        }
+
+        return $memo[$user->id];
+    }
+
     public static function getSubscription(User $user): ?Subscription
     {
-        return Subscription::where('user_id', $user->id)->latest('id')->first();
+        return self::langgananUser($user)->first();
+    }
+
+    /**
+     * Langganan yang benar-benar aktif sekarang (sudah mulai & belum berakhir).
+     * Satu user bisa punya beberapa baris: mis. trial Free lama masih aktif
+     * sementara Super Admin sudah menjadwalkan paket PRO mulai besok. Baris
+     * terjadwal belum boleh dianggap aktif, dan baris lama tidak boleh
+     * menutupi paket yang sedang berjalan.
+     */
+    public static function getSubscriptionAktif(User $user): ?Subscription
+    {
+        return self::langgananUser($user)
+            ->first(fn (Subscription $s) => $s->isActive());
+    }
+
+    /**
+     * Langganan aktif yang dijadwalkan mulai di masa depan (mis. PRO mulai
+     * besok). Dipakai untuk memberi tahu pemilik, bukan membuka akses.
+     */
+    public static function getSubscriptionTerjadwal(User $user): ?Subscription
+    {
+        return self::langgananUser($user)
+            ->first(fn (Subscription $s) => ! $s->isActive() && $s->starts_at?->isFuture());
     }
 
     public static function getPlan(User $user): string
     {
-        $subscription = self::getSubscription($user);
-
-        if ($subscription && $subscription->isActive()) {
-            return $subscription->plan;
-        }
-
-        return 'free';
+        return self::getSubscriptionAktif($user)?->plan ?? 'free';
     }
 
     public static function isPremium(User $user): bool
@@ -69,11 +115,18 @@ class SubscriptionService
     {
         $key = match ($resource) {
             'room', 'rooms', 'kamar' => 'rooms',
-            'property', 'properties', 'properti' => 'rooms',
+            'property', 'properties', 'properti' => 'properties',
             default => $resource,
         };
 
-        return config("plans.{$plan}.limits.{$key}");
+        $limit = config("plans.{$plan}.limits.{$key}");
+
+        // Fallback ke rooms jika belum diset terpisah (biar backward compat)
+        if ($limit === null && $key === 'properties') {
+            $limit = config("plans.{$plan}.limits.rooms");
+        }
+
+        return $limit;
     }
 
     public static function usage(User $user, string $resource): int
@@ -137,7 +190,7 @@ class SubscriptionService
         $cek = self::featureCheck($user, $feature);
 
         if (! $cek['allowed']) {
-            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            throw new HttpResponseException(
                 response()->json([
                     'message' => $cek['message'],
                     'required_plan' => $cek['required_plan'],
@@ -204,16 +257,13 @@ class SubscriptionService
 
     public static function pernahTrial(User $user): bool
     {
-        return Subscription::where('user_id', $user->id)->where('is_trial', true)->exists();
+        return self::langgananUser($user)->contains(fn (Subscription $s) => (bool) $s->is_trial);
     }
 
     public static function trialAktif(User $user): ?Subscription
     {
-        return Subscription::where('user_id', $user->id)
-            ->where('is_trial', true)
-            ->latest('id')
-            ->get()
-            ->first(fn (Subscription $s) => $s->isActive() && $s->plan === 'free');
+        return self::langgananUser($user)
+            ->first(fn (Subscription $s) => $s->isActive() && $s->is_trial && $s->plan === 'free');
     }
 
     public static function sisaTrialHari(User $user): ?int
@@ -443,8 +493,8 @@ class SubscriptionService
 
         if (($attrs['status'] ?? null) === 'active') {
             try {
-                $mulai = ! empty($attrs['starts_at']) ? \Carbon\Carbon::parse($attrs['starts_at']) : null;
-                $akhir = ! empty($attrs['expires_at']) ? \Carbon\Carbon::parse($attrs['expires_at']) : null;
+                $mulai = ! empty($attrs['starts_at']) ? Carbon::parse($attrs['starts_at']) : null;
+                $akhir = ! empty($attrs['expires_at']) ? Carbon::parse($attrs['expires_at']) : null;
             } catch (\Throwable $e) {
                 throw new \InvalidArgumentException('Tanggal periode tidak valid.');
             }
@@ -693,5 +743,4 @@ class SubscriptionService
             'message' => "Batas kamar paket {$planName} telah tercapai.",
         ];
     }
-
 }

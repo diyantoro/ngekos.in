@@ -119,7 +119,18 @@ class TagihanService
         $rincian = self::rincian($tagihan, $pada);
 
         if ($tagihan->penyewaan?->isPatungan() && $rincian['porsi'] !== null) {
-            $sudah = (float) $tagihan->pembayarans()->where('anak_kos_id', $userId)->where('status', 'diverifikasi')->sum('jumlah');
+            // Kalau relasi pembayarans sudah di-eager-load (dashboard anak kos
+            // memuat 200 tagihan sekaligus), jumlahkan dari koleksi yang sudah
+            // ada. Kalau belum, baru query seperti biasa.
+            $sudah = $tagihan->relationLoaded('pembayarans')
+                ? (float) $tagihan->pembayarans
+                    ->where('anak_kos_id', $userId)
+                    ->where('status', 'diverifikasi')
+                    ->sum('jumlah')
+                : (float) $tagihan->pembayarans()
+                    ->where('anak_kos_id', $userId)
+                    ->where('status', 'diverifikasi')
+                    ->sum('jumlah');
 
             return round(max(0, $rincian['porsi'] - $sudah), 2);
         }

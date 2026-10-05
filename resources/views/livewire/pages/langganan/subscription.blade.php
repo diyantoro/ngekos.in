@@ -31,13 +31,14 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $user = auth()->user();
-        $subscription = SubscriptionService::getSubscription($user);
+        $subscription = SubscriptionService::getSubscriptionAktif($user);
         $plan = SubscriptionService::getPlan($user);
         $isFree = ! SubscriptionService::isExempt($user) && $plan === 'free';
 
         return [
             'plan' => $plan,
             'subscription' => $subscription,
+            'terjadwal' => SubscriptionService::getSubscriptionTerjadwal($user),
 
             'roomUsed' => SubscriptionService::usage($user, 'room'),
             'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
@@ -61,6 +62,15 @@ new #[Layout('layouts.app')] class extends Component
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Langganan Saya</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Status paket dan penggunaan limit Anda.</p>
         </div>
+
+        @if ($terjadwal)
+            <div class="flex items-start justify-between gap-3 rounded-xl bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-4 py-3 text-sm text-sky-800 dark:text-sky-200">
+                <div class="flex items-center gap-2">
+                    <svg class="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Paket <strong>{{ strtoupper($terjadwal->plan) }}</strong> sudah dijadwalkan aktif mulai <strong>{{ $terjadwal->starts_at?->translatedFormat('d F Y') }}</strong>. Fitur premium terbuka otomatis pada tanggal tersebut.</span>
+                </div>
+            </div>
+        @endif
 
         @if ($permintaan)
             <div class="flex items-start justify-between gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">

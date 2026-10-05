@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-    #[Fillable(['nama', 'email', 'no_hp', 'avatar', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
+#[Fillable(['nama', 'email', 'no_hp', 'avatar', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -117,13 +117,50 @@ class User extends Authenticatable
         return $subscription && $subscription->isActive() ? $subscription : null;
     }
 
-    /**
-     * Jumlah pesan chat yang belum dibaca user ini
-     * (sebagai penyewa atau sebagai pemilik kos).
-     * Dicabang per role agar tanpa OR + subquery properti yang berat;
-     * role lain (admin/super_admin) tidak memakai chat sehingga langsung 0.
-     */
+    public function dashboardRoute(): string
+    {
+        $role = $this->relationLoaded('roles')
+            ? $this->roles->pluck('name')->first()
+            : $this->getRoleNames()->first();
+
+        return match ($role) {
+            'super_admin' => 'dashboard.super-admin',
+            'pemilik' => 'dashboard.pemilik',
+            'admin' => 'dashboard.admin',
+            default => 'dashboard.anak-kos',
+        };
+    }
+
+    protected static array $memoPesan = [];
+
+    protected static array $memoBantuan = [];
+
     public function pesanBelumDibaca(): int
+    {
+        if (! $this->hasAnyRole(['anak_kos', 'pemilik'])) {
+            return 0;
+        }
+
+        $id = $this->getKey();
+
+        if (array_key_exists($id, self::$memoPesan)) {
+            return self::$memoPesan[$id];
+        }
+
+        return self::$memoPesan[$id] = cache()->remember(
+            "chat.belum-dibaca.{$id}",
+            30,
+            fn () => $this->hitungPesanBelumDibaca()
+        );
+    }
+
+    public function forgetPesanBelumDibacaCache(): void
+    {
+        unset(self::$memoPesan[$this->getKey()]);
+        cache()->forget("chat.belum-dibaca.{$this->getKey()}");
+    }
+
+    private function hitungPesanBelumDibaca(): int
     {
         if ($this->hasRole('anak_kos')) {
             return ChatPesan::query()
@@ -133,21 +170,17 @@ class User extends Authenticatable
                 ->count();
         }
 
-        if ($this->hasRole('pemilik')) {
-            $ids = cache()->remember("pemilik.properti-ids.{$this->id}", 300, fn () => Properti::where('pemilik_id', $this->id)->pluck('id')->all());
+        $ids = Properti::where('pemilik_id', $this->id)->pluck('id')->all();
 
-            if ($ids === []) {
-                return 0;
-            }
-
-            return ChatPesan::query()
-                ->whereIn('properti_id', $ids)
-                ->where('pengirim_id', '!=', $this->id)
-                ->whereNull('dibaca_pada')
-                ->count();
+        if ($ids === []) {
+            return 0;
         }
 
-        return 0;
+        return ChatPesan::query()
+            ->whereIn('properti_id', $ids)
+            ->where('pengirim_id', '!=', $this->id)
+            ->whereNull('dibaca_pada')
+            ->count();
     }
 
     public function bantuanMasukBelumDibaca(): int
@@ -156,7 +189,13 @@ class User extends Authenticatable
             return 0;
         }
 
-        return cache()->remember('bantuan_masuk_count', 60, fn () => PesanBantuan::jumlahBaru());
+        $id = $this->getKey();
+
+        if (array_key_exists($id, self::$memoBantuan)) {
+            return self::$memoBantuan[$id];
+        }
+
+        return self::$memoBantuan[$id] = cache()->remember('bantuan_masuk_count', 60, fn () => PesanBantuan::jumlahBaru());
     }
 
     /**

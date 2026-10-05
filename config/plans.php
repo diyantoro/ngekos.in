@@ -31,6 +31,7 @@ return [
         'name' => 'Pro',
         'price' => 49000,
         'limits' => [
+            'properties' => 5,
             'rooms' => 5,
         ],
         'features' => [
@@ -57,6 +58,7 @@ return [
         'name' => 'Business',
         'price' => 99000,
         'limits' => [
+            'properties' => null,
             'rooms' => 10,
         ],
         // Hanya fitur yang benar-benar ada di aplikasi + otomatis

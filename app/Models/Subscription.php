@@ -4,12 +4,38 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Context;
 
 class Subscription extends Model
 {
+    /**
+     * Kunci cache request-scoped berisi seluruh baris Subscription milik
+     * satu user. Satu query ini menggantikan puluhan query `subscriptions`
+     * yang berulang di SubscriptionService pada satu render halaman.
+     */
+    public const MEMO_KEY = 'ngekos.subscription.langganan';
+
     protected $fillable = [
         'user_id', 'plan', 'status', 'is_trial', 'starts_at', 'expires_at',
     ];
+
+    protected static function booted(): void
+    {
+        // Setiap perubahan baris langsung membuang memo agar request berikutnya
+        // (dan test berikutnya) tidak membaca data basi.
+        static::saved(fn () => self::flushMemo());
+        static::deleted(fn () => self::flushMemo());
+    }
+
+    /**
+     * Buang seluruh memo langganan yang disimpan di scope request ini.
+     */
+    public static function flushMemo(): void
+    {
+        if (Context::has(self::MEMO_KEY)) {
+            Context::forget(self::MEMO_KEY);
+        }
+    }
 
     protected function casts(): array
     {

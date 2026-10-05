@@ -86,6 +86,8 @@
             </div>
         </div>
 
-        <livewire:chatbot />
+        @auth
+            <livewire:chatbot />
+        @endauth
     </body>
 </html>

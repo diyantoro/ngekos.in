@@ -13,7 +13,7 @@
     <div class="border-t border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <nav class="relative flex items-center justify-around h-16 px-2" role="navigation">
             
-            <a href="<?php echo e($berandaUrl); ?>" wire:navigate
+            <a href="<?php echo e($berandaUrl); ?>" wire:navigate.hover
                 aria-current="<?php echo e($isHome ? 'page' : 'false'); ?>"
                 class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e($isHome ? $itemAktif : $itemBiasa); ?>">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -26,7 +26,7 @@
             </a>
 
             
-            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
+            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate.hover
                 aria-current="<?php echo e(request()->routeIs('kos.*') ? 'page' : 'false'); ?>"
                 class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e(request()->routeIs('kos.*') ? $itemAktif : $itemBiasa); ?>">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -41,7 +41,7 @@
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->guard()->check()): ?>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasAnyRole(['anak_kos', 'pemilik'])): ?>
                 
-                <a href="<?php echo e(route('chat.index')); ?>" wire:navigate
+                <a href="<?php echo e(route('chat.index')); ?>" wire:navigate.hover
                     aria-current="<?php echo e(request()->routeIs('chat.*') ? 'page' : 'false'); ?>"
                     class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e(request()->routeIs('chat.*') ? $itemAktif : $itemBiasa); ?>">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -60,7 +60,7 @@
 
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasAnyRole(['super_admin', 'admin'])): ?>
                     
-                    <a href="<?php echo e(route('bantuan.masuk')); ?>" wire:navigate
+                    <a href="<?php echo e(route('bantuan.masuk')); ?>" wire:navigate.hover
                         aria-current="<?php echo e(request()->routeIs('bantuan.masuk') ? 'page' : 'false'); ?>"
                         class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e(request()->routeIs('bantuan.masuk') ? $itemAktif : $itemBiasa); ?>">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -92,13 +92,13 @@
                             x-transition:leave-start="opacity-100 translate-y-0"
                             x-transition:leave-end="opacity-0 translate-y-2"
                             class="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 rounded-xl bg-white dark:bg-gray-800 shadow-card-hover border border-stone-200 dark:border-gray-700 overflow-hidden z-50">
-                            <a href="<?php echo e(route('pemilik.properti')); ?>" wire:navigate @click="buka = false"
+                            <a href="<?php echo e(route('pemilik.properti')); ?>" wire:navigate.hover @click="buka = false"
                                 class="flex items-center gap-3 px-4 py-3 text-sm font-medium <?php echo e(request()->routeIs('pemilik.properti*') ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10' : 'text-slate-700 dark:text-gray-200'); ?> hover:bg-stone-100 dark:hover:bg-gray-700 transition">
                                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /></svg>
                                 <?php echo e(__('Kelola Kos')); ?>
 
                             </a>
-                            <a href="<?php echo e(route('pemilik.pengeluaran')); ?>" wire:navigate @click="buka = false"
+                            <a href="<?php echo e(route('pemilik.pengeluaran')); ?>" wire:navigate.hover @click="buka = false"
                                 class="flex items-center gap-3 px-4 py-3 text-sm font-medium <?php echo e(request()->routeIs('pemilik.pengeluaran') ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10' : 'text-slate-700 dark:text-gray-200'); ?> hover:bg-stone-100 dark:hover:bg-gray-700 transition">
                                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v1.5A2.25 2.25 0 006 21zm12-8.25v-6.5A2.25 2.25 0 0015.75 4H8.25A2.25 2.25 0 006 6.25v6.5m18 0h-18" /></svg>
                                 <?php echo e(__('Pengeluaran')); ?>
@@ -111,7 +111,7 @@
 
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('pemilik')): ?>
                     
-                    <a href="<?php echo e(route('pemilik.grafik')); ?>" wire:navigate
+                    <a href="<?php echo e(route('pemilik.grafik')); ?>" wire:navigate.hover
                         class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e(request()->routeIs('pemilik.grafik') ? $itemAktif : $itemBiasa); ?>">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -124,7 +124,7 @@
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 
-                <a href="<?php echo e(route('pengaturan')); ?>" wire:navigate
+                <a href="<?php echo e(route('pengaturan')); ?>" wire:navigate.hover
                     aria-current="<?php echo e(request()->routeIs('pengaturan') ? 'page' : 'false'); ?>"
                     class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition <?php echo e(request()->routeIs('pengaturan') ? $itemAktif : $itemBiasa); ?>">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
@@ -137,13 +137,13 @@
                 </a>
             <?php else: ?>
                 
-                <a href="<?php echo e(route('login')); ?>" wire:navigate
+                <a href="<?php echo e(route('login')); ?>" wire:navigate.hover
                     class="flex flex-col items-center justify-center gap-0.5 w-16 py-1 text-slate-400 dark:text-gray-500 transition">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
                     <span class="text-[10px] font-medium"><?php echo e(__('Masuk')); ?></span>
                 </a>
                 
-                <a href="<?php echo e(route('register')); ?>" wire:navigate
+                <a href="<?php echo e(route('register')); ?>" wire:navigate.hover
                     class="flex flex-col items-center justify-center gap-0.5 w-16 py-1 text-slate-400 dark:text-gray-500 transition">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" /></svg>
                     <span class="text-[10px] font-medium"><?php echo e(__('Daftar')); ?></span>

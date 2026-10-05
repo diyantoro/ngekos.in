@@ -128,8 +128,13 @@ new class extends Component
             ->take(5)
             ->all();
 
+        // Dipakai dua kali (kartu statistik + funnelStages); dihitung sekali
+        // supaya tidak menembak COUNT yang sama dua kali per render.
+        $totalUser = User::count();
+        $penyewaanAktif = Penyewaan::where('status', 'aktif')->count();
+
         return [
-            'totalUser' => User::count(),
+            'totalUser' => $totalUser,
             'totalPemilik' => User::role('pemilik')->count(),
             'totalAnakKos' => User::role('anak_kos')->count(),
             'totalAdmin' => User::role('admin')->count(),
@@ -142,7 +147,7 @@ new class extends Component
             'totalProperti' => Properti::count(),
             'totalKamar' => Kamar::count(),
             'kamarTerisi' => Kamar::where('status', 'terisi')->count(),
-            'penyewaanAktif' => Penyewaan::where('status', 'aktif')->count(),
+            'penyewaanAktif' => $penyewaanAktif,
             'pendapatan' => (int) Pembayaran::where('status', 'diverifikasi')->sum('jumlah'),
             'propertis' => $this->tab === 'properti' ? Properti::select(['id', 'nama', 'pemilik_id', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
@@ -164,8 +169,8 @@ new class extends Component
                 ->limit(15)
                 ->get() : collect(),
             'funnelStages' => [
-                ['label' => 'Kunjungan', 'sub' => 'pengguna terdaftar di platform', 'nilai' => User::count()],
-                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => Penyewaan::where('status', 'aktif')->count()],
+                ['label' => 'Kunjungan', 'sub' => 'pengguna terdaftar di platform', 'nilai' => $totalUser],
+                ['label' => 'Penyewa', 'sub' => 'penyewaan berstatus aktif', 'nilai' => $penyewaanAktif],
                 ['label' => 'Tagihan', 'sub' => 'total tagihan yang terbit', 'nilai' => Tagihan::count()],
                 ['label' => 'Lunas', 'sub' => 'tagihan berstatus lunas', 'nilai' => Tagihan::where('status', 'lunas')->count()],
             ],

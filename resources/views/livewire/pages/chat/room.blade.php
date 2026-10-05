@@ -39,6 +39,8 @@ new #[Layout('layouts.publik')] class extends Component
             ->whereNull('dibaca_pada')
             ->update(['dibaca_pada' => now()]);
 
+        auth()->user()->forgetPesanBelumDibacaCache();
+
         return [
             'pesans' => ChatPesan::antara($this->properti->id, $this->anakKos->id)->with('pengirim')->get(),
             'lawan' => auth()->user()->hasRole('anak_kos')

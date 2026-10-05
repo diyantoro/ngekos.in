@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\ChatPesan;
 use App\Models\Kamar;
 use App\Models\Pembayaran;
+use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
-use App\Models\PesanBantuan;
-use App\Models\Pengeluaran;
+use App\Services\KtpStorage;
 use App\Services\KwitansiService;
 use App\Services\PatunganService;
 use App\Services\PembayaranService;
@@ -37,7 +37,14 @@ class DashboardController extends Controller
 
         $kandidatBelum = Tagihan::whereHas('penyewaan', $scopeSewa)
             ->where('status', '!=', 'lunas')
-            ->with(['penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+            ->with([
+                'penyewaan.anggotas',
+                // TagihanService::dendaBerjalan() memanggil loadMissing
+                // 'penyewaan.properti' untuk setiap baris. Tanpa eager load ini
+                // setiap tagihan menembak 1 query SELECT propertis (sampai 200).
+                'penyewaan.properti:id,nama,denda_per_hari',
+                'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status',
+            ])
             ->orderBy('jatuh_tempo')
             ->limit(200)
             ->get()
@@ -376,7 +383,7 @@ class DashboardController extends Controller
         $userId = $user->id;
 
         // Filter grafik: periode (3/6/12/24) + properti tertentu + custom range.
-        $bulanCount = \App\Services\SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 6)));
+        $bulanCount = SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 6)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
 
         $totalProperti = Properti::where('pemilik_id', $userId)
@@ -615,7 +622,7 @@ class DashboardController extends Controller
     public function grafik(Request $request): JsonResponse
     {
         $user = $request->user();
-        $kunci = \App\Services\SubscriptionService::cekLaporan($user);
+        $kunci = SubscriptionService::cekLaporan($user);
 
         if (! $kunci['allowed']) {
             return response()->json([
@@ -625,7 +632,7 @@ class DashboardController extends Controller
         }
 
         $userId = $user->id;
-        $bulanCount = \App\Services\SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 12)));
+        $bulanCount = SubscriptionService::clampPeriode($user, max(1, (int) $request->input('periode', 12)));
         $propertiId = $request->input('properti_id') ? (int) $request->input('properti_id') : null;
 
         $scopeId = fn ($q) => $q->where('pemilik_id', $userId)
@@ -743,7 +750,7 @@ class DashboardController extends Controller
     public function rekapPremium(Request $request): JsonResponse
     {
         try {
-            $data = PemilikRekapService::data($request->user()->id, $request->query('bulan'), \App\Services\SubscriptionService::reportTier($request->user()));
+            $data = PemilikRekapService::data($request->user()->id, $request->query('bulan'), SubscriptionService::reportTier($request->user()));
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -810,12 +817,12 @@ class DashboardController extends Controller
             ? $sewaan->ktp_path
             : $sewaan->anggotas->firstWhere('user_id', $userId)?->ktp_path;
 
-        if (! $path || ! \App\Services\KtpStorage::ada($path)) {
+        if (! $path || ! KtpStorage::ada($path)) {
             return response()->json(['message' => 'File KTP belum tersedia.'], 404);
         }
 
         return response()->download(
-            \App\Services\KtpStorage::pathAbsolut($path),
+            KtpStorage::pathAbsolut($path),
             'ktp-sewaan-'.$sewaan->id.'-'.$userId.'.'.pathinfo($path, PATHINFO_EXTENSION)
         );
     }
@@ -851,12 +858,12 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
         }
 
-        $ktpPath = \App\Services\KtpStorage::simpan($request->file('ktp'));
+        $ktpPath = KtpStorage::simpan($request->file('ktp'));
 
         try {
             $anggota = PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
         } catch (\DomainException $e) {
-            \App\Services\KtpStorage::hapus($ktpPath);
+            KtpStorage::hapus($ktpPath);
 
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -928,10 +935,17 @@ class DashboardController extends Controller
 
     public function pemilikProperti(Request $request): JsonResponse
     {
+        // 'fotos' dan 'kamars.fotos' ikut di-eager-load karena formatProperti()
+        // membutuhkannya. Tanpa ini, loadMissing() di dalam map() menembak
+        // 2 query per properti (N+1).
         $propertis = Properti::withCount([
             'kamars as total_kamar',
             'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
-        ])->with(['kamars:id,nama,kapasitas,harga_sewa_bulanan,jenis_harga,status,foto,properti_id'])
+        ])->with([
+            'fotos',
+            'kamars:id,nama,kapasitas,harga_sewa_bulanan,jenis_harga,status,foto,properti_id',
+            'kamars.fotos',
+        ])
             ->where('pemilik_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -941,7 +955,7 @@ class DashboardController extends Controller
 
     public function rekap(Request $request): JsonResponse
     {
-        $kunci = \App\Services\SubscriptionService::cekLaporan($request->user());
+        $kunci = SubscriptionService::cekLaporan($request->user());
 
         if (! $kunci['allowed']) {
             return response()->json([
@@ -954,7 +968,7 @@ class DashboardController extends Controller
             $data = PemilikRekapService::data(
                 $request->user()->id,
                 $request->input('bulan'),
-                \App\Services\SubscriptionService::reportTier($request->user()),
+                SubscriptionService::reportTier($request->user()),
             );
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -1087,11 +1101,17 @@ class DashboardController extends Controller
         $transaksiJumlah = $this->growthMonthly(fn () => Pembayaran::where('status', 'diverifikasi'), $bulanCount, 'verified_at');
         $transaksiNilai = $this->sumMonthly(fn () => Pembayaran::where('status', 'diverifikasi'), $bulanCount, 'verified_at');
 
-        $pendapatanProperti = Pembayaran::where('status', 'diverifikasi')
-            ->with('tagihan.penyewaan')
-            ->get()
-            ->groupBy(fn ($p) => $p->tagihan?->penyewaan?->properti_id)
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+        // Dihitung di SQL, bukan get() seluruh tabel pembayarans lalu groupBy di
+        // PHP. Versi lama memuat tiap baris pembayaran + 2 relasinya hanya
+        // untuk menyusun peta properti_id => total, dan tumbuh linier
+        // mengikuti seluruh riwayat pembayaran platform.
+        $pendapatanProperti = DB::table('pembayarans')
+            ->join('tagihans', 'tagihans.id', '=', 'pembayarans.tagihan_id')
+            ->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
+            ->where('pembayarans.status', 'diverifikasi')
+            ->selectRaw('penyewaans.properti_id as properti_id, SUM(pembayarans.jumlah) as total')
+            ->groupBy('penyewaans.properti_id')
+            ->pluck('total', 'properti_id');
 
         $penyewaanPerProperti = Penyewaan::query()
             ->selectRaw('properti_id, count(*) as total')

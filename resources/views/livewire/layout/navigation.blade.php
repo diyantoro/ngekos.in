@@ -14,13 +14,17 @@ new class extends Component
 
     public function with(): array
     {
+        $user = auth()->user();
+        $user->loadMissing('roles');
+        $dashboardRoute = $user->dashboardRoute();
+
         $links = [];
 
         $links[] = [
             'label' => 'Dashboard',
-            'route' => 'dashboard',
+            'route' => $dashboardRoute,
             'active' => 'dashboard.*',
-            'routeName' => route('dashboard', absolute: false),
+            'routeName' => route($dashboardRoute, absolute: false),
             'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />',
             'group' => 'UTAMA',
         ];
@@ -33,8 +37,6 @@ new class extends Component
             'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />',
             'group' => 'UTAMA',
         ];
-
-        $user = auth()->user();
 
         if ($user->hasAnyRole(['anak_kos', 'pemilik'])) {
             $belumDibaca = $user->pesanBelumDibaca();
@@ -161,7 +163,7 @@ new class extends Component
             });
         }
 
-        return ['groups' => $groups, 'paket' => $paket];
+        return ['groups' => $groups, 'paket' => $paket, 'dashboardRoute' => $dashboardRoute, 'dashboardUrl' => route($dashboardRoute, absolute: false)];
     }
 }; ?>
 
@@ -172,7 +174,7 @@ new class extends Component
     <aside class="app-sidebar hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-64 lg:flex-col bg-brand-900 dark:bg-brand-950 text-slate-300">
         {{-- Brand --}}
         <div class="sidebar-head flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
-            <a href="{{ route('dashboard') }}" wire:navigate title="Dashboard" class="sidebar-brandlink flex min-w-0 items-center gap-2.5">
+            <a href="{{ $dashboardUrl }}" wire:navigate.hover title="Dashboard" class="sidebar-brandlink flex min-w-0 items-center gap-2.5">
                 <x-application-logo class="h-9 w-9 shrink-0" />
                 <x-brand-name class="sidebar-label text-lg font-bold tracking-tight text-white" :suffix-class="'text-amber-300'" />
             </a>
@@ -191,7 +193,7 @@ new class extends Component
                     <div class="space-y-1">
                         @foreach ($items as $link)
                             @php $aktif = request()->routeIs($link['active']); @endphp
-                            <a href="{{ $link['routeName'] }}" wire:navigate title="{{ $link['label'] }}"
+                            <a href="{{ $link['routeName'] }}" wire:navigate.hover title="{{ $link['label'] }}"
                                class="sidebar-linkrow group flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 {{ $aktif ? 'bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/10' : 'font-medium text-slate-300 hover:bg-white/5 hover:text-white' }}">
                                 <svg class="h-5 w-5 shrink-0 transition-colors duration-200 {{ $aktif ? 'text-amber-300' : 'text-slate-400 group-hover:text-amber-200' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $link['icon'] !!}</svg>
                                 <span class="sidebar-label flex-1 truncate">{{ $link['label'] }}</span>
