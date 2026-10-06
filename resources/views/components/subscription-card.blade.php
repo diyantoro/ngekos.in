@@ -9,6 +9,7 @@
     'sisaTrial' => null,
     'trialHabis' => null,
     'bisaKlaim' => null,
+    'sisaLangganan' => null,
 ])
 
 @php
@@ -24,7 +25,8 @@
 
     $user = auth()->user();
     if ($status === null && $user) {
-        $status = SubscriptionService::getSubscription($user)?->status;
+        $status = SubscriptionService::getSubscriptionAktif($user)?->status
+            ?? SubscriptionService::getSubscription($user)?->status;
     }
     if ($sisaTrial === null && $user) {
         $sisaTrial = SubscriptionService::sisaTrialHari($user);
@@ -143,7 +145,20 @@
             @if ($isExpired)
                 <p class="mt-2 max-w-md text-xs leading-relaxed text-amber-600 dark:text-amber-400">Langganan berakhir{{ $expiresAt ? ' pada '.$expiresAt : '' }}. Data tetap aman — upgrade untuk membuka kembali fitur premium.</p>
             @elseif ($expiresAt && ! $isFree)
-                <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">Aktif sampai {{ $expiresAt }}</p>
+                @php
+                    if ($sisaLangganan === null && isset($user) && $user) {
+                        try { $sisaLangganan = SubscriptionService::sisaLanggananHari($user); } catch (\Throwable $e) { $sisaLangganan = null; }
+                    }
+                @endphp
+                @if ($sisaLangganan !== null && $sisaLangganan <= 3)
+                    <p class="mt-2 max-w-md rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+                        <span class="font-bold">Paket berakhir {{ $sisaLangganan }} hari lagi ({{ $expiresAt }}).</span>
+                        Perpanjang sekarang agar fitur premium tidak terputus.
+                        <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold underline hover:no-underline">Perpanjang</a>
+                    </p>
+                @else
+                    <p class="mt-2 text-xs text-slate-400 dark:text-slate-500">Aktif sampai {{ $expiresAt }}{{ $sisaLangganan !== null ? ' · sisa '.$sisaLangganan.' hari' : '' }}</p>
+                @endif
             @endif
 
             {{-- usage ringkas + progress --}}

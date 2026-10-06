@@ -9,6 +9,7 @@ use App\Models\SubscriptionRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Context;
 
 class SubscriptionService
@@ -51,6 +52,38 @@ class SubscriptionService
     public static function getSubscription(User $user): ?Subscription
     {
         return self::langgananUser($user)->first();
+    }
+
+    /**
+     * Buang cache sidebar paket ("navigasi.paket.v2.{id}") + memo request.
+     * Wajib dipanggil setiap ada perubahan langganan agar UI tidak
+     * menampilkan FREE basi sampai 2 menit setelah upgrade.
+     */
+    public static function lupakanCachePaket(int $userId): void
+    {
+        Subscription::flushMemo();
+        Cache::forget("navigasi.paket.v2.{$userId}");
+    }
+
+    /**
+     * Akhiri semua trial Free yang masih aktif milik user.
+     * Dipakai setiap ada PRO/Business yang langsung aktif, agar
+     * getPlan() langsung berubah dari free -> pro/business.
+     */
+    public static function akhiriTrialAktif(int $userId): void
+    {
+        $trials = Subscription::where('user_id', $userId)
+            ->where('is_trial', true)
+            ->where('status', 'active')
+            ->get();
+
+        foreach ($trials as $trial) {
+            // Lewat save() agar event model + flushMemo jalan.
+            $trial->status = 'expired';
+            $trial->save();
+        }
+
+        self::lupakanCachePaket($userId);
     }
 
     /**
@@ -248,6 +281,25 @@ class SubscriptionService
     public static function history(User $user, int $limit = 20)
     {
         return Subscription::where('user_id', $user->id)->latest()->limit($limit)->get();
+    }
+
+    /**
+     * Sisa hari paket PRO/Business aktif (dibulatkan ke atas).
+     * Return null bila bukan premium aktif / tanpa tanggal berakhir.
+     */
+    public static function sisaLanggananHari(User $user): ?int
+    {
+        $aktif = self::getSubscriptionAktif($user);
+
+        if (! $aktif || ! in_array($aktif->plan, ['pro', 'business'], true)) {
+            return null;
+        }
+
+        if (! $aktif->expires_at) {
+            return null;
+        }
+
+        return max(0, (int) ceil(now()->floatDiffInDays($aktif->expires_at)));
     }
 
     public static function trialDays(): int
@@ -521,7 +573,7 @@ class SubscriptionService
             }
         }
 
-        return Subscription::create([
+        $sub = Subscription::create([
             'user_id' => $userId,
             'plan' => $attrs['plan'],
             'status' => $attrs['status'],
@@ -529,6 +581,21 @@ class SubscriptionService
             'starts_at' => $attrs['starts_at'] ?? null,
             'expires_at' => $attrs['expires_at'] ?? null,
         ]);
+
+        self::lupakanCachePaket($userId);
+
+        // Upgrade ke PRO/Business yang langsung aktif harus langsung
+        // menggantikan trial Free: akhiri trial agar getPlan() tidak
+        // lagi tertahan di 'free'. Yang terjadwal (mulai di masa depan)
+        // sengaja tidak menyentuh trial sampai tanggal mulai tiba.
+        if (in_array($attrs['plan'] ?? null, ['pro', 'business'], true)
+            && ($attrs['status'] ?? null) === 'active'
+            && $sub->isActive()
+        ) {
+            self::akhiriTrialAktif($userId);
+        }
+
+        return $sub->refresh();
     }
 
     /**
@@ -547,7 +614,9 @@ class SubscriptionService
             'expires_at' => $basis->copy()->addDays($hari),
         ]);
 
-        return $subscription;
+        self::lupakanCachePaket((int) $subscription->user_id);
+
+        return $subscription->refresh();
     }
 
     /**
@@ -556,8 +625,9 @@ class SubscriptionService
     public static function akhiri(Subscription $subscription): Subscription
     {
         $subscription->update(['status' => 'expired']);
+        self::lupakanCachePaket((int) $subscription->user_id);
 
-        return $subscription;
+        return $subscription->refresh();
     }
 
     /**
@@ -578,15 +648,22 @@ class SubscriptionService
             throw new \InvalidArgumentException('Masih ada permintaan upgrade yang menunggu persetujuan admin.');
         }
 
+        $buktiPath = $data['bukti_path'] ?? null;
+        $metode = $data['payment_method'] ?? 'qris';
+
+        // Nominal selalu dikunci dari config agar revenue sinkron.
+        // Pemberian manual admin maupun QRIS memakai harga paket yang sama.
+        $nominal = (int) config("plans.{$plan}.price", 0);
+
         return SubscriptionRequest::create([
             'user_id' => $user->id,
             'requested_plan' => $plan,
             'status' => 'pending',
             'keterangan' => $keterangan,
-            'amount' => $data['amount'] ?? null,
-            'payment_method' => $data['payment_method'] ?? 'qris',
-            'bukti_path' => $data['bukti_path'] ?? null,
-            'paid_at' => $data['paid_at'] ?? null,
+            'amount' => $nominal,
+            'payment_method' => $metode,
+            'bukti_path' => $buktiPath,
+            'paid_at' => $buktiPath ? now() : ($data['paid_at'] ?? null),
         ]);
     }
 
@@ -607,12 +684,10 @@ class SubscriptionService
             'expires_at' => now()->addDays($hari),
         ]);
 
-        // Upgrade ke PRO/Business mengakhiri masa trial: tandai trial aktif lama sebagai expired
-        // agar trialAktif() null dan trialExpired() true.
-        Subscription::where('user_id', $request->user_id)
-            ->where('is_trial', true)
-            ->where('status', 'active')
-            ->update(['status' => 'expired']);
+        // store() di atas sudah mengakhiri trial bila PRO langsung aktif.
+        // Panggil lagi sebagai jaring pengaman (idempoten) + pastikan
+        // cache sidebar tidak basi.
+        self::akhiriTrialAktif((int) $request->user_id);
 
         $request->update([
             'status' => 'approved',
@@ -659,6 +734,7 @@ class SubscriptionService
 
         if ($subscription->status === 'active') {
             $subscription->update(['status' => 'expired']);
+            self::lupakanCachePaket((int) $subscription->user_id);
         }
 
         $user = User::find($subscription->user_id);

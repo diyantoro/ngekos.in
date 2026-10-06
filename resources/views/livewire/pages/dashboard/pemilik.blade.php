@@ -160,11 +160,12 @@ new class extends Component
                     'propertyLimit' => SubscriptionService::limitFor($plan, 'property'),
                     'roomUsed' => SubscriptionService::usage($user, 'room'),
                     'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
-                    'expiresAt' => SubscriptionService::getSubscription($user)?->expires_at?->translatedFormat('d F Y'),
-                    'status' => SubscriptionService::getSubscription($user)?->status,
+                    'expiresAt' => (SubscriptionService::getSubscriptionAktif($user) ?? SubscriptionService::getSubscription($user))?->expires_at?->translatedFormat('d F Y'),
+                    'status' => (SubscriptionService::getSubscriptionAktif($user) ?? SubscriptionService::getSubscription($user))?->status,
                     'sisaTrial' => SubscriptionService::sisaTrialHari($user),
                     'trialHabis' => SubscriptionService::trialExpired($user),
                     'bisaKlaim' => SubscriptionService::bisaKlaimTrial($user),
+                    'sisaLangganan' => SubscriptionService::sisaLanggananHari($user),
                 ];
             })(),
             'daftarProperti' => Properti::where('pemilik_id', $id)->orderBy('nama')->get(['id', 'nama']),
@@ -293,6 +294,7 @@ new class extends Component
             :sisaTrial="$langganan['sisaTrial'] ?? null"
             :trialHabis="$langganan['trialHabis'] ?? null"
             :bisaKlaim="$langganan['bisaKlaim'] ?? false"
+            :sisaLangganan="$langganan['sisaLangganan'] ?? null"
         />
 
         <x-promo-premium />

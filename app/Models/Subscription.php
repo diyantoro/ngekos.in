@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Context;
 
 class Subscription extends Model
@@ -21,10 +22,16 @@ class Subscription extends Model
 
     protected static function booted(): void
     {
-        // Setiap perubahan baris langsung membuang memo agar request berikutnya
-        // (dan test berikutnya) tidak membaca data basi.
-        static::saved(fn () => self::flushMemo());
-        static::deleted(fn () => self::flushMemo());
+        // Setiap perubahan baris langsung membuang memo + cache sidebar
+        // agar UI tidak menampilkan FREE basi setelah upgrade ke PRO.
+        static::saved(function (Subscription $s) {
+            self::flushMemo();
+            Cache::forget("navigasi.paket.v2.{$s->user_id}");
+        });
+        static::deleted(function (Subscription $s) {
+            self::flushMemo();
+            Cache::forget("navigasi.paket.v2.{$s->user_id}");
+        });
     }
 
     /**

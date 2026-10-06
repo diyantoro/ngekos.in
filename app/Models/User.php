@@ -52,6 +52,7 @@ class User extends Authenticatable
             'bantuan_balasan' => 'Notifikasi push saat admin membalas pesan bantuan',
             'bantuan_baru' => 'Push saat ada pesan bantuan baru (admin)',
             'langganan_baru' => 'Push saat ada pembayaran langganan baru (admin)',
+            'langganan_hampir_berakhir' => 'Pengingat H-3 paket langganan akan berakhir',
         ];
     }
 
@@ -110,11 +111,14 @@ class User extends Authenticatable
 
     public function activeSubscription(): ?Subscription
     {
-        $subscription = $this->relationLoaded('subscriptions')
-            ? $this->subscriptions->sortByDesc('id')->first()
-            : $this->subscriptions()->latest('id')->first();
+        // Jangan hanya cek baris terbaru: pemilik bisa punya trial Free
+        // aktif + PRO terjadwal / sebaliknya. Cari yang benar-benar
+        // aktif, dahulukan id terbaru.
+        $list = $this->relationLoaded('subscriptions')
+            ? $this->subscriptions->sortByDesc('id')
+            : $this->subscriptions()->latest('id')->get();
 
-        return $subscription && $subscription->isActive() ? $subscription : null;
+        return $list->first(fn (Subscription $s) => $s->isActive());
     }
 
     public function dashboardRoute(): string

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Models\SubscriptionRequest;
 use App\Services\SubscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SubscriptionController extends Controller
 {
@@ -19,7 +21,8 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
         $plan = SubscriptionService::getPlan($user);
-        $subscription = SubscriptionService::getSubscription($user);
+        $subscription = SubscriptionService::getSubscriptionAktif($user)
+            ?? SubscriptionService::getSubscription($user);
 
         return response()->json([
             'plan' => $plan,
@@ -77,12 +80,29 @@ class SubscriptionController extends Controller
             'expires_at' => ['required_if:status,active', 'nullable', 'date', 'after:starts_at'],
         ]);
 
-        $subscription = SubscriptionService::store((int) $validated['user_id'], [
-            'plan' => $validated['plan'],
-            'status' => $validated['status'],
-            'starts_at' => $validated['starts_at'] ?? null,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ]);
+        $subscription = DB::transaction(function () use ($validated) {
+            $sub = SubscriptionService::store((int) $validated['user_id'], [
+                'plan' => $validated['plan'],
+                'status' => $validated['status'],
+                'starts_at' => $validated['starts_at'] ?? null,
+                'expires_at' => $validated['expires_at'] ?? null,
+            ]);
+
+            if (in_array($validated['plan'], ['pro', 'business'], true) && $validated['status'] === 'active') {
+                SubscriptionRequest::create([
+                    'user_id' => (int) $validated['user_id'],
+                    'requested_plan' => $validated['plan'],
+                    'status' => 'approved',
+                    'keterangan' => 'Aktivasi manual oleh admin (API).',
+                    'amount' => (int) config("plans.{$validated['plan']}.price", 0),
+                    'payment_method' => 'manual',
+                    'paid_at' => now(),
+                    'approved_at' => now(),
+                ]);
+            }
+
+            return $sub;
+        });
 
         return response()->json([
             'message' => 'Langganan berhasil disimpan.',

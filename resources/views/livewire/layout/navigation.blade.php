@@ -153,7 +153,8 @@ new class extends Component
                 if (! in_array($plan, ['free', 'pro', 'business'], true)) {
                     $plan = 'free';
                 }
-                $langganan = SubscriptionService::getSubscription($user);
+                $langganan = SubscriptionService::getSubscriptionAktif($user)
+                    ?? SubscriptionService::getSubscription($user);
 
                 return [
                     'plan' => $plan,
