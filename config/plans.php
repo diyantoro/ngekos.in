@@ -3,10 +3,13 @@
 return [
     'trial_days' => 7,
 
+    // Aturan produk: 1 akun pemilik = maksimal 1 kos di semua paket.
+    // Yang membedakan paket hanya limit kamar (1/5/10).
     'free' => [
         'name' => 'Free',
         'price' => 0,
         'limits' => [
+            'properties' => 1,
             'rooms' => 1,
         ],
         'features' => [
@@ -31,7 +34,7 @@ return [
         'name' => 'Pro',
         'price' => 49000,
         'limits' => [
-            'properties' => 5,
+            'properties' => 1,
             'rooms' => 5,
         ],
         'features' => [
@@ -58,7 +61,7 @@ return [
         'name' => 'Business',
         'price' => 99000,
         'limits' => [
-            'properties' => null,
+            'properties' => 1,
             'rooms' => 10,
         ],
         // Hanya fitur yang benar-benar ada di aplikasi + otomatis

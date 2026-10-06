@@ -152,14 +152,9 @@ class SubscriptionService
             default => $resource,
         };
 
-        $limit = config("plans.{$plan}.limits.{$key}");
-
-        // Fallback ke rooms jika belum diset terpisah (biar backward compat)
-        if ($limit === null && $key === 'properties') {
-            $limit = config("plans.{$plan}.limits.rooms");
-        }
-
-        return $limit;
+        // Limit kos eksplisit per paket (1 untuk semua paket).
+        // Tidak ada fallback ke rooms agar aturan 1-kos jelas.
+        return config("plans.{$plan}.limits.{$key}");
     }
 
     public static function usage(User $user, string $resource): int
@@ -805,6 +800,21 @@ class SubscriptionService
 
         if ($used < $limit) {
             return ['allowed' => true, 'used' => $used, 'limit' => $limit, 'plan' => $plan, 'required_plan' => null, 'message' => null];
+        }
+
+        // Aturan produk: 1 akun = maksimal 1 kos di semua paket.
+        // Upgrade tidak menambah kuota kos, jadi tanpa required_plan.
+        $isProperty = in_array($resource, ['property', 'properties', 'properti'], true);
+
+        if ($isProperty) {
+            return [
+                'allowed' => false,
+                'used' => $used,
+                'limit' => $limit,
+                'plan' => $plan,
+                'required_plan' => null,
+                'message' => 'Maksimal 1 kos per akun telah tercapai. Tambah kamar di kos Anda yang sudah ada.',
+            ];
         }
 
         $required = $plan === 'free' ? 'pro' : 'business';

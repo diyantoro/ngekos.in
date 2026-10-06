@@ -18,9 +18,22 @@
         .ttd { margin-top: 26px; width: 100%; }
         .ttd td { text-align: center; font-size: 11px; }
         .footer { margin-top: 16px; text-align: center; font-size: 10px; color: #9ca3af; }
+        .watermark {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            opacity: 0.18;
+            transform: rotate(-18deg);
+        }
+        .watermark img { width: 300px; }
     </style>
 </head>
 <body>
+    @if (! empty($logoWatermark ?? null))
+        <div class="watermark"><img src="{{ $logoWatermark }}" alt=""></div>
+    @endif
     <div class="box">
         <div class="header">
             <h1>KWITANSI PEMBAYARAN KOS</h1>

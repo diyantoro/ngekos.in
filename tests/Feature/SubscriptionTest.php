@@ -109,7 +109,7 @@ class SubscriptionTest extends TestCase
         $this->assertTrue(SubscriptionService::hasFeature($pro, 'basic_property'));
     }
 
-    public function test_free_max_1_property(): void
+    public function test_free_max_1_kos_tanpa_arahan_upgrade(): void
     {
         $user = $this->pemilik();
         SubscriptionService::mulaiTrialFree($user);
@@ -118,7 +118,9 @@ class SubscriptionTest extends TestCase
         $cek = SubscriptionService::checkLimit($user, 'property');
 
         $this->assertFalse($cek['allowed']);
-        $this->assertSame('pro', $cek['required_plan']);
+        // Upgrade tidak menambah kuota kos, jadi tanpa required_plan.
+        $this->assertNull($cek['required_plan']);
+        $this->assertStringContainsString('1 kos', $cek['message']);
     }
 
     public function test_free_max_10_room(): void
@@ -181,26 +183,22 @@ class SubscriptionTest extends TestCase
         $this->assertStringNotContainsString('Tersedia di paket PRO', $laporan);
     }
 
-    public function test_pro_max_5_property_dan_100_room(): void
+    public function test_pro_max_1_kos_dan_5_kamar(): void
     {
         $user = $this->pemilik();
         $this->langganan($user, 'pro', 'active', now()->addMonth()->toDateTimeString());
 
-        $this->assertSame(5, SubscriptionService::limitFor('pro', 'property'));
-        $this->assertSame(100, SubscriptionService::limitFor('pro', 'room'));
+        $this->assertSame(1, SubscriptionService::limitFor('pro', 'property'));
+        $this->assertSame(5, SubscriptionService::limitFor('pro', 'room'));
+
+        $this->assertTrue(SubscriptionService::checkLimit($user, 'property')['allowed']);
 
         $properti = $this->buatProperti($user);
-        $cekAwal = SubscriptionService::checkLimit($user, 'property');
-        $this->assertTrue($cekAwal['allowed']);
-
-        for ($i = 2; $i <= 5; $i++) {
-            $this->buatProperti($user, 'Kos '.$i);
-        }
 
         $cekPenuh = SubscriptionService::checkLimit($user, 'property');
         $this->assertFalse($cekPenuh['allowed']);
-        $this->assertSame('business', $cekPenuh['required_plan']);
-        $this->assertSame(5, $properti->fresh() ? SubscriptionService::usage($user, 'property') : 0);
+        $this->assertNull($cekPenuh['required_plan']);
+        $this->assertSame(1, $properti->fresh() ? SubscriptionService::usage($user, 'property') : 0);
     }
 
     public function test_expired_kembali_ke_free_tanpa_hapus_data(): void
@@ -229,6 +227,7 @@ class SubscriptionTest extends TestCase
     public function test_api_tolak_property_kedua_dengan_403(): void
     {
         $user = $this->pemilik();
+        SubscriptionService::mulaiTrialFree($user);
         $token = $user->createToken('test')->plainTextToken;
         $this->buatProperti($user);
 
@@ -236,8 +235,40 @@ class SubscriptionTest extends TestCase
             ->postJson('/api/pemilik/properti', ['nama' => 'Kos Kedua', 'status' => 'aktif']);
 
         $response->assertStatus(403);
-        $response->assertJsonPath('required_plan', 'pro');
+        $response->assertJsonPath('required_plan', null);
         $this->assertDatabaseMissing('propertis', ['nama' => 'Kos Kedua']);
+    }
+
+    public function test_form_tolak_kos_kedua_dan_admin_tidak_bisa_bypass(): void
+    {
+        $user = $this->pemilik();
+        SubscriptionService::mulaiTrialFree($user);
+        $this->buatProperti($user, 'Kos Pertama');
+
+        // Pemilik: kos kedua ditolak via form.
+        Volt::actingAs($user)->test('pages.pemilik.properti-form')
+            ->set('nama', 'Kos Kedua')
+            ->set('status', 'aktif')
+            ->call('simpan')
+            ->assertHasErrors(['nama']);
+
+        $this->assertDatabaseMissing('propertis', ['pemilik_id' => $user->id, 'nama' => 'Kos Kedua']);
+
+        // Admin membuatkan untuk pemilik yang sudah punya 1 kos: tetap ditolak.
+        $admin = User::factory()->create(['email' => 'adminbypass@test.id']);
+        $admin->assignRole('admin');
+
+        Volt::actingAs($admin->refresh())->test('pages.pemilik.properti-form')
+            ->set('pemilikId', $user->id)
+            ->set('nama', 'Kos Titipan Admin')
+            ->set('status', 'aktif')
+            ->call('simpan')
+            ->assertHasErrors(['nama']);
+
+        $this->assertDatabaseMissing('propertis', ['pemilik_id' => $user->id, 'nama' => 'Kos Titipan Admin']);
+
+        // Kamar masih boleh ditambah (hanya kos yang dikunci).
+        $this->assertTrue(SubscriptionService::checkLimit($user, 'room')['allowed']);
     }
 
     public function test_api_tolak_kamar_melebihi_limit_dengan_403(): void
@@ -285,15 +316,21 @@ class SubscriptionTest extends TestCase
         $this->assertTrue(SubscriptionService::checkLimit($admin, 'property')['allowed']);
     }
 
-    public function test_business_unlimited(): void
+    public function test_business_max_1_kos_dan_10_kamar(): void
     {
         $user = $this->pemilik(['email' => 'biz@test.id']);
         $this->langganan($user, 'business', 'active', now()->addMonth()->toDateTimeString());
 
-        $this->assertNull(SubscriptionService::limitFor('business', 'property'));
-        $this->assertNull(SubscriptionService::limitFor('business', 'room'));
+        $this->assertSame(1, SubscriptionService::limitFor('business', 'property'));
+        $this->assertSame(10, SubscriptionService::limitFor('business', 'room'));
         $this->assertTrue(SubscriptionService::checkLimit($user, 'property')['allowed']);
         $this->assertTrue(SubscriptionService::checkLimit($user, 'room')['allowed']);
+
+        $this->buatProperti($user);
+
+        $cek = SubscriptionService::checkLimit($user, 'property');
+        $this->assertFalse($cek['allowed']);
+        $this->assertNull($cek['required_plan']);
     }
 
     public function test_feature_required_plan_dan_feature_check(): void

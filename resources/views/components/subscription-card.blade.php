@@ -1,7 +1,5 @@
 @props([
     'plan' => 'free',
-    'propertyUsed' => 0,
-    'propertyLimit' => null,
     'roomUsed' => 0,
     'roomLimit' => null,
     'expiresAt' => null,
@@ -87,7 +85,6 @@
     $ctaPrimerLabel = $isFree ? 'Upgrade ke Pro' : 'Kelola Paket';
     $ctaPrimerRoute = $isFree ? route('langganan.plans') : route('langganan.subscription');
 
-    $propText = $propertyLimit === null ? $propertyUsed.' / Unlimited' : $propertyUsed.' / '.$propertyLimit;
     $roomText = $roomLimit === null ? $roomUsed.' / Unlimited' : $roomUsed.' / '.$roomLimit;
 
     $topBar = match ($plan) {
@@ -95,7 +92,6 @@
         'business' => 'from-amber-300 via-amber-400 to-orange-400',
         default => 'from-slate-300 via-slate-400 to-slate-500',
     };
-    $propPct = $propertyLimit ? min(100, (int) round($propertyUsed / max(1, $propertyLimit) * 100)) : 0;
     $roomPct = $roomLimit ? min(100, (int) round($roomUsed / max(1, $roomLimit) * 100)) : 0;
 @endphp
 
@@ -161,29 +157,8 @@
                 @endif
             @endif
 
-            {{-- usage ringkas + progress --}}
-            <div class="mt-5 grid grid-cols-2 gap-3">
-                <div class="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-3">
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/25">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" /></svg>
-                        </span>
-                        <span>
-                            <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Properti</span>
-                            <span class="block text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{{ $propText }}</span>
-                        </span>
-                    </div>
-                    @if ($propertyLimit !== null)
-                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all" style="width: {{ $propPct }}%"></div>
-                        </div>
-                    @else
-                        <p class="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            Tanpa batas
-                        </p>
-                    @endif
-                </div>
+            {{-- usage ringkas + progress (hanya kamar) --}}
+            <div class="mt-5 grid grid-cols-1 gap-3">
                 <div class="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-3">
                     <div class="flex items-center gap-2">
                         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25">

@@ -33,9 +33,10 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'kelolaSemua' => $this->bolehKelolaSemua(),
             'bolehTambah' => $cek['allowed'],
+            'butuhUpgrade' => $cek['allowed'] ? null : ($cek['required_plan'] ?? null),
             'kunciTambah' => $cek['allowed']
                 ? null
-                : $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.',
+                : ($cek['message'].(! empty($cek['required_plan']) ? ' Tingkatkan ke paket '.strtoupper($cek['required_plan']).'.' : '')),
             'propertis' => Properti::query()
                 ->when(! $this->bolehKelolaSemua(), fn ($q) => $q->where('pemilik_id', auth()->user()->id))
                 ->with('fotos')
@@ -120,19 +121,25 @@ new #[Layout('layouts.app')] class extends Component
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Tambah Kos Baru
                 </a>
-            @else
+            @elseif ($butuhUpgrade ?? null)
                 <a href="{{ route('langganan.plans') }}" wire:navigate
                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                     Upgrade untuk Tambah Kos
                 </a>
+            @else
+                <span class="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                    Maksimal 1 kos per akun
+                </span>
             @endif
         </div>
 
         @if (! ($bolehTambah ?? true))
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
                 {{ $kunciTambah }}
-                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                @if ($butuhUpgrade ?? null)
+                    <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                @endif
             </div>
         @endif
 
@@ -206,7 +213,7 @@ new #[Layout('layouts.app')] class extends Component
                        class="mt-5 inline-flex items-center rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
                         Tambah Kos Baru
                     </a>
-                @else
+                @elseif ($butuhUpgrade ?? null)
                     <a href="{{ route('langganan.plans') }}" wire:navigate
                        class="mt-5 inline-flex items-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:brightness-105 transition">
                         Upgrade untuk Tambah Kos

@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class KwitansiService
 {
-    public static function untuk(Pembayaran $pembayaran): Pembayaran
+    /**
+     * @param bool $paksa Regenerasi ulang walau file sudah ada (mis. template berubah).
+     */
+    public static function untuk(Pembayaran $pembayaran, bool $paksa = false): Pembayaran
     {
         $pembayaran->loadMissing([
             'tagihan.penyewaan.kamar',
@@ -25,7 +28,7 @@ class KwitansiService
             return $pembayaran;
         }
 
-        if ($pembayaran->file_kwitansi && Storage::disk('public')->exists($pembayaran->file_kwitansi)) {
+        if (! $paksa && $pembayaran->file_kwitansi && Storage::disk('public')->exists($pembayaran->file_kwitansi)) {
             return $pembayaran;
         }
 
@@ -36,6 +39,30 @@ class KwitansiService
         $tagihan = $pembayaran->tagihan;
         $penyewaan = $tagihan?->penyewaan;
 
+        // Ikon rumah Ngekos.in (PNG transparan) di-embed base64 agar
+        // DomPDF bisa merendernya sebagai watermark tanpa akses remote.
+        // PNG dipakai (bukan SVG) karena render SVG DomPDF memecah
+        // garis ikon menjadi bercak.
+        $logoWatermark = null;
+        try {
+            $logoPath = public_path('images/watermark.png');
+
+            if (! is_file($logoPath)) {
+                $logoPath = public_path('images/watermark.svg');
+            }
+
+            if (! is_file($logoPath)) {
+                $logoPath = public_path('favicon.svg');
+            }
+
+            if (is_file($logoPath)) {
+                $mime = str_ends_with($logoPath, '.png') ? 'image/png' : 'image/svg+xml';
+                $logoWatermark = 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($logoPath));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         $pdf = Pdf::loadView('exports.kwitansi', [
             'pembayaran' => $pembayaran,
             'tagihan' => $tagihan,
@@ -44,6 +71,7 @@ class KwitansiService
             'properti' => $penyewaan?->properti,
             'kamar' => $penyewaan?->kamar,
             'verifikator' => $pembayaran->verifikator,
+            'logoWatermark' => $logoWatermark,
         ])->setPaper('a5', 'landscape');
 
         $path = 'kwitansi/'.str_replace('/', '-', $pembayaran->nomor_kwitansi).'.pdf';

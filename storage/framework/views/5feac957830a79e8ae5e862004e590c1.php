@@ -55,7 +55,9 @@ use Livewire\WithFileUploads;
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
                 <?php echo e($kunciTambah); ?>
 
-                <a href="<?php echo e(route('langganan.plans')); ?>" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($butuhUpgrade ?? null): ?>
+                    <a href="<?php echo e(route('langganan.plans')); ?>" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 

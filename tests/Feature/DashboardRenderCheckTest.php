@@ -169,6 +169,21 @@ class DashboardRenderCheckTest extends TestCase
         $this->assertStringContainsString('telah saya verifikasi', $chat->isi);
     }
 
+    public function test_pemilik_melihat_bukti_transfer_sebelum_verifikasi(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $pemilik->id))
+            ->firstOrFail();
+        $pembayaran->update(['bukti' => 'bukti-pembayaran/bukti-test.jpg']);
+
+        $this->actingAs($pemilik)
+            ->get(route('dashboard.pemilik'))
+            ->assertOk()
+            ->assertSee('Lihat Bukti')
+            ->assertSee('bukti-pembayaran/bukti-test.jpg', false);
+    }
+
     public function test_pemilik_dashboard_menampilkan_ringkas_tanpa_grafik(): void
     {
         $user = User::where('email', 'pemilik1@ngekos.test')->first();

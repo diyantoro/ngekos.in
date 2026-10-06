@@ -59,35 +59,16 @@ use Livewire\Volt\Component;
 <?php endif; ?>
         </div>
 
-        <div class="card px-4 py-3 sm:px-5 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 border-l-4 !border-l-brand-700">
-            <span class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /></svg>
-            </span>
-            <div class="min-w-0">
-                <label for="propertiId" class="block text-sm font-bold text-slate-900 dark:text-gray-100">Fokus ke satu properti?</label>
-                <p class="text-xs text-slate-500 dark:text-gray-400">Pilih kos untuk melihat ringkasan khususnya.</p>
-            </div>
-            <select id="propertiId" wire:model.live="propertiId" class="rounded-xl border-stone-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-brand-500 focus:border-brand-500 sm:max-w-xs sm:ms-auto">
-                <option value="">Semua Properti</option>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarProperti; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <option value="<?php echo e($item->id); ?>"><?php echo e($item->nama); ?></option>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-            </select>
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($propertiId): ?>
-                <button wire:click="$set('propertiId', null)" class="text-xs font-semibold text-brand-700 dark:text-brand-300 hover:underline self-start sm:self-center">Tampilkan semua</button>
-            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-        </div>
-
         <?php if (isset($component)) { $__componentOriginal8f70eb3b66f5f76832e54d270b05734b = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal8f70eb3b66f5f76832e54d270b05734b = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.subscription-card','data' => ['plan' => $langganan['plan'],'propertyUsed' => $langganan['propertyUsed'],'propertyLimit' => $langganan['propertyLimit'],'roomUsed' => $langganan['roomUsed'],'roomLimit' => $langganan['roomLimit'],'expiresAt' => $langganan['expiresAt'],'status' => $langganan['status'] ?? null,'sisaTrial' => $langganan['sisaTrial'] ?? null,'trialHabis' => $langganan['trialHabis'] ?? null,'bisaKlaim' => $langganan['bisaKlaim'] ?? false]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.subscription-card','data' => ['plan' => $langganan['plan'],'roomUsed' => $langganan['roomUsed'],'roomLimit' => $langganan['roomLimit'],'expiresAt' => $langganan['expiresAt'],'status' => $langganan['status'] ?? null,'sisaTrial' => $langganan['sisaTrial'] ?? null,'trialHabis' => $langganan['trialHabis'] ?? null,'bisaKlaim' => $langganan['bisaKlaim'] ?? false,'sisaLangganan' => $langganan['sisaLangganan'] ?? null]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('subscription-card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['plan' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['plan']),'propertyUsed' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['propertyUsed']),'propertyLimit' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['propertyLimit']),'roomUsed' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['roomUsed']),'roomLimit' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['roomLimit']),'expiresAt' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['expiresAt']),'status' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['status'] ?? null),'sisaTrial' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['sisaTrial'] ?? null),'trialHabis' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['trialHabis'] ?? null),'bisaKlaim' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['bisaKlaim'] ?? false)]); ?>
+<?php $component->withAttributes(['plan' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['plan']),'roomUsed' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['roomUsed']),'roomLimit' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['roomLimit']),'expiresAt' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['expiresAt']),'status' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['status'] ?? null),'sisaTrial' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['sisaTrial'] ?? null),'trialHabis' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['trialHabis'] ?? null),'bisaKlaim' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['bisaKlaim'] ?? false),'sisaLangganan' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($langganan['sisaLangganan'] ?? null)]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal8f70eb3b66f5f76832e54d270b05734b)): ?>
@@ -425,10 +406,19 @@ use Livewire\Volt\Component;
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate"><?php echo e($pembayaran->anakKos?->nama ?? 'Penyewa'); ?> · <?php echo e($pembayaran->tagihan->penyewaan->kamar?->nama); ?></p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?php echo e($pembayaran->tagihan->penyewaan->properti?->nama); ?> · <?php echo e($pembayaran->tagihan->periode); ?> · <?php echo e($pembayaran->labelMetode()); ?></p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pembayaran->bukti): ?>
+                                    <a href="<?php echo e(Storage::url($pembayaran->bukti)); ?>" target="_blank" rel="noopener"
+                                        class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 hover:underline dark:text-teal-400 dark:hover:text-teal-300">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        Lihat Bukti
+                                    </a>
+                                <?php else: ?>
+                                    <p class="mt-1 text-xs italic text-gray-400 dark:text-gray-500">Tunai · tanpa bukti, pastikan uang sudah diterima</p>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                             <div class="text-end shrink-0">
                                 <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp<?php echo e(number_format($pembayaran->jumlah, 0, ',', '.')); ?></p>
-                                <button wire:click="verifikasiPembayaran(<?php echo e($pembayaran->id); ?>)" wire:confirm="Verifikasi pembayaran ini?"
+                                <button wire:click="verifikasiPembayaran(<?php echo e($pembayaran->id); ?>)" wire:confirm="Sudah periksa bukti transfernya? Verifikasi pembayaran ini?"
                                     class="mt-1 inline-flex items-center gap-1 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 transition">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                     Verifikasi

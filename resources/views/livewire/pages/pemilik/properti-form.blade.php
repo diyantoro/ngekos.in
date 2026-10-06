@@ -107,13 +107,15 @@ new #[Layout('layouts.app')] class extends Component
     {
         $tambahDikunci = false;
         $kunciTambah = null;
+        $butuhUpgrade = null;
 
         if (! $this->properti && ! $this->bolehKelolaSemua()) {
             $cek = SubscriptionService::checkLimit(auth()->user(), 'property');
 
             if (! $cek['allowed']) {
                 $tambahDikunci = true;
-                $kunciTambah = $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.';
+                $butuhUpgrade = $cek['required_plan'] ?? null;
+                $kunciTambah = $cek['message'].(! empty($cek['required_plan']) ? ' Tingkatkan ke paket '.strtoupper($cek['required_plan']).'.' : '');
             }
         }
 
@@ -121,6 +123,7 @@ new #[Layout('layouts.app')] class extends Component
             'pilihPemilik' => $this->bolehKelolaSemua() && ! $this->properti,
             'tambahDikunci' => $tambahDikunci,
             'kunciTambah' => $kunciTambah,
+            'butuhUpgrade' => $butuhUpgrade,
             'daftarPemilik' => $this->bolehKelolaSemua()
                 ? User::role('pemilik')->orderBy('nama')->get(['id', 'nama', 'email'])
                 : collect(),
@@ -211,7 +214,7 @@ new #[Layout('layouts.app')] class extends Component
                 $cek = SubscriptionService::checkLimit($targetUser ?? auth()->user(), 'property');
 
                 if (! $cek['allowed']) {
-                    $this->addError('nama', $cek['message'].' Tingkatkan ke paket '.strtoupper($cek['required_plan'] ?? 'pro').'.');
+                    $this->addError('nama', $cek['message'].(! empty($cek['required_plan']) ? ' Tingkatkan ke paket '.strtoupper($cek['required_plan']).'.' : ''));
 
                     return;
                 }
@@ -370,7 +373,9 @@ new #[Layout('layouts.app')] class extends Component
         @if ($tambahDikunci ?? false)
             <div class="rounded-xl bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
                 {{ $kunciTambah }}
-                <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                @if ($butuhUpgrade ?? null)
+                    <a href="{{ route('langganan.plans') }}" wire:navigate class="font-bold hover:underline">Upgrade ke PRO</a>
+                @endif
             </div>
         @endif
 

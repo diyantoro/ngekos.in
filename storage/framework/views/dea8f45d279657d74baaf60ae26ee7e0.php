@@ -13,7 +13,7 @@ use Livewire\Volt\Component;
     <aside class="app-sidebar hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-64 lg:flex-col bg-brand-900 dark:bg-brand-950 text-slate-300">
         
         <div class="sidebar-head flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
-            <a href="<?php echo e(route('dashboard')); ?>" wire:navigate title="Dashboard" class="sidebar-brandlink flex min-w-0 items-center gap-2.5">
+            <a href="<?php echo e($dashboardUrl); ?>" wire:navigate.hover title="Dashboard" class="sidebar-brandlink flex min-w-0 items-center gap-2.5">
                 <?php if (isset($component)) { $__componentOriginal8892e718f3d0d7a916180885c6f012e7 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal8892e718f3d0d7a916180885c6f012e7 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.application-logo','data' => ['class' => 'h-9 w-9 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -70,7 +70,7 @@ use Livewire\Volt\Component;
                     <div class="space-y-1">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $link): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <?php $aktif = request()->routeIs($link['active']); ?>
-                            <a href="<?php echo e($link['routeName']); ?>" wire:navigate title="<?php echo e($link['label']); ?>"
+                            <a href="<?php echo e($link['routeName']); ?>" wire:navigate.hover title="<?php echo e($link['label']); ?>"
                                class="sidebar-linkrow group flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 <?php echo e($aktif ? 'bg-white/10 font-semibold text-white ring-1 ring-inset ring-white/10' : 'font-medium text-slate-300 hover:bg-white/5 hover:text-white'); ?>">
                                 <svg class="h-5 w-5 shrink-0 transition-colors duration-200 <?php echo e($aktif ? 'text-amber-300' : 'text-slate-400 group-hover:text-amber-200'); ?>" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><?php echo $link['icon']; ?></svg>
                                 <span class="sidebar-label flex-1 truncate"><?php echo e($link['label']); ?></span>

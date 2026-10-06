@@ -17,32 +17,19 @@ new class extends Component
 
     public string $tab = 'sewaan';
 
-    public ?int $propertiId = null;
-
     public ?string $pesan = null;
 
     public ?string $galat = null;
 
-    public function updatedPropertiId(): void
-    {
-        //
-    }
-
     public function with(): array
     {
         $id = auth()->id();
-        $propertiId = $this->propertiId;
 
-        if ($propertiId && ! Properti::where('pemilik_id', $id)->where('id', $propertiId)->exists()) {
-            $propertiId = $this->propertiId = null;
-        }
+        $scope = fn ($q) => $q->where('pemilik_id', $id);
 
-        $scope = fn ($q) => $q->where('pemilik_id', $id)
-            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
+        $kunciRingkas = "pemilik.ringkas.{$id}.all";
 
-        $kunciRingkas = "pemilik.ringkas.{$id}.p".($propertiId ?: 'all');
-
-        $ringkas = cache()->remember($kunciRingkas, 60, function () use ($id, $propertiId, $scope) {
+        $ringkas = cache()->remember($kunciRingkas, 60, function () use ($id, $scope) {
             $statusKamar = Kamar::whereHas('properti', $scope)
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
@@ -123,7 +110,7 @@ new class extends Component
 
         $pembayaranMenunggu = Pembayaran::where('status', 'menunggu_verifikasi')
             ->whereHas('tagihan.penyewaan.properti', $scope)
-            ->select(['id', 'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'created_at'])
+            ->select(['id', 'tagihan_id', 'anak_kos_id', 'metode', 'jumlah', 'bukti', 'created_at'])
             ->with(['anakKos:id,nama', 'tagihan.penyewaan.kamar:id,nama', 'tagihan.penyewaan.properti:id,nama'])
             ->latest()
             ->limit(10)
@@ -156,8 +143,6 @@ new class extends Component
 
                 return [
                     'plan' => $plan,
-                    'propertyUsed' => SubscriptionService::usage($user, 'property'),
-                    'propertyLimit' => SubscriptionService::limitFor($plan, 'property'),
                     'roomUsed' => SubscriptionService::usage($user, 'room'),
                     'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
                     'expiresAt' => (SubscriptionService::getSubscriptionAktif($user) ?? SubscriptionService::getSubscription($user))?->expires_at?->translatedFormat('d F Y'),
@@ -168,19 +153,16 @@ new class extends Component
                     'sisaLangganan' => SubscriptionService::sisaLanggananHari($user),
                 ];
             })(),
-            'daftarProperti' => Properti::where('pemilik_id', $id)->orderBy('nama')->get(['id', 'nama']),
             'propertis' => $this->tab === 'sewaan' ? collect() : Properti::where('pemilik_id', $id)
                 ->select(['id', 'nama', 'alamat', 'status'])
                 ->with('kamars:id,properti_id,nama,kapasitas,harga_sewa_bulanan,status')
                 ->withCount(['kamars', 'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi')])
-                ->when($propertiId, fn ($q) => $q->where('id', $propertiId))
                 ->when($this->cari, fn ($q) => $q->where('nama', 'like', "%{$this->cari}%"))
                 ->orderBy('nama')
                 ->limit(30)
                 ->get(),
             'sewaans' => $this->tab === 'properti' ? collect() : Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->when($propertiId, fn ($q) => $q->where('properti_id', $propertiId))
                 ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian'])
                 ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
@@ -264,29 +246,8 @@ new class extends Component
             <x-promo-ads />
         </div>
 
-        <div class="card px-4 py-3 sm:px-5 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 border-l-4 !border-l-brand-700">
-            <span class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /></svg>
-            </span>
-            <div class="min-w-0">
-                <label for="propertiId" class="block text-sm font-bold text-slate-900 dark:text-gray-100">Fokus ke satu properti?</label>
-                <p class="text-xs text-slate-500 dark:text-gray-400">Pilih kos untuk melihat ringkasan khususnya.</p>
-            </div>
-            <select id="propertiId" wire:model.live="propertiId" class="rounded-xl border-stone-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-brand-500 focus:border-brand-500 sm:max-w-xs sm:ms-auto">
-                <option value="">Semua Properti</option>
-                @foreach ($daftarProperti as $item)
-                    <option value="{{ $item->id }}">{{ $item->nama }}</option>
-                @endforeach
-            </select>
-            @if ($propertiId)
-                <button wire:click="$set('propertiId', null)" class="text-xs font-semibold text-brand-700 dark:text-brand-300 hover:underline self-start sm:self-center">Tampilkan semua</button>
-            @endif
-        </div>
-
         <x-subscription-card
             :plan="$langganan['plan']"
-            :propertyUsed="$langganan['propertyUsed']"
-            :propertyLimit="$langganan['propertyLimit']"
             :roomUsed="$langganan['roomUsed']"
             :roomLimit="$langganan['roomLimit']"
             :expiresAt="$langganan['expiresAt']"
@@ -446,10 +407,19 @@ new class extends Component
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $pembayaran->anakKos?->nama ?? 'Penyewa' }} · {{ $pembayaran->tagihan->penyewaan->kamar?->nama }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $pembayaran->tagihan->penyewaan->properti?->nama }} · {{ $pembayaran->tagihan->periode }} · {{ $pembayaran->labelMetode() }}</p>
+                                @if ($pembayaran->bukti)
+                                    <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
+                                        class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700 hover:underline dark:text-teal-400 dark:hover:text-teal-300">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        Lihat Bukti
+                                    </a>
+                                @else
+                                    <p class="mt-1 text-xs italic text-gray-400 dark:text-gray-500">Tunai · tanpa bukti, pastikan uang sudah diterima</p>
+                                @endif
                             </div>
                             <div class="text-end shrink-0">
                                 <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</p>
-                                <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:confirm="Verifikasi pembayaran ini?"
+                                <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:confirm="Sudah periksa bukti transfernya? Verifikasi pembayaran ini?"
                                     class="mt-1 inline-flex items-center gap-1 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 transition">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                     Verifikasi

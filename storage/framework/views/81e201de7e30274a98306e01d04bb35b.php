@@ -65,4 +65,4 @@
     </div>
 </body>
 </html>
-<?php /**PATH C:\laragon\www\Ngekos.in\resources\views\exports\kwitansi.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\Ngekos.in\resources\views/exports/kwitansi.blade.php ENDPATH**/ ?>
