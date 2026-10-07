@@ -779,7 +779,7 @@ class DashboardController extends Controller
                     'tanggal_keluar' => $s->tanggal_keluar,
                     'status' => $s->status,
                     'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
-                    'ktp_url' => null,
+                    'ktp_url' => $s->ktp_path ? route('penyewaan.ktp', $s->id) : null,
                     'butuh_ktp' => ! $s->ktp_path,
                     'mode_hunian' => $s->mode_hunian ?? 'tunggal',
                     'anggotas' => $s->anggotas->map(fn ($a) => [
@@ -787,7 +787,7 @@ class DashboardController extends Controller
                         'nama' => $a->user?->nama,
                         'porsi_persen' => (int) $a->porsi_persen,
                         'status' => $a->status,
-                        'ktp_url' => null,
+                        'ktp_url' => $a->ktp_path ? route('penyewaan.ktp', ['sewaan' => $s->id, 'user_id' => $a->user_id]) : null,
                     ])->values(),
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),

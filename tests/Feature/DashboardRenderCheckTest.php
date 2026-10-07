@@ -78,7 +78,7 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.anak-kos'))
             ->assertOk()
             ->assertSeeVolt('pages.dashboard.anak-kos')
-            ->assertSee('Sewa Saya');
+            ->assertSee('Mau cari kos di mana?');
 
         $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
 
@@ -92,7 +92,7 @@ class DashboardRenderCheckTest extends TestCase
         $this->assertEquals('tersedia', $sewaan->kamar->status);
     }
 
-    public function test_anak_kos_dashboard_tanpa_stat_atas_tetap_ada_tiga_tab(): void
+    public function test_anak_kos_dashboard_tanpa_stat_atas_menampilkan_pencarian(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->first();
 
@@ -102,9 +102,9 @@ class DashboardRenderCheckTest extends TestCase
             ->assertDontSee('Penyewaan Aktif')
             ->assertDontSee('Tagihan Belum Bayar')
             ->assertDontSee('Pesan Belum Dibaca')
-            ->assertSee('Sewa Saya')
-            ->assertSee('Tagihan Saya')
-            ->assertSee('Pembayaran Saya')
+            ->assertDontSee('Sewa & tagihanku')
+            ->assertDontSee('Sewa Saya')
+            ->assertDontSee('Pembayaran Saya')
             ->assertSee('Mau cari kos di mana?');
     }
 
@@ -274,7 +274,7 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.anak-kos'))
             ->assertOk()
             ->assertSee('Rekomendasi kos buat kamu')
-            ->assertSee('Sewa & tagihanku');
+            ->assertDontSee('Sewa & tagihanku');
     }
 
     public function test_dashboard_route_blocked_for_wrong_role(): void

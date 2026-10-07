@@ -190,4 +190,72 @@ class Pengaturan extends Model
     {
         static::simpanBanyak(['landing.banners' => json_encode(array_values($banners))]);
     }
+
+    /**
+     * Jeda auto-slide carousel promo (milidetik). Bisa diatur super-admin.
+     * Dijepit 1000–10000 agar tidak terlalu cepat/lambat; default 3000.
+     */
+    public static function promoIntervalMs(): int
+    {
+        $ms = (int) static::ambil('landing.promo_interval_ms', 3000);
+
+        return min(10000, max(1000, $ms > 0 ? $ms : 3000));
+    }
+
+    public static function simpanPromoIntervalMs(int $ms): void
+    {
+        $ms = $ms > 0 ? $ms : 3000;
+
+        static::simpanBanyak(['landing.promo_interval_ms' => (string) min(10000, max(1000, $ms))]);
+    }
+
+    /**
+     * Batas akhir hitung mundur Promo Ngebut yang diatur super-admin.
+     * Null = belum diatur / tidak valid.
+     */
+    public static function promoBerakhirPada(): ?Carbon
+    {
+        $mentah = trim((string) (static::ambil('landing.promo_berakhir_pada') ?? ''));
+
+        if ($mentah === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($mentah);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public static function simpanPromoBerakhirPada(?Carbon $waktu): void
+    {
+        static::simpanBanyak(['landing.promo_berakhir_pada' => $waktu?->toIso8601String()]);
+    }
+
+    /**
+     * True jika super-admin mengatur batas akhir sendiri yang masih di masa depan.
+     */
+    public static function promoBerakhirKustom(): bool
+    {
+        $waktu = static::promoBerakhirPada();
+
+        return $waktu !== null && $waktu->isFuture();
+    }
+
+    /**
+     * Timestamp detik untuk hitung mundur Promo Ngebut:
+     * pengaturan super-admin jika masih di masa depan,
+     * sonst fallback akhir bulan berjalan (perilaku lama).
+     */
+    public static function akhirPromoTimestamp(): int
+    {
+        $waktu = static::promoBerakhirPada();
+
+        if ($waktu !== null && $waktu->isFuture()) {
+            return $waktu->getTimestamp();
+        }
+
+        return mktime(23, 59, 59, (int) date('n'), (int) date('t'), (int) date('Y'));
+    }
 }

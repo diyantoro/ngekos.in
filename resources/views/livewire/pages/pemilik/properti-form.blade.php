@@ -131,6 +131,10 @@ new #[Layout('layouts.app')] class extends Component
             'galeri' => $this->properti
                 ? $this->properti->fotos()->orderBy('urutan')->orderBy('id')->get()
                 : collect(),
+            'daftarKota' => collect(array_keys(\App\Support\Koordinat::$kota))
+                ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->orderBy('kota')->pluck('kota'))
+                ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all(),
+            'pusatKota' => \App\Support\Koordinat::$kota,
         ];
     }
 
@@ -600,7 +604,15 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="kota" value="Kota" />
-                    <x-text-input wire:model="kota" id="kota" class="mt-1 block w-full" placeholder="Contoh: Bandung" />
+                    <select wire:model="kota" id="kota" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
+                        <option value="">-- Pilih kota --</option>
+                        @if ($kota && ! in_array($kota, $daftarKota))
+                            <option value="{{ $kota }}">{{ $kota }} (saat ini)</option>
+                        @endif
+                        @foreach ($daftarKota as $namaKota)
+                            <option value="{{ $namaKota }}">{{ $namaKota }}</option>
+                        @endforeach
+                    </select>
                     <x-input-error :messages="$errors->get('kota')" class="mt-2" />
                 </div>
                 <div>
@@ -635,7 +647,8 @@ new #[Layout('layouts.app')] class extends Component
                 data-lng="{{ $longitude }}"
                 data-default-lat="{{ $titikAwal[0] }}"
                 data-default-lng="{{ $titikAwal[1] }}"
-                class="h-72 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
+                data-pusat-kota='@json($pusatKota)'
+                class="h-80 sm:h-96 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                 <button type="button" id="peta-cari-alamat" class="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
@@ -840,6 +853,34 @@ new #[Layout('layouts.app')] class extends Component
         isiAlamatDariPeta(lat, lng);
     }
 
+    function pusatKotaDariNama(nama) {
+        try {
+            const el = document.getElementById('peta-properti-form');
+            const peta = el ? JSON.parse(el.dataset.pusatKota || '{}') : {};
+            const t = peta[nama];
+            if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+        } catch (e) {}
+        return null;
+    }
+
+    function pasangPilihKotaForm() {
+        // Pilih kota di dropdown -> pin pindah ke pusat kota + peta mengikut.
+        if (window.__petaFormKotaOn) return;
+        window.__petaFormKotaOn = true;
+        document.addEventListener('change', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih || !document.getElementById('peta-properti-form')) return;
+            const nama = (pilih.value || '').trim();
+            if (!nama) return;
+            const tengah = pusatKotaDariNama(nama);
+            if (!tengah || Number.isNaN(tengah.lat) || Number.isNaN(tengah.lng)) {
+                tulisStatusForm('Kota "' + nama + '" belum punya titik pusat di peta.');
+                return;
+            }
+            setKoordinatForm(tengah.lat, tengah.lng);
+        });
+    }
+
     function cariAlamatForm() {
             const alamat = alamatSaatIni();
             const kota = (document.getElementById('kota')?.value || '').trim();
@@ -886,6 +927,7 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     function pasangCariAlamatForm() {
+        pasangPilihKotaForm();
         // Delegasi klik sekali di document: tombol bisa diganti oleh Livewire morph
         // (mis. setelah upload foto / gagal validasi) tanpa membuat handler mati.
         if (window.__petaFormAksiOn) return;
@@ -955,11 +997,12 @@ new #[Layout('layouts.app')] class extends Component
 
     function pasangIkonLeafletForm(L) {
         try {
+            const b = window._leafletBundel || {};
             const dasar = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
             L.Icon.Default.mergeOptions({
-                iconRetinaUrl: dasar + 'marker-icon-2x.png',
-                iconUrl: dasar + 'marker-icon.png',
-                shadowUrl: dasar + 'marker-shadow.png',
+                iconRetinaUrl: b.ikon2x || dasar + 'marker-icon-2x.png',
+                iconUrl: b.ikon || dasar + 'marker-icon.png',
+                shadowUrl: b.bayangan || dasar + 'marker-shadow.png',
             });
         } catch (e) {}
     }

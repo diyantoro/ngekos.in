@@ -17,35 +17,30 @@ window.ensureCropper = (() => {
 import { photoCropManager } from './photo-crop-manager.js';
 window.photoCropManager = photoCropManager;
 
-// Leaflet (OpenStreetMap) dimuat malas dari CDN agar bundle global ringan.
-// window.ensureLeaflet() me-resolve L + menyuntik CSS sekali saja.
+// Leaflet (OpenStreetMap) dibundel lokal via npm agar tidak bergantung CDN.
+// window.ensureLeaflet() me-resolve L + menyuntik CSS sekali saja (malas).
 window.ensureLeaflet = (() => {
     let janji = null;
-    const versi = '1.9.4';
     return () => {
         if (window.L) return Promise.resolve(window.L);
         if (!janji) {
-            janji = new Promise((resolve, tolak) => {
-                if (!document.querySelector('link[data-leaflet]')) {
-                    const link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = 'https://unpkg.com/leaflet@' + versi + '/dist/leaflet.css';
-                    link.dataset.leaflet = '1';
-                    document.head.appendChild(link);
-                }
-                if (document.querySelector('script[data-leaflet]')) {
-                    const cek = setInterval(() => {
-                        if (window.L) { clearInterval(cek); resolve(window.L); }
-                    }, 50);
-                    return;
-                }
-                const s = document.createElement('script');
-                s.src = 'https://unpkg.com/leaflet@' + versi + '/dist/leaflet.js';
-                s.async = true;
-                s.dataset.leaflet = '1';
-                s.onload = () => (window.L ? resolve(window.L) : tolak(new Error('Leaflet gagal dimuat')));
-                s.onerror = () => tolak(new Error('Leaflet gagal dimuat'));
-                document.head.appendChild(s);
+            janji = Promise.all([
+                import('leaflet'),
+                import('leaflet/dist/leaflet.css'),
+                import('leaflet/dist/images/marker-icon.png'),
+                import('leaflet/dist/images/marker-icon-2x.png'),
+                import('leaflet/dist/images/marker-shadow.png'),
+            ]).then(([m, , ikon, ikon2x, bayangan]) => {
+                const L = m.default ?? m.L ?? m;
+                const ambilUrl = (mod) => (mod && mod.default) || mod;
+                window.L = L;
+                window._leafletBundel = {
+                    ikon: ambilUrl(ikon),
+                    ikon2x: ambilUrl(ikon2x),
+                    bayangan: ambilUrl(bayangan),
+                };
+                window.pasangIkonLeaflet(L);
+                return L;
             }).catch((e) => { janji = null; throw e; });
         }
         return janji;
@@ -147,11 +142,12 @@ window._ikonLeafletTerpasang = false;
 window.pasangIkonLeaflet = function (L) {
     if (window._ikonLeafletTerpasang || !L || !L.Icon || !L.Icon.Default) return;
     try {
+        const b = window._leafletBundel || {};
         const dasar = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
         L.Icon.Default.mergeOptions({
-            iconRetinaUrl: dasar + 'marker-icon-2x.png',
-            iconUrl: dasar + 'marker-icon.png',
-            shadowUrl: dasar + 'marker-shadow.png',
+            iconRetinaUrl: b.ikon2x || dasar + 'marker-icon-2x.png',
+            iconUrl: b.ikon || dasar + 'marker-icon.png',
+            shadowUrl: b.bayangan || dasar + 'marker-shadow.png',
         });
         window._ikonLeafletTerpasang = true;
     } catch (e) {}
@@ -615,6 +611,18 @@ const sinkronTemaNavigasi = () => {
 };
 document.addEventListener('livewire:navigated', sinkronTemaNavigasi);
 document.addEventListener('alpine:navigated', sinkronTemaNavigasi);
+
+// Navigasi Livewire (wire:navigate) bisa menghilangkan class
+// "sidebar-collapsed" di <html>. Terapkan ulang dari localStorage agar
+// sidebar tetap tertutup sampai pengguna membukanya sendiri.
+const sinkronSidebarNavigasi = () => {
+    try {
+        const tutup = localStorage.getItem('ngekos:sidebar') === 'collapsed';
+        document.documentElement.classList.toggle('sidebar-collapsed', tutup);
+    } catch (e) { /* abaikan */ }
+};
+document.addEventListener('livewire:navigated', sinkronSidebarNavigasi);
+document.addEventListener('alpine:navigated', sinkronSidebarNavigasi);
 document.addEventListener('alpine:init', () => {
     daftarkanThemeStore();
 
@@ -694,7 +702,8 @@ if (document.readyState === 'loading') {
 document.addEventListener('livewire:navigated', initReveal);
 document.addEventListener('alpine:navigated', initReveal);
 
-// Carousel iklan partner: auto-slide tiap 4,5 dtk, jeda saat hover/fokus/disembunyi.
+// Carousel iklan partner: auto-slide mengikuti data-promo-interval (ms, diatur
+// super-admin; bawaan 3000), jeda saat hover/fokus/disembunyi.
 // Dibuat tahan morph Livewire & navigasi SPA: tiap init merobohkan state lama
 // (timer, observer, listener) lalu membangun ulang dari kondisi DOM saat ini,
 // sehingga banner tidak macet setelah Livewire me-render ulang halaman.
@@ -711,7 +720,10 @@ const initPromoRoot = (root) => {
     const signal = ac.signal;
     const dotsWrap = root.querySelector('[data-promo-dots]');
     const count = root.querySelector('[data-promo-count]');
-    const delay = 4500;
+    const delayAttr = Number.parseInt(root.dataset.promoInterval || '', 10);
+    const delay = Number.isFinite(delayAttr)
+        ? Math.min(10000, Math.max(1000, delayAttr))
+        : 3000;
     const dots = [];
     // Lanjutkan dari posisi terakhir bila ada (mis. morph terjadi di tengah jalan).
     let index = Number.parseInt(root.dataset.promoIndex || '0', 10);

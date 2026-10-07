@@ -529,26 +529,15 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'kota','id' => 'kota','class' => 'mt-1 block w-full','placeholder' => 'Contoh: Bandung']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('text-input'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'kota','id' => 'kota','class' => 'mt-1 block w-full','placeholder' => 'Contoh: Bandung']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
-<?php $attributes = $__attributesOriginal18c21970322f9e5c938bc954620c12bb; ?>
-<?php unset($__attributesOriginal18c21970322f9e5c938bc954620c12bb); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal18c21970322f9e5c938bc954620c12bb)): ?>
-<?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
-<?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
-<?php endif; ?>
+                    <select wire:model="kota" id="kota" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
+                        <option value="">-- Pilih kota --</option>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kota && ! in_array($kota, $daftarKota)): ?>
+                            <option value="<?php echo e($kota); ?>"><?php echo e($kota); ?> (saat ini)</option>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarKota; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $namaKota): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($namaKota); ?>"><?php echo e($namaKota); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </select>
                     <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('kota'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -703,7 +692,7 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Klik pada peta untuk menandai lokasi kos, atau gunakan tombol di bawah.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Geser pin / klik pada peta untuk menandai lokasi kos. Bisa juga isi koordinat manual di bawah.</p>
             </div>
 
             <?php
@@ -716,7 +705,8 @@ use Livewire\WithFileUploads;
                 data-lng="<?php echo e($longitude); ?>"
                 data-default-lat="<?php echo e($titikAwal[0]); ?>"
                 data-default-lng="<?php echo e($titikAwal[1]); ?>"
-                class="h-72 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
+                data-pusat-kota='<?php echo json_encode($pusatKota, 15, 512) ?>'
+                class="h-80 sm:h-96 w-full rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden z-0"></div>
 
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                 <button type="button" id="peta-cari-alamat" class="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
@@ -727,7 +717,140 @@ use Livewire\WithFileUploads;
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     Gunakan lokasi saya saat ini
                 </button>
-                <span id="peta-status">Klik pada peta untuk menandai lokasi kos.</span>
+                <span id="peta-status">Geser pin / klik peta untuk menandai lokasi kos.</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end rounded-xl bg-gray-50 dark:bg-gray-900/50 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
+                <div>
+                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'lintang-manual','value' => 'Latitude (garis lintang)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input-label'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['for' => 'lintang-manual','value' => 'Latitude (garis lintang)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $attributes = $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['id' => 'lintang-manual','wire:model' => 'latitude','type' => 'number','step' => 'any','min' => '-90','max' => '90','class' => 'mt-1 block w-full','placeholder' => 'Contoh: -6.917464']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('text-input'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['id' => 'lintang-manual','wire:model' => 'latitude','type' => 'number','step' => 'any','min' => '-90','max' => '90','class' => 'mt-1 block w-full','placeholder' => 'Contoh: -6.917464']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
+<?php $attributes = $__attributesOriginal18c21970322f9e5c938bc954620c12bb; ?>
+<?php unset($__attributesOriginal18c21970322f9e5c938bc954620c12bb); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal18c21970322f9e5c938bc954620c12bb)): ?>
+<?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
+<?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
+<?php endif; ?>
+                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('latitude'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input-error'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['messages' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($errors->get('latitude')),'class' => 'mt-2']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf94ed9c5393ef72725d159fe01139746)): ?>
+<?php $attributes = $__attributesOriginalf94ed9c5393ef72725d159fe01139746; ?>
+<?php unset($__attributesOriginalf94ed9c5393ef72725d159fe01139746); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf94ed9c5393ef72725d159fe01139746)): ?>
+<?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
+<?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
+<?php endif; ?>
+                </div>
+                <div>
+                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'bujur-manual','value' => 'Longitude (garis bujur)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input-label'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['for' => 'bujur-manual','value' => 'Longitude (garis bujur)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $attributes = $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['id' => 'bujur-manual','wire:model' => 'longitude','type' => 'number','step' => 'any','min' => '-180','max' => '180','class' => 'mt-1 block w-full','placeholder' => 'Contoh: 107.619125']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('text-input'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['id' => 'bujur-manual','wire:model' => 'longitude','type' => 'number','step' => 'any','min' => '-180','max' => '180','class' => 'mt-1 block w-full','placeholder' => 'Contoh: 107.619125']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
+<?php $attributes = $__attributesOriginal18c21970322f9e5c938bc954620c12bb; ?>
+<?php unset($__attributesOriginal18c21970322f9e5c938bc954620c12bb); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal18c21970322f9e5c938bc954620c12bb)): ?>
+<?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
+<?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
+<?php endif; ?>
+                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('longitude'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input-error'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['messages' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($errors->get('longitude')),'class' => 'mt-2']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf94ed9c5393ef72725d159fe01139746)): ?>
+<?php $attributes = $__attributesOriginalf94ed9c5393ef72725d159fe01139746; ?>
+<?php unset($__attributesOriginalf94ed9c5393ef72725d159fe01139746); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf94ed9c5393ef72725d159fe01139746)): ?>
+<?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
+<?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
+<?php endif; ?>
+                </div>
+                <div>
+                    <button type="button" id="peta-tampil-manual" class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                        Tampilkan di Peta
+                    </button>
+                </div>
             </div>
 
             <div>
@@ -1266,7 +1389,12 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     }
 
     function tulisStatusForm(t) {
+        if (!statusPeta || !statusPeta.isConnected) statusPeta = document.getElementById('peta-status');
         if (statusPeta) statusPeta.textContent = t;
+    }
+
+    function laporGalatPeta(e) {
+        try { console.error('Peta properti gagal:', e); } catch (_) {}
     }
 
     function setKoordinatForm(lat, lng) {
@@ -1276,11 +1404,24 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         const el = document.getElementById('peta-properti-form');
         if (el) { el.dataset.lat = lat; el.dataset.lng = lng; }
 
+        const inputLat = document.getElementById('lintang-manual');
+        const inputLng = document.getElementById('bujur-manual');
+        if (inputLat && document.activeElement !== inputLat) inputLat.value = latStr;
+        if (inputLng && document.activeElement !== inputLng) inputLng.value = lngStr;
+
         if (modePeta === 'js') {
             if (markerForm) markerForm.setPosition({ lat: latStr, lng: lngStr });
             if (petaForm) petaForm.panTo({ lat: latStr, lng: lngStr });
-        } else if (modePeta === 'embed' && typeof window.pasangGoogleEmbed === 'function') {
-            window.pasangGoogleEmbed(el, latStr, lngStr, 15);
+        } else if (modePeta === 'leaflet') {
+            if (markerForm && typeof markerForm.setLatLng === 'function') markerForm.setLatLng([latStr, lngStr]);
+            if (petaForm && typeof petaForm.panTo === 'function') {
+                try {
+                    if (typeof petaForm.getZoom === 'function' && typeof petaForm.setView === 'function' && petaForm.getZoom() < 14) petaForm.setView([latStr, lngStr], 15);
+                    else petaForm.panTo([latStr, lngStr]);
+                } catch (e) {}
+            }
+        } else if (modePeta === 'embed') {
+            try { tampilkanEmbedStatisForm(el, { lat: latStr, lng: lngStr }); } catch (e) {}
         }
 
         $wire.set('latitude', latStr);
@@ -1315,11 +1456,51 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             .catch(() => {});
     }
 
-    function pasangCariAlamatForm() {
-        const tombol = document.getElementById('peta-cari-alamat');
-        if (!tombol) return;
+    function bacaKoordinatManual() {
+        const lat = parseFloat(document.getElementById('lintang-manual')?.value);
+        const lng = parseFloat(document.getElementById('bujur-manual')?.value);
+        return { lat, lng };
+    }
 
-        tombol.addEventListener('click', () => {
+    function tampilDariKoordinatManual() {
+        const { lat, lng } = bacaKoordinatManual();
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+            tulisStatusForm('Isi latitude (-90 s.d. 90) dan longitude (-180 s.d. 180) yang valid.');
+            return;
+        }
+        setKoordinatForm(lat, lng);
+        isiAlamatDariPeta(lat, lng);
+    }
+
+    function pusatKotaDariNama(nama) {
+        try {
+            const el = document.getElementById('peta-properti-form');
+            const peta = el ? JSON.parse(el.dataset.pusatKota || '{}') : {};
+            const t = peta[nama];
+            if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+        } catch (e) {}
+        return null;
+    }
+
+    function pasangPilihKotaForm() {
+        // Pilih kota di dropdown -> pin pindah ke pusat kota + peta mengikut.
+        if (window.__petaFormKotaOn) return;
+        window.__petaFormKotaOn = true;
+        document.addEventListener('change', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih || !document.getElementById('peta-properti-form')) return;
+            const nama = (pilih.value || '').trim();
+            if (!nama) return;
+            const tengah = pusatKotaDariNama(nama);
+            if (!tengah || Number.isNaN(tengah.lat) || Number.isNaN(tengah.lng)) {
+                tulisStatusForm('Kota "' + nama + '" belum punya titik pusat di peta.');
+                return;
+            }
+            setKoordinatForm(tengah.lat, tengah.lng);
+        });
+    }
+
+    function cariAlamatForm() {
             const alamat = alamatSaatIni();
             const kota = (document.getElementById('kota')?.value || '').trim();
             const q = [alamat, kota].filter(Boolean).join(', ');
@@ -1362,6 +1543,23 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     tulisStatusForm('Lokasi ditemukan.');
                 })
                 .catch(() => tulisStatusForm('Gagal mencari alamat. Coba lagi.'));
+    }
+
+    function pasangCariAlamatForm() {
+        pasangPilihKotaForm();
+        // Delegasi klik sekali di document: tombol bisa diganti oleh Livewire morph
+        // (mis. setelah upload foto / gagal validasi) tanpa membuat handler mati.
+        if (window.__petaFormAksiOn) return;
+        window.__petaFormAksiOn = true;
+        document.addEventListener('click', (e) => {
+            const target = e.target && e.target.closest ? e.target : null;
+            const tombolCari = target ? target.closest('#peta-cari-alamat') : null;
+            const tombolTampil = target ? target.closest('#peta-tampil-manual') : null;
+            if (!tombolCari && !tombolTampil) return;
+            if (!document.getElementById('peta-properti-form')) return;
+            e.preventDefault();
+            if (tombolCari) cariAlamatForm();
+            else tampilDariKoordinatManual();
         });
     }
 
@@ -1397,7 +1595,56 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         };
     }
 
-    function initPetaForm() {
+    function adaKoordinatTersimpan() {
+        const el = document.getElementById('peta-properti-form');
+        return !Number.isNaN(parseFloat(el?.dataset.lat)) && !Number.isNaN(parseFloat(el?.dataset.lng));
+    }
+
+    function bersihkanPetaForm() {
+        try { if (petaForm && typeof petaForm.remove === 'function') petaForm.remove(); } catch (e) {}
+        try {
+            const wadah = document.getElementById('peta-properti-form');
+            if (wadah) {
+                wadah.innerHTML = '';
+                if (wadah._leaflet_id) delete wadah._leaflet_id;
+            }
+        } catch (e) {}
+        petaForm = null;
+        markerForm = null;
+        modePeta = '';
+    }
+
+    function pasangIkonLeafletForm(L) {
+        try {
+            const b = window._leafletBundel || {};
+            const dasar = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: b.ikon2x || dasar + 'marker-icon-2x.png',
+                iconUrl: b.ikon || dasar + 'marker-icon.png',
+                shadowUrl: b.bayangan || dasar + 'marker-shadow.png',
+            });
+        } catch (e) {}
+    }
+
+    function tampilkanEmbedStatisForm(el, awal) {
+        modePeta = 'embed';
+        el.innerHTML = `
+            <div class="h-full w-full relative">
+                <iframe
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
+                    scrolling="no"
+                    marginheight="0"
+                    marginwidth="0"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=${awal.lng-0.01},${awal.lat-0.01},${awal.lng+0.01},${awal.lat+0.01}&layer=mapnik&marker=${awal.lat},${awal.lng}"
+                    style="border: 0">
+                </iframe>
+            </div>
+        `;
+    }
+
+    async function initPetaForm() {
         const el = document.getElementById('peta-properti-form');
         if (!el || el.dataset.terpasang) return;
         el.dataset.terpasang = '1';
@@ -1411,29 +1658,38 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         }
 
         if (typeof google === 'undefined' || !google.maps) {
-            // Fallback: Gunakan OpenStreetMap dengan Leaflet (atau embed sederhana)
-            modePeta = 'embed';
-            
-            // Buat iframe embed dari OpenStreetMap
-            el.innerHTML = `
-                <div class="h-full w-full relative">
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        frameborder="0" 
-                        scrolling="no" 
-                        marginheight="0" 
-                        marginwidth="0" 
-                        src="https://www.openstreetmap.org/export/embed.html?bbox=${awal.lng-0.01},${awal.lat-0.01},${awal.lng+0.01},${awal.lat+0.01}&layer=mapnik&marker=${awal.lat},${awal.lng}"
-                        style="border: 0">
-                    </iframe>
-                    <div class="absolute bottom-2 left-2 right-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                        <strong>Mode Pratinjau:</strong> Gunakan tombol "Cari dari Alamat" atau "Gunakan lokasi saya" untuk set koordinat.
-                    </div>
-                </div>
-            `;
-            
-            tulisStatusForm("Gunakan tombol di bawah untuk menandai lokasi.");
+            try {
+                if (typeof window.ensureLeaflet !== 'function') throw new Error('Leaflet tidak tersedia');
+                bersihkanPetaForm();
+                const L = await window.ensureLeaflet();
+                if (document.getElementById('peta-properti-form') !== el || el.dataset.terpasang !== '1') return;
+                bersihkanPetaForm();
+                pasangIkonLeafletForm(L);
+                modePeta = 'leaflet';
+                petaForm = L.map(el, { scrollWheelZoom: true }).setView([awal.lat, awal.lng], adaKoordinatTersimpan() ? 16 : 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap',
+                }).addTo(petaForm);
+                markerForm = L.marker([awal.lat, awal.lng], { draggable: true }).addTo(petaForm);
+                markerForm.bindTooltip('Geser untuk memindahkan lokasi');
+                markerForm.on('dragend', () => {
+                    const p = markerForm.getLatLng();
+                    setKoordinatForm(p.lat, p.lng);
+                    isiAlamatDariPeta(p.lat, p.lng);
+                });
+                petaForm.on('click', (e) => {
+                    const p = e.latlng;
+                    setKoordinatForm(p.lat, p.lng);
+                    isiAlamatDariPeta(p.lat, p.lng);
+                });
+                tulisStatusForm('Geser marker / klik peta untuk menandai lokasi.');
+            } catch (e) {
+                laporGalatPeta(e);
+                bersihkanPetaForm();
+                tampilkanEmbedStatisForm(el, awal);
+                tulisStatusForm('Peta pratinjau saja: isi koordinat manual atau gunakan "Cari dari Alamat" / "Gunakan lokasi saya".');
+            }
             pasangCariAlamatForm();
             pasangToggleLokasiForm();
             return;
@@ -1470,9 +1726,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
     // Initialize on load
     if (typeof window.loadNgekosMaps === 'function') {
-        window.loadNgekosMaps(initPetaForm);
+        window.loadNgekosMaps(() => { initPetaForm().catch(laporGalatPeta); });
     } else {
-        initPetaForm();
+        initPetaForm().catch(laporGalatPeta);
     }
 
     // Re-initialize after Livewire navigation (didaftarkan sekali saja agar
@@ -1480,6 +1736,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     if (!window.__petaFormNavOn) {
         window.__petaFormNavOn = true;
         document.addEventListener('livewire:navigated', () => {
+            bersihkanPetaForm();
+
             // Reset flag so map can be re-initialized
             const el = document.getElementById('peta-properti-form');
             if (el && el.dataset.terpasang) {
@@ -1489,9 +1747,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             // Re-init map
             setTimeout(() => {
                 if (typeof window.loadNgekosMaps === 'function') {
-                    window.loadNgekosMaps(initPetaForm);
+                    window.loadNgekosMaps(() => { initPetaForm().catch(laporGalatPeta); });
                 } else {
-                    initPetaForm();
+                    initPetaForm().catch(laporGalatPeta);
                 }
             }, 100);
         });

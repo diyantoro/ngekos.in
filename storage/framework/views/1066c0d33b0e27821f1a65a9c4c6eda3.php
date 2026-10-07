@@ -13,7 +13,7 @@ use Livewire\WithFileUploads;
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Bayar <?php echo e($nama); ?></h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan QRIS sebesar nominal di bawah lalu unggah bukti pembayaran. Paket langsung aktif otomatis setelah terkirim.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan QRIS sebesar nominal di bawah lalu unggah bukti pembayaran. Paket aktif setelah disetujui superadmin.</p>
         </div>
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($galat): ?>
@@ -109,7 +109,7 @@ use Livewire\WithFileUploads;
                     class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white hover:bg-teal-500 transition disabled:opacity-50 active:scale-[0.98]">
                     Kirim Pembayaran
                 </button>
-                <p class="text-center text-xs text-gray-400">Setelah terkirim, paket langsung aktif otomatis.</p>
+                <p class="text-center text-xs text-gray-400">Setelah terkirim, tunggu persetujuan superadmin (status: Menunggu Persetujuan).</p>
             </form>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 

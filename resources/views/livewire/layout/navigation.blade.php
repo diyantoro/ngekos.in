@@ -29,14 +29,17 @@ new class extends Component
             'group' => 'UTAMA',
         ];
 
-        $links[] = [
-            'label' => 'Cari Kos',
-            'route' => 'kos.index',
-            'active' => 'kos.*',
-            'routeName' => route('kos.index', absolute: false),
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />',
-            'group' => 'UTAMA',
-        ];
+        // Pemilik tidak butuh Cari Kos — menu khusus tamu/anak kos/admin.
+        if (! $user->hasRole('pemilik')) {
+            $links[] = [
+                'label' => 'Cari Kos',
+                'route' => 'kos.index',
+                'active' => 'kos.*',
+                'routeName' => route('kos.index', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />',
+                'group' => 'UTAMA',
+            ];
+        }
 
         if ($user->hasAnyRole(['anak_kos', 'pemilik'])) {
             $belumDibaca = $user->pesanBelumDibaca();
@@ -56,6 +59,12 @@ new class extends Component
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />',
                 'group' => 'UTAMA',
             ];
+            $links[] = [
+                'label' => 'Tagihan', 'route' => 'anak-kos.tagihan', 'active' => 'anak-kos.tagihan',
+                'routeName' => route('anak-kos.tagihan', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />',
+                'group' => 'UTAMA',
+            ];
         }
 
         if ($user->hasAnyRole(['pemilik', 'admin', 'super_admin'])) {
@@ -72,6 +81,18 @@ new class extends Component
                 'label' => 'Pengeluaran', 'route' => 'pemilik.pengeluaran', 'active' => 'pemilik.pengeluaran',
                 'routeName' => route('pemilik.pengeluaran', absolute: false),
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v1.5A2.25 2.25 0 006 21zm12-8.25v-6.5A2.25 2.25 0 0015.75 4H8.25A2.25 2.25 0 006 6.25v6.5m18 0h-18" />',
+                'group' => 'KELOLA',
+            ];
+            $links[] = [
+                'label' => 'Tagihan', 'route' => 'pemilik.tagihan', 'active' => 'pemilik.tagihan',
+                'routeName' => route('pemilik.tagihan', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />',
+                'group' => 'KELOLA',
+            ];
+            $links[] = [
+                'label' => 'Penyewa', 'route' => 'pemilik.penyewa', 'active' => 'pemilik.penyewa',
+                'routeName' => route('pemilik.penyewa', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />',
                 'group' => 'KELOLA',
             ];
         }

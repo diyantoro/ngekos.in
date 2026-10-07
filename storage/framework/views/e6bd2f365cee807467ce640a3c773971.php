@@ -1,7 +1,7 @@
 <?php $attributes ??= new \Illuminate\View\ComponentAttributeBag;
 
 $__newAttributes = [];
-$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames((['ads' => [], 'variant' => 'default']));
+$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames((['ads' => [], 'variant' => 'default', 'intervalMs' => null]));
 
 foreach ($attributes->all() as $__key => $__value) {
     if (in_array($__key, $__propNames)) {
@@ -16,7 +16,7 @@ $attributes = new \Illuminate\View\ComponentAttributeBag($__newAttributes);
 unset($__propNames);
 unset($__newAttributes);
 
-foreach (array_filter((['ads' => [], 'variant' => 'default']), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+foreach (array_filter((['ads' => [], 'variant' => 'default', 'intervalMs' => null]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
 
@@ -82,6 +82,9 @@ unset($__defined_vars, $__key, $__value); ?>
 
     $ads = filled($ads) ? $ads : $defaultAds;
     $total = count($ads);
+    // Jeda auto-slide (ms): dari prop, atau pengaturan super-admin, atau bawaan 3000.
+    $intervalMs = (int) ($intervalMs ?? \App\Models\Pengaturan::promoIntervalMs());
+    if ($intervalMs < 1000 || $intervalMs > 10000) $intervalMs = 3000;
     $icons = [
         'wifi' => '<path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />',
         'bag' => '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />',
@@ -95,11 +98,11 @@ unset($__defined_vars, $__key, $__value); ?>
     ];
 ?>
 
-<div class="relative group/promo" data-promo role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
-    <div class="relative overflow-hidden <?php echo e($variant === 'hero' ? '' : 'rounded-3xl shadow-xl shadow-teal-950/10 ring-1 ring-white/15'); ?>">
-        <div class="promo-track" data-promo-track>
+<div class="relative group/promo" data-promo data-promo-interval="<?php echo e($intervalMs); ?>" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
+    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-black/5 shadow-lg">
+        <div class="promo-track w-full" data-promo-track>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $ads; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ad): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                <div class="promo-slide <?php echo e($loop->first ? 'promo-active' : ''); ?> relative overflow-hidden bg-gradient-to-tr <?php echo e($ad['gradient']); ?> <?php echo e($variant === 'hero' ? 'px-4 py-3.5 sm:px-9 sm:py-5 min-h-[148px] sm:min-h-[300px] flex items-center' : 'px-6 py-6 sm:px-9 sm:py-7'); ?>"
+                <div class="promo-slide <?php echo e($loop->first ? 'promo-active' : ''); ?> relative overflow-hidden bg-gradient-to-tr <?php echo e($ad['gradient']); ?> <?php echo e($variant === 'hero' ? 'px-5 py-4 sm:px-8 sm:py-8 min-h-[176px] sm:min-h-[250px] lg:min-h-[290px] w-full flex items-center pb-10' : 'px-6 py-6 sm:px-9 sm:py-7 w-full'); ?>"
                     data-promo-slide aria-hidden="<?php echo e($loop->first ? 'false' : 'true'); ?>">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
@@ -108,23 +111,23 @@ unset($__defined_vars, $__key, $__value); ?>
                     <div class="absolute top-6 right-1/4 h-8 w-8 rounded-full border border-white/25"></div>
                     <div class="absolute -bottom-6 right-1/3 h-12 w-12 rounded-full border border-white/20"></div>
 
-                    <div class="relative flex items-center justify-between gap-3 sm:gap-4 w-full <?php echo e($variant === 'hero' ? 'max-w-7xl mx-auto' : ''); ?>">
-                        <div class="min-w-0 max-w-xl" data-promo-anim>
+                    <div class="relative flex items-center justify-start gap-3 sm:gap-6 w-full">
+                        <div class="min-w-0 flex-1" data-promo-anim>
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
                                 <svg class="h-3 w-3 <?php echo e($ad['accent']); ?>" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                                 Iklan Partner
                             </span>
-                            <p class="mt-1.5 sm:mt-2 <?php echo e($variant === 'hero' ? 'text-lg sm:text-2xl' : 'text-xl sm:text-2xl'); ?> font-extrabold tracking-tight text-white drop-shadow-sm truncate"><?php echo e($ad['brand']); ?></p>
-                            <p class="mt-0.5 <?php echo e($variant === 'hero' ? 'text-[13px] sm:text-base' : 'text-sm'); ?> font-bold text-white/95 truncate"><?php echo e($ad['tagline']); ?></p>
-                            <p class="mt-0.5 sm:mt-1 <?php echo e($variant === 'hero' ? 'text-xs sm:text-sm' : 'text-xs'); ?> leading-snug text-white/80 line-clamp-1 sm:line-clamp-2 max-w-md"><?php echo e($ad['desc']); ?></p>
+                            <p class="mt-1.5 sm:mt-2 <?php echo e($variant === 'hero' ? 'text-xl sm:text-3xl' : 'text-xl sm:text-2xl'); ?> font-extrabold tracking-tight text-white drop-shadow-sm text-balance break-words"><?php echo e($ad['brand']); ?></p>
+                            <p class="mt-0.5 <?php echo e($variant === 'hero' ? 'text-sm sm:text-lg' : 'text-sm'); ?> font-bold text-white/95 text-balance break-words"><?php echo e($ad['tagline']); ?></p>
+                            <p class="mt-0.5 sm:mt-1 <?php echo e($variant === 'hero' ? 'text-sm sm:text-base' : 'text-xs'); ?> leading-snug text-white/80 line-clamp-2 max-w-md break-words"><?php echo e($ad['desc']); ?></p>
                         </div>
                         <div class="shrink-0 relative" data-promo-anim>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($ad['image'])): ?>
                                 <img src="<?php echo e(asset('storage/'.$ad['image'])); ?>" alt="<?php echo e($ad['brand'] ?? 'Banner'); ?>"
-                                    class="h-11 w-16 sm:h-14 sm:w-24 rounded-2xl border border-white/30 object-cover shadow-lg shadow-black/10">
+                                    class="h-20 w-28 sm:h-32 sm:w-52 aspect-[4/3] rounded-2xl border border-white/30 object-cover shadow-lg shadow-black/10">
                             <?php else: ?>
-                                <div class="flex items-center justify-center <?php echo e($variant === 'hero' ? 'h-11 w-11 sm:h-14 sm:w-14' : 'h-12 w-12 sm:h-14 sm:w-14'); ?> rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
-                                    <svg class="h-5 w-5 sm:h-7 sm:w-7 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><?php echo $icons[$ad['icon'] ?? 'wifi'] ?? $icons['wifi']; ?></svg>
+                                <div class="flex items-center justify-center <?php echo e($variant === 'hero' ? 'h-16 w-16 sm:h-24 sm:w-24' : 'h-12 w-12 sm:h-14 sm:w-14'); ?> rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                    <svg class="h-8 w-8 sm:h-11 sm:w-11 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><?php echo $icons[$ad['icon'] ?? 'wifi'] ?? $icons['wifi']; ?></svg>
                                 </div>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>

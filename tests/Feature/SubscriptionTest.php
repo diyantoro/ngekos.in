@@ -644,7 +644,7 @@ class SubscriptionTest extends TestCase
         $this->assertStringNotContainsString('Unduh QRIS', $content);
     }
 
-    public function test_bayar_langsung_terkonfirmasi_dan_notifikasi_admin(): void
+    public function test_bayar_menunggu_persetujuan_superadmin_dan_notifikasi_admin(): void
     {
         Notification::fake();
         Storage::fake('public');
@@ -668,11 +668,12 @@ class SubscriptionTest extends TestCase
         $component->call('bayar')->assertHasNoErrors();
         $component->assertRedirect(route('langganan.plans'));
 
-        $this->assertSame('pro', SubscriptionService::getPlan($pemilik));
+        // Paket BELUM aktif — menunggu persetujuan superadmin.
+        $this->assertSame('free', SubscriptionService::getPlan($pemilik));
         $this->assertDatabaseHas('subscription_requests', [
             'user_id' => $pemilik->id,
             'requested_plan' => 'pro',
-            'status' => 'approved',
+            'status' => 'pending',
             'amount' => 49000,
         ]);
         Notification::assertSentTo($admin, LanggananDibayarNotification::class);

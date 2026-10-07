@@ -408,30 +408,12 @@ new #[Layout('layouts.publik')] class extends Component
         <!-- Info Card -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 -mt-8 relative z-10">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div>
+                <div class="min-w-0 flex-1">
                     <h1 class="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-gray-100">{{ $properti->nama }}</h1>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
                         <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                         {{ $properti->alamat ?? $properti->kota ?? 'Lokasi belum diisi' }}
                     </p>
-                    @if ($titik)
-                        <div class="mt-3 overflow-hidden rounded-xl ring-1 ring-gray-100 dark:ring-gray-700">
-                            <div id="peta-properti-detail"
-                                wire:ignore
-                                class="h-48 sm:h-56 w-full z-0"
-                                role="region"
-                                aria-label="Peta lokasi {{ $properti->nama }}"
-                                data-lat="{{ $titik[0] }}"
-                                data-lng="{{ $titik[1] }}"
-                                data-nama="{{ $properti->nama }}"
-                                data-alamat="{{ $properti->alamat }}"></div>
-                            <a id="peta-buka-osm" href="#" target="_blank" rel="noopener nofollow"
-                               class="flex items-center justify-center gap-1 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-medium text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
-                                Buka di Google Maps
-                            </a>
-                        </div>
-                    @endif
                 </div>
                 <div class="flex items-center gap-2">
                     <button wire:click="toggleFavorit"
@@ -450,15 +432,34 @@ new #[Layout('layouts.publik')] class extends Component
                         {{ $properti->kamar_tersedia }}/{{ $properti->total_kamar }} tersedia
                     </span>
                 </div>
-
-                @if ($statistikUlasan && $statistikUlasan['total'] > 0)
-                    <div class="mt-2 flex items-center gap-1.5">
-                        <x-star-rating :rating="round($statistikUlasan['rata'])" size="h-3.5 w-3.5" />
-                        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ number_format($statistikUlasan['rata'], 1, ',', '.') }}</span>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">({{ $statistikUlasan['total'] }} ulasan)</span>
-                    </div>
-                @endif
             </div>
+
+            @if ($statistikUlasan && $statistikUlasan['total'] > 0)
+                <div class="mt-3 flex items-center gap-1.5">
+                    <x-star-rating :rating="round($statistikUlasan['rata'])" size="h-3.5 w-3.5" />
+                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ number_format($statistikUlasan['rata'], 1, ',', '.') }}</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">({{ $statistikUlasan['total'] }} ulasan)</span>
+                </div>
+            @endif
+
+            @if ($titik)
+                <div class="mt-4 overflow-hidden rounded-xl ring-1 ring-gray-100 dark:ring-gray-700">
+                    <div id="peta-properti-detail"
+                        wire:ignore
+                        class="h-72 sm:h-96 w-full z-0"
+                        role="region"
+                        aria-label="Peta lokasi {{ $properti->nama }}"
+                        data-lat="{{ $titik[0] }}"
+                        data-lng="{{ $titik[1] }}"
+                        data-nama="{{ $properti->nama }}"
+                        data-alamat="{{ $properti->alamat }}"></div>
+                    <a id="peta-buka-osm" href="#" target="_blank" rel="noopener nofollow"
+                       class="flex items-center justify-center gap-1 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-medium text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                        Buka di Google Maps
+                    </a>
+                </div>
+            @endif
 
             <div class="mt-4 grid grid-cols-3 gap-3">
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">

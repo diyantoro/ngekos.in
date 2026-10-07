@@ -33,9 +33,19 @@
         </script>
         <script>
             (function () {
-                try {
-                    if (localStorage.getItem('ngekos:sidebar') === 'collapsed') document.documentElement.classList.add('sidebar-collapsed');
-                } catch (e) {}
+                // Navigasi Livewire (wire:navigate) mengganti <body> tanpa reload <head>,
+                // sehingga class "sidebar-collapsed" di <html> bisa hilang.
+                // Terapkan ulang dari localStorage setiap selesai navigasi agar
+                // sidebar tetap tertutup sampai pengguna membukanya sendiri.
+                var terapkanSidebar = function () {
+                    try {
+                        var tutup = localStorage.getItem('ngekos:sidebar') === 'collapsed';
+                        document.documentElement.classList.toggle('sidebar-collapsed', tutup);
+                    } catch (e) {}
+                };
+                terapkanSidebar();
+                document.addEventListener('livewire:navigated', terapkanSidebar);
+                document.addEventListener('alpine:navigated', terapkanSidebar);
                 window.toggleNgekosSidebar = window.toggleNgekosSidebar || function () {
                     var c = document.documentElement.classList.toggle('sidebar-collapsed');
                     try { localStorage.setItem('ngekos:sidebar', c ? 'collapsed' : 'open'); } catch (e) {}

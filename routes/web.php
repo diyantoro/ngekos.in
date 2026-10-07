@@ -86,6 +86,19 @@ Volt::route('pemilik/laporan', 'pages.pemilik.laporan-premium')
     ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
     ->name('pemilik.laporan');
 
+// Tagihan & penyewa sebagai menu sendiri (pemilik).
+Volt::route('pemilik/tagihan', 'pages.pemilik.tagihan')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.tagihan');
+Volt::route('pemilik/penyewa', 'pages.pemilik.penyewa')
+    ->middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])
+    ->name('pemilik.penyewa');
+
+// Tagihan & pembayaran sebagai menu sendiri (anak kos).
+Volt::route('anak-kos/tagihan', 'pages.anak-kos.tagihan')
+    ->middleware(['auth', 'verified', 'role:anak_kos'])
+    ->name('anak-kos.tagihan');
+
 // Ekspor laporan premium wajib anggota paket dengan fitur export_report.
 Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group(function () {
     Route::get('pemilik/laporan/pdf', [PemilikLaporanPremiumController::class, 'pdf'])

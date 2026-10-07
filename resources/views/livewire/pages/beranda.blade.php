@@ -98,7 +98,10 @@ new #[Layout('layouts.publik')] class extends Component
                 ->orderByDesc('total')
                 ->limit(1)
                 ->value('kota')),
-            'akhirPromo' => mktime(23, 59, 59, (int) date('n'), (int) date('t'), (int) date('Y')),
+            'akhirPromo' => Pengaturan::akhirPromoTimestamp(),
+            'labelPromo' => Pengaturan::promoBerakhirKustom()
+                ? 'Berakhir '.Pengaturan::promoBerakhirPada()->translatedFormat('d M Y, H:i')
+                : 'Diskon khusus bulan ini — siapa cepat dia dapat',
             'daftarKota' => collect(cache()->remember('beranda.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
                 ->whereNotNull('kota')
                 ->distinct()
@@ -132,13 +135,6 @@ new #[Layout('layouts.publik')] class extends Component
 }; ?>
 
 <div class="bg-paper dark:bg-gray-950">
-    <!-- Banner iklan partner (auto-slide, bisa diatur superadmin) -->
-    @if ($bannerAds !== [] || ! \App\Models\Pengaturan::adaKustomLandingBanners())
-        <section class="relative overflow-hidden">
-            <x-promo-ads variant="hero" :ads="$bannerAds" />
-        </section>
-    @endif
-
     <!-- Hero pencarian -->
     <section class="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 dark:from-gray-950 dark:via-brand-950 dark:to-brand-900">
         <style>
@@ -261,6 +257,13 @@ new #[Layout('layouts.publik')] class extends Component
         <!-- Wave pemisah -->
         <svg class="block w-full text-paper dark:text-gray-950 -mb-px" viewBox="0 0 1440 48" fill="currentColor" preserveAspectRatio="none"><path d="M0,24 C240,48 480,0 720,16 C960,32 1200,48 1440,24 L1440,48 L0,48 Z"></path></svg>
     </section>
+
+    <!-- Banner iklan partner (auto-slide, bisa diatur superadmin): di bawah hero -->
+    @if ($bannerAds !== [] || ! \App\Models\Pengaturan::adaKustomLandingBanners())
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
+            <x-promo-ads variant="hero" :ads="$bannerAds" />
+        </section>
+    @endif
 
     <!-- Strip kepercayaan -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
@@ -397,7 +400,7 @@ new #[Layout('layouts.publik')] class extends Component
                     </span>
                     <div class="min-w-0">
                         <h2 class="text-base sm:text-xl font-extrabold tracking-tight">Promo Ngebut</h2>
-                        <p class="text-xs sm:text-sm text-brand-100 truncate sm:whitespace-normal">Diskon khusus bulan ini — siapa cepat dia dapat</p>
+                        <p class="text-xs sm:text-sm text-brand-100 truncate sm:whitespace-normal">{{ $labelPromo }}</p>
                     </div>
                 </div>
                 <div class="grid w-full sm:w-auto grid-cols-4 items-center gap-1 sm:flex sm:gap-1.5 text-center">
@@ -758,6 +761,7 @@ new #[Layout('layouts.publik')] class extends Component
                  x-transition:enter-start="opacity-0 -translate-y-2"
                  x-transition:enter-end="opacity-100 translate-y-0"
                  class="relative">
+                <p id="peta-kos-status" class="hidden mb-3 text-center text-xs text-gray-400 dark:text-gray-500">Memuat peta…</p>
                 <div id="peta-kos-beranda" class="h-80 sm:h-96 w-full rounded-xl bg-gray-100 dark:bg-gray-800"></div>
             </div>
         </div>
@@ -815,95 +819,143 @@ new #[Layout('layouts.publik')] class extends Component
             window._boundsBeranda = window._boundsBeranda || null;
             window.dataPetaBeranda = @js($markers);
 
+            function statusPetaBeranda(teks) {
+                const s = document.getElementById('peta-kos-status');
+                if (!s) return;
+                if (!teks) { s.classList.add('hidden'); s.innerHTML = ''; return; }
+                s.classList.remove('hidden');
+                s.textContent = teks;
+            }
+
+            function gagalPetaBeranda() {
+                const el = document.getElementById('peta-kos-beranda');
+                statusPetaBeranda('');
+                if (el) el.innerHTML = '<div class="h-full w-full flex flex-col items-center justify-center gap-2 p-6 text-center">'
+                    + '<p class="text-xs text-gray-400 dark:text-gray-500">Peta tidak dapat dimuat. Periksa koneksi internet lalu coba lagi.</p>'
+                    + '<button type="button" onclick="ulangiPetaBeranda()" class="inline-flex items-center rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition">Coba lagi</button></div>';
+            }
+
+            window.ulangiPetaBeranda = function () {
+                const el = document.getElementById('peta-kos-beranda');
+                if (el) { el._initBeranda = false; }
+                window.initPetaBeranda();
+            };
+
             async function berandaFallback() {
                 const el = document.getElementById('peta-kos-beranda');
                 const data = window.dataPetaBeranda || [];
-                if (!el || !data.length) return;
+                if (!el || !data.length) { if (el) el._initBeranda = false; return; }
+                statusPetaBeranda('Memuat peta…');
                 if (typeof window.buatPetaDaftarOsm === 'function') {
                     try {
-                        await window.buatPetaDaftarOsm(el, data);
-                        return;
+                        const peta = await window.buatPetaDaftarOsm(el, data);
+                        if (peta) { statusPetaBeranda(''); el._initBeranda = false; return; }
                     } catch (e) {}
                 }
                 if (typeof window.pasangOsmEmbed === 'function') {
-                    const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                    window.pasangOsmEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, 10, dataPetaBeranda);
-                } else if (typeof window.pasangGoogleEmbed === 'function') {
-                    const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                    window.pasangGoogleEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, dataPetaBeranda.length <= 1 ? 14 : 10);
-                } else {
-                    el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">Peta tidak dapat dimuat saat ini.</div>';
+                    try {
+                        const sum = data.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
+                        window.pasangOsmEmbed(el, sum.lat / data.length, sum.lng / data.length, 10, data);
+                        statusPetaBeranda('');
+                        el._initBeranda = false;
+                        return;
+                    } catch (e) {}
                 }
+                el._initBeranda = false;
+                gagalPetaBeranda();
             }
 
             function berandaBuatPeta(percobaan) {
                 const el = document.getElementById('peta-kos-beranda');
                 const data = window.dataPetaBeranda || [];
-                if (!el || !data.length) return;
+                if (!el || !data.length) { if (el) el._initBeranda = false; return; }
                 if (el.offsetWidth === 0) {
-                    if ((percobaan || 0) < 20) setTimeout(() => berandaBuatPeta((percobaan || 0) + 1), 120);
-                    else { try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {} }
+                    if ((percobaan || 0) < 20) { setTimeout(() => berandaBuatPeta((percobaan || 0) + 1), 150); return; }
+                    el._initBeranda = false;
+                    gagalPetaBeranda();
                     return;
                 }
                 if (el._petaLeaflet) {
                     try { el._petaLeaflet.invalidateSize(); } catch (e) {}
+                    statusPetaBeranda('');
+                    el._initBeranda = false;
                     return;
                 }
-                if (typeof google === 'undefined' || !google.maps) {
-                    try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
-                    return;
-                }
-                if (window._mapBeranda) {
-                    try {
-                        google.maps.event.trigger(window._mapBeranda, 'resize');
-                        if (window._boundsBeranda) window._mapBeranda.fitBounds(window._boundsBeranda);
-                    } catch (e) {}
-                    return;
-                }
+                if (typeof google !== 'undefined' && google.maps) {
+                    if (window._mapBeranda) {
+                        try {
+                            google.maps.event.trigger(window._mapBeranda, 'resize');
+                            if (window._boundsBeranda) window._mapBeranda.fitBounds(window._boundsBeranda);
+                        } catch (e) {}
+                        statusPetaBeranda('');
+                        el._initBeranda = false;
+                        return;
+                    }
 
-                const bounds = new google.maps.LatLngBounds();
-                data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
-                window._boundsBeranda = bounds;
+                    const bounds = new google.maps.LatLngBounds();
+                    data.forEach((m) => bounds.extend({ lat: m.lat, lng: m.lng }));
+                    window._boundsBeranda = bounds;
 
-                window._mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
-                if (data.length === 1) {
-                    window._mapBeranda.setCenter(bounds.getCenter());
-                    window._mapBeranda.setZoom(14);
-                } else {
-                    window._mapBeranda.fitBounds(bounds);
-                }
+                    window._mapBeranda = new google.maps.Map(el, { mapTypeId: 'roadmap', disableDefaultUI: false });
+                    if (data.length === 1) {
+                        window._mapBeranda.setCenter(bounds.getCenter());
+                        window._mapBeranda.setZoom(14);
+                    } else {
+                        window._mapBeranda.fitBounds(bounds);
+                    }
 
-                const markers = data.map((m) => {
-                    const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: window._mapBeranda, title: m.nama });
-                    const info = new google.maps.InfoWindow();
-                    pemuat.addListener('click', () => {
-                        const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
-                            (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
-                            (m.kota ? String(m.kota).replace(/</g, '&lt;') : '') +
-                            (m.id ? '<br><a href="/kos/' + m.id + '">Lihat detail</a>' : '');
-                        info.setContent(isi);
-                        info.open({ map: window._mapBeranda, anchor: pemuat });
+                    const markers = data.map((m) => {
+                        const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: window._mapBeranda, title: m.nama });
+                        const info = new google.maps.InfoWindow();
+                        pemuat.addListener('click', () => {
+                            const isi = '<strong>' + String(m.nama || '').replace(/</g, '&lt;') + '</strong><br>' +
+                                (m.alamat ? String(m.alamat).replace(/</g, '&lt;') + ', ' : '') +
+                                (m.kota ? String(m.kota).replace(/</g, '&lt;') : '') +
+                                (m.id ? '<br><a href="/kos/' + m.id + '">Lihat detail</a>' : '');
+                            info.setContent(isi);
+                            info.open({ map: window._mapBeranda, anchor: pemuat });
+                        });
+                        return pemuat;
                     });
-                    return pemuat;
-                });
-                if (typeof window.pasangCluster === 'function') { try { window.pasangCluster(markers, window._mapBeranda); } catch (e) {} }
+                    if (typeof window.pasangCluster === 'function') { try { window.pasangCluster(markers, window._mapBeranda); } catch (e) {} }
+                    statusPetaBeranda('');
+                    el._initBeranda = false;
+                    return;
+                }
+                const adaKey = ((document.querySelector('meta[name="gmaps-key"]') || {}).content || '').trim();
+                if (adaKey && !el._cobaGoogle && typeof window.loadNgekosMaps === 'function') {
+                    el._cobaGoogle = true;
+                    statusPetaBeranda('Memuat peta…');
+                    let selesai = false;
+                    const lanjut = () => { if (selesai) return; selesai = true; berandaBuatPeta(); };
+                    try { window.loadNgekosMaps(lanjut); } catch (e) { lanjut(); }
+                    setTimeout(() => { if (!selesai) { try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {} } }, 9000);
+                    return;
+                }
+                try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
             }
 
             window.initPetaBeranda = function () {
                 const el = document.getElementById('peta-kos-beranda');
                 if (!el) return;
+                if (el._initBeranda) return;
+                el._initBeranda = true;
+                statusPetaBeranda('Memuat peta…');
                 requestAnimationFrame(() => {
                     berandaBuatPeta();
-                    if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(berandaBuatPeta);
                 });
             };
 
             window.resetPetaBeranda = function () {
                 const el = document.getElementById('peta-kos-beranda');
-                if (el && typeof window.bersihkanWadahLeaflet === 'function') {
-                    try { window.bersihkanWadahLeaflet(el); } catch (e) { el.innerHTML = ''; }
-                } else if (el) {
-                    el.innerHTML = '';
+                statusPetaBeranda('');
+                if (el) {
+                    el._initBeranda = false;
+                    if (typeof window.bersihkanWadahLeaflet === 'function') {
+                        try { window.bersihkanWadahLeaflet(el); } catch (e) { el.innerHTML = ''; }
+                    } else {
+                        el.innerHTML = '';
+                    }
                 }
                 window._mapBeranda = null;
                 window._boundsBeranda = null;
@@ -922,7 +974,8 @@ new #[Layout('layouts.publik')] class extends Component
                         window._boundsBeranda = null;
                     });
                 }
-                if (typeof window.loadNgekosMaps === 'function') { try { window.loadNgekosMaps(window.berandaBuatPeta || berandaBuatPeta); } catch (e) {} }
+                // Peta hanya dimuat saat pengguna menekan "Lihat Peta"
+                // (initPetaBeranda) agar tidak ada init balapan saat wadah masih tersembunyi.
                 window.berandaBuatPeta = berandaBuatPeta;
                 window.berandaFallback = berandaFallback;
             })();

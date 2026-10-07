@@ -5,7 +5,6 @@ use App\Models\Kamar;
 use App\Models\Pembayaran;
 use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
-use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
@@ -467,7 +466,10 @@ use Livewire\Volt\Component;
             <div class="card overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Tagihan Belum Dibayar</h3>
-                    <span class="text-xs text-rose-500 dark:text-rose-400"><?php echo e($tagihanBelumCount); ?> item</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-rose-500 dark:text-rose-400"><?php echo e($tagihanBelumCount); ?> item</span>
+                        <a href="<?php echo e(route('pemilik.tagihan')); ?>" wire:navigate class="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">Lihat semua →</a>
+                    </div>
                 </div>
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $tagihanBelumList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tagihan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
@@ -493,214 +495,6 @@ use Livewire\Volt\Component;
             </div>
         </div>
 
-        <div class="card overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-700">
-                <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1">
-                    <button wire:click="$set('tab', 'properti')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'properti' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
-                        Properti Saya
-                    </button>
-                    <button wire:click="$set('tab', 'sewaan')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition <?php echo e($tab === 'sewaan' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'); ?>">
-                        Penyewaan &amp; Tagihan
-                    </button>
-                </div>
-                <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari data..."
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-brand-500 focus:border-brand-500">
-            </div>
-
-            <div class="p-4 sm:p-6">
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($tab === 'properti'): ?>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $propertis; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <?php
-                            $pct = $properti->total_kamar > 0 ? round($properti->kamar_terisi / $properti->total_kamar * 100) : 0;
-                        ?>
-                        <div class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 bg-gray-50/50 dark:bg-gray-700/30 p-5 mb-4 last:mb-0">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100"><?php echo e($properti->nama); ?></h4>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400"><?php echo e($properti->alamat); ?></p>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="flex items-center gap-3">
-                                        <div class="h-2 w-28 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                            <div class="h-full rounded-full bg-brand-700" style="width: <?php echo e($pct); ?>%"></div>
-                                        </div>
-                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400"><?php echo e($properti->kamar_terisi); ?>/<?php echo e($properti->total_kamar); ?> terisi</span>
-                                    </div>
-                                    <?php if (isset($component)) { $__componentOriginal8c81617a70e11bcf247c4db924ab1b62 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.status-badge','data' => ['status' => $properti->status]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('status-badge'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['status' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti->status)]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $attributes = $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $component = $__componentOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?>
-                                </div>
-                            </div>
-                            <div class="mt-4 overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-                                    <thead>
-                                        <tr class="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            <th class="py-2 pr-4">Kamar</th>
-                                            <th class="py-2 pr-4">Kapasitas</th>
-                                            <th class="py-2 pr-4">Harga/Bulan</th>
-                                            <th class="py-2">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $properti->kamars; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kamar): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <tr>
-                                                <td class="py-2.5 pr-4 text-sm font-medium text-gray-900 dark:text-gray-100"><?php echo e($kamar->nama); ?></td>
-                                                <td class="py-2.5 pr-4 text-sm text-gray-600 dark:text-gray-300"><?php echo e($kamar->kapasitas); ?> orang</td>
-                                                <td class="py-2.5 pr-4 text-sm text-gray-600 dark:text-gray-300">Rp<?php echo e(number_format($kamar->harga_sewa_bulanan, 0, ',', '.')); ?></td>
-                                                <td class="py-2.5"><?php if (isset($component)) { $__componentOriginal8c81617a70e11bcf247c4db924ab1b62 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.status-badge','data' => ['status' => $kamar->status]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('status-badge'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['status' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($kamar->status)]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $attributes = $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $component = $__componentOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?></td>
-                                            </tr>
-                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                        <p class="py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada properti. Tambahkan properti melalui menu kelola properti.</p>
-                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                <?php elseif($tab === 'sewaan'): ?>
-                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-                            <thead class="bg-gray-50 dark:bg-gray-700/50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Penyewa</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kamar</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Masuk</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tagihan</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $sewaans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sewaan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                    <?php
-                                        $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
-                                        $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
-                                        $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
-                                        $anggotaAktifRow = $sewaan->anggotas->where('status', 'aktif');
-                                        $isPatunganRow = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktifRow->isNotEmpty();
-                                    ?>
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                        <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            <?php echo e($sewaan->anakKos?->nama ?? '-'); ?>
-
-                                            <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
-                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sewaan->ktp_path): ?>
-                                                    <a href="<?php echo e(route('penyewaan.ktp', $sewaan)); ?>" target="_blank" rel="noopener" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">KTP utama</a>
-                                                <?php else: ?>
-                                                    <span class="font-semibold text-amber-600 dark:text-amber-400">KTP utama belum ada</span>
-                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            </span>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $anggotaAktifRow; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                                <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ <?php echo e($ag->user?->nama); ?> (<?php echo e((int) $ag->porsi_persen); ?>%)</span>
-                                                <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
-                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ag->ktp_path): ?>
-                                                        <a href="<?php echo e(route('penyewaan.ktp', ['sewaan' => $sewaan->id, 'user_id' => $ag->user_id])); ?>" target="_blank" rel="noopener" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">KTP <?php echo e($ag->user?->nama); ?></a>
-                                                    <?php else: ?>
-                                                        <span class="font-semibold text-amber-600 dark:text-amber-400">KTP <?php echo e($ag->user?->nama); ?> belum ada</span>
-                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                                </span>
-                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isPatunganRow): ?>
-                                                <span class="mt-1 inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300">Patungan</span>
-                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                        </td>
-                                        <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                            <?php echo e($sewaan->kamar?->nama ?? '-'); ?>
-
-                                            <span class="block text-xs text-gray-400 dark:text-gray-500"><?php echo e($sewaan->kamar?->properti?->nama); ?></span>
-                                        </td>
-                                        <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300"><?php echo e($sewaan->tanggal_masuk?->translatedFormat('d M Y')); ?></td>
-                                        <td class="px-4 py-4 text-sm">
-                                            <span class="font-semibold text-gray-900 dark:text-gray-100">Rp<?php echo e(number_format($sisa, 0, ',', '.')); ?></span>
-                                            <span class="block text-xs <?php echo e($belumLunas->isNotEmpty() ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'); ?>">
-                                                <?php echo e($belumLunas->isEmpty() ? 'Semua lunas' : $belumLunas->count() . ' tagihan belum lunas' . ($telat > 0 ? " ({$telat} telat)" : '')); ?>
-
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-4"><?php if (isset($component)) { $__componentOriginal8c81617a70e11bcf247c4db924ab1b62 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.status-badge','data' => ['status' => $sewaan->status]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('status-badge'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['status' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($sewaan->status)]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $attributes = $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__attributesOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
-<?php $component = $__componentOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
-<?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?></td>
-                                        <td class="px-4 py-4">
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sewaan->status === 'aktif'): ?>
-                                                <div class="flex justify-end">
-                                                    <button wire:click="checkOut(<?php echo e($sewaan->id); ?>)" wire:loading.attr="disabled"
-                                                        wire:confirm="Check-out <?php echo e($sewaan->anakKos?->nama); ?> dari kamar <?php echo e($sewaan->kamar?->nama); ?>? Kamar akan kembali tersedia."
-                                                        class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
-                                                        Check-out
-                                                    </button>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="block text-right text-xs text-gray-400 dark:text-gray-500">
-                                                    Keluar: <?php echo e($sewaan->tanggal_keluar?->translatedFormat('d M Y')); ?>
-
-                                                </span>
-                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                    <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada penyewaan aktif. Penyewaan langsung terkonfirmasi saat anak kos menyewa kamar.</td></tr>
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-            </div>
-        </div>
     </div>
 </div>
 

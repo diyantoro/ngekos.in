@@ -5,15 +5,12 @@ use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
 new class extends Component
 {
     use WithFileUploads;
-
-    public string $tab = 'sewaan';
 
     public ?string $pesan = null;
 
@@ -79,35 +76,15 @@ new class extends Component
             ?? $kandidatBerikutnya->first();
         $wajibBerikutnya = $tagihanBerikutnya ? \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, $id) : 0;
 
-        $tagihans = $this->tab === 'tagihan'
-            ? Tagihan::whereHas('penyewaan', $scopeSewa)
-                ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
-                ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,denda_per_hari', 'penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
-                ->orderByDesc('jatuh_tempo')
-                ->limit(50)
-                ->get()
-                ->each($olesDenda)
-            : collect();
+        // Blok tab "Sewa & tagihanku" dihapus dari dashboard (semua pindah ke menu
+        // Tagihan). Koleksi dikembalikan kosong agar variabel blade tetap terdefinisi;
+        // modal bayar memakai fallback query langsung bila dibutuhkan.
+        $tagihans = collect();
 
         return [
             'tagihans' => $tagihans,
-            'pembayarans' => $this->tab === 'pembayaran'
-                ? Pembayaran::where('anak_kos_id', $id)
-                    ->select(['id', 'tagihan_id', 'metode', 'jumlah', 'bukti', 'status', 'diverifikasi_oleh', 'nomor_kwitansi'])
-                    ->with(['tagihan:id,periode', 'verifikator:id,nama'])
-                    ->latest()
-                    ->limit(50)
-                    ->get()
-                : collect(),
-            'sewaans' => $this->tab === 'sewaan'
-                ? Penyewaan::where($scopeSewa)
-                    ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian'])
-                    ->with(['kamar.properti:id,nama', 'kamar:id,nama,kapasitas,properti_id', 'anakKos:id,nama', 'anggotas.user:id,nama', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
-                    ->orderByDesc('status')
-                    ->latest()
-                    ->limit(20)
-                    ->get()
-                : collect(),
+            'pembayarans' => collect(),
+            'sewaans' => collect(),
             'tagihanBerikutnya' => $tagihanBerikutnya,
             'wajibBerikutnya' => $wajibBerikutnya,
             'rekomendasi' => (function () use ($id, $propertiTerpakai, $idFavorit, $kotaAktif) {
@@ -463,7 +440,7 @@ new class extends Component
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <x-dashboard-greeting
             roleLabel="Anak Kos"
-            description="Sewa, tagihan, dan riwayat bayarmu semuanya di sini. Scroll ke bawah buat cari kos."
+            description="Tagihan dan riwayat bayarmu ada di menu Tagihan. Scroll ke bawah buat cari kos."
             icon='<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>'
         />
 
@@ -685,281 +662,6 @@ new class extends Component
             </div>
         @endif
 
-        <div>
-            <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Sewa &amp; tagihanku</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Riwayat pembayaranmu ada di tab paling kanan.</p>
-            <div class="mt-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
-                <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mb-1">
-                    <button wire:click="$set('tab', 'sewaan')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'sewaan' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
-                        Sewa Saya
-                    </button>
-                    <button wire:click="$set('tab', 'tagihan')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'tagihan' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
-                        Tagihan Saya
-                    </button>
-                    <button wire:click="$set('tab', 'pembayaran')"
-                        class="flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition {{ $tab === 'pembayaran' ? 'bg-brand-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}">
-                        Pembayaran Saya
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-4 sm:p-6">
-                @if ($tab === 'sewaan')
-                    <div class="space-y-4">
-                        @forelse ($sewaans as $sewaan)
-                            @php
-                                $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
-                                $uidSaya = auth()->id();
-                                // Patungan: hitung sisa porsi saya saja, bukan total penuh 1 kamar.
-                                $sisa = $belumLunas->sum(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya));
-                                $sisaTagihanSaya = $belumLunas->filter(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $uidSaya) > 0);
-                                $isUtama = $sewaan->anak_kos_id === auth()->id();
-                                $ktpSaya = $isUtama ? $sewaan->ktp_path : $sewaan->anggotas->firstWhere('user_id', auth()->id())?->ktp_path;
-                                $anggotaAktif = $sewaan->anggotas->where('status', 'aktif');
-                                $isPatungan = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktif->isNotEmpty();
-                                $bisaTambahTeman = $isUtama && $sewaan->status === 'aktif' && $anggotaAktif->count() < 1 && ($sewaan->kamar?->kapasitas ?? 1) >= 2;
-                                $riwayatKeluar = $sewaan->anggotas->where('status', 'keluar')->sortByDesc('tanggal_keluar')->first();
-                                $tampilBannerStay = $sewaan->status === 'aktif' && ! $isPatungan && $riwayatKeluar && $riwayatKeluar->tanggal_keluar && $riwayatKeluar->tanggal_keluar->diffInDays(now()) <= 30;
-                            @endphp
-                            <div class="rounded-xl ring-1 {{ $sewaan->status === 'aktif' ? 'ring-brand-100 dark:ring-brand-500/30' : 'ring-gray-100 dark:ring-gray-700 opacity-75' }} p-4 sm:p-5">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div>
-                                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                            Kamar {{ $sewaan->kamar?->nama }} &middot; {{ $sewaan->kamar?->properti?->nama }}
-                                            @if ($isPatungan)
-                                                <x-status-badge status="patungan" />
-                                            @endif
-                                            @if (! $isUtama)
-                                                <span class="ml-1 inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:text-gray-300">Anggota</span>
-                                            @endif
-                                        </p>
-                                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                            Masuk: <span class="font-medium text-gray-700 dark:text-gray-200">{{ $sewaan->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}</span>
-                                            @if ($sewaan->tanggal_keluar)
-                                                &middot; Keluar: <span class="font-medium text-gray-700 dark:text-gray-200">{{ $sewaan->tanggal_keluar->translatedFormat('d M Y') }}</span>
-                                            @endif
-                                        </p>
-                                        @if ($isPatungan)
-                                            <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                                                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-200 dark:ring-brand-500/30 px-2.5 py-1 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
-                                                    <span class="h-4 w-4 rounded-full bg-brand-700 text-[9px] font-bold text-white flex items-center justify-center">{{ mb_substr($sewaan->anakKos?->nama ?? '?', 0, 1) }}</span>
-                                                    {{ $sewaan->anakKos?->nama ?? '-' }} · utama
-                                                </span>
-                                                @foreach ($anggotaAktif as $ag)
-                                                    <span class="inline-flex items-center gap-1 rounded-full bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
-                                                        <span class="h-4 w-4 rounded-full bg-sky-600 text-[9px] font-bold text-white flex items-center justify-center">{{ mb_substr($ag->user?->nama ?? '?', 0, 1) }}</span>
-                                                        {{ $ag->user?->nama ?? '-' }} · {{ (int) $ag->porsi_persen }}%
-                                                    </span>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <x-status-badge :status="$sewaan->status" />
-                                    </div>
-                                </div>
-
-                                @if (! $isUtama && $sewaan->status === 'aktif')
-                                    <div class="mt-3 flex items-start gap-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-4 py-3">
-                                        <p class="text-xs text-sky-800 dark:text-sky-200"><span class="font-bold">Kamu ditambahkan sebagai teman sekamar (patungan 50/50).</span> Porsimu 50% tiap tagihan — bayar lewat tab Tagihan Saya. Kabar ini juga masuk ke menu Pesan.</p>
-                                    </div>
-                                @endif
-
-                                @if ($tampilBannerStay)
-                                    <div class="mt-3 flex items-start gap-2 rounded-xl bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-200 dark:ring-brand-500/30 px-4 py-3">
-                                        <p class="text-xs text-brand-800 dark:text-brand-200"><span class="font-bold">{{ $riwayatKeluar->user?->nama ?? 'Teman sekamarmu' }} sudah keluar, kamu tetap stay.</span> Mulai tagihan berikutnya porsimu 100%. Kamar tetap terisi. Kabar ini juga masuk ke menu Pesan.</p>
-                                    </div>
-                                @endif
-
-                                @if (! $ktpSaya && $sewaan->status === 'aktif')
-                                    <div class="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3">
-                                        <p class="text-xs font-semibold text-amber-800 dark:text-amber-200">Foto KTP belum dilengkapi. Lengkapi agar sewa tetap valid.</p>
-                                        <button wire:click="bukaModalKtp({{ $sewaan->id }})"
-                                            class="shrink-0 inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 transition">
-                                            Lengkapi KTP
-                                        </button>
-                                    </div>
-                                @endif
-
-                                <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        @if ($sisaTagihanSaya->isEmpty())
-                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">Semua porsimu lunas{{ $belumLunas->isNotEmpty() && $isPatungan ? ' · menunggu teman sekamar' : '' }}</span>
-                                        @else
-                                            @php $terdekat = $sisaTagihanSaya->sortBy('jatuh_tempo')->first(); @endphp
-                                            <span class="font-semibold text-rose-600 dark:text-rose-400">Sisa porsimu Rp{{ number_format($sisa, 0, ',', '.') }}</span> ({{ $sisaTagihanSaya->count() }} tagihan) &mdash; bayar lewat tab Tagihan Saya
-                                            @if ($terdekat?->jatuh_tempo)
-                                                <span class="mt-1 block">Terdekat: <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $terdekat->periode }}, jatuh tempo {{ $terdekat->jatuh_tempo->translatedFormat('d M Y') }}</span></span>
-                                            @endif
-                                        @endif
-                                    </p>
-                                    @if ($sewaan->status === 'aktif')
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            @if ($bisaTambahTeman)
-                                                <button wire:click="bukaModalTeman({{ $sewaan->id }})"
-                                                    class="shrink-0 inline-flex items-center rounded-lg border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition">
-                                                    + Tambah Teman
-                                                </button>
-                                            @endif
-                                            <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                wire:confirm="{{ $isPatungan ? 'Keluar dari kamar patungan? Porsimu harus sudah lunas.' : 'Check-out dari kamar ' . $sewaan->kamar?->nama . '? Kamar akan kembali tersedia.' }}"
-                                                class="shrink-0 inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
-                                                {{ $isPatungan ? 'Keluar Patungan' : 'Check-out' }}
-                                            </button>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        @empty
-                            <div class="py-10 text-center">
-                                <p class="text-sm text-gray-400 dark:text-gray-500">Belum ada sewa aktif.</p>
-                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Ketemu kos yang cocok di atas? Klik kartunya, terus ajukan sewa — <a href="{{ route('kos.index') }}" wire:navigate class="text-brand-700 dark:text-brand-300 hover:underline font-medium">cari kos</a> dulu.</p>
-                            </div>
-                        @endforelse
-                    </div>
-                @elseif ($tab === 'tagihan')
-                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-                        <thead class="bg-gray-50 dark:bg-gray-700/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Periode</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kamar</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jumlah</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jatuh Tempo</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @forelse ($tagihans as $tagihan)
-                                @php
-                                    $isPatunganTagihan = ($tagihan->penyewaan?->mode_hunian ?? 'tunggal') === 'patungan';
-                                    $porsiSaya = null;
-                                    $sudahSaya = 0;
-                                    if ($tagihan->penyewaan) {
-                                        $porsiSaya = \App\Services\PatunganService::porsiTagihan($tagihan->penyewaan, $tagihan);
-                                        $sudahSaya = (float) $tagihan->pembayarans->where('status', 'diverifikasi')->where('anak_kos_id', auth()->id())->sum('jumlah');
-                                    }
-                                @endphp
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                        {{ $tagihan->periode }}
-                                        @if ($isPatunganTagihan)
-                                            <span class="block text-[10px] font-bold text-sky-600 dark:text-sky-400">Patungan · porsimu Rp{{ number_format($porsiSaya ?? 0, 0, ',', '.') }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $tagihan->penyewaan?->kamar?->nama ?? '-' }}</td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                        Rp{{ number_format($tagihan->jumlah + $tagihan->denda, 0, ',', '.') }}
-                                        @if ($isPatunganTagihan)
-                                            <span class="block text-[11px] text-gray-400">Sudah bayar: Rp{{ number_format($sudahSaya, 0, ',', '.') }} · Sisa porsi: Rp{{ number_format(max(0, ($porsiSaya ?? 0) - $sudahSaya), 0, ',', '.') }}</span>
-                                        @endif
-                                    </td>
-                                    @php
-                                        $sisaHari = \App\Services\TagihanService::selisihHari($tagihan);
-                                        $telatHari = \App\Services\TagihanService::hariTelat($tagihan);
-                                    @endphp
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                        {{ $tagihan->jatuh_tempo?->translatedFormat('d M Y') }}
-                                        @if ($tagihan->status !== 'lunas' && $tagihan->jatuh_tempo)
-                                            @if ($telatHari > 0)
-                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Telat {{ $telatHari }} hari</span>
-                                            @elseif ($sisaHari === 0)
-                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Hari ini</span>
-                                            @elseif ($sisaHari <= 3)
-                                                <span class="mt-1 block w-fit rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">Sisa {{ $sisaHari }} hari</span>
-                                            @elseif ($sisaHari <= 7)
-                                                <span class="mt-1 block w-fit rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Sisa {{ $sisaHari }} hari</span>
-                                            @else
-                                                <span class="mt-1 block w-fit rounded-full bg-brand-50 dark:bg-brand-500/10 px-2 py-0.5 text-[10px] font-bold text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-500/30">Sisa {{ $sisaHari }} hari</span>
-                                            @endif
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-4"><x-status-badge :status="$tagihan->status" /></td>
-                                    <td class="px-4 py-4">
-                                        @php
-                                            $wajibSaya = $tagihan->penyewaan ? \App\Services\TagihanService::wajibBayar($tagihan, auth()->id()) : 0;
-                                        @endphp
-                                        @if ($tagihan->status !== 'lunas' && $wajibSaya > 0)
-                                            <div class="flex justify-end">
-                                                <button wire:click="bayarTagihan({{ $tagihan->id }})" wire:loading.attr="disabled"
-                                                    class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition">
-                                                    Bayar Rp{{ number_format($wajibSaya, 0, ',', '.') }}
-                                                </button>
-                                            </div>
-                                        @elseif ($tagihan->status !== 'lunas' && $isPatunganTagihan)
-                                            <span class="block text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400">Porsimu lunas · menunggu teman</span>
-                                        @else
-                                            <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada tagihan. Kalau kamu lagi ngekos, tagihan bulanannya muncul di sini.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    </div>
-                @else
-                    <div class="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-                        <thead class="bg-gray-50 dark:bg-gray-700/50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Periode</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jumlah</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Metode</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bukti</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diverifikasi Oleh</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kwitansi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @forelse ($pembayarans as $pembayaran)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pembayaran->tagihan?->periode ?? '-' }}</td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->metode === 'cash' ? 'Tunai (Cash)' : 'Transfer' }}</td>
-                                    <td class="px-4 py-4 text-sm">
-                                        @if ($pembayaran->bukti)
-                                            <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
-                                                class="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 dark:text-brand-300 hover:text-brand-800 dark:hover:text-brand-200 hover:underline">
-                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                Lihat
-                                            </a>
-                                        @else
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic">Tidak ada</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $pembayaran->verifikator?->nama ?? '-' }}</td>
-                                    <td class="px-4 py-4"><x-status-badge :status="$pembayaran->status" /></td>
-                                    <td class="px-4 py-4">
-                                        @if ($pembayaran->status === 'diverifikasi')
-                                            <div class="flex justify-end">
-                                                <a href="{{ route('pembayaran.kwitansi', $pembayaran) }}" target="_blank" rel="noopener"
-                                                    class="inline-flex items-center gap-1 rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 transition">
-                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                                                    {{ $pembayaran->nomor_kwitansi ?? 'Unduh' }}
-                                                </a>
-                                            </div>
-                                        @else
-                                            <span class="block text-right text-xs text-gray-400 dark:text-gray-500">-</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada riwayat pembayaran. Semua pembayaranmu yang udah diverifikasi tercatat di sini.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    </div>
-                @endif
-            </div>
-        </div>
-        </div>
     </div>
 
     @if ($modalBayarId)

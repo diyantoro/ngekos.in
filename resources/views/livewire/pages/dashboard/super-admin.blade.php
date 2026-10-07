@@ -51,6 +51,10 @@ new class extends Component
 
     public bool $bannerAktif = true;
 
+    public float $promoIntervalDetik = 3;
+
+    public ?string $promoBerakhirPada = null;
+
     public $bannerGambar;
 
     public ?string $bannerImageLama = null;
@@ -60,6 +64,8 @@ new class extends Component
         $this->heroPropertiId = Pengaturan::landingHeroId();
         $this->promoIds = Pengaturan::landingPromoIds();
         $this->banners = Pengaturan::landingBanners();
+        $this->promoIntervalDetik = Pengaturan::promoIntervalMs() / 1000;
+        $this->promoBerakhirPada = Pengaturan::promoBerakhirPada()?->format('Y-m-d\TH:i');
         $this->resetBannerForm();
     }
 
@@ -69,6 +75,8 @@ new class extends Component
             $this->heroPropertiId = Pengaturan::landingHeroId();
             $this->promoIds = Pengaturan::landingPromoIds();
             $this->banners = Pengaturan::landingBanners();
+            $this->promoIntervalDetik = Pengaturan::promoIntervalMs() / 1000;
+            $this->promoBerakhirPada = Pengaturan::promoBerakhirPada()?->format('Y-m-d\TH:i');
             $this->reset(['pesan', 'galat']);
         }
     }
@@ -595,6 +603,41 @@ new class extends Component
         $this->banners = $daftar;
     }
 
+    public function simpanIntervalPromo(): void
+    {
+        $this->reset(['pesan', 'galat']);
+
+        $this->validate([
+            'promoIntervalDetik' => 'required|numeric|min:1|max:10',
+        ], [], ['promoIntervalDetik' => 'jeda slide promo']);
+
+        Pengaturan::simpanPromoIntervalMs((int) round($this->promoIntervalDetik * 1000));
+        $this->promoIntervalDetik = Pengaturan::promoIntervalMs() / 1000;
+        $this->pesan = 'Jeda auto-slide promo disimpan ('.$this->promoIntervalDetik.' detik).';
+    }
+
+    public function simpanPromoBerakhir(): void
+    {
+        $this->reset(['pesan', 'galat']);
+
+        $this->validate([
+            'promoBerakhirPada' => 'required|date|after:now',
+        ], [], ['promoBerakhirPada' => 'waktu berakhir promo']);
+
+        Pengaturan::simpanPromoBerakhirPada(\Illuminate\Support\Carbon::parse($this->promoBerakhirPada));
+        $this->promoBerakhirPada = Pengaturan::promoBerakhirPada()?->format('Y-m-d\TH:i');
+        $this->pesan = 'Hitung mundur Promo Ngebut diatur sampai '.Pengaturan::promoBerakhirPada()->translatedFormat('d M Y, H:i').'.';
+    }
+
+    public function resetPromoBerakhir(): void
+    {
+        $this->reset(['pesan', 'galat']);
+
+        Pengaturan::simpanPromoBerakhirPada(null);
+        $this->promoBerakhirPada = null;
+        $this->pesan = 'Waktu Promo Ngebut dikembalikan otomatis (akhir bulan berjalan).';
+    }
+
     public function kembalikanBannerDefault(): void
     {
         $this->reset(['pesan', 'galat']);
@@ -1053,6 +1096,17 @@ new class extends Component
                                     Kembali otomatis
                                 </button>
                             </div>
+                            <form wire:submit="simpanPromoBerakhir" class="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-200">Hitung mundur berakhir</label>
+                                    <input type="datetime-local" wire:model="promoBerakhirPada"
+                                        class="mt-1 block rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                                </div>
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition">Simpan waktu</button>
+                                <button type="button" wire:click="resetPromoBerakhir" class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 transition">Otomatis (akhir bulan)</button>
+                                <p class="w-full text-[11px] text-gray-400 dark:text-gray-500">Waktu hari/jam/menit/detik di landing. Kosongkan kembali = akhir bulan berjalan.</p>
+                                @error('promoBerakhirPada') <p class="w-full text-xs text-rose-600">{{ $message }}</p> @enderror
+                            </form>
                             @if ($promoTerpilih->isNotEmpty())
                                 <div class="mt-3 space-y-2">
                                     @foreach ($promoTerpilih as $urutan => $pp)
@@ -1104,6 +1158,16 @@ new class extends Component
                                     <button wire:click="kembalikanBannerDefault" class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 transition">Kembalikan bawaan</button>
                                 </div>
                             </div>
+                            <form wire:submit="simpanIntervalPromo" class="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-200">Jeda auto-slide promo (detik)</label>
+                                    <input type="number" wire:model="promoIntervalDetik" min="1" max="10" step="0.5"
+                                        class="mt-1 block w-28 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                                </div>
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition">Simpan jeda</button>
+                                <p class="w-full text-[11px] text-gray-400 dark:text-gray-500">Berlaku untuk semua carousel promo (landing & halaman cari kos). Antara 1–10 detik.</p>
+                                @error('promoIntervalDetik') <p class="w-full text-xs text-rose-600">{{ $message }}</p> @enderror
+                            </form>
                             <div class="mt-3 space-y-2">
                                 @forelse ($banners as $i => $bn)
                                     <div class="flex items-center gap-3 rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden {{ ($bn['aktif'] ?? true) ? '' : 'opacity-60' }}">

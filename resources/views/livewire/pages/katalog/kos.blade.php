@@ -102,80 +102,40 @@ new #[Layout('layouts.publik')] class extends Component
     }
 }; ?>
 
-<div x-data="{ openFilter: false, tampilkanPeta: false }">
-    <!-- Search Header -->
+<div x-data="{ tampilkanPeta: false }">
+    <!-- Search + Filter: satu baris kompak -->
     <section class="bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800 sticky top-14 z-30">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-            <!-- Search Bar -->
-            <div class="flex items-center gap-2">
-                <div class="flex-1 flex items-center gap-2 bg-stone-100 dark:bg-gray-800 rounded-lg px-3 py-2.5 transition focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-brand-500/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-[1fr_170px_150px_140px_auto] gap-2 items-center">
+                <div class="col-span-2 sm:col-span-3 lg:col-span-1 flex items-center gap-2 bg-stone-100 dark:bg-gray-800 rounded-lg px-3 py-2 transition focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-brand-500/30">
                     <svg class="h-4 w-4 text-slate-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
                         class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
-                <button @click="openFilter = !openFilter"
-                    class="shrink-0 flex items-center justify-center h-10 w-10 rounded-lg transition relative {{ ($kota || $hargaMax || $kapasitas > 1) ? 'bg-brand-50 text-brand-700 border border-brand-200 dark:bg-brand-500/10 dark:text-brand-300 dark:border-brand-500/30' : 'bg-stone-100 text-slate-500 hover:bg-stone-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600' }}">
-                    <svg class="h-5 w-5 transition-transform duration-200" :class="openFilter ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
-                    @if ($kota || $hargaMax || $kapasitas > 1)
-                        <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-teal-600 text-[9px] font-bold text-white flex items-center justify-center shadow-sm">
-                            {{ collect([$kota, $hargaMax, $kapasitas > 1 ? 1 : null])->filter()->count() }}
-                        </span>
-                    @endif
-                </button>
-            </div>
-
-            <!-- Filter Panel (toggle) -->
-            <button @click="openFilter = !openFilter" class="mt-2 flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-teal-600 dark:text-gray-400 dark:hover:text-teal-400 transition-all duration-200 active:scale-95">
-                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
-                Filter
-                @if ($kota || $hargaMax || $kapasitas > 1)
-                    <span class="inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-bold text-teal-700 dark:text-teal-300">Aktif</span>
-                @endif
-                <svg class="h-3 w-3 transition-transform duration-200" :class="openFilter ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-            </button>
-
-            <div x-show="openFilter" x-cloak
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 -translate-y-2"
-                 x-transition:enter-end="opacity-100 translate-y-0"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100 translate-y-0"
-                 x-transition:leave-end="opacity-0 -translate-y-2"
-                 class="mt-3 bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-3 space-y-3 ring-1 ring-gray-100 dark:ring-gray-700">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Kota</label>
-                        <select wire:model.live="kota" class="w-full rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors">
-                            <option value="">Semua kota</option>
-                            @foreach ($daftarKota as $k)
-                                <option value="{{ $k }}">{{ $k }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Harga Maks</label>
-                        <select wire:model.live="hargaMax" class="w-full rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors">
-                            <option value="">Semua harga</option>
-                            <option value="500000"><= Rp500rb</option>
-                            <option value="750000"><= Rp750rb</option>
-                            <option value="1000000"><= Rp1 juta</option>
-                            <option value="1500000"><= Rp1,5 juta</option>
-                            <option value="2000000"><= Rp2 juta</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Kapasitas Minimal</label>
-                    <select wire:model.live="kapasitas" class="w-full rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors">
-                        <option value="1">1 orang</option>
-                        <option value="2">2 orang</option>
-                        <option value="3">3 orang</option>
-                    </select>
-                </div>
+                <select wire:model.live="kota" aria-label="Kota" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
+                    <option value="">Semua kota</option>
+                    @foreach ($daftarKota as $k)
+                        <option value="{{ $k }}">{{ $k }}</option>
+                    @endforeach
+                </select>
+                <select wire:model.live="hargaMax" aria-label="Harga maksimal" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
+                    <option value="">Semua harga</option>
+                    <option value="500000"><= Rp500rb</option>
+                    <option value="750000"><= Rp750rb</option>
+                    <option value="1000000"><= Rp1 juta</option>
+                    <option value="1500000"><= Rp1,5 juta</option>
+                    <option value="2000000"><= Rp2 juta</option>
+                </select>
+                <select wire:model.live="kapasitas" aria-label="Kapasitas minimal" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
+                    <option value="1">1 orang+</option>
+                    <option value="2">2 orang+</option>
+                    <option value="3">3 orang+</option>
+                </select>
                 @if ($kota || $hargaMax || $kapasitas > 1)
                     <button wire:click="$set('kota', ''); $set('hargaMax', null); $set('kapasitas', 1)"
-                        class="text-xs font-semibold text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition-colors active:scale-95">
-                        Reset Filter
+                        class="justify-self-start lg:justify-self-auto inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 transition-colors active:scale-95 whitespace-nowrap">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                        Reset
                     </button>
                 @endif
             </div>
@@ -210,7 +170,7 @@ new #[Layout('layouts.publik')] class extends Component
              x-transition:enter-end="opacity-100 translate-y-0"
              class="mb-5">
             <div class="rounded-2xl overflow-hidden shadow-card ring-1 ring-gray-100 dark:ring-gray-700">
-                <div id="peta-kos" class="h-96 w-full bg-gray-100 dark:bg-gray-800"></div>
+                <div id="peta-kos" class="h-96 sm:h-[30rem] w-full bg-gray-100 dark:bg-gray-800"></div>
             </div>
             <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota.</p>
         </div>

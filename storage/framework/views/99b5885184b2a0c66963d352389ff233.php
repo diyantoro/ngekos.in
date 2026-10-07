@@ -781,6 +781,23 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                     <button wire:click="kembalikanBannerDefault" class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 transition">Kembalikan bawaan</button>
                                 </div>
                             </div>
+                            <form wire:submit="simpanIntervalPromo" class="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-200">Jeda auto-slide promo (detik)</label>
+                                    <input type="number" wire:model="promoIntervalDetik" min="1" max="10" step="0.5"
+                                        class="mt-1 block w-28 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
+                                </div>
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition">Simpan jeda</button>
+                                <p class="w-full text-[11px] text-gray-400 dark:text-gray-500">Berlaku untuk semua carousel promo (landing & halaman cari kos). Antara 1–10 detik.</p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['promoIntervalDetik'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="w-full text-xs text-rose-600"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </form>
                             <div class="mt-3 space-y-2">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $banners; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $bn): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                     <div class="flex items-center gap-3 rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden <?php echo e(($bn['aktif'] ?? true) ? '' : 'opacity-60'); ?>">

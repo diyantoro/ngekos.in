@@ -196,8 +196,9 @@ class FiturBaruTest extends TestCase
         $this->assertStringContainsString('patungan 50/50', $chatTeman->isi);
         $this->assertNull($chatTeman->dibaca_pada);
 
-        Volt::actingAs($yoga)->test('pages.dashboard.anak-kos')
-            ->assertSee('Kamu ditambahkan sebagai teman sekamar');
+        // Notifikasi patungan tercatat di chat; banner dashboard untuk anggota
+        // sudah dihapus (diganti menu Tagihan), jadi cukup pastikan dashboard OK.
+        $this->actingAs($yoga)->get(route('dashboard.anak-kos'))->assertOk();
     }
 
     public function test_bayar_masing_masing_melunasi_tagihan(): void
@@ -275,9 +276,9 @@ class FiturBaruTest extends TestCase
             ->latest('id')->firstOrFail();
         $this->assertStringContainsString('sudah keluar', $chatLeaver->isi);
 
-        // Banner stay muncul di dashboard stayer.
-        Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
-            ->assertSee('sudah keluar, kamu tetap stay');
+        // Info stay tercatat di chat stayer; banner dashboard sudah dihapus
+        // (diganti menu Tagihan), jadi cukup pastikan dashboard OK.
+        $this->actingAs($rina)->get(route('dashboard.anak-kos'))->assertOk();
     }
 
     public function test_utama_keluar_mempromosikan_anggota_yang_stay(): void
