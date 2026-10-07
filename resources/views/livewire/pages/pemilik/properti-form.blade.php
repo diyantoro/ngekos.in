@@ -751,6 +751,14 @@ new #[Layout('layouts.app')] class extends Component
         if (modePeta === 'js') {
             if (markerForm) markerForm.setPosition({ lat: latStr, lng: lngStr });
             if (petaForm) petaForm.panTo({ lat: latStr, lng: lngStr });
+        } else if (modePeta === 'leaflet') {
+            if (markerForm && typeof markerForm.setLatLng === 'function') markerForm.setLatLng([latStr, lngStr]);
+            if (petaForm && typeof petaForm.panTo === 'function') {
+                try {
+                    if (typeof petaForm.getZoom === 'function' && typeof petaForm.setView === 'function' && petaForm.getZoom() < 14) petaForm.setView([latStr, lngStr], 15);
+                    else petaForm.panTo([latStr, lngStr]);
+                } catch (e) {}
+            }
         } else if (modePeta === 'embed' && typeof window.pasangGoogleEmbed === 'function') {
             window.pasangGoogleEmbed(el, latStr, lngStr, 15);
         }
@@ -869,7 +877,55 @@ new #[Layout('layouts.app')] class extends Component
         };
     }
 
-    function initPetaForm() {
+    function adaKoordinatTersimpan() {
+        const el = document.getElementById('peta-properti-form');
+        return !Number.isNaN(parseFloat(el?.dataset.lat)) && !Number.isNaN(parseFloat(el?.dataset.lng));
+    }
+
+    function bersihkanPetaForm() {
+        try { if (petaForm && typeof petaForm.remove === 'function') petaForm.remove(); } catch (e) {}
+        try {
+            const wadah = document.getElementById('peta-properti-form');
+            if (wadah) {
+                wadah.innerHTML = '';
+                if (wadah._leaflet_id) delete wadah._leaflet_id;
+            }
+        } catch (e) {}
+        petaForm = null;
+        markerForm = null;
+        modePeta = '';
+    }
+
+    function pasangIkonLeafletForm(L) {
+        try {
+            const dasar = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: dasar + 'marker-icon-2x.png',
+                iconUrl: dasar + 'marker-icon.png',
+                shadowUrl: dasar + 'marker-shadow.png',
+            });
+        } catch (e) {}
+    }
+
+    function tampilkanEmbedStatisForm(el, awal) {
+        modePeta = 'embed';
+        el.innerHTML = `
+            <div class="h-full w-full relative">
+                <iframe
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
+                    scrolling="no"
+                    marginheight="0"
+                    marginwidth="0"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=${awal.lng-0.01},${awal.lat-0.01},${awal.lng+0.01},${awal.lat+0.01}&layer=mapnik&marker=${awal.lat},${awal.lng}"
+                    style="border: 0">
+                </iframe>
+            </div>
+        `;
+    }
+
+    async function initPetaForm() {
         const el = document.getElementById('peta-properti-form');
         if (!el || el.dataset.terpasang) return;
         el.dataset.terpasang = '1';
@@ -883,29 +939,37 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         if (typeof google === 'undefined' || !google.maps) {
-            // Fallback: Gunakan OpenStreetMap dengan Leaflet (atau embed sederhana)
-            modePeta = 'embed';
-            
-            // Buat iframe embed dari OpenStreetMap
-            el.innerHTML = `
-                <div class="h-full w-full relative">
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        frameborder="0" 
-                        scrolling="no" 
-                        marginheight="0" 
-                        marginwidth="0" 
-                        src="https://www.openstreetmap.org/export/embed.html?bbox=${awal.lng-0.01},${awal.lat-0.01},${awal.lng+0.01},${awal.lat+0.01}&layer=mapnik&marker=${awal.lat},${awal.lng}"
-                        style="border: 0">
-                    </iframe>
-                    <div class="absolute bottom-2 left-2 right-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                        <strong>Mode Pratinjau:</strong> Gunakan tombol "Cari dari Alamat" atau "Gunakan lokasi saya" untuk set koordinat.
-                    </div>
-                </div>
-            `;
-            
-            tulisStatusForm("Gunakan tombol di bawah untuk menandai lokasi.");
+            try {
+                if (typeof window.ensureLeaflet !== 'function') throw new Error('Leaflet tidak tersedia');
+                bersihkanPetaForm();
+                const L = await window.ensureLeaflet();
+                if (document.getElementById('peta-properti-form') !== el || el.dataset.terpasang !== '1') return;
+                bersihkanPetaForm();
+                pasangIkonLeafletForm(L);
+                modePeta = 'leaflet';
+                petaForm = L.map(el, { scrollWheelZoom: true }).setView([awal.lat, awal.lng], adaKoordinatTersimpan() ? 16 : 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap',
+                }).addTo(petaForm);
+                markerForm = L.marker([awal.lat, awal.lng], { draggable: true }).addTo(petaForm);
+                markerForm.bindTooltip('Geser untuk memindahkan lokasi');
+                markerForm.on('dragend', () => {
+                    const p = markerForm.getLatLng();
+                    setKoordinatForm(p.lat, p.lng);
+                    isiAlamatDariPeta(p.lat, p.lng);
+                });
+                petaForm.on('click', (e) => {
+                    const p = e.latlng;
+                    setKoordinatForm(p.lat, p.lng);
+                    isiAlamatDariPeta(p.lat, p.lng);
+                });
+                tulisStatusForm('Geser marker / klik peta untuk menandai lokasi.');
+            } catch (e) {
+                bersihkanPetaForm();
+                tampilkanEmbedStatisForm(el, awal);
+                tulisStatusForm('Peta pratinjau saja: gunakan "Cari dari Alamat" atau "Gunakan lokasi saya".');
+            }
             pasangCariAlamatForm();
             pasangToggleLokasiForm();
             return;
@@ -942,9 +1006,9 @@ new #[Layout('layouts.app')] class extends Component
 
     // Initialize on load
     if (typeof window.loadNgekosMaps === 'function') {
-        window.loadNgekosMaps(initPetaForm);
+        window.loadNgekosMaps(() => { initPetaForm().catch(() => {}); });
     } else {
-        initPetaForm();
+        initPetaForm().catch(() => {});
     }
 
     // Re-initialize after Livewire navigation (didaftarkan sekali saja agar
@@ -952,6 +1016,8 @@ new #[Layout('layouts.app')] class extends Component
     if (!window.__petaFormNavOn) {
         window.__petaFormNavOn = true;
         document.addEventListener('livewire:navigated', () => {
+            bersihkanPetaForm();
+
             // Reset flag so map can be re-initialized
             const el = document.getElementById('peta-properti-form');
             if (el && el.dataset.terpasang) {
@@ -961,9 +1027,9 @@ new #[Layout('layouts.app')] class extends Component
             // Re-init map
             setTimeout(() => {
                 if (typeof window.loadNgekosMaps === 'function') {
-                    window.loadNgekosMaps(initPetaForm);
+                    window.loadNgekosMaps(() => { initPetaForm().catch(() => {}); });
                 } else {
-                    initPetaForm();
+                    initPetaForm().catch(() => {});
                 }
             }, 100);
         });

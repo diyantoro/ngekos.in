@@ -6,6 +6,10 @@
     display: none !important;
 }
 
+.leaflet-container {
+    z-index: 0;
+}
+
 @layer base {
     html {
         scroll-behavior: smooth;

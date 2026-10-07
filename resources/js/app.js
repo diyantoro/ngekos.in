@@ -17,6 +17,41 @@ window.ensureCropper = (() => {
 import { photoCropManager } from './photo-crop-manager.js';
 window.photoCropManager = photoCropManager;
 
+// Leaflet (OpenStreetMap) dimuat malas dari CDN agar bundle global ringan.
+// window.ensureLeaflet() me-resolve L + menyuntik CSS sekali saja.
+window.ensureLeaflet = (() => {
+    let janji = null;
+    const versi = '1.9.4';
+    return () => {
+        if (window.L) return Promise.resolve(window.L);
+        if (!janji) {
+            janji = new Promise((resolve, tolak) => {
+                if (!document.querySelector('link[data-leaflet]')) {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://unpkg.com/leaflet@' + versi + '/dist/leaflet.css';
+                    link.dataset.leaflet = '1';
+                    document.head.appendChild(link);
+                }
+                if (document.querySelector('script[data-leaflet]')) {
+                    const cek = setInterval(() => {
+                        if (window.L) { clearInterval(cek); resolve(window.L); }
+                    }, 50);
+                    return;
+                }
+                const s = document.createElement('script');
+                s.src = 'https://unpkg.com/leaflet@' + versi + '/dist/leaflet.js';
+                s.async = true;
+                s.dataset.leaflet = '1';
+                s.onload = () => (window.L ? resolve(window.L) : tolak(new Error('Leaflet gagal dimuat')));
+                s.onerror = () => tolak(new Error('Leaflet gagal dimuat'));
+                document.head.appendChild(s);
+            }).catch((e) => { janji = null; throw e; });
+        }
+        return janji;
+    };
+})();
+
 // Loader Google Maps — key dibaca dari <meta name="gmaps-key">.
 // Skrip Maps JS dimuat sekali (lazy) dan callback antrean dipanggil saat siap.
 // Tanpa key: callback tetap dipanggil async agar fallback OSM/embed jalan.
@@ -104,6 +139,96 @@ window.pasangOsmEmbed = function (el, lat, lng, zoom, daftar) {
     iframe.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox
         + '&layer=mapnik' + markers;
     el.appendChild(iframe);
+};
+
+// Peta Leaflet interaktif (gratis, tanpa API key) — fallback utama semua halaman
+// saat Google Maps tidak tersedia. Bisa digeser, zoom, dan klik marker.
+window._ikonLeafletTerpasang = false;
+window.pasangIkonLeaflet = function (L) {
+    if (window._ikonLeafletTerpasang || !L || !L.Icon || !L.Icon.Default) return;
+    try {
+        const dasar = 'https://unpkg.com/leaflet@1.9.4/dist/images/';
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: dasar + 'marker-icon-2x.png',
+            iconUrl: dasar + 'marker-icon.png',
+            shadowUrl: dasar + 'marker-shadow.png',
+        });
+        window._ikonLeafletTerpasang = true;
+    } catch (e) {}
+};
+
+window.bersihkanWadahLeaflet = function (el) {
+    if (!el) return;
+    try { if (el._petaLeaflet && typeof el._petaLeaflet.remove === 'function') el._petaLeaflet.remove(); } catch (e) {}
+    el._petaLeaflet = null;
+    el.innerHTML = '';
+    try { if (el._leaflet_id) delete el._leaflet_id; } catch (e) {}
+};
+
+window.buatPetaLeaflet = async function (el, lat, lng, zoom, opsi) {
+    const L = await window.ensureLeaflet();
+    window.bersihkanWadahLeaflet(el);
+    window.pasangIkonLeaflet(L);
+    const peta = L.map(el, { scrollWheelZoom: !!(opsi && opsi.scrollWheelZoom) }).setView([lat, lng], zoom || 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+    }).addTo(peta);
+    el._petaLeaflet = peta;
+    return { L, peta };
+};
+
+window.loloskanHtml = function (s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
+window.popupInfoKos = function (m) {
+    const e = window.loloskanHtml;
+    let html = '<strong>' + e(m.nama || 'Kos') + '</strong>';
+    const lok = [m.alamat, m.kota].filter(Boolean).join(', ');
+    if (lok) html += '<br>' + e(lok);
+    if (m.id) html += '<br><a href="/kos/' + encodeURIComponent(m.id) + '">Lihat detail</a>';
+    return html;
+};
+
+// Peta daftar kos (beranda & katalog): marker bisa diklik, popup nama + tautan detail.
+window.buatPetaDaftarOsm = async function (el, daftar, opsi) {
+    const titik = (Array.isArray(daftar) ? daftar : [])
+        .filter((m) => m && Number.isFinite(m.lat) && Number.isFinite(m.lng))
+        .slice(0, 500);
+    if (!el || !titik.length) return null;
+    const tengah = titik.reduce((a, m) => ({ lat: a.lat + m.lat / titik.length, lng: a.lng + m.lng / titik.length }), { lat: 0, lng: 0 });
+    const { L, peta } = await window.buatPetaLeaflet(el, tengah.lat, tengah.lng, titik.length <= 1 ? 14 : 11, opsi);
+    const batas = [];
+    titik.forEach((m) => {
+        try {
+            L.marker([m.lat, m.lng], { title: m.nama || '' }).addTo(peta).bindPopup(window.popupInfoKos(m));
+        } catch (e) {}
+        batas.push([m.lat, m.lng]);
+    });
+    try {
+        if (batas.length === 1) peta.setView(batas[0], 14);
+        else if (batas.length) peta.fitBounds(batas, { padding: [24, 24] });
+    } catch (e) {}
+    return peta;
+};
+
+// Peta satu titik (detail kos): marker + popup langsung terbuka.
+window.buatPetaTitikOsm = async function (el, lat, lng, info) {
+    if (!el || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const nama = (info && info.nama) || '';
+    const alamat = (info && info.alamat) || '';
+    const { L, peta } = await window.buatPetaLeaflet(el, lat, lng, (info && info.zoom) || 16, info);
+    try {
+        const isi = '<div><strong>' + window.loloskanHtml(nama) + '</strong>' +
+            (alamat ? '<br>' + window.loloskanHtml(alamat) : '') + '</div>';
+        L.marker([lat, lng], { title: nama }).addTo(peta).bindPopup(isi).openPopup();
+    } catch (e) {}
+    return peta;
 };
 
 // Clustering marker untuk peta dengan banyak titik (beranda & katalog).

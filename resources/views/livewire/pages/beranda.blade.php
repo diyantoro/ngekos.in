@@ -815,10 +815,16 @@ new #[Layout('layouts.publik')] class extends Component
             window._boundsBeranda = window._boundsBeranda || null;
             window.dataPetaBeranda = @js($markers);
 
-            function berandaFallback() {
+            async function berandaFallback() {
                 const el = document.getElementById('peta-kos-beranda');
                 const data = window.dataPetaBeranda || [];
                 if (!el || !data.length) return;
+                if (typeof window.buatPetaDaftarOsm === 'function') {
+                    try {
+                        await window.buatPetaDaftarOsm(el, data);
+                        return;
+                    } catch (e) {}
+                }
                 if (typeof window.pasangOsmEmbed === 'function') {
                     const sum = dataPetaBeranda.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
                     window.pasangOsmEmbed(el, sum.lat / dataPetaBeranda.length, sum.lng / dataPetaBeranda.length, 10, dataPetaBeranda);
@@ -836,11 +842,15 @@ new #[Layout('layouts.publik')] class extends Component
                 if (!el || !data.length) return;
                 if (el.offsetWidth === 0) {
                     if ((percobaan || 0) < 20) setTimeout(() => berandaBuatPeta((percobaan || 0) + 1), 120);
-                    else berandaFallback();
+                    else { try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {} }
+                    return;
+                }
+                if (el._petaLeaflet) {
+                    try { el._petaLeaflet.invalidateSize(); } catch (e) {}
                     return;
                 }
                 if (typeof google === 'undefined' || !google.maps) {
-                    berandaFallback();
+                    try { const r = berandaFallback(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
                     return;
                 }
                 if (window._mapBeranda) {
@@ -890,7 +900,11 @@ new #[Layout('layouts.publik')] class extends Component
 
             window.resetPetaBeranda = function () {
                 const el = document.getElementById('peta-kos-beranda');
-                if (el) el.innerHTML = '';
+                if (el && typeof window.bersihkanWadahLeaflet === 'function') {
+                    try { window.bersihkanWadahLeaflet(el); } catch (e) { el.innerHTML = ''; }
+                } else if (el) {
+                    el.innerHTML = '';
+                }
                 window._mapBeranda = null;
                 window._boundsBeranda = null;
             };
@@ -900,6 +914,10 @@ new #[Layout('layouts.publik')] class extends Component
                 if (!window.__berandaPetaNavOn) {
                     window.__berandaPetaNavOn = true;
                     document.addEventListener('livewire:navigated', () => {
+                        try {
+                            const wadah = document.getElementById('peta-kos-beranda');
+                            if (wadah && typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(wadah);
+                        } catch (e) {}
                         window._mapBeranda = null;
                         window._boundsBeranda = null;
                     });
