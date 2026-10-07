@@ -92,4 +92,102 @@ class Pengaturan extends Model
     {
         return (float) static::ambil('kos.denda_per_hari', 0);
     }
+
+    public static function landingHeroId(): ?int
+    {
+        $id = (int) static::ambil('landing.hero_properti_id', 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    public static function simpanLandingHero(?int $id): void
+    {
+        static::simpanBanyak(['landing.hero_properti_id' => $id && $id > 0 ? (string) $id : null]);
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function landingPromoIds(): array
+    {
+        $mentah = static::ambil('landing.promo_ids', null);
+
+        if ($mentah === null || $mentah === '') {
+            return [];
+        }
+
+        $data = json_decode((string) $mentah, true);
+
+        if (! is_array($data)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn ($v) => (int) $v > 0 ? (int) $v : null,
+            $data
+        )));
+    }
+
+    public static function simpanLandingPromo(array $ids): void
+    {
+        $bersih = array_values(array_unique(array_filter(array_map(
+            fn ($v) => (int) $v > 0 ? (int) $v : null,
+            $ids
+        ))));
+
+        static::simpanBanyak(['landing.promo_ids' => json_encode(array_slice($bersih, 0, 8))]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function landingBanners(bool $hanyaAktif = false): array
+    {
+        $mentah = static::ambil('landing.banners', null);
+
+        if ($mentah === null || $mentah === '') {
+            return [];
+        }
+
+        $data = json_decode((string) $mentah, true);
+
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $daftar = array_values(array_filter(array_map(function ($b) {
+            if (! is_array($b)) {
+                return null;
+            }
+
+            return [
+                'brand' => (string) ($b['brand'] ?? ''),
+                'tagline' => (string) ($b['tagline'] ?? ''),
+                'desc' => (string) ($b['desc'] ?? ''),
+                'gradient' => (string) ($b['gradient'] ?? 'from-blue-700 via-sky-600 to-sky-500'),
+                'accent' => (string) ($b['accent'] ?? 'text-sky-200'),
+                'icon' => (string) ($b['icon'] ?? 'wifi'),
+                'image' => isset($b['image']) && $b['image'] !== '' ? (string) $b['image'] : null,
+                'aktif' => ! array_key_exists('aktif', $b) || (bool) $b['aktif'],
+            ];
+        }, $data)));
+
+        $daftar = array_values(array_filter($daftar, fn ($b) => $b['brand'] !== ''));
+
+        if ($hanyaAktif) {
+            $daftar = array_values(array_filter($daftar, fn ($b) => $b['aktif']));
+        }
+
+        return $daftar;
+    }
+
+    public static function adaKustomLandingBanners(): bool
+    {
+        return static::ambil('landing.banners', null) !== null;
+    }
+
+    public static function simpanLandingBanners(array $banners): void
+    {
+        static::simpanBanyak(['landing.banners' => json_encode(array_values($banners))]);
+    }
 }

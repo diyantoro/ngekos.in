@@ -8,136 +8,34 @@ use App\Support\NormalisasiKota;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.publik')] class extends Component
-{
-    public string $cari = '';
-
-    public function mount(): void
-    {
-        if (auth()->check()) {
-            $this->redirect(route('dashboard'), navigate: true);
-        }
-    }
-
-    public function with(): array
-    {
-        $query = Properti::query()
-            ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
-            ->with(['fotos:id,properti_id,path,urutan'])
-            ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
-            ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan');
-
-        if ($this->cari) {
-            $query->where(fn ($q) => $q
-                ->where('nama', 'like', "%{$this->cari}%")
-                ->orWhere('kota', 'like', "%{$this->cari}%")
-                ->orWhere('alamat', 'like', "%{$this->cari}%"));
-        }
-
-        $propertiList = $query
-            ->latest('created_at')
-            ->take(12)
-            ->get();
-
-        $promoIds = Pengaturan::landingPromoIds();
-        $propertiPromo = collect();
-
-        if ($promoIds !== []) {
-            $propertiPromo = Properti::query()
-                ->where('status', 'aktif')
-                ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
-                ->with(['fotos:id,properti_id,path,urutan'])
-                ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
-                ->withAvg('ulasans as rating_ulasan', 'rating')
-                ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
-                ->whereIn('id', $promoIds)
-                ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $promoIds)).')')
-                ->take(8)
-                ->get();
-        }
-
-        if ($propertiPromo->isEmpty()) {
-            $propertiPromo = (clone $query)
-                ->whereNotNull('harga_asli')
-                ->whereColumn('harga_asli', '>', 'harga')
-                ->latest('created_at')
-                ->take(8)
-                ->get();
-        }
-
-        $heroId = Pengaturan::landingHeroId();
-        $heroKos = $heroId ? Properti::query()
-            ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
-            ->with(['fotos:id,properti_id,path,urutan'])
-            ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
-            ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
-            ->find($heroId) : null;
-
-        if (! $heroKos) {
-            $heroKos = $propertiList->first();
-        }
-
-        $bannerKustom = Pengaturan::landingBanners(true);
-
-        return [
-            'totalProperti' => cache()->remember('beranda.totalProperti', 300, fn () => Properti::where('status', 'aktif')->count()),
-            'totalKamar' => cache()->remember('beranda.totalKamar', 300, fn () => Kamar::where('status', 'tersedia')->count()),
-            'propertiList' => $propertiList,
-            'propertiPromo' => $propertiPromo,
-            'heroKos' => $heroKos,
-            'bannerAds' => $bannerKustom === [] && ! Pengaturan::adaKustomLandingBanners() ? [] : $bannerKustom,
-            'kotaRekomendasi' => cache()->remember('beranda.kotaRekomendasi', 3600, fn () => Properti::where('status', 'aktif')
-                ->whereNotNull('kota')
-                ->where('kota', '!=', '')
-                ->groupBy('kota')
-                ->selectRaw('kota, COUNT(*) as total')
-                ->orderByDesc('total')
-                ->limit(1)
-                ->value('kota')),
-            'akhirPromo' => mktime(23, 59, 59, (int) date('n'), (int) date('t'), (int) date('Y')),
-            'daftarKota' => collect(cache()->remember('beranda.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
-                ->whereNotNull('kota')
-                ->distinct()
-                ->orderBy('kota')
-                ->pluck('kota')
-                ->all())),
-            'kotaStatistik' => collect(cache()->remember('beranda.kotaStatistik', 3600, fn () => NormalisasiKota::agregasi(Properti::where('status', 'aktif')
-                ->whereNotNull('kota')
-                ->where('kota', '!=', '')
-                ->pluck('kota')
-                ->all())->all())),
-            'markers' => collect(cache()->remember('beranda.markers', 3600, fn () => Properti::where('status', 'aktif')
-                ->get(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude'])
-                ->map(function ($p) {
-                    $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
-
-                    return $titik ? [
-                        'id' => $p->id,
-                        'nama' => $p->nama,
-                        'kota' => $p->kota,
-                        'alamat' => $p->alamat,
-                        'lat' => $titik[0],
-                        'lng' => $titik[1],
-                    ] : null;
-                })
-                ->filter()
-                ->values()
-                ->all())),
-        ];
-    }
-}; ?>
+?>
 
 <div class="bg-paper dark:bg-gray-950">
     <!-- Banner iklan partner (auto-slide, bisa diatur superadmin) -->
-    @if ($bannerAds !== [] || ! \App\Models\Pengaturan::adaKustomLandingBanners())
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bannerAds !== [] || ! \App\Models\Pengaturan::adaKustomLandingBanners()): ?>
         <section class="relative overflow-hidden">
-            <x-promo-ads variant="hero" :ads="$bannerAds" />
+            <?php if (isset($component)) { $__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.promo-ads','data' => ['variant' => 'hero','ads' => $bannerAds]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('promo-ads'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['variant' => 'hero','ads' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($bannerAds)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f)): ?>
+<?php $attributes = $__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f; ?>
+<?php unset($__attributesOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f)): ?>
+<?php $component = $__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f; ?>
+<?php unset($__componentOriginalf00e66bd4c416c4b5f17e7e6f5c37f9f); ?>
+<?php endif; ?>
         </section>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- Hero pencarian -->
     <section class="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 dark:from-gray-950 dark:via-brand-950 dark:to-brand-900">
@@ -170,17 +68,17 @@ new #[Layout('layouts.publik')] class extends Component
                 </h1>
                 <p class="mt-2.5 sm:mt-3 text-sm sm:text-lg text-brand-100 max-w-xl leading-relaxed">
                     Foto asli, harga transparan, chat langsung pemilik. Saat ini ada
-                    <span class="font-bold text-white whitespace-nowrap">{{ number_format($totalKamar, 0, ',', '.') }} kamar</span> di
-                    <span class="font-bold text-white whitespace-nowrap">{{ number_format($totalProperti, 0, ',', '.') }} kos aktif</span> menunggumu.
+                    <span class="font-bold text-white whitespace-nowrap"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?> kamar</span> di
+                    <span class="font-bold text-white whitespace-nowrap"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?> kos aktif</span> menunggumu.
                 </p>
 
-                <form action="{{ route('kos.index') }}" method="GET"
+                <form action="<?php echo e(route('kos.index')); ?>" method="GET"
                       class="mt-5 sm:mt-6 max-w-2xl bg-white dark:bg-gray-800 rounded-2xl p-1.5 sm:p-2 flex items-center gap-1.5 sm:gap-2 shadow-2xl shadow-black/25 ring-1 ring-white/20">
                     <div class="flex-1 min-w-0 flex items-center gap-2 px-2 sm:px-3">
                         <span class="hidden min-[360px]:flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10">
                             <svg class="h-4 w-4 sm:h-5 sm:w-5 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                         </span>
-                        <input type="search" name="cari" value="{{ request('cari', $cari) }}" placeholder="Mau ngekos di mana?"
+                        <input type="search" name="cari" value="<?php echo e(request('cari', $cari)); ?>" placeholder="Mau ngekos di mana?"
                             autocomplete="off" enterkeyhint="search"
                             class="w-full min-w-0 border-0 bg-transparent text-base text-slate-900 dark:text-gray-100 placeholder-slate-400 focus:ring-0 focus:outline-none py-3">
                     </div>
@@ -192,26 +90,27 @@ new #[Layout('layouts.publik')] class extends Component
 
                 <div class="mt-3.5 sm:mt-4 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
                     <span class="shrink-0 text-xs font-semibold text-brand-100">Populer:</span>
-                    @foreach ($daftarKota->take(6) as $kota)
-                        <a href="{{ route('kos.index', ['kota' => $kota]) }}" wire:navigate
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarKota->take(6); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kota): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <a href="<?php echo e(route('kos.index', ['kota' => $kota])); ?>" wire:navigate
                            class="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/5 backdrop-blur px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-400 hover:text-brand-950 hover:border-amber-400 transition">
-                            {{ $kota }}
+                            <?php echo e($kota); ?>
+
                         </a>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
 
                 <!-- Statistik mini -->
                 <div class="mt-5 sm:mt-6 grid grid-cols-3 max-w-xl gap-2 sm:gap-3">
                     <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate">{{ number_format($totalKamar, 0, ',', '.') }}+</p>
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?>+</p>
                         <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kamar Tersedia</p>
                     </div>
                     <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate">{{ number_format($totalProperti, 0, ',', '.') }}+</p>
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e(number_format($totalProperti, 0, ',', '.')); ?>+</p>
                         <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kos Aktif</p>
                     </div>
                     <div class="min-w-0 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-2.5 py-2.5 sm:px-4 sm:py-3">
-                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate">{{ $daftarKota->count() }}+</p>
+                        <p class="text-lg sm:text-2xl font-extrabold text-white tabular-nums truncate"><?php echo e($daftarKota->count()); ?>+</p>
                         <p class="text-[11px] sm:text-xs text-brand-100 font-medium leading-tight">Kota di Indonesia</p>
                     </div>
                 </div>
@@ -221,19 +120,19 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="hidden lg:block relative">
                 <div class="relative mx-auto w-full max-w-sm">
                     <div class="beranda-float relative rounded-3xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-white/20 rotate-2">
-                        @if ($heroKos ?? $propertiList->first())
-                            @php $heroKos = $heroKos ?? $propertiList->first(); @endphp
-                            <img src="{{ $heroKos->fotoCover() ?? asset('favicon.svg') }}" alt="{{ $heroKos->nama }}" class="h-80 w-full object-cover">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($heroKos ?? $propertiList->first()): ?>
+                            <?php $heroKos = $heroKos ?? $propertiList->first(); ?>
+                            <img src="<?php echo e($heroKos->fotoCover() ?? asset('favicon.svg')); ?>" alt="<?php echo e($heroKos->nama); ?>" class="h-80 w-full object-cover">
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5 pt-14">
-                                <p class="text-white font-bold truncate">{{ $heroKos->nama }}</p>
-                                <p class="text-white/70 text-xs truncate">{{ $heroKos->kota ?? $heroKos->alamat }}</p>
-                                <p class="mt-1 text-amber-300 font-extrabold">Rp{{ number_format($heroKos->harga ?? $heroKos->harga_termurah ?? 0, 0, ',', '.') }}<span class="text-xs font-medium text-white/70">/bln</span></p>
+                                <p class="text-white font-bold truncate"><?php echo e($heroKos->nama); ?></p>
+                                <p class="text-white/70 text-xs truncate"><?php echo e($heroKos->kota ?? $heroKos->alamat); ?></p>
+                                <p class="mt-1 text-amber-300 font-extrabold">Rp<?php echo e(number_format($heroKos->harga ?? $heroKos->harga_termurah ?? 0, 0, ',', '.')); ?><span class="text-xs font-medium text-white/70">/bln</span></p>
                             </div>
-                        @else
+                        <?php else: ?>
                             <div class="h-80 w-full bg-white/10 backdrop-blur flex items-center justify-center">
                                 <svg class="h-16 w-16 text-white/30" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
                             </div>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                     <!-- Kartu melayang: rating -->
                     <div class="beranda-float2 absolute -left-10 top-8 rounded-2xl bg-white dark:bg-gray-800 shadow-xl px-4 py-3 flex items-center gap-3 ring-1 ring-stone-200 dark:ring-gray-700">
@@ -265,26 +164,26 @@ new #[Layout('layouts.publik')] class extends Component
     <!-- Strip kepercayaan -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            @foreach ([
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['Foto Asli & Akurat', 'Semua foto dari pemilik langsung', 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z|M15 13a3 3 0 11-6 0 3 3 0 016 0z'],
                 ['Harga Transparan', 'Tanpa biaya tersembunyi', 'M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
                 ['Chat Langsung', 'Tanya pemilik, gratis & cepat', 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z'],
                 ['Pembayaran Aman', 'Bukti sewa & kwitansi resmi', 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
-            ] as [$judulFitur, $descFitur, $iconFitur])
+            ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$judulFitur, $descFitur, $iconFitur]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div class="flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 px-3 sm:px-4 py-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition">
                     <span class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            @foreach (explode('|', $iconFitur) as $pathFitur)
-                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ $pathFitur }}" />
-                            @endforeach
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = explode('|', $iconFitur); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pathFitur): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="<?php echo e($pathFitur); ?>" />
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </svg>
                     </span>
                     <div class="min-w-0">
-                        <p class="text-xs sm:text-sm font-bold text-slate-900 dark:text-gray-100 truncate">{{ $judulFitur }}</p>
-                        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-gray-400 truncate">{{ $descFitur }}</p>
+                        <p class="text-xs sm:text-sm font-bold text-slate-900 dark:text-gray-100 truncate"><?php echo e($judulFitur); ?></p>
+                        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-gray-400 truncate"><?php echo e($descFitur); ?></p>
                     </div>
                 </div>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
@@ -299,36 +198,36 @@ new #[Layout('layouts.publik')] class extends Component
                 <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Promo spesial buat kamu</h2>
                 <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Klaim sebelum kehabisan — diperbarui tiap bulan</p>
             </div>
-            <a href="{{ route('kos.index') }}" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
+            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </a>
         </div>
         <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
-            @foreach ([
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['Pindah Kos Jadi Lebih Ringan', 'Diskon s.d. 800 RIBU!', 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z'],
                 ['Voucher Ngekos 100RB', 'Udah siap buat kamu!', 'M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z'],
                 ['Ngekos Aman Bisa Refund', 'Perlindungan lebih luas', 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
                 ['Gratis 1 Bulan', 'Sewa 11 bulan, gratis 1 bulan', 'M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z'],
                 ['Bisa Masuk Tanpa Deposit!', 'Syarat dan ketentuan berlaku', 'M15 8.25H9m6 3H9m3 6l-3-3h1.5V12h3v2.25H12l3 3zm-9 3h12a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z'],
                 ['Kos di ' . ($kotaRekomendasi ?? 'Kotamu'), 'Banyak pilihan kamar tersedia', 'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z|M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z'],
-            ] as [$judulPromo, $subPromo, $iconPromo])
-                <a href="{{ route('kos.index') }}" wire:navigate
+            ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$judulPromo, $subPromo, $iconPromo]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <a href="<?php echo e(route('kos.index')); ?>" wire:navigate
                    class="snap-start snap-always shrink-0 w-[72vw] max-w-[250px] sm:w-[290px] sm:max-w-none rounded-2xl bg-brand-900 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-4 sm:p-5 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition overflow-hidden relative group">
                     <div class="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition duration-500"></div>
                     <span class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-brand-950">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            @foreach (explode('|', $iconPromo) as $pathPromo)
-                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ $pathPromo }}" />
-                            @endforeach
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = explode('|', $iconPromo); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pathPromo): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="<?php echo e($pathPromo); ?>" />
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </svg>
                     </span>
-                    <p class="relative mt-3 text-sm font-bold leading-snug">{{ $judulPromo }}</p>
-                    <p class="relative mt-1 text-xs text-brand-100">{{ $subPromo }}</p>
+                    <p class="relative mt-3 text-sm font-bold leading-snug"><?php echo e($judulPromo); ?></p>
+                    <p class="relative mt-1 text-xs text-brand-100"><?php echo e($subPromo); ?></p>
                     <span class="relative mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-brand-950 group-hover:gap-2.5 transition-all">Ambil promo
                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                     </span>
                 </a>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
@@ -340,19 +239,19 @@ new #[Layout('layouts.publik')] class extends Component
             <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Dari cari sampai bayar, tanpa drama perantara.</p>
         </div>
         <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            @foreach ([
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['01', 'Cari & Filter Cerdas', 'Filter lokasi, harga, tipe putra/putri/campur, dan fasilitas lengkap.'],
                 ['02', 'Survei & Chat Gratis', 'Jadwalkan survei dan chat pemilik langsung tanpa perantara.'],
                 ['03', 'Booking & Bayar Aman', 'Amankan kamarmu dengan pembayaran tercatat + kwitansi resmi.'],
                 ['04', 'Tagihan Otomatis', 'Pengingat bulanan otomatis, riwayat bayar rapi, anti lupa.'],
-            ] as [$nomor, $judulLangkah, $descLangkah])
+            ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$nomor, $judulLangkah, $descLangkah]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div class="relative rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 p-5 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition overflow-hidden group">
-                    <span class="absolute -right-2 -top-4 text-6xl font-extrabold text-stone-100 dark:text-gray-700/50 select-none group-hover:text-brand-50 dark:group-hover:text-brand-500/10 transition">{{ $nomor }}</span>
-                    <span class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 text-white text-sm font-extrabold shadow-md shadow-brand-900/25">{{ $nomor }}</span>
-                    <h3 class="relative mt-3 text-sm font-bold text-slate-900 dark:text-gray-100">{{ $judulLangkah }}</h3>
-                    <p class="relative mt-1 text-xs text-slate-500 dark:text-gray-400 leading-relaxed">{{ $descLangkah }}</p>
+                    <span class="absolute -right-2 -top-4 text-6xl font-extrabold text-stone-100 dark:text-gray-700/50 select-none group-hover:text-brand-50 dark:group-hover:text-brand-500/10 transition"><?php echo e($nomor); ?></span>
+                    <span class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 text-white text-sm font-extrabold shadow-md shadow-brand-900/25"><?php echo e($nomor); ?></span>
+                    <h3 class="relative mt-3 text-sm font-bold text-slate-900 dark:text-gray-100"><?php echo e($judulLangkah); ?></h3>
+                    <p class="relative mt-1 text-xs text-slate-500 dark:text-gray-400 leading-relaxed"><?php echo e($descLangkah); ?></p>
                 </div>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
@@ -368,7 +267,7 @@ new #[Layout('layouts.publik')] class extends Component
                 <li class="flex items-center gap-2"><svg class="h-4 w-4 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg> Pasang iklan gratis, tanpa komisi tersembunyi</li>
                 <li class="flex items-center gap-2"><svg class="h-4 w-4 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg> Dashboard okupansi & laporan keuangan</li>
             </ul>
-            <a href="{{ route('register') }}" wire:navigate class="relative mt-5 inline-flex items-center gap-1.5 btn-accent !text-xs">Daftarkan Kos Gratis
+            <a href="<?php echo e(route('register')); ?>" wire:navigate class="relative mt-5 inline-flex items-center gap-1.5 btn-accent !text-xs">Daftarkan Kos Gratis
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </a>
         </div>
@@ -377,16 +276,16 @@ new #[Layout('layouts.publik')] class extends Component
             <h2 class="mt-1 text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100">Yakin Dulu Baru Bayar</h2>
             <p class="mt-1.5 text-sm text-slate-500 dark:text-gray-400 leading-relaxed">Cari, pilih, survei langsung ke lokasi, chat pemilik gratis. Kalau cocok, booking detik itu juga.</p>
             <div class="mt-4 flex flex-wrap gap-2">
-                <a href="{{ route('kos.index') }}" wire:navigate class="btn-primary !text-xs">Mulai Cari Kos</a>
-                <a href="{{ route('bantuan') }}" wire:navigate class="btn-secondary !text-xs">Cara Survei Aman</a>
+                <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="btn-primary !text-xs">Mulai Cari Kos</a>
+                <a href="<?php echo e(route('bantuan')); ?>" wire:navigate class="btn-secondary !text-xs">Cara Survei Aman</a>
             </div>
         </div>
     </section>
 
     <!-- Promo Ngebut -->
-    @if ($propertiPromo->isNotEmpty())
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($propertiPromo->isNotEmpty()): ?>
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10"
-        x-data="{ hari: '–', jam: '–', mnt: '–', dtk: '–', init() { const akhir = @js($akhirPromo); const tick = () => { let s = Math.max(0, akhir - Math.floor(Date.now() / 1000)); this.hari = Math.floor(s / 86400); const p = (n) => String(n).padStart(2, '0'); this.jam = p(Math.floor(s % 86400 / 3600)); this.mnt = p(Math.floor(s % 3600 / 60)); this.dtk = p(s % 60); }; tick(); setInterval(tick, 1000); } }">
+        x-data="{ hari: '–', jam: '–', mnt: '–', dtk: '–', init() { const akhir = <?php echo \Illuminate\Support\Js::from($akhirPromo)->toHtml() ?>; const tick = () => { let s = Math.max(0, akhir - Math.floor(Date.now() / 1000)); this.hari = Math.floor(s / 86400); const p = (n) => String(n).padStart(2, '0'); this.jam = p(Math.floor(s % 86400 / 3600)); this.mnt = p(Math.floor(s % 3600 / 60)); this.dtk = p(s % 60); }; tick(); setInterval(tick, 1000); } }">
         <div class="relative overflow-hidden rounded-2xl bg-brand-950 dark:bg-brand-950 border border-brand-800 dark:border-brand-500/20 p-4 sm:p-6 text-white shadow-lg">
             <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-400/20 blur-2xl"></div>
             <div class="absolute right-1/3 -bottom-12 h-32 w-32 rounded-full bg-brand-500/20 blur-2xl"></div>
@@ -409,12 +308,31 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
         <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
-            @foreach ($propertiPromo as $properti)
-                <x-kartu-kos :properti="$properti" class="snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition" />
-            @endforeach
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $propertiPromo; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('kartu-kos'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 !shadow-card hover:!shadow-card-hover hover:-translate-y-1 transition']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $attributes = $__attributesOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $component = $__componentOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__componentOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- Rekomendasi kos -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10">
@@ -424,22 +342,41 @@ new #[Layout('layouts.publik')] class extends Component
                     <svg class="h-3.5 w-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
                     <span class="truncate">Pilihan penghuni</span>
                 </p>
-                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Rekomendasi kos di {{ $kotaRekomendasi ?? 'kotamu' }}</h2>
+                <h2 class="mt-2 text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Rekomendasi kos di <?php echo e($kotaRekomendasi ?? 'kotamu'); ?></h2>
                 <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Kos dengan kamar tersedia terbanyak & rating terbaik</p>
             </div>
-            <a href="{{ $kotaRekomendasi ? route('kos.index', ['kota' => $kotaRekomendasi]) : route('kos.index') }}" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
+            <a href="<?php echo e($kotaRekomendasi ? route('kos.index', ['kota' => $kotaRekomendasi]) : route('kos.index')); ?>" wire:navigate class="shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 dark:border-gray-700 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10 transition">Lihat semua
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
             </a>
         </div>
         <div class="mt-4 flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0">
-            @forelse ($propertiList->take(8) as $properti)
-                <x-kartu-kos :properti="$properti" class="snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 hover:-translate-y-1 transition" />
-            @empty
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $propertiList->take(8); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 hover:-translate-y-1 transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('kartu-kos'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'snap-start snap-always w-[68vw] max-w-[240px] sm:w-[260px] sm:max-w-none shrink-0 hover:-translate-y-1 transition']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $attributes = $__attributesOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $component = $__componentOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__componentOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <div class="w-full rounded-2xl border border-dashed border-stone-300 dark:border-gray-700 p-10 text-center">
                     <p class="text-sm font-semibold text-slate-600 dark:text-gray-300">Belum ada kos terdaftar.</p>
                     <p class="mt-1 text-xs text-slate-500">Jadilah pemilik pertama yang pasang kos di sini.</p>
                 </div>
-            @endforelse
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
@@ -448,16 +385,35 @@ new #[Layout('layouts.publik')] class extends Component
         <div class="flex items-end justify-between gap-2 sm:gap-3">
             <div class="min-w-0">
                 <h2 class="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-gray-100 text-balance">Jelajahi semua kos</h2>
-                <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400">{{ $propertiList->count() }} kos terbaru menunggumu — harga bulan pertama sudah termasuk diskon</p>
+                <p class="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-gray-400"><?php echo e($propertiList->count()); ?> kos terbaru menunggumu — harga bulan pertama sudah termasuk diskon</p>
             </div>
-            <a href="{{ route('kos.index') }}" wire:navigate class="shrink-0 whitespace-nowrap text-xs sm:text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 hover:underline">Lihat katalog lengkap →</a>
+            <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="shrink-0 whitespace-nowrap text-xs sm:text-sm font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 hover:underline">Lihat katalog lengkap →</a>
         </div>
         <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            @forelse ($propertiList as $properti)
-                <x-kartu-kos :properti="$properti" class="w-full hover:-translate-y-1 hover:shadow-card-hover transition" />
-            @empty
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $propertiList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $properti): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                <?php if (isset($component)) { $__componentOriginal944248ded517bcf14e4a5c34595a3f97 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal944248ded517bcf14e4a5c34595a3f97 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.kartu-kos','data' => ['properti' => $properti,'class' => 'w-full hover:-translate-y-1 hover:shadow-card-hover transition']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('kartu-kos'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['properti' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($properti),'class' => 'w-full hover:-translate-y-1 hover:shadow-card-hover transition']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $attributes = $__attributesOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__attributesOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal944248ded517bcf14e4a5c34595a3f97)): ?>
+<?php $component = $__componentOriginal944248ded517bcf14e4a5c34595a3f97; ?>
+<?php unset($__componentOriginal944248ded517bcf14e4a5c34595a3f97); ?>
+<?php endif; ?>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <p class="col-span-full text-sm text-slate-500 dark:text-gray-400 py-6 text-center">Belum ada kos terdaftar.</p>
-            @endforelse
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
@@ -474,12 +430,12 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
-                @foreach ($kotaStatistik->take(7) as $kota)
-                    <a href="{{ route('kos.index', ['kota' => $kota['nama']]) }}" wire:navigate
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $kotaStatistik->take(7); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kota): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route('kos.index', ['kota' => $kota['nama']])); ?>" wire:navigate
                        class="group rounded-full border border-stone-300 dark:border-gray-700 pl-3 pr-2 py-1.5 text-xs font-semibold text-slate-600 dark:text-gray-300 hover:border-brand-600 hover:bg-brand-700 hover:text-white transition">
-                        Kos {{ $kota['nama'] }} <span class="ml-1 rounded-full bg-brand-50 dark:bg-gray-700 group-hover:bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-brand-700 dark:text-gray-200 group-hover:text-white">{{ $kota['jumlah'] }}</span>
+                        Kos <?php echo e($kota['nama']); ?> <span class="ml-1 rounded-full bg-brand-50 dark:bg-gray-700 group-hover:bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-brand-700 dark:text-gray-200 group-hover:text-white"><?php echo e($kota['jumlah']); ?></span>
                     </a>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         </div>
         <div class="rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 p-5 sm:p-6 shadow-card">
@@ -493,12 +449,12 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
-                @foreach ([['UGM', 'Jogja'], ['UNDIP', 'Semarang'], ['UI', 'Depok'], ['UNPAD', 'Jatinangor'], ['STAN', 'Jakarta'], ['UB', 'Malang'], ['UNAIR', 'Surabaya']] as [$kampus, $kotaKampus])
-                    <a href="{{ route('kos.index', ['cari' => $kotaKampus]) }}" wire:navigate
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [['UGM', 'Jogja'], ['UNDIP', 'Semarang'], ['UI', 'Depok'], ['UNPAD', 'Jatinangor'], ['STAN', 'Jakarta'], ['UB', 'Malang'], ['UNAIR', 'Surabaya']]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$kampus, $kotaKampus]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route('kos.index', ['cari' => $kotaKampus])); ?>" wire:navigate
                        class="rounded-full bg-paper dark:bg-gray-900 border border-stone-200 dark:border-gray-700 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-gray-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 transition">
-                        {{ $kampus }} <span class="text-slate-400 dark:text-gray-500 font-medium">· {{ $kotaKampus }}</span>
+                        <?php echo e($kampus); ?> <span class="text-slate-400 dark:text-gray-500 font-medium">· <?php echo e($kotaKampus); ?></span>
                     </a>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         </div>
     </section>
@@ -511,38 +467,38 @@ new #[Layout('layouts.publik')] class extends Component
             <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-gray-400">Cerita nyata anak kos dari berbagai kota</p>
         </div>
         <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            @foreach ([
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [
                 ['Rizky Pratama', 'Mahasiswa • Jogja', 'Cari kos 2 hari langsung dapat! Foto sama aslinya persis, pemiliknya fast respon banget di chat.', 'RP'],
                 ['Sinta Amelia', 'Karyawan • Jakarta', 'Bayar kos jadi gampang, ada pengingat tiap bulan + kwitansi otomatis. Nggak takut lupa lagi.', 'SA'],
                 ['Dimas Saputra', 'Mahasiswa • Malang', 'Survei dulu sebelum booking bikin tenang. Lokasinya sesuai peta, lingkungannya nyaman.', 'DS'],
-            ] as [$namaTesti, $peranTesti, $isiTesti, $inisialTesti])
+            ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$namaTesti, $peranTesti, $isiTesti, $inisialTesti]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <figure class="rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 p-5 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition">
                     <div class="flex gap-0.5">
-                        @for ($i = 0; $i < 5; $i++)
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php for($i = 0; $i < 5; $i++): ?>
                             <svg class="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9l-5.3 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
-                        @endfor
+                        <?php endfor; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <blockquote class="mt-3 text-sm text-slate-600 dark:text-gray-300 leading-relaxed">“{{ $isiTesti }}”</blockquote>
+                    <blockquote class="mt-3 text-sm text-slate-600 dark:text-gray-300 leading-relaxed">“<?php echo e($isiTesti); ?>”</blockquote>
                     <figcaption class="mt-4 flex items-center gap-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-white text-xs font-extrabold">{{ $inisialTesti }}</span>
+                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-white text-xs font-extrabold"><?php echo e($inisialTesti); ?></span>
                         <div>
-                            <p class="text-sm font-bold text-slate-900 dark:text-gray-100">{{ $namaTesti }}</p>
-                            <p class="text-xs text-slate-500 dark:text-gray-400">{{ $peranTesti }}</p>
+                            <p class="text-sm font-bold text-slate-900 dark:text-gray-100"><?php echo e($namaTesti); ?></p>
+                            <p class="text-xs text-slate-500 dark:text-gray-400"><?php echo e($peranTesti); ?></p>
                         </div>
                     </figcaption>
                 </figure>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </section>
 
     <!-- Persebaran Kos -->
-    @if ($kotaStatistik->isNotEmpty())
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kotaStatistik->isNotEmpty()): ?>
     <section x-data="{
                 semua: false,
                 buka: null,
                 cariKota: '',
                 muat: 15,
-                data: @js($kotaStatistik),
+                data: <?php echo \Illuminate\Support\Js::from($kotaStatistik)->toHtml() ?>,
                 get totalKota() { return this.data.length; },
                 get sisa() { return this.data.slice(6); },
                 get kotaLain() {
@@ -730,10 +686,10 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
     </section>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- Peta Semua Kos -->
-    @if ($markers->isNotEmpty())
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($markers->isNotEmpty()): ?>
     <section class="max-w-7xl mx-auto px-4 pb-8 sm:pb-10" x-data="{ tampilkanPeta: false }">
         <div class="reveal relative overflow-hidden rounded-xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 sm:p-6">
             <div class="relative flex items-center justify-between gap-3 mb-4">
@@ -743,11 +699,11 @@ new #[Layout('layouts.publik')] class extends Component
                     </span>
                     <div>
                         <h2 class="text-base font-bold text-slate-900 dark:text-gray-100">Peta Kos</h2>
-                        <p class="text-xs text-slate-500 dark:text-gray-400">{{ $markers->count() }} titik lokasi kos aktif</p>
+                        <p class="text-xs text-slate-500 dark:text-gray-400"><?php echo e($markers->count()); ?> titik lokasi kos aktif</p>
                     </div>
                 </div>
                 <button @click="tampilkanPeta = !tampilkanPeta; $nextTick(() => { if (tampilkanPeta) initPetaBeranda(); else if (typeof resetPetaBeranda === 'function') resetPetaBeranda(); })"
-                    class="shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition {{ $markers->count() ? 'bg-brand-700 text-white hover:bg-brand-800' : 'bg-stone-100 text-slate-400' }}">
+                    class="shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition <?php echo e($markers->count() ? 'bg-brand-700 text-white hover:bg-brand-800' : 'bg-stone-100 text-slate-400'); ?>">
                     <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
                     <span x-text="tampilkanPeta ? 'Tutup Peta' : 'Lihat Peta'"></span>
@@ -762,7 +718,7 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
     </section>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- CTA penutup + Tentang Ngekos.in -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-2">
@@ -772,12 +728,12 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="relative max-w-2xl mx-auto">
                 <p class="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-amber-300">Gratis • Tanpa perantara • Bisa refund</p>
                 <h2 class="mt-3 text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">Siap Pindah ke<br>Kos yang Lebih Nyaman?</h2>
-                <p class="mt-3 text-sm sm:text-base text-brand-100">{{ number_format($totalKamar, 0, ',', '.') }} kamar tersedia menunggumu di {{ $daftarKota->count() }}+ kota. Daftar gratis, chat pemilik langsung.</p>
+                <p class="mt-3 text-sm sm:text-base text-brand-100"><?php echo e(number_format($totalKamar, 0, ',', '.')); ?> kamar tersedia menunggumu di <?php echo e($daftarKota->count()); ?>+ kota. Daftar gratis, chat pemilik langsung.</p>
                 <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <a href="{{ route('kos.index') }}" wire:navigate class="btn-accent w-full sm:w-auto !px-8 !py-3.5 !text-base">Cari Kos Sekarang
+                    <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="btn-accent w-full sm:w-auto !px-8 !py-3.5 !text-base">Cari Kos Sekarang
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                     </a>
-                    <a href="{{ route('register') }}" wire:navigate class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 backdrop-blur px-8 py-3.5 text-base font-bold text-white hover:bg-white/20 transition">Saya Pemilik Kos</a>
+                    <a href="<?php echo e(route('register')); ?>" wire:navigate class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 backdrop-blur px-8 py-3.5 text-base font-bold text-white hover:bg-white/20 transition">Saya Pemilik Kos</a>
                 </div>
                 <p class="mt-4 text-xs text-brand-100">Sudah dipercaya ribuan anak kos & ratusan pemilik di Indonesia</p>
             </div>
@@ -787,10 +743,10 @@ new #[Layout('layouts.publik')] class extends Component
     <section class="bg-white dark:bg-gray-800 border-t border-stone-200 dark:border-gray-700 mt-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 grid lg:grid-cols-[1fr_320px] gap-8">
             <div>
-                <h2 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-gray-100">{{ \App\Models\Pengaturan::namaSitus() }} — Aplikasi Anak Kos No. 1 di Indonesia</h2>
+                <h2 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-gray-100"><?php echo e(\App\Models\Pengaturan::namaSitus()); ?> — Aplikasi Anak Kos No. 1 di Indonesia</h2>
                 <p class="mt-3 text-xs sm:text-sm text-slate-500 dark:text-gray-400 leading-relaxed">
-                    {{ \App\Models\Pengaturan::namaSitus() }} memanfaatkan teknologi untuk berkembang dari aplikasi cari kos menjadi aplikasi yang memudahkan
-                    calon anak kos untuk booking properti kos dan melakukan pembayaran kos. Saat ini kami memiliki {{ $totalKamar }} kamar tersedia
+                    <?php echo e(\App\Models\Pengaturan::namaSitus()); ?> memanfaatkan teknologi untuk berkembang dari aplikasi cari kos menjadi aplikasi yang memudahkan
+                    calon anak kos untuk booking properti kos dan melakukan pembayaran kos. Saat ini kami memiliki <?php echo e($totalKamar); ?> kamar tersedia
                     yang tersebar di berbagai kota di Indonesia. Data ketersediaan akurat, fasilitas terperinci, foto asli, dan harga transparan.
                 </p>
                 <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-gray-400 leading-relaxed">
@@ -801,19 +757,19 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="rounded-2xl bg-paper dark:bg-gray-900 border border-stone-200 dark:border-gray-700 p-5 h-fit">
                 <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Mulai cepat</p>
                 <div class="mt-3 space-y-2">
-                    <a href="{{ route('kos.index') }}" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Cari kos <span aria-hidden="true">→</span></a>
-                    <a href="{{ route('register') }}" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Daftarkan kos <span aria-hidden="true">→</span></a>
-                    <a href="{{ route('bantuan') }}" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Butuh bantuan? <span aria-hidden="true">→</span></a>
+                    <a href="<?php echo e(route('kos.index')); ?>" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Cari kos <span aria-hidden="true">→</span></a>
+                    <a href="<?php echo e(route('register')); ?>" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Daftarkan kos <span aria-hidden="true">→</span></a>
+                    <a href="<?php echo e(route('bantuan')); ?>" wire:navigate class="flex items-center justify-between rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 px-4 py-3 text-sm font-bold text-slate-800 dark:text-gray-100 hover:border-brand-400 hover:shadow transition">Butuh bantuan? <span aria-hidden="true">→</span></a>
                 </div>
             </div>
         </div>
     </section>
 
-    @push('scripts')
+    <?php $__env->startPush('scripts'); ?>
         <script>
             window._mapBeranda = window._mapBeranda || null;
             window._boundsBeranda = window._boundsBeranda || null;
-            window.dataPetaBeranda = @js($markers);
+            window.dataPetaBeranda = <?php echo \Illuminate\Support\Js::from($markers)->toHtml() ?>;
 
             function berandaFallback() {
                 const el = document.getElementById('peta-kos-beranda');
@@ -909,5 +865,5 @@ new #[Layout('layouts.publik')] class extends Component
                 window.berandaFallback = berandaFallback;
             })();
         </script>
-    @endpush
-</div>
+    <?php $__env->stopPush(); ?>
+</div><?php /**PATH C:\laragon\www\Ngekos.in\resources\views\livewire/pages/beranda.blade.php ENDPATH**/ ?>
