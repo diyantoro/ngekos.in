@@ -622,7 +622,7 @@ new #[Layout('layouts.app')] class extends Component
             <!-- Lokasi Peta -->
             <div>
                 <x-input-label value="Lokasi di Peta (Opsional)" />
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Klik pada peta untuk menandai lokasi kos, atau gunakan tombol di bawah.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Geser pin / klik pada peta untuk menandai lokasi kos. Bisa juga isi koordinat manual di bawah.</p>
             </div>
 
             @php
@@ -646,7 +646,26 @@ new #[Layout('layouts.app')] class extends Component
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                     Gunakan lokasi saya saat ini
                 </button>
-                <span id="peta-status">Klik pada peta untuk menandai lokasi kos.</span>
+                <span id="peta-status">Geser pin / klik peta untuk menandai lokasi kos.</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end rounded-xl bg-gray-50 dark:bg-gray-900/50 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
+                <div>
+                    <x-input-label for="lintang-manual" value="Latitude (garis lintang)" />
+                    <x-text-input id="lintang-manual" wire:model="latitude" type="number" step="any" min="-90" max="90" class="mt-1 block w-full" placeholder="Contoh: -6.917464" />
+                    <x-input-error :messages="$errors->get('latitude')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="bujur-manual" value="Longitude (garis bujur)" />
+                    <x-text-input id="bujur-manual" wire:model="longitude" type="number" step="any" min="-180" max="180" class="mt-1 block w-full" placeholder="Contoh: 107.619125" />
+                    <x-input-error :messages="$errors->get('longitude')" class="mt-2" />
+                </div>
+                <div>
+                    <button type="button" id="peta-tampil-manual" class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                        Tampilkan di Peta
+                    </button>
+                </div>
             </div>
 
             <div>
@@ -738,7 +757,12 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     function tulisStatusForm(t) {
+        if (!statusPeta || !statusPeta.isConnected) statusPeta = document.getElementById('peta-status');
         if (statusPeta) statusPeta.textContent = t;
+    }
+
+    function laporGalatPeta(e) {
+        try { console.error('Peta properti gagal:', e); } catch (_) {}
     }
 
     function setKoordinatForm(lat, lng) {
@@ -747,6 +771,11 @@ new #[Layout('layouts.app')] class extends Component
 
         const el = document.getElementById('peta-properti-form');
         if (el) { el.dataset.lat = lat; el.dataset.lng = lng; }
+
+        const inputLat = document.getElementById('lintang-manual');
+        const inputLng = document.getElementById('bujur-manual');
+        if (inputLat && document.activeElement !== inputLat) inputLat.value = latStr;
+        if (inputLng && document.activeElement !== inputLng) inputLng.value = lngStr;
 
         if (modePeta === 'js') {
             if (markerForm) markerForm.setPosition({ lat: latStr, lng: lngStr });
@@ -759,8 +788,8 @@ new #[Layout('layouts.app')] class extends Component
                     else petaForm.panTo([latStr, lngStr]);
                 } catch (e) {}
             }
-        } else if (modePeta === 'embed' && typeof window.pasangGoogleEmbed === 'function') {
-            window.pasangGoogleEmbed(el, latStr, lngStr, 15);
+        } else if (modePeta === 'embed') {
+            try { tampilkanEmbedStatisForm(el, { lat: latStr, lng: lngStr }); } catch (e) {}
         }
 
         $wire.set('latitude', latStr);
@@ -795,11 +824,23 @@ new #[Layout('layouts.app')] class extends Component
             .catch(() => {});
     }
 
-    function pasangCariAlamatForm() {
-        const tombol = document.getElementById('peta-cari-alamat');
-        if (!tombol) return;
+    function bacaKoordinatManual() {
+        const lat = parseFloat(document.getElementById('lintang-manual')?.value);
+        const lng = parseFloat(document.getElementById('bujur-manual')?.value);
+        return { lat, lng };
+    }
 
-        tombol.addEventListener('click', () => {
+    function tampilDariKoordinatManual() {
+        const { lat, lng } = bacaKoordinatManual();
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+            tulisStatusForm('Isi latitude (-90 s.d. 90) dan longitude (-180 s.d. 180) yang valid.');
+            return;
+        }
+        setKoordinatForm(lat, lng);
+        isiAlamatDariPeta(lat, lng);
+    }
+
+    function cariAlamatForm() {
             const alamat = alamatSaatIni();
             const kota = (document.getElementById('kota')?.value || '').trim();
             const q = [alamat, kota].filter(Boolean).join(', ');
@@ -842,6 +883,22 @@ new #[Layout('layouts.app')] class extends Component
                     tulisStatusForm('Lokasi ditemukan.');
                 })
                 .catch(() => tulisStatusForm('Gagal mencari alamat. Coba lagi.'));
+    }
+
+    function pasangCariAlamatForm() {
+        // Delegasi klik sekali di document: tombol bisa diganti oleh Livewire morph
+        // (mis. setelah upload foto / gagal validasi) tanpa membuat handler mati.
+        if (window.__petaFormAksiOn) return;
+        window.__petaFormAksiOn = true;
+        document.addEventListener('click', (e) => {
+            const target = e.target && e.target.closest ? e.target : null;
+            const tombolCari = target ? target.closest('#peta-cari-alamat') : null;
+            const tombolTampil = target ? target.closest('#peta-tampil-manual') : null;
+            if (!tombolCari && !tombolTampil) return;
+            if (!document.getElementById('peta-properti-form')) return;
+            e.preventDefault();
+            if (tombolCari) cariAlamatForm();
+            else tampilDariKoordinatManual();
         });
     }
 
@@ -966,9 +1023,10 @@ new #[Layout('layouts.app')] class extends Component
                 });
                 tulisStatusForm('Geser marker / klik peta untuk menandai lokasi.');
             } catch (e) {
+                laporGalatPeta(e);
                 bersihkanPetaForm();
                 tampilkanEmbedStatisForm(el, awal);
-                tulisStatusForm('Peta pratinjau saja: gunakan "Cari dari Alamat" atau "Gunakan lokasi saya".');
+                tulisStatusForm('Peta pratinjau saja: isi koordinat manual atau gunakan "Cari dari Alamat" / "Gunakan lokasi saya".');
             }
             pasangCariAlamatForm();
             pasangToggleLokasiForm();
@@ -1006,9 +1064,9 @@ new #[Layout('layouts.app')] class extends Component
 
     // Initialize on load
     if (typeof window.loadNgekosMaps === 'function') {
-        window.loadNgekosMaps(() => { initPetaForm().catch(() => {}); });
+        window.loadNgekosMaps(() => { initPetaForm().catch(laporGalatPeta); });
     } else {
-        initPetaForm().catch(() => {});
+        initPetaForm().catch(laporGalatPeta);
     }
 
     // Re-initialize after Livewire navigation (didaftarkan sekali saja agar
@@ -1027,9 +1085,9 @@ new #[Layout('layouts.app')] class extends Component
             // Re-init map
             setTimeout(() => {
                 if (typeof window.loadNgekosMaps === 'function') {
-                    window.loadNgekosMaps(() => { initPetaForm().catch(() => {}); });
+                    window.loadNgekosMaps(() => { initPetaForm().catch(laporGalatPeta); });
                 } else {
-                    initPetaForm().catch(() => {});
+                    initPetaForm().catch(laporGalatPeta);
                 }
             }, 100);
         });

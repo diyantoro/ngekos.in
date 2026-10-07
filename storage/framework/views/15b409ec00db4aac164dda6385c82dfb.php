@@ -898,9 +898,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
 <?php $__env->startPush('scripts'); ?>
 <script>
-    window.initPetaDetail = window.initPetaDetail || (() => {
+    window.initPetaDetail = (() => {
         const el = document.getElementById('peta-properti-detail');
-        if (!el || el.dataset.ada === '1') return;
+        if (!el) return;
+        if (el._petaLeaflet) {
+            try { el._petaLeaflet.invalidateSize(); } catch (e) {}
+            return;
+        }
+        if (el.dataset.ada === '1') return;
 
         const lat = parseFloat(el.dataset.lat);
         const lng = parseFloat(el.dataset.lng);
@@ -914,6 +919,22 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         }
 
         if (typeof google === 'undefined' || !google.maps) {
+            if (typeof window.buatPetaTitikOsm === 'function') {
+                window.buatPetaTitikOsm(el, lat, lng, { nama: el.dataset.nama || '', alamat: el.dataset.alamat || '', zoom: 16 })
+                    .catch(() => {
+                        try { if (typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(el); } catch (e) {}
+                        el.dataset.ada = '0';
+                        if (typeof window.pasangOsmEmbed === 'function') {
+                            window.pasangOsmEmbed(el, lat, lng, 16);
+                        } else if (typeof window.pasangGoogleEmbed === 'function') {
+                            window.pasangGoogleEmbed(el, lat, lng, 16);
+                        } else {
+                            el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-xs text-gray-400">' +
+                                'Peta tidak dapat dimuat saat ini.</div>';
+                        }
+                    });
+                return;
+            }
             if (typeof window.pasangOsmEmbed === 'function') {
                 window.pasangOsmEmbed(el, lat, lng, 16);
             } else if (typeof window.pasangGoogleEmbed === 'function') {
@@ -941,13 +962,25 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     });
 
     (() => {
+        const bersihkan = () => {
+            try {
+                const wadah = document.getElementById('peta-properti-detail');
+                if (wadah && typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(wadah);
+            } catch (e) {}
+        };
         const init = () => setTimeout(window.initPetaDetail, 0);
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
-        document.addEventListener('livewire:navigated', init);
+        if (!window.__detailPetaNavOn) {
+            window.__detailPetaNavOn = true;
+            document.addEventListener('livewire:navigating', bersihkan);
+            document.addEventListener('livewire:navigated', init);
+        } else {
+            document.addEventListener('livewire:navigated', init);
+        }
         window.loadNgekosMaps(window.initPetaDetail);
     })();
 </script>

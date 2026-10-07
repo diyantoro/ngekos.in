@@ -8,10 +8,11 @@
 
 <br />
 
-[![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
+[![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![Livewire](https://img.shields.io/badge/Livewire-3-4E56A6?style=for-the-badge&logo=livewire&logoColor=white)](https://livewire.laravel.com)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Maps](https://img.shields.io/badge/Maps-Leaflet_%2B_OSM-199900?style=for-the-badge&logo=openstreetmap&logoColor=white)](https://leafletjs.com)
 
 <br />
 
@@ -35,6 +36,7 @@
 
 - [Tentang Project](#-tentang-project)
 - [Fitur Utama](#-fitur-utama)
+- [Peta & Lokasi](#️-peta--lokasi)
 - [Role Pengguna](#-role-pengguna)
 - [Tech Stack](#%EF%B8%8F-tech-stack)
 - [Alur Data](#-alur-data)
@@ -81,7 +83,42 @@ Punya beberapa kos di lokasi berbeda? Satu akun Pemilik cukup untuk kelola semua
 
 </td>
 </tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🗺️ Peta Interaktif
+Semua peta bisa digeser & zoom (Leaflet + OpenStreetMap, gratis tanpa API key). Pemilik menandai lokasi kos dengan geser pin, klik peta, cari alamat, lokasi saat ini, atau ketik koordinat manual.
+
+### ⭐ Ulasan & Favorit
+Anak kos memberi rating/ulasan dan menyimpan kos favorit — pencari kos dapat info jujur sebelum booking.
+
+</td>
+<td width="50%" valign="top">
+
+### 🤖 Chatbot Bantuan
+Asisten chat di dalam aplikasi untuk menjawab pertanyaan umum seputar cari kos & fitur.
+
+### 📱 API Mobile
+REST API (Sanctum) untuk aplikasi pendamping: autentikasi, katalog, booking, hingga notifikasi perangkat.
+
+</td>
+</tr>
 </table>
+
+<br />
+
+## 🗺️ Peta & Lokasi
+
+Seluruh peta memakai **Leaflet + OpenStreetMap** — interaktif (geser, zoom, klik marker) dan **gratis tanpa API key**. Variabel `GOOGLE_MAPS_API_KEY` di `.env` sifatnya **opsional**: jika diisi, peta memakai Google Maps; jika kosong, otomatis memakai Leaflet. Geocoding (cari alamat & alamat otomatis dari titik) memakai Nominatim OpenStreetMap.
+
+| Halaman | Perilaku peta |
+|:---|:---|
+| **Form Tambah/Edit Kos (Pemilik)** | 5 cara menandai titik: **geser pin**, **klik peta**, **"Cari dari Alamat"**, **"Gunakan lokasi saya"**, dan kolom **Latitude/Longitude manual** + tombol **Tampilkan di Peta** |
+| **Beranda** | Peta semua kos aktif, marker bisa diklik (popup nama + tautan detail) |
+| **Cari Kos (Katalog)** | Peta hasil pencarian dengan popup per kos |
+| **Detail Kos** | Peta satu titik + popup terbuka otomatis + tautan "Buka di Google Maps" |
+
+> Jika koordinat properti belum diisi, titik diambil dari pusat kota (`App\Support\Koordinat`).
 
 <br />
 
@@ -108,11 +145,13 @@ Punya beberapa kos di lokasi berbeda? Satu akun Pemilik cukup untuk kelola semua
 
 | Layer | Teknologi |
 |:---|:---|
-| **Backend** | Laravel 11 (PHP 8.3+) |
-| **Frontend** | Livewire 3 · Alpine.js · Tailwind CSS |
-| **Database** | MySQL 8 |
-| **Auth & Role** | Laravel Breeze · Spatie Laravel-Permission |
+| **Backend** | Laravel 13 (PHP 8.3+) |
+| **Frontend** | Livewire 3 · Volt · Alpine.js · Tailwind CSS · Vite |
+| **Database** | SQLite (default lokal) · MySQL 8 didukung |
+| **Auth & Role** | Laravel Breeze · Sanctum (API) · Spatie Laravel-Permission |
+| **Peta** | Leaflet + OpenStreetMap (gratis, tanpa API key) · Google Maps opsional via `GOOGLE_MAPS_API_KEY` |
 | **Queue & Scheduler** | Laravel Queue · Task Scheduling |
+| **Lainnya** | Chart.js · Cropper.js · DomPDF · PhpSpreadsheet · FCM Push |
 
 </div>
 
@@ -135,7 +174,7 @@ Punya beberapa kos di lokasi berbeda? Satu akun Pemilik cukup untuk kelola semua
 
 <br />
 
-**Prasyarat:** PHP ≥ 8.3 · Composer · Node.js & NPM · MySQL 8
+**Prasyarat:** PHP ≥ 8.3 · Composer · Node.js & NPM · (MySQL 8 opsional — default memakai SQLite tanpa setup tambahan)
 
 ```bash
 # 1️⃣ Clone repository
@@ -149,23 +188,31 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
-# 4️⃣ Atur koneksi database di file .env
-DB_DATABASE=ngekos_in
-DB_USERNAME=root
-DB_PASSWORD=
+# 4️⃣ (Opsional) Atur koneksi database di file .env
+# Default: SQLite (langsung jalan). Untuk MySQL:
+# DB_CONNECTION=mysql
+# DB_DATABASE=ngekos_in
+# DB_USERNAME=root
+# DB_PASSWORD=
 
-# 5️⃣ Jalankan migration & seeder
+# 5️⃣ Symlink penyimpanan publik (untuk foto kos, bukti bayar, dsb.)
+php artisan storage:link
+
+# 6️⃣ Jalankan migration & seeder
 php artisan migrate --seed
 
-# 6️⃣ Install dependency frontend
+# 7️⃣ Build aset frontend
 npm install
-npm run dev
+npm run build   # saat development: npm run dev
 
-# 7️⃣ Jalankan server lokal
+# 8️⃣ Jalankan server lokal
 php artisan serve
 ```
 
 Aplikasi berjalan di **http://127.0.0.1:8000** 🎉
+
+> 🗺️ **Peta langsung jalan tanpa setup tambahan** (Leaflet + OpenStreetMap, gratis).
+> Isi `GOOGLE_MAPS_API_KEY=` di `.env` hanya jika ingin memakai Google Maps (key browser, batasi via HTTP referrer).
 
 </details>
 
@@ -174,13 +221,16 @@ Aplikasi berjalan di **http://127.0.0.1:8000** 🎉
 ## 📌 Progress Pengembangan
 
 - [x] Perencanaan produk (PRD) & skema database
-- [ ] Setup project & autentikasi multi-role
-- [ ] Manajemen properti & kamar
-- [ ] Modul booking
-- [ ] Modul check-in & check-out
-- [ ] Modul tagihan, pembayaran & denda otomatis
-- [ ] Notifikasi otomatis
-- [ ] Dashboard per role
+- [x] Setup project & autentikasi multi-role (Super Admin, Admin, Pemilik, Anak Kos)
+- [x] Manajemen properti & kamar (foto, fasilitas, harga harian/mingguan/bulanan)
+- [x] Peta interaktif semua halaman (Leaflet + OSM, tanpa API key) + input koordinat manual
+- [x] Modul booking
+- [x] Modul check-in & check-out
+- [x] Modul tagihan, pembayaran (termasuk QRIS) & denda otomatis
+- [x] Notifikasi otomatis (push/FCM + pengingat tagihan)
+- [x] Dashboard per role + laporan & rekap
+- [x] Ulasan, favorit, langganan PRO, chatbot, REST API mobile
+- [ ] Aplikasi mobile (Flutter) — API sudah tersedia
 
 <br />
 

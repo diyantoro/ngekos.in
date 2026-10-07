@@ -327,9 +327,15 @@ use Livewire\WithPagination;
             let ngekosBounds = null;
             const dataPetaKos = <?php echo json_encode($markers, 15, 512) ?>;
 
-            function fallbackPetaKos() {
+            async function fallbackPetaKos() {
                 const el = document.getElementById('peta-kos');
                 if (!el || !dataPetaKos.length) return;
+                if (typeof window.buatPetaDaftarOsm === 'function') {
+                    try {
+                        await window.buatPetaDaftarOsm(el, dataPetaKos);
+                        return;
+                    } catch (e) {}
+                }
                 if (typeof window.pasangOsmEmbed === 'function') {
                     const sum = dataPetaKos.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
                     window.pasangOsmEmbed(el, sum.lat / dataPetaKos.length, sum.lng / dataPetaKos.length, 10, dataPetaKos);
@@ -349,8 +355,12 @@ use Livewire\WithPagination;
                     if ((percobaan || 0) < 10) requestAnimationFrame(() => inisialisasiPetaKos((percobaan || 0) + 1));
                     return;
                 }
+                if (el._petaLeaflet) {
+                    try { el._petaLeaflet.invalidateSize(); } catch (e) {}
+                    return;
+                }
                 if (typeof google === 'undefined' || !google.maps) {
-                    fallbackPetaKos();
+                    try { const r = fallbackPetaKos(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
                     return;
                 }
                 if (ngekosMap) {
@@ -401,6 +411,10 @@ use Livewire\WithPagination;
             if (!window.__kosPetaNavOn) {
                 window.__kosPetaNavOn = true;
                 document.addEventListener('livewire:navigated', () => {
+                    try {
+                        const wadah = document.getElementById('peta-kos');
+                        if (wadah && typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(wadah);
+                    } catch (e) {}
                     ngekosMap = null;
                     ngekosBounds = null;
                 });
