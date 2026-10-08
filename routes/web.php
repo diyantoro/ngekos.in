@@ -43,6 +43,11 @@ Volt::route('pengguna', 'pages.super-admin.pengguna')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('pengguna');
 
+// Kelola landing / halaman utama (khusus super admin).
+Volt::route('landing/kelola', 'pages.super-admin.landing')
+    ->middleware(['auth', 'verified', 'role:super_admin'])
+    ->name('landing.kelola');
+
 // Langganan premium khusus pemilik (aktivasi manual oleh admin).
 Volt::route('langganan', 'pages.langganan.subscription')
     ->middleware(['auth', 'verified', 'role:pemilik'])

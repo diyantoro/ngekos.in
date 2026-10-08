@@ -1,1 +1,0 @@
-<x-promo-ads />

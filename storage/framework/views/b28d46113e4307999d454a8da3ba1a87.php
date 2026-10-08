@@ -9,7 +9,7 @@ use Livewire\Volt\Component;
 <div class="py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-            <a href="<?php echo e(route('dashboard.pemilik')); ?>" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
+            <a href="<?php echo e(route('dashboard')); ?>" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke dashboard
             </a>
@@ -48,7 +48,7 @@ use Livewire\Volt\Component;
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         <div class="card overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
                 <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama penyewa..."
                     class="w-full sm:max-w-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-brand-500 focus:border-brand-500">
             </div>
@@ -64,7 +64,7 @@ use Livewire\Volt\Component;
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $sewaans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sewaan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <?php
                                 $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');

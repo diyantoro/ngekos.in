@@ -36,6 +36,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|string')]
     public ?string $deskripsi = null;
 
+    #[Validate('required|array|min:1')]
     public array $fasilitasTerpilih = [];
 
     #[Validate('nullable|string')]
@@ -44,7 +45,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|numeric|min:0')]
     public ?string $denda_per_hari = null;
 
-    #[Validate('nullable|numeric|min:0')]
+    #[Validate('required|numeric|gt:0')]
     public ?string $harga = null;
 
     #[Validate('nullable|numeric|min:0')]
@@ -167,14 +168,20 @@ new #[Layout('layouts.app')] class extends Component
             'deskripsi' => 'nullable|string',
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'nullable|numeric|gt:0',
+            'harga' => 'required|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'status' => 'required|in:aktif,nonaktif',
+            'fasilitasTerpilih' => 'required|array|min:1',
             'galeriBaru' => ['nullable', 'array', 'max:10'],
             'galeriBaru.*' => ['image', 'max:8192'],
         ], [
+            'harga.required' => 'Harga per bulan wajib diisi.',
+            'harga.numeric' => 'Harga per bulan harus berupa angka.',
+            'harga.gt' => 'Harga per bulan harus lebih dari Rp0.',
+            'fasilitasTerpilih.required' => 'Pilih minimal 1 fasilitas.',
+            'fasilitasTerpilih.min' => 'Pilih minimal 1 fasilitas.',
             'galeriBaru.max' => 'Maksimal 10 foto tambahan sekaligus.',
             'galeriBaru.*.image' => 'Setiap file galeri harus berupa gambar.',
             'galeriBaru.*.max' => 'Ukuran tiap foto galeri maksimal 8MB. Kecilkan dulu foto dari HP bila perlu.',
@@ -183,6 +190,12 @@ new #[Layout('layouts.app')] class extends Component
         $fasilitasString = FacilityHelper::normalizeString(
             implode(', ', $this->fasilitasTerpilih)
         );
+
+        if (blank($fasilitasString)) {
+            $this->addError('fasilitasTerpilih', 'Pilih minimal 1 fasilitas.');
+
+            return;
+        }
 
         $data = [
             'nama' => $this->nama,

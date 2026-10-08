@@ -296,7 +296,7 @@ use Livewire\Volt\Component;
                     </span>
                     <div class="min-w-0">
                         <h2 class="text-base sm:text-xl font-extrabold tracking-tight">Promo Ngebut</h2>
-                        <p class="text-xs sm:text-sm text-brand-100 truncate sm:whitespace-normal">Diskon khusus bulan ini — siapa cepat dia dapat</p>
+                        <p class="text-xs sm:text-sm text-brand-100 truncate sm:whitespace-normal"><?php echo e($labelPromo); ?></p>
                     </div>
                 </div>
                 <div class="grid w-full sm:w-auto grid-cols-4 items-center gap-1 sm:flex sm:gap-1.5 text-center">

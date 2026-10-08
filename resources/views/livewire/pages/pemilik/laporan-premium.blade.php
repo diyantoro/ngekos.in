@@ -123,7 +123,7 @@ new #[Layout('layouts.app')] class extends Component
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-                <a href="{{ route('dashboard.pemilik') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 inline-flex items-center gap-1">
+                <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 inline-flex items-center gap-1">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                     Kembali ke Dashboard
                 </a>

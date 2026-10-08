@@ -31,6 +31,8 @@ class TambahPropertiTest extends TestCase
 
         $component->set('nama', 'Kos Mawar')
             ->set('kota', 'Bandung')
+            ->set('harga', '750000')
+            ->set('fasilitasTerpilih', ['WiFi'])
             ->set('fotoBaru', UploadedFile::fake()->image('kos.jpg', 800, 600))
             ->call('simpan');
 
@@ -56,6 +58,8 @@ class TambahPropertiTest extends TestCase
         Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
             ->set('nama', 'Kos Pertama')
             ->set('status', 'aktif')
+            ->set('harga', '750000')
+            ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasNoErrors();
 
@@ -78,6 +82,7 @@ class TambahPropertiTest extends TestCase
 
         $component->set('fasilitasTerpilih', ['WiFi', 'AC'])
             ->set('nama', 'Kos Fasilitas')
+            ->set('harga', '750000')
             ->call('simpan')
             ->assertHasNoErrors();
 
@@ -101,6 +106,7 @@ class TambahPropertiTest extends TestCase
             ->set('nama', 'Kos Repro Penuh')
             ->set('kota', 'Jakarta')
             ->set('status', 'aktif')
+            ->set('harga', '750000')
             ->set('fotoBaru', UploadedFile::fake()->image('cover.jpg', 800, 600))
             ->set('galeriBaru', [
                 UploadedFile::fake()->image('g1.jpg', 800, 600),
@@ -125,6 +131,7 @@ class TambahPropertiTest extends TestCase
 
         $component->assertViewHas('pilihPemilik', false)
             ->set('nama', 'Kos Mawar')
+            ->set('harga', '750000')
             ->set('fasilitasTerpilih', ['WiFi', 'AC', 'Kamar Mandi Dalam'])
             ->call('simpan');
 

@@ -352,10 +352,19 @@ class PropertiManageController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string|max:500',
             'deskripsi' => 'nullable|string',
-            'fasilitas' => 'nullable|string',
+            'fasilitas' => [
+                'required',
+                'string',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (blank(FacilityHelper::normalizeString(is_string($value) ? $value : null))) {
+                        $fail('Pilih minimal 1 fasilitas.');
+                    }
+                },
+            ],
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'nullable|numeric|gt:0',
+            'harga' => 'required|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
@@ -366,6 +375,11 @@ class PropertiManageController extends Controller
             'hapus_foto_ids' => 'nullable|array',
             'hapus_foto_ids.*' => 'integer',
             'pemilik_id' => $properti === null ? ['nullable', 'integer', Rule::exists('users', 'id')] : ['nullable'],
+        ], [
+            'harga.required' => 'Harga per bulan wajib diisi.',
+            'harga.numeric' => 'Harga per bulan harus berupa angka.',
+            'harga.gt' => 'Harga per bulan harus lebih dari Rp0.',
+            'fasilitas.required' => 'Pilih minimal 1 fasilitas.',
         ]);
     }
 

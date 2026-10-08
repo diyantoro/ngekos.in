@@ -50,19 +50,36 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSee('Tingkat Okupansi');
     }
 
-    public function test_admin_dashboard_renders_component_and_can_verify_payment(): void
+    public function test_admin_dashboard_renders_tanpa_tabel_pembayaran(): void
+    {
+        $user = User::where('email', 'admin.ngekos@gmail.com')->first();
+
+        // Tabel pembayaran dihapus dari dashboard admin (verifikasi via menu Tagihan).
+        $this->actingAs($user)
+            ->get(route('dashboard.admin'))
+            ->assertOk()
+            ->assertSeeVolt('pages.dashboard.admin')
+            ->assertDontSee('Belum ada pembayaran.');
+
+        $component = Volt::actingAs($user)->test('pages.dashboard.admin');
+        $component->assertViewHas('pembayaranMenunggu')
+            ->assertViewHas('statusPembayaran');
+    }
+
+    public function test_admin_bisa_verifikasi_pembayaran_via_menu_tagihan(): void
     {
         $user = User::where('email', 'admin.ngekos@gmail.com')->first();
 
         $this->actingAs($user)
-            ->get(route('dashboard.admin'))
+            ->get(route('pemilik.tagihan'))
             ->assertOk()
-            ->assertSeeVolt('pages.dashboard.admin');
+            ->assertSee('Pembayaran Menunggu Verifikasi');
 
-        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->first();
+        $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
 
-        $component = Volt::actingAs($user)->test('pages.dashboard.admin');
-        $component->call('verifikasiPembayaran', $pembayaran->id)
+        $component = Volt::actingAs($user)->test('pages.pemilik.tagihan');
+        $component->assertViewHas('pembayaranMenunggu')
+            ->call('verifikasiPembayaran', $pembayaran->id)
             ->assertHasNoErrors()
             ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'diverifikasi'));
 

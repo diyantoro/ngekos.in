@@ -21,8 +21,8 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         $user = auth()->user();
-        $isPemilik = $user && method_exists($user, 'hasRole') && $user->hasRole('pemilik');
-        $scope = fn ($q) => $isPemilik ? $q->where('pemilik_id', $user->id) : $q;
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+        $scope = fn ($q) => $lihatSemua ? $q : $q->where('pemilik_id', $user->id);
 
         return [
             'sewaans' => Penyewaan::query()
@@ -40,10 +40,10 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->galat = null;
         $user = auth()->user();
-        $isPemilik = $user && method_exists($user, 'hasRole') && $user->hasRole('pemilik');
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
 
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->when($isPemilik, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
             ->with(['anakKos:id,nama', 'anggotas.user:id,nama'])
             ->first();
 
@@ -90,9 +90,12 @@ new #[Layout('layouts.app')] class extends Component
 
     public function checkOut(int $sewaanId): void
     {
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
-            ->whereHas('properti', fn ($q) => $q->where('pemilik_id', auth()->id()))
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
             ->with(['anakKos', 'kamar', 'tagihans', 'anggotas'])
             ->first();
 
@@ -123,7 +126,7 @@ new #[Layout('layouts.app')] class extends Component
 <div class="py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
-            <a href="{{ route('dashboard.pemilik') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
+            <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke dashboard
             </a>
@@ -143,7 +146,7 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         <div class="card overflow-hidden">
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
                 <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama penyewa..."
                     class="w-full sm:max-w-xs rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-brand-500 focus:border-brand-500">
             </div>
@@ -159,7 +162,7 @@ new #[Layout('layouts.app')] class extends Component
                             <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse ($sewaans as $sewaan)
                             @php
                                 $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');

@@ -249,6 +249,8 @@ class SubscriptionTest extends TestCase
         Volt::actingAs($user)->test('pages.pemilik.properti-form')
             ->set('nama', 'Kos Kedua')
             ->set('status', 'aktif')
+            ->set('harga', '750000')
+            ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasErrors(['nama']);
 
@@ -262,6 +264,8 @@ class SubscriptionTest extends TestCase
             ->set('pemilikId', $user->id)
             ->set('nama', 'Kos Titipan Admin')
             ->set('status', 'aktif')
+            ->set('harga', '750000')
+            ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasErrors(['nama']);
 
