@@ -37,6 +37,15 @@ class KtpPenyewaanController extends Controller
 
         if (! $user->hasRole('anak_kos')) {
             $userId = $request->query('user_id') ? (int) $request->query('user_id') : $sewaan->anak_kos_id;
+
+            // Bedakan 403 vs 404: user_id bukan anggota sewaan ini = akses ditolak.
+            $anggotaIds = $sewaan->anggotas->pluck('user_id')->map(fn ($v) => (int) $v)->all();
+
+            abort_unless(
+                $userId === (int) $sewaan->anak_kos_id || in_array($userId, $anggotaIds, true),
+                403,
+                'Akses KTP ditolak.'
+            );
         } elseif ($sewaan->anak_kos_id !== $user->id) {
             $anggotaSaya = $sewaan->anggotas->firstWhere('user_id', $user->id);
 

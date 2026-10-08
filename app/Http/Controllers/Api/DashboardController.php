@@ -257,12 +257,12 @@ class DashboardController extends Controller
 
         $path = $pembayaran->refresh()->file_kwitansi;
 
-        if (! $path || ! Storage::disk('public')->exists($path)) {
+        if (! $path || ! \App\Services\BuktiStorage::ada($path)) {
             return response()->json(['message' => 'File kwitansi belum tersedia.'], 404);
         }
 
         return response()->download(
-            Storage::disk('public')->path($path),
+            \App\Services\BuktiStorage::pathAbsolut($path),
             ($pembayaran->nomor_kwitansi ?? 'kwitansi').'.pdf'
         );
     }
@@ -293,56 +293,58 @@ class DashboardController extends Controller
             'bukti.max' => 'Ukuran bukti maksimal 2MB.',
         ]);
 
-        if ($request->input('metode') === 'transfer' && ! $request->hasFile('bukti')) {
+        if ($validated['metode'] === 'transfer' && ! $request->hasFile('bukti')) {
             return response()->json(['message' => 'Lampirkan bukti transfer terlebih dahulu.'], 422);
         }
 
-        $tagihan = Tagihan::with(['penyewaan.anggotas'])->findOrFail($validated['tagihan_id']);
+        $pembayaran = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
+            $tagihan = Tagihan::with(['penyewaan.anggotas'])->lockForUpdate()->findOrFail($validated['tagihan_id']);
 
-        $penghuni = $tagihan->penyewaan ? $tagihan->penyewaan->idPenghuniAktif() : [];
+            $penghuni = $tagihan->penyewaan ? $tagihan->penyewaan->idPenghuniAktif() : [];
 
-        if (! in_array($request->user()->id, $penghuni, true)) {
-            return response()->json(['message' => 'Akses ditolak.'], 403);
-        }
+            if (! in_array($request->user()->id, $penghuni, true)) {
+                abort(response()->json(['message' => 'Akses ditolak.'], 403));
+            }
 
-        if ($tagihan->status === 'lunas') {
-            return response()->json(['message' => 'Tagihan sudah lunas.'], 422);
-        }
+            if ($tagihan->status === 'lunas') {
+                abort(response()->json(['message' => 'Tagihan sudah lunas.'], 422));
+            }
 
-        if ($tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists()) {
-            return response()->json(['message' => 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin/pemilik.'], 422);
-        }
+            if ($tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists()) {
+                abort(response()->json(['message' => 'Pembayaran untuk tagihan ini masih menunggu verifikasi admin/pemilik.'], 422));
+            }
 
-        $rincian = TagihanService::rincian($tagihan);
-        $isPatungan = (bool) $tagihan->penyewaan?->isPatungan();
-        $wajib = TagihanService::wajibBayar($tagihan, $request->user()->id);
+            $rincian = TagihanService::rincian($tagihan);
+            $isPatungan = (bool) $tagihan->penyewaan?->isPatungan();
+            $wajib = TagihanService::wajibBayar($tagihan, $request->user()->id);
 
-        if ($wajib <= 0) {
-            return response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422);
-        }
+            if ($wajib <= 0) {
+                abort(response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422));
+            }
 
-        if ((float) $validated['jumlah'] < $wajib) {
-            $kurang = TagihanService::rupiah($wajib - (float) $validated['jumlah']);
+            if ((float) $validated['jumlah'] < $wajib) {
+                $kurang = TagihanService::rupiah($wajib - (float) $validated['jumlah']);
 
-            return response()->json(['message' => 'Nominal kurang '.$kurang.'. Total saat ini '.TagihanService::rupiah($wajib)
-                .' (sewa '.TagihanService::rupiah($rincian['sewa'])
-                .($rincian['denda'] > 0 ? ' + denda '.$rincian['hari_telat'].' hari '.TagihanService::rupiah($rincian['denda']) : '')
-                .($isPatungan ? ' — porsi patunganmu' : '').'). Bayar harus pas, tidak boleh kurang.'], 422);
-        }
+                abort(response()->json(['message' => 'Nominal kurang '.$kurang.'. Total saat ini '.TagihanService::rupiah($wajib)
+                    .' (sewa '.TagihanService::rupiah($rincian['sewa'])
+                    .($rincian['denda'] > 0 ? ' + denda '.$rincian['hari_telat'].' hari '.TagihanService::rupiah($rincian['denda']) : '')
+                    .($isPatungan ? ' — porsi patunganmu' : '').'). Bayar harus pas, tidak boleh kurang.'], 422));
+            }
 
-        $buktiPath = null;
-        if ($request->hasFile('bukti')) {
-            $buktiPath = $request->file('bukti')->store('bukti', 'public');
-        }
+            $buktiPath = null;
+            if ($request->hasFile('bukti')) {
+                $buktiPath = \App\Services\BuktiStorage::simpan($request->file('bukti'), 'bukti');
+            }
 
-        $pembayaran = Pembayaran::create([
-            'tagihan_id' => $validated['tagihan_id'],
-            'anak_kos_id' => $request->user()->id,
-            'metode' => $validated['metode'],
-            'jumlah' => $validated['jumlah'],
-            'bukti' => $buktiPath,
-            'status' => 'menunggu_verifikasi',
-        ]);
+            return Pembayaran::create([
+                'tagihan_id' => $validated['tagihan_id'],
+                'anak_kos_id' => $request->user()->id,
+                'metode' => $validated['metode'],
+                'jumlah' => $validated['jumlah'],
+                'bukti' => $buktiPath,
+                'status' => 'menunggu_verifikasi',
+            ]);
+        });
 
         ChatPesan::notifikasiPembayaranDiajukan($pembayaran);
 
@@ -1380,10 +1382,8 @@ class DashboardController extends Controller
         $id = $user->id;
 
         return function ($query) use ($id) {
-            $query->where(function ($q) use ($id) {
-                $q->whereHas('admins', fn ($a) => $a->where('users.id', $id))
-                    ->orWhereDoesntHave('admins');
-            });
+            // Admin hanya boleh kelola properti yang ditugaskan padanya.
+            $query->whereHas('admins', fn ($a) => $a->where('users.id', $id));
         };
     }
 

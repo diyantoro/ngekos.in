@@ -65,7 +65,7 @@ new #[Layout('layouts.app')] class extends Component
         // Nominal dikunci server-side sesuai harga paket, tidak bisa diubah user.
         $harga = (int) config("plans.{$this->plan}.price", 0);
 
-        $path = $this->bukti->store('bukti', 'public');
+        $path = \App\Services\BuktiStorage::simpan($this->bukti, 'bukti');
 
         try {
             $permintaan = SubscriptionService::requestUpgrade($user, $this->plan, null, [

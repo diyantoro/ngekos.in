@@ -28,18 +28,21 @@ Route::post('/reset-password/{token}', [AuthController::class, 'resetPassword'])
 Route::post('/forgot-password/otp', [AuthController::class, 'forgotPasswordOtp'])->middleware('throttle:5,1');
 Route::post('/forgot-password/verify', [AuthController::class, 'verifyPasswordOtp'])->middleware('throttle:5,1');
 
-// Public katalog
-Route::get('/kos', [KatalogController::class, 'index']);
-Route::get('/kos/{properti}', [KatalogController::class, 'show']);
+// Public katalog (throttle anti-scraping)
+Route::get('/kos', [KatalogController::class, 'index'])->middleware('throttle:60,1');
+Route::get('/kos/{properti}', [KatalogController::class, 'show'])->middleware('throttle:60,1');
 
-// Authenticated routes
+// Authenticated routes (semua butuh login; fitur butuh email terverifikasi)
 Route::middleware('auth:sanctum')->group(function () {
-    // Profile
+    // Boleh tanpa verifikasi email: lihat profil, keluar, kirim ulang verifikasi.
     Route::get('/user', [AuthController::class, 'user']);
-    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
-    Route::post('/user/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/email/verification-notification', [AuthController::class, 'sendVerificationEmail']);
+
+    Route::middleware('verified')->group(function () {
+    // Profile (perubahan data wajib terverifikasi)
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/user/delete', [AuthController::class, 'deleteAccount']);
 
     // Push notification device token
     Route::post('/device-token', [DeviceTokenController::class, 'store'])->middleware('throttle:60,1');
@@ -184,4 +187,5 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:pemilik|admin|super_admin');
     Route::delete('/pemilik/pengeluaran/{id}', [PengeluaranController::class, 'destroy'])
         ->middleware('role:pemilik|admin|super_admin');
+    });
 });

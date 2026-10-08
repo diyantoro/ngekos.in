@@ -14,7 +14,15 @@ class StorageProxyController extends \App\Http\Controllers\Controller
 
     public function __invoke(Request $request, string $path)
     {
-        if (str_contains($path, '..') || str_starts_with($path, '/') || str_starts_with($path, 'ktp')) {
+        $decoded = urldecode($path);
+
+        if (
+            str_contains($path, '..') || str_contains($decoded, '..')
+            || str_starts_with($path, '/') || str_starts_with($decoded, '/')
+            || str_contains($decoded, '\\')
+            || str_starts_with($path, 'ktp') || str_starts_with($decoded, 'ktp')
+            || (bool) preg_match('#(^|/)\.\.?(/|$)#', $decoded)
+        ) {
             abort(404);
         }
 
@@ -42,10 +50,17 @@ class StorageProxyController extends \App\Http\Controllers\Controller
             abort(auth()->check() ? 403 : 401);
         }
 
-        $disk = Storage::disk('public');
+        $disk = $kelompok === 'sensitif'
+            ? Storage::disk(\App\Services\BuktiStorage::DISK)
+            : Storage::disk('public');
 
         if (! $disk->exists($path)) {
-            abort(404);
+            // Fallback legacy: bukti/kwitansi lama masih di public.
+            if ($kelompok !== 'sensitif' || ! Storage::disk('public')->exists($path)) {
+                abort(404);
+            }
+
+            $disk = Storage::disk('public');
         }
 
         try {

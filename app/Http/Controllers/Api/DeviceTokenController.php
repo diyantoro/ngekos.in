@@ -37,7 +37,11 @@ class DeviceTokenController extends Controller
 
     public function destroy(Request $request): JsonResponse
     {
-        $token = $request->input('token');
+        $validated = $request->validate([
+            'token' => 'nullable|string|max:512',
+        ]);
+
+        $token = $validated['token'] ?? null;
 
         if ($token) {
             DeviceToken::where('user_id', $request->user()->id)

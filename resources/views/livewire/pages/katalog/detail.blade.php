@@ -67,6 +67,17 @@ new #[Layout('layouts.publik')] class extends Component
         return ['total' => $total, 'rata' => $rata, 'distribusi' => $distribusi];
     }
 
+    public function noHpTampil(): ?string
+    {
+        $noHp = $this->properti->pemilik?->no_hp;
+
+        if (blank($noHp) || strlen($noHp) < 7) {
+            return $noHp;
+        }
+
+        return substr($noHp, 0, 4).str_repeat('*', max(strlen($noHp) - 8, 2)).substr($noHp, -4);
+    }
+
     public function with(): array
     {
         if ($this->properti->getAttribute('total_kamar') === null) {
@@ -490,7 +501,7 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
                 <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Kontak</p>
-                    <p class="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $properti->pemilik?->no_hp ?? '-' }}</p>
+                    <p class="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $this->noHpTampil() ?? '-' }}</p>
                 </div>
             </div>
 
@@ -554,7 +565,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                             @if ($properti->pemilik->no_hp)
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
-                                {{ $properti->pemilik->no_hp }}
+                                {{ $this->noHpTampil() }}
                             @else
                                 Kontak belum diisi
                             @endif

@@ -23,6 +23,18 @@ new #[Layout('layouts.guest')] class extends Component
 
     public function register(): void
     {
+        $kunci = 'register|'.request()->ip();
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($kunci, 5)) {
+            $detik = \Illuminate\Support\Facades\RateLimiter::availableIn($kunci);
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'email' => 'Terlalu banyak percobaan pendaftaran. Coba lagi dalam '.$detik.' detik.',
+            ]);
+        }
+
+        \Illuminate\Support\Facades\RateLimiter::hit($kunci, 60);
+
         $validated = $this->validate([
             'nama' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],

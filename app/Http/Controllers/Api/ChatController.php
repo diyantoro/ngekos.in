@@ -64,6 +64,10 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
+        $request->validate([
+            'anak_kos_id' => 'nullable|integer|exists:users,id',
+        ]);
+
         $anakKosId = $user->hasRole('anak_kos') ? $user->id : $request->query('anak_kos_id');
 
         if (! $anakKosId) {

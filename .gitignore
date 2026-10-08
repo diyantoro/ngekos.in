@@ -2,7 +2,13 @@
 .DS_Store
 .env
 .env.backup
+.env*.backup*
 .env.production
+*.sql
+/storage/backups/
+/cookies.txt
+/tmp_*.php
+/check_roles.php
 .phpactor.json
 .phpunit.result.cache
 /.codex

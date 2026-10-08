@@ -28,7 +28,7 @@ class KwitansiService
             return $pembayaran;
         }
 
-        if (! $paksa && $pembayaran->file_kwitansi && Storage::disk('public')->exists($pembayaran->file_kwitansi)) {
+        if (! $paksa && $pembayaran->file_kwitansi && BuktiStorage::ada($pembayaran->file_kwitansi)) {
             return $pembayaran;
         }
 
@@ -75,7 +75,7 @@ class KwitansiService
         ])->setPaper('a5', 'landscape');
 
         $path = 'kwitansi/'.str_replace('/', '-', $pembayaran->nomor_kwitansi).'.pdf';
-        Storage::disk('public')->put($path, $pdf->output());
+        Storage::disk(BuktiStorage::DISK)->put($path, $pdf->output());
 
         $pembayaran->update([
             'nomor_kwitansi' => $pembayaran->nomor_kwitansi,

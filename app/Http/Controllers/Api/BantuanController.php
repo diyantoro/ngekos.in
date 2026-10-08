@@ -62,11 +62,11 @@ class BantuanController extends Controller
 
     public function masuk(Request $request): JsonResponse
     {
-        $pesans = PesanBantuan::latest()
-            ->get()
-            ->map(fn (PesanBantuan $p) => $this->format($p));
+        $halaman = PesanBantuan::latest()->paginate(20);
 
-        return response()->json($pesans);
+        $halaman->getCollection()->transform(fn (PesanBantuan $p) => $this->format($p));
+
+        return response()->json($halaman);
     }
 
     public function balas(Request $request, int $id): JsonResponse
@@ -112,11 +112,7 @@ class BantuanController extends Controller
 
     public function tandaiDibaca(int $id): JsonResponse
     {
-        $pesan = PesanBantuan::find($id);
-
-        if (! $pesan) {
-            return response()->json(['message' => 'Pesan tidak ditemukan.'], 404);
-        }
+        $pesan = PesanBantuan::findOrFail($id);
 
         if ($pesan->status === 'baru') {
             $pesan->update(['status' => 'dibaca']);

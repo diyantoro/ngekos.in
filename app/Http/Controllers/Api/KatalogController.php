@@ -12,6 +12,16 @@ class KatalogController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'kota' => 'nullable|string|max:100',
+            'search' => 'nullable|string|max:100',
+            'harga_min' => 'nullable|numeric|min:0',
+            'harga_max' => 'nullable|numeric|min:0',
+            'kapasitas' => 'nullable|integer|min:1|max:20',
+            'sort' => 'nullable|in:trending,tersedia,termurah,termahal',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
         $query = Properti::withCount([
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
@@ -154,7 +164,8 @@ class KatalogController extends Controller
             'pemilik' => $p->pemilik ? [
                 'id' => $p->pemilik->id,
                 'nama' => $p->pemilik->nama,
-                'no_hp' => $p->pemilik->no_hp,
+                // Nomor HP disamarkan di katalog publik (anti-scraping); lengkap via chat.
+                'no_hp' => $this->samarkanNoHp($p->pemilik->no_hp),
             ] : null,
             'kamars' => $p->kamars->map(fn (Kamar $k) => [
                 'id' => $k->id,
@@ -170,6 +181,18 @@ class KatalogController extends Controller
                 'fotos' => $k->galeriUrls(),
             ])->values(),
         ];
+    }
+
+    /**
+     * Samarkan nomor HP untuk katalog publik: 0812****7890.
+     */
+    private function samarkanNoHp(?string $noHp): ?string
+    {
+        if (blank($noHp) || strlen($noHp) < 7) {
+            return $noHp;
+        }
+
+        return substr($noHp, 0, 4).str_repeat('*', max(strlen($noHp) - 8, 2)).substr($noHp, -4);
     }
 
     private function fasilitasArray(?string $fasilitas): array

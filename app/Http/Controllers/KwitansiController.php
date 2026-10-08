@@ -38,10 +38,10 @@ class KwitansiController extends Controller
 
         $path = $pembayaran->refresh()->file_kwitansi;
 
-        abort_unless($path && Storage::disk('public')->exists($path), 404);
+        abort_unless($path && \App\Services\BuktiStorage::ada($path), 404);
 
         return response()->download(
-            Storage::disk('public')->path($path),
+            \App\Services\BuktiStorage::pathAbsolut($path),
             ($pembayaran->nomor_kwitansi ?? 'kwitansi').'.pdf'
         );
     }

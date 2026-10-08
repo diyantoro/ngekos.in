@@ -12,6 +12,11 @@ class PenggunaController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'search' => 'nullable|string|max:100',
+            'peran' => 'nullable|in:super_admin,admin,pemilik,anak_kos',
+        ]);
+
         $users = User::with('roles')
             ->when($request->filled('search'), function ($q) use ($request) {
                 $cari = $request->search;

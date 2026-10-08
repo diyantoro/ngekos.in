@@ -484,6 +484,17 @@ class PropertiManageController extends Controller
                 continue;
             }
 
+            // Defense-in-depth: validasi ulang mime/size walau sudah divalidasi di awal.
+            $mime = $file->getMimeType() ?? '';
+
+            if (! str_starts_with($mime, 'image/')) {
+                continue;
+            }
+
+            if ($file->getSize() > 4096 * 1024) {
+                continue;
+            }
+
             $path = $file->store($folder, 'public');
             $isCover = ! $relasi->exists();
 

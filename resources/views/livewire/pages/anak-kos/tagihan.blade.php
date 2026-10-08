@@ -165,7 +165,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $buktiPath = null;
         if ($this->metodeBayar === 'transfer' && $this->bukti) {
-            $buktiPath = $this->bukti->store('bukti-pembayaran', 'public');
+            $buktiPath = \App\Services\BuktiStorage::simpan($this->bukti, 'bukti-pembayaran');
         }
 
         $pembayaran = Pembayaran::create([
