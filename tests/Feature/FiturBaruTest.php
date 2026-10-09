@@ -197,7 +197,7 @@ class FiturBaruTest extends TestCase
         $this->assertNull($chatTeman->dibaca_pada);
 
         // Notifikasi patungan tercatat di chat; banner dashboard untuk anggota
-        // sudah dihapus (diganti menu Tagihan), jadi cukup pastikan dashboard OK.
+        // sudah dihapus (diganti menu Kos Saya), jadi cukup pastikan dashboard OK.
         $this->actingAs($yoga)->get(route('dashboard.anak-kos'))->assertOk();
     }
 
@@ -277,7 +277,7 @@ class FiturBaruTest extends TestCase
         $this->assertStringContainsString('sudah keluar', $chatLeaver->isi);
 
         // Info stay tercatat di chat stayer; banner dashboard sudah dihapus
-        // (diganti menu Tagihan), jadi cukup pastikan dashboard OK.
+        // (diganti menu Kos Saya), jadi cukup pastikan dashboard OK.
         $this->actingAs($rina)->get(route('dashboard.anak-kos'))->assertOk();
     }
 

@@ -97,16 +97,82 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSeeVolt('pages.dashboard.anak-kos')
             ->assertSee('Mau cari kos di mana?');
 
-        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
+        // Sewa tunggal tanpa anggota patungan: check-out menjadi pengajuan dulu.
+        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')
+            ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
+            ->firstOrFail();
 
         $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
         $component->call('checkOut', $sewaan->id)
-            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'check-out'));
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'verifikasi'));
+
+        $sewaan->refresh();
+        // Pengajuan saja: sewa tetap aktif & kamar tetap terisi sampai pemilik verifikasi.
+        $this->assertEquals('aktif', $sewaan->status);
+        $this->assertNotNull($sewaan->permintaan_keluar_pada);
+        $this->assertEquals('terisi', $sewaan->kamar->status);
+
+        // Pemilik menyetujui pengajuan → sewa selesai & kamar tersedia.
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+
+        Volt::actingAs($pemilik)->test('pages.pemilik.penyewa')
+            ->call('setujuiCheckout', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'disetujui'));
 
         $sewaan->refresh();
         $this->assertEquals('selesai', $sewaan->status);
         $this->assertNotNull($sewaan->tanggal_keluar);
         $this->assertEquals('tersedia', $sewaan->kamar->status);
+    }
+
+    public function test_checkout_butuh_verifikasi_pemilik_bisa_ditolak_dan_dibatalkan(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->first();
+
+        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')
+            ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
+            ->firstOrFail();
+
+        $component = Volt::actingAs($user)->test('pages.anak-kos.tagihan');
+        $component->assertViewHas('sewaAktif')
+            ->call('ajukanCheckout', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'verifikasi'));
+
+        $sewaan->refresh();
+        $this->assertEquals('aktif', $sewaan->status);
+        $this->assertNotNull($sewaan->permintaan_keluar_pada);
+
+        // Pengajuan ganda ditolak.
+        $component->call('ajukanCheckout', $sewaan->id)
+            ->assertSet('galat', fn ($galat) => str_contains($galat, 'sudah pernah dikirim'));
+
+        // Pemilik menolak → sewa tetap aktif, pengajuan hilang.
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+
+        Volt::actingAs($pemilik)->test('pages.pemilik.penyewa')
+            ->call('tolakCheckout', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'ditolak'));
+
+        $sewaan->refresh();
+        $this->assertEquals('aktif', $sewaan->status);
+        $this->assertNull($sewaan->permintaan_keluar_pada);
+        $this->assertEquals('terisi', $sewaan->kamar->status);
+
+        // Anak kos bisa mengajukan ulang lalu membatalkannya sendiri.
+        // (Buat instance baru agar konteks auth kembali sebagai anak kos,
+        // karena Volt::actingAs pemilik di atas mengganti user global.)
+        $component = Volt::actingAs($user)->test('pages.anak-kos.tagihan');
+        $component->call('ajukanCheckout', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'verifikasi'));
+
+        $this->assertNotNull($sewaan->refresh()->permintaan_keluar_pada);
+
+        $component->call('batalkanCheckout', $sewaan->id)
+            ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'dibatalkan'));
+
+        $sewaan->refresh();
+        $this->assertEquals('aktif', $sewaan->status);
+        $this->assertNull($sewaan->permintaan_keluar_pada);
     }
 
     public function test_anak_kos_dashboard_tanpa_stat_atas_menampilkan_pencarian(): void

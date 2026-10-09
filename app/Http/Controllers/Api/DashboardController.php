@@ -376,7 +376,88 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Porsi tagihan berikutnya menjadi tanggung jawab penghuni yang stay.']);
         }
 
-        return response()->json(['message' => 'Check-out berhasil. Kamar kembali tersedia.']);
+        return response()->json(['message' => 'Pengajuan check-out terkirim dan menunggu verifikasi pemilik kos.']);
+    }
+
+    public function anakKosBatalkanKeluar(Request $request, int $sewaanId): JsonResponse
+    {
+        $uid = $request->user()->id;
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'anggotas'])
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        try {
+            CheckoutService::batalkanPengajuan($sewaan, $uid);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Pengajuan check-out dibatalkan. Sewamu tetap berjalan aktif.']);
+    }
+
+    public function pemilikSetujuiCheckout(Request $request, int $sewaanId): JsonResponse
+    {
+        $user = $request->user();
+        $pengelola = $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->when(! $pengelola, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['kamar', 'anakKos', 'tagihans', 'anggotas', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        $nama = $sewaan->anakKos?->nama;
+        $kamarNama = $sewaan->kamar?->nama;
+
+        try {
+            $hasil = CheckoutService::setujuiCheckout($sewaan, $user->id, $pengelola);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
+
+        return response()->json(['message' => "Pengajuan check-out $nama dari kamar $kamarNama disetujui.{$tambahan}{$catatan}"]);
+    }
+
+    public function pemilikTolakCheckout(Request $request, int $sewaanId): JsonResponse
+    {
+        $user = $request->user();
+        $pengelola = $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->when(! $pengelola, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['kamar', 'anakKos', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
+        }
+
+        $nama = $sewaan->anakKos?->nama;
+        $kamarNama = $sewaan->kamar?->nama;
+
+        try {
+            CheckoutService::tolakCheckout($sewaan, $user->id, $pengelola);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => "Pengajuan check-out $nama dari kamar $kamarNama ditolak. Sewa tetap berjalan aktif."]);
     }
 
     public function pemilik(Request $request): JsonResponse

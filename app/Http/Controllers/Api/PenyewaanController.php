@@ -28,7 +28,7 @@ class PenyewaanController extends Controller
             'tanggal_masuk' => [
                 'required', 'date',
                 'after_or_equal:'.today()->toDateString(),
-                'before_or_equal:'.today()->addMonths(3)->toDateString(),
+                'before_or_equal:'.today()->addDays(10)->toDateString(),
             ],
             'periode' => ['sometimes', 'in:bulanan,mingguan,harian'],
             'durasi_bulan' => ['required_if:periode,bulanan', 'integer', 'min:1', 'max:12'],
@@ -39,7 +39,7 @@ class PenyewaanController extends Controller
             'tanggal_masuk.required' => 'Tanggal masuk wajib diisi.',
             'tanggal_masuk.date' => 'Tanggal masuk tidak valid.',
             'tanggal_masuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
-            'tanggal_masuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
+            'tanggal_masuk.before_or_equal' => 'Tanggal masuk maksimal 10 hari ke depan.',
             'periode.in' => 'Periode sewa harus bulanan, mingguan, atau harian.',
             'durasi_bulan.required_if' => 'Lama sewa bulanan wajib diisi.',
             'durasi_bulan.min' => 'Lama sewa minimal 1 bulan.',

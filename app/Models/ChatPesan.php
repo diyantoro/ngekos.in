@@ -84,7 +84,7 @@ class ChatPesan extends Model
             'pengirim_id' => $utamaId,
             'isi' => 'Halo '.$temanNama.', kamu ditambahkan oleh '.$utamaNama
                 .' sebagai teman sekamar '.$kamarNama.' di '.$propertiNama
-                .' (patungan 50/50). Porsimu 50% tiap tagihan — pantau di menu Tagihan.',
+                .' (patungan 50/50). Porsimu 50% tiap tagihan — pantau di menu Kos Saya.',
         ]);
 
         $keUtama = self::create([
@@ -168,7 +168,7 @@ class ChatPesan extends Model
             .' telah saya verifikasi. Terima kasih.';
 
         if ($pembayaran->nomor_kwitansi) {
-            $isi .= ' Kwitansi '.$pembayaran->nomor_kwitansi.' tersedia dan bisa diunduh di menu Tagihan (Riwayat Pembayaran).';
+            $isi .= ' Kwitansi '.$pembayaran->nomor_kwitansi.' tersedia dan bisa diunduh di menu Kos Saya (Riwayat Pembayaran).';
         }
 
         return self::create([

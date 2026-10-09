@@ -51,6 +51,17 @@ class PenyewaanService
         }
 
         $tanggalMasukCarbon = Carbon::parse($tanggalMasuk);
+
+        // Pertahanan lapis kedua: tanggal masuk maksimal 10 hari ke depan
+        // (validasi form/API sudah membatasi, ini mencegah bypass langsung ke service).
+        if ($tanggalMasukCarbon->startOfDay()->gt(Carbon::today()->addDays(10))) {
+            throw new DomainException('Tanggal masuk maksimal 10 hari ke depan.');
+        }
+
+        if ($tanggalMasukCarbon->startOfDay()->lt(Carbon::today())) {
+            throw new DomainException('Tanggal masuk tidak boleh mundur dari hari ini.');
+        }
+
         $tanggalKeluars = $isHarian
             ? $tanggalMasukCarbon->copy()->addDays($durasiHari - 1)
             : ($isMingguan ? $tanggalMasukCarbon->copy()->addDays($durasiMinggu * 7 - 1) : null);

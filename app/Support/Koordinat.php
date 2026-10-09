@@ -26,6 +26,9 @@ class Koordinat
         'Medan' => [3.5952, 98.6722],
         'Makassar' => [-5.1477, 119.4327],
         'Denpasar' => [-8.6705, 115.2126],
+        'Palembang' => [-2.9909, 104.7566],
+        'Ogan Ilir' => [-3.2117, 104.65],
+        'Indralaya' => [-3.2117, 104.65],
     ];
 
     protected static ?array $petaKota = null;

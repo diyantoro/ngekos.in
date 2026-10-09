@@ -42,6 +42,14 @@ new #[Layout('layouts.app')] class extends Component
         };
 
         return [
+            'sewaAktif' => \App\Models\Penyewaan::where('status', 'aktif')
+                ->where(fn ($q) => $q->where('anak_kos_id', $id)
+                    ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif')))
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'mode_hunian', 'permintaan_keluar_pada'])
+                ->with(['kamar:id,nama,properti_id', 'properti:id,nama,kota,alamat,foto', 'properti.fotos:id,properti_id,path,urutan', 'anggotas'])
+                ->orderByDesc('tanggal_masuk')
+                ->limit(10)
+                ->get(),
             'tagihans' => Tagihan::whereHas('penyewaan', $scopeSewa)
                 ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
                 ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,kota,alamat,foto,denda_per_hari', 'penyewaan.properti.fotos:id,properti_id,path,urutan', 'penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
@@ -108,6 +116,72 @@ new #[Layout('layouts.app')] class extends Component
     public function toggleKos(int $propertiId): void
     {
         $this->kosTerbuka = $this->kosTerbuka === $propertiId ? null : $propertiId;
+    }
+
+    public function ajukanCheckout(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $uid = auth()->id();
+
+        $sewaan = \App\Models\Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'tagihans', 'anggotas'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            $hasil = \App\Services\CheckoutService::keluarPenghuni($sewaan, $uid);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        if ($hasil['jenis'] === 'partial') {
+            $this->pesan = 'Kamu sudah keluar dari kamar patungan. Porsi berikutnya menjadi tanggung jawab penghuni yang stay.';
+
+            return;
+        }
+
+        $this->pesan = "Pengajuan check-out dari kamar {$sewaan->kamar?->nama} terkirim dan menunggu verifikasi pemilik kos.";
+    }
+
+    public function batalkanCheckout(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $uid = auth()->id();
+
+        $sewaan = \App\Models\Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'anggotas'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            \App\Services\CheckoutService::batalkanPengajuan($sewaan, $uid);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = "Pengajuan check-out dari kamar {$sewaan->kamar?->nama} dibatalkan. Sewamu tetap berjalan aktif.";
     }
 
     public function ubahMetodeBayar(string $metode): void
@@ -195,8 +269,62 @@ new #[Layout('layouts.app')] class extends Component
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke dashboard
             </a>
-            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Tagihan &amp; Pembayaran</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kapan tagihan jatuh tempo, berapa yang harus dibayar, dan riwayat pembayaranmu.</p>
+            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Kos Saya</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kos yang sedang kamu tempati, tagihan yang harus dibayar, dan riwayat pembayaranmu.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-4 sm:px-6 pt-4 pb-1">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kos yang Saya Tempati</h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Mau keluar kos? Ajukan check-out — pemilik akan memverifikasi pengajuanmu.</p>
+            </div>
+            <div class="p-4 sm:p-6 pt-3">
+                @if (($sewaAktif ?? collect())->isEmpty())
+                    <p class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Kamu belum menempati kos mana pun. Yuk cari kos dulu.</p>
+                @else
+                    <div class="space-y-3">
+                        @foreach ($sewaAktif as $sewa)
+                            @php
+                                $coverSewa = $sewa->properti?->fotoCover();
+                                $pengajuanSewa = $sewa->permintaan_keluar_pada;
+                            @endphp
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/60 p-3 sm:p-4">
+                                <div class="flex min-w-0 flex-1 items-center gap-3">
+                                    @if ($coverSewa)
+                                        <img src="{{ $coverSewa }}" alt="{{ $sewa->properti?->nama ?? 'Kos' }}" loading="lazy" class="h-14 w-14 rounded-xl object-cover shrink-0">
+                                    @else
+                                        <div class="h-14 w-14 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
+                                            <svg class="h-7 w-7 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                                        </div>
+                                    @endif
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-bold text-slate-900 dark:text-gray-100">{{ $sewa->properti?->nama ?? 'Kos tidak tersedia' }}{{ $sewa->kamar ? ' · Kamar '.$sewa->kamar->nama : '' }}</p>
+                                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Masuk {{ $sewa->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}</p>
+                                        @if ($pengajuanSewa)
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu verifikasi pemilik</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="shrink-0">
+                                    @if ($pengajuanSewa)
+                                        <button wire:click="batalkanCheckout({{ $sewa->id }})" wire:loading.attr="disabled"
+                                            wire:confirm="Batalkan pengajuan check-out dari kamar {{ $sewa->kamar?->nama }}?"
+                                            class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                            Batalkan Pengajuan
+                                        </button>
+                                    @else
+                                        <button wire:click="ajukanCheckout({{ $sewa->id }})" wire:loading.attr="disabled"
+                                            wire:confirm="Ajukan check-out dari kamar {{ $sewa->kamar?->nama }}? Pengajuanmu perlu diverifikasi pemilik kos."
+                                            class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                            Ajukan Check-out
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
 
         @if ($pesan)

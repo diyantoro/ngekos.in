@@ -81,6 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware(['role:anak_kos', 'throttle:30,1']);
     Route::post('/dashboard/anak-kos/{sewaanId}/keluar', [DashboardController::class, 'anakKosAjukanKeluar'])
         ->middleware(['role:anak_kos', 'throttle:30,1']);
+    Route::post('/dashboard/anak-kos/{sewaanId}/batal-keluar', [DashboardController::class, 'anakKosBatalkanKeluar'])
+        ->middleware(['role:anak_kos', 'throttle:30,1']);
 
     // Dashboard - Pemilik
     Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik'])
@@ -96,6 +98,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/dashboard/pemilik/sewaan/{sewaanId}/setujui-checkout', [DashboardController::class, 'pemilikSetujuiCheckout'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/dashboard/pemilik/sewaan/{sewaanId}/tolak-checkout', [DashboardController::class, 'pemilikTolakCheckout'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::post('/dashboard/pemilik/pembayaran/{pembayaranId}/verifikasi', [DashboardController::class, 'verifikasiPembayaran'])
         ->middleware('role:pemilik|admin|super_admin');

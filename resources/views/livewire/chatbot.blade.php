@@ -43,8 +43,18 @@ new class extends Component
         $this->input = '';
         $this->simpan();
 
+        // 1. Sapaan / basa-basi dijawab langsung secara natural (tanpa diteruskan ke admin).
+        $sapaan = $this->jawabanSapaan($pertanyaan);
+
+        if ($sapaan !== null) {
+            // Sapaan tidak dibuatkan tiket bantuan ke admin.
+            $this->balasBot($sapaan);
+
+            return;
+        }
+
         if (mb_strlen($pertanyaan) < 3) {
-            $this->balasBot('Boleh jelaskan sedikit lebih lengkap? Contoh: "cara daftar akun" atau "cara chat pemilik kos".');
+            $this->balasBot('Boleh jelaskan sedikit lebih lengkap? Contoh: "cara daftar akun" atau "cara bayar kos".');
 
             return;
         }
@@ -84,9 +94,104 @@ new class extends Component
         session(['chatbot.percakapan' => $this->percakapan]);
     }
 
+    protected function jawabanSapaan(string $pertanyaan): ?string
+    {
+        $teks = $this->normalisasi($pertanyaan);
+
+        $sapaan = [
+            'assalamualaikum' => 'Waalaikumsalam! Senang bisa membantu. Mau tanya soal cari kos, pembayaran, atau daftar akun?',
+            'halo' => null,
+            'hallo' => null,
+            'hello' => null,
+            'hi' => null,
+            'hai' => null,
+            'hei' => null,
+            'hey' => null,
+            'pagi' => null,
+            'siang' => null,
+            'sore' => null,
+            'malam' => null,
+            'tes' => null,
+            'test' => null,
+            'coba' => null,
+            'bang' => null,
+            'kak' => null,
+            'min' => null,
+            'bro' => null,
+        ];
+
+        foreach ($sapaan as $kunci => $balasanKhusus) {
+            // cocok persis atau diawali kata sapaan ("halo kak", "hai min", "selamat pagi", dst)
+            if ($teks === $kunci || str_starts_with($teks, $kunci.' ') || str_contains($teks, ' '.$kunci.' ') || str_contains($teks, ' '.$kunci)) {
+                if ($balasanKhusus !== null) {
+                    return $balasanKhusus;
+                }
+
+                $nama = auth()->check() ? ' '.auth()->user()->nama : '';
+
+                $varian = [
+                    "Halo{$nama}! Saya asisten virtual Ngekos.in. Mau cari info kos, cara pembayaran, atau cara chat pemilik kos?",
+                    "Hai{$nama}! Ada yang bisa saya bantu? Coba tanya misalnya: \"cara cari kos\" atau \"cara pembayaran\".",
+                    "Halo{$nama}! Senang bertemu denganmu. Silakan tanya seputar daftar akun, cari kos, peta kos, atau pembayaran ya.",
+                ];
+
+                return $varian[abs(crc32($teks)) % count($varian)];
+            }
+        }
+
+        // Selamat pagi/siang/sore/malam
+        if (preg_match('/selamat (pagi|siang|sore|malam)/', $teks, $m)) {
+            return 'Selamat '.$m[1].'! Ada yang bisa saya bantu seputar kos hari ini? Misalnya cara cari kos atau cara pembayaran.';
+        }
+
+        // Apa kabar
+        if (str_contains($teks, 'apa kabar') || str_contains($teks, 'kabar')) {
+            return 'Kabar saya baik dan siap membantu 24 jam! Kamu sendiri gimana? Ada yang mau ditanyakan soal kos?';
+        }
+
+        // Siapa kamu
+        if (str_contains($teks, 'siapa kamu') || str_contains($teks, 'nama kamu') || str_contains($teks, 'bot apa') || $teks === 'kamu siapa') {
+            return 'Saya asisten virtual Ngekos.in, siap membantu jawab pertanyaan seputar akun, cari kos, pembayaran, dan menghubungkanmu ke admin kalau butuh bantuan lebih lanjut.';
+        }
+
+        // Terima kasih
+        if (preg_match('/terima ?kasih|makasih|thanks|thank you|mantap|oke (banget|makasih)?/', $teks)) {
+            return 'Sama-sama! Senang bisa membantu. Kalau ada pertanyaan lain soal kos, jangan ragu tanya lagi ya.';
+        }
+
+        // Perpisahan
+        if (preg_match('/^(dadah|bye|sampai jumpa|dah( lah)?)$/', $teks) || str_contains($teks, 'sampai jumpa')) {
+            return 'Sampai jumpa! Semoga dapat kos yang nyaman ya. Saya di sini kalau kamu butuh bantuan lagi.';
+        }
+
+        // Minta bantuan umum
+        if (in_array($teks, ['bantuan', 'help', 'tolong', 'butuh bantuan', 'minta tolong'], true)) {
+            return 'Tentu, saya siap membantu! Kamu bisa tanya soal: daftar akun, cara cari kos, peta kos, chat pemilik, pembayaran & tagihan, atau ketik "hubungi admin" untuk diteruskan ke admin.';
+        }
+
+        return null;
+    }
+
+    protected function normalisasi(string $teks): string
+    {
+        $teks = mb_strtolower($teks, 'UTF-8');
+        // hapus tanda baca, sisakan huruf/angka/spasi
+        $teks = (string) preg_replace('/[^\p{L}\p{N}\s]/u', '', $teks);
+        $teks = (string) preg_replace('/\s+/', ' ', $teks);
+
+        return trim($teks);
+    }
+
     protected function cariJawaban(string $pertanyaan): ?string
     {
-        $teks = mb_strtolower($pertanyaan, 'UTF-8');
+        $teks = $this->normalisasi($pertanyaan);
+        // Kata umum yang muncul di banyak topik — abaikan saat skor per kata
+        // agar "cara bayar kos" tidak salah menang ke topik "peran" hanya karena kata "kos".
+        $stopwords = ['kos', 'kost', 'nge', 'ngekos', 'cara', 'cari', 'gimana', 'bagaimana', 'apa', 'apakah', 'yang', 'saya', 'aku', 'kami', 'kamu', 'anda', 'dong', 'ya', 'kah', 'tentang', 'info', 'mau', 'ingin', 'tanya', 'tolong', 'kok', 'sih', 'saja', 'aja'];
+        $token = array_values(array_filter(
+            explode(' ', $teks),
+            fn ($t) => mb_strlen($t) >= 3 && ! in_array($t, $stopwords, true)
+        ));
         $skorTerbaik = 0;
         $jawaban = null;
 
@@ -98,8 +203,45 @@ new class extends Component
                     continue;
                 }
 
-                if (str_contains($teks, mb_strtolower($kataKunci, 'UTF-8'))) {
-                    $skor += mb_strlen($kataKunci) >= 6 ? 2 : 1;
+                $kunci = $this->normalisasi($kataKunci);
+
+                if ($kunci === '') {
+                    continue;
+                }
+
+                // 1. cocok persis / mengandung frasa
+                if ($teks === $kunci || str_contains($teks, $kunci)) {
+                    $skor += mb_strlen($kunci) >= 6 ? 4 : 2;
+
+                    continue;
+                }
+
+                // 2. cocok per kata (mis. "bayar kos" cocok dengan "pembayaran")
+                foreach (explode(' ', $kunci) as $kata) {
+                    if (mb_strlen($kata) < 3 || in_array($kata, $stopwords, true)) {
+                        continue;
+                    }
+
+                    if (str_contains($teks, $kata)) {
+                        $skor += mb_strlen($kata) >= 6 ? 2 : 1;
+
+                        continue;
+                    }
+
+                    // 3. toleransi typo: "pembayran" ~ "pembayaran", "kos" ~ "kost"
+                    foreach ($token as $t) {
+                        if (abs(mb_strlen($t) - mb_strlen($kata)) > 2) {
+                            continue;
+                        }
+
+                        $jarak = levenshtein($t, $kata);
+
+                        if ($jarak === 1 || ($jarak === 2 && mb_strlen($kata) >= 6)) {
+                            $skor += 1;
+
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -114,8 +256,10 @@ new class extends Component
 
     protected function tindakLanjutTakTerjawab(string $pertanyaan): void
     {
+        $saranTopik = 'Aku bisa bantu soal: daftar akun, cari kos, peta kos, chat pemilik, pembayaran & tagihan, atau kelola kos. Coba tanya misalnya "cara bayar kos" atau klik tombol cepat di bawah.';
+
         if (! auth()->check()) {
-            $this->balasBot('Maaf, saya belum bisa menjawab itu. Kamu sedang belum login, jadi saya tidak bisa meneruskannya ke admin. Silakan masuk lalu tanya lagi, atau kirim lewat halaman Bantuan dengan kata kunci seperti "chat pemilik", "pembayaran", atau "daftar akun".');
+            $this->balasBot("Hmm, aku belum paham maksud \"{$pertanyaan}\". {$saranTopik} Kalau butuh bantuan manusia, silakan masuk dulu lalu tanya lagi, atau kirim lewat halaman Bantuan.");
 
             return;
         }
@@ -143,7 +287,7 @@ new class extends Component
             session(['chatbot.pertanyaan_terakhir' => $pertanyaan]);
         }
 
-        $this->balasBot('Maaf, saya belum bisa menjawab itu. Pertanyaanmu sudah saya teruskan ke admin dan akan dibalas di halaman Riwayat Bantuan. Atau coba tanya dengan kata kunci seperti "chat pemilik", "pembayaran", atau "daftar akun".');
+        $this->balasBot("Hmm, aku belum paham maksud \"{$pertanyaan}\". Tapi pertanyaanmu sudah aku teruskan ke admin dan akan dibalas di halaman Riwayat Bantuan ya. Sementara itu, {$saranTopik}");
     }
 }; ?>
 

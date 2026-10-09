@@ -47,7 +47,7 @@ class MenuBaruTest extends TestCase
     public function test_anak_kos_bisa_buka_halaman_tagihan(): void
     {
         $this->actingAs($this->anakKos())->get(route('anak-kos.tagihan'))
-            ->assertOk()->assertSee('Tagihan &', false);
+            ->assertOk()->assertSee('Kos Saya', false);
     }
 
     public function test_halaman_baru_tertutup_untuk_role_lain(): void

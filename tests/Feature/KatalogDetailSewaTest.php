@@ -126,6 +126,48 @@ class KatalogDetailSewaTest extends TestCase
         $this->assertSame('tersedia', $kamar->status);
     }
 
+    public function test_tanggal_masuk_maksimal_10_hari_ke_depan(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+
+        $component = Volt::actingAs($user)->test('pages.katalog.detail', ['properti' => $properti]);
+        $component->call('pesanKamar', $kamar->id);
+
+        // 11 hari ke depan: ditolak.
+        $component->set('tanggalMasuk', today()->addDays(11)->toDateString())
+            ->call('konfirmasiSewa')
+            ->assertHasErrors(['tanggalMasuk' => 'before_or_equal']);
+
+        $kamar->refresh();
+        $this->assertSame('tersedia', $kamar->status);
+
+        // Tepat 10 hari ke depan: lolos validasi tanggal (gagal di KTP saja).
+        $component->set('tanggalMasuk', today()->addDays(10)->toDateString())
+            ->call('konfirmasiSewa')
+            ->assertHasErrors(['ktp' => 'required']);
+    }
+
+    public function test_service_menolak_tanggal_masuk_lebih_dari_10_hari(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+
+        $service = app(PenyewaanService::class);
+
+        try {
+            $service->sewaKamar($user, $kamar, today()->addDays(11)->toDateString(), 1, null, 'ktp/test.jpg');
+            $this->fail('Seharusnya menolak tanggal masuk lebih dari 10 hari ke depan.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('10 hari', $e->getMessage());
+        }
+
+        $kamar->refresh();
+        $this->assertSame('tersedia', $kamar->status);
+    }
+
     public function test_double_booking_kamar_yang_sama_ditolak(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();

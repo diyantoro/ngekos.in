@@ -191,7 +191,7 @@ new #[Layout('layouts.publik')] class extends Component
     public function lanjutReview(): void
     {
         $rules = array_merge([
-            'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addMonths(3)->toDateString()],
+            'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addDays(10)->toDateString()],
             'ktp' => PenyewaanService::ATURAN_KTP,
         ], $this->aturanDurasi());
 
@@ -199,7 +199,7 @@ new #[Layout('layouts.publik')] class extends Component
             'tanggalMasuk.required' => 'Pilih tanggal masuk terlebih dahulu.',
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
-            'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
+            'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 10 hari ke depan.',
         ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
 
         // Pastikan periode yang dipilih memang punya harga.
@@ -231,7 +231,7 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         $rules = array_merge([
-            'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addMonths(3)->toDateString()],
+            'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addDays(10)->toDateString()],
             'ktp' => PenyewaanService::ATURAN_KTP,
         ], $this->aturanDurasi());
 
@@ -239,7 +239,7 @@ new #[Layout('layouts.publik')] class extends Component
             'tanggalMasuk.required' => 'Pilih tanggal masuk terlebih dahulu.',
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
-            'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 3 bulan ke depan.',
+            'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 10 hari ke depan.',
         ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
 
         $kamar = Kamar::with('properti')
@@ -781,10 +781,10 @@ new #[Layout('layouts.publik')] class extends Component
                 <form wire:submit="konfirmasiSewa" class="p-5 space-y-4">
                     {{-- Step 1: Pilih tanggal --}}
                     <div wire:key="langkah-1" @if ($langkahSewa !== 1) class="hidden" @endif>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 3 bulan ke depan) dan lama sewa. Tagihan dibuat otomatis untuk dibayar.</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 10 hari ke depan) dan lama sewa. Tagihan dibuat otomatis untuk dibayar.</p>
                         <div class="mt-4">
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Masuk</label>
-                            <input type="date" wire:model="tanggalMasuk" min="{{ today()->toDateString() }}" max="{{ today()->addMonths(3)->toDateString() }}"
+                            <input type="date" wire:model="tanggalMasuk" min="{{ today()->toDateString() }}" max="{{ today()->addDays(10)->toDateString() }}"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
                             @error('tanggalMasuk') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                         </div>

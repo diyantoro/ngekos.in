@@ -27,7 +27,7 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
                 ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
@@ -121,6 +121,72 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}";
     }
+
+    public function setujuiCheckout(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'tagihans', 'anggotas', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            $hasil = \App\Services\CheckoutService::setujuiCheckout($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $catatan = $hasil['tagihan_belum_lunas'] > 0
+            ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas milik penyewa ini."
+            : '';
+
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+
+        $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} disetujui.{$tambahan}{$catatan}";
+    }
+
+    public function tolakCheckout(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            \App\Services\CheckoutService::tolakCheckout($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} ditolak. Sewa tetap berjalan aktif.";
+    }
 }; ?>
 
 <div class="py-10">
@@ -208,13 +274,33 @@ new #[Layout('layouts.app')] class extends Component
                                 <td class="px-4 py-4"><x-status-badge :status="$sewaan->status" /></td>
                                 <td class="px-4 py-4">
                                     @if ($sewaan->status === 'aktif')
-                                        <div class="flex justify-end">
-                                            <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
-                                                class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
-                                                Check-out
-                                            </button>
-                                        </div>
+                                        @if ($sewaan->permintaan_keluar_pada)
+                                            <div class="flex flex-col items-end gap-1.5">
+                                                <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">
+                                                    Minta check-out {{ $sewaan->permintaan_keluar_pada->translatedFormat('d M Y') }}
+                                                </span>
+                                                <div class="flex justify-end gap-1.5">
+                                                    <button wire:click="setujuiCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Setujui check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Sewa akan ditutup dan kamar kembali tersedia."
+                                                        class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                        Setujui
+                                                    </button>
+                                                    <button wire:click="tolakCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Tolak pengajuan check-out {{ $sewaan->anakKos?->nama }}? Sewa tetap berjalan aktif."
+                                                        class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                                        Tolak
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="flex justify-end">
+                                                <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                    wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
+                                                    class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                                    Check-out
+                                                </button>
+                                            </div>
+                                        @endif
                                     @else
                                         <span class="block text-right text-xs text-gray-400 dark:text-gray-500">
                                             Keluar: {{ $sewaan->tanggal_keluar?->translatedFormat('d M Y') }}

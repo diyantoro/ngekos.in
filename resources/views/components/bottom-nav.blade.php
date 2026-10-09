@@ -120,13 +120,13 @@
                 @endif
 
                 @if (auth()->user()->hasRole('anak_kos'))
-                    {{-- Tagihan --}}
+                    {{-- Kos Saya --}}
                     <a href="{{ route('anak-kos.tagihan') }}" wire:navigate.hover
                         class="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1 transition {{ request()->routeIs('anak-kos.tagihan') ? $itemAktif : $itemBiasa }}">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
                         </svg>
-                        <span class="text-[10px] font-medium">{{ __('Tagihan') }}</span>
+                        <span class="text-[10px] font-medium">{{ __('Kos Saya') }}</span>
                         @if (request()->routeIs('anak-kos.tagihan'))
                             <span class="mt-0.5 h-1 w-6 rounded-full bg-brand-700 dark:bg-brand-400"></span>
                         @endif

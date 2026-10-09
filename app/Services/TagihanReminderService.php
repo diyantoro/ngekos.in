@@ -280,7 +280,7 @@ class TagihanReminderService
             $isi .= ' (Pesan susulan: pengingat sebelumnya terlewat karena jadwal otomatis tidak jalan.)';
         }
 
-        return $isi.' Bayar lewat menu Tagihan. Terima kasih.';
+        return $isi.' Bayar lewat menu Kos Saya. Terima kasih.';
     }
 
     public static function judulPush(string $jenis): string
