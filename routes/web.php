@@ -3,6 +3,8 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KtpPenyewaanController;
 use App\Http\Controllers\KwitansiController;
+use App\Http\Controllers\LanggananBuktiController;
+use App\Http\Controllers\PembayaranBuktiController;
 use App\Http\Controllers\QrisController;
 use App\Http\Controllers\PemilikLaporanPremiumController;
 use App\Http\Controllers\PemilikRekapExportController;
@@ -122,12 +124,16 @@ Route::middleware(['auth', 'verified', 'role:pemilik|admin|super_admin'])->group
         ->name('pemilik.rekap.excel');
 });
 
-// Unduh kwitansi pembayaran terverifikasi + lihat KTP penyewa.
+// Unduh kwitansi pembayaran terverifikasi + lihat KTP penyewa + bukti langganan.
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('pembayaran/{pembayaran}/kwitansi', [KwitansiController::class, 'unduh'])
         ->name('pembayaran.kwitansi');
     Route::get('penyewaan/{sewaan}/ktp', [KtpPenyewaanController::class, 'lihat'])
         ->name('penyewaan.ktp');
+    Route::get('langganan/bukti/{permintaan}', [LanggananBuktiController::class, 'lihat'])
+        ->name('langganan.bukti');
+    Route::get('pembayaran/{pembayaran}/bukti', [PembayaranBuktiController::class, 'lihat'])
+        ->name('pembayaran.bukti');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

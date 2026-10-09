@@ -398,7 +398,7 @@ new #[Layout('layouts.app')] class extends Component
                                                         <p class="text-sm font-extrabold text-slate-900 dark:text-gray-100">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</p>
                                                         <div class="flex items-center gap-1.5">
                                                             @if ($pembayaran->bukti)
-                                                                <a href="{{ Storage::url($pembayaran->bukti) }}" target="_blank" rel="noopener"
+                                                                <a href="{{ route('pembayaran.bukti', $pembayaran->id) }}" target="_blank" rel="noopener"
                                                                     class="inline-flex items-center gap-1 rounded-lg border border-stone-200 dark:border-gray-600 px-2.5 py-1.5 text-xs font-semibold text-brand-700 dark:text-brand-300 hover:bg-stone-50 dark:hover:bg-gray-700 transition">
                                                                     Bukti
                                                                 </a>
@@ -512,7 +512,10 @@ new #[Layout('layouts.app')] class extends Component
                             <input type="file" wire:model="bukti" accept=".jpg,.jpeg,.png,.webp,.pdf"
                                 class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 dark:file:bg-brand-500/10 file:px-4 file:py-2 file:text-brand-700 dark:file:text-brand-300 file:font-semibold hover:file:bg-brand-100 dark:hover:file:bg-brand-500/20">
                             @error('bukti') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
-                            <div wire:loading wire:target="bukti" class="mt-2 text-xs font-medium text-brand-600">Mengunggah bukti...</div>
+                            <div wire:loading wire:target="bukti" class="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Mengunggah... tunggu sampai selesai sebelum klik Kirim.</div>
+                            @if ($bukti)
+                                <p class="mt-2 text-xs text-emerald-600 dark:text-emerald-400">File terpilih: {{ method_exists($bukti, 'getClientOriginalName') ? $bukti->getClientOriginalName() : 'bukti transfer' }}.</p>
+                            @endif
                         </div>
                     @else
                         <p class="rounded-xl bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-100 dark:ring-brand-500/20 px-4 py-3 text-xs text-brand-800 dark:text-brand-200">
@@ -524,9 +527,11 @@ new #[Layout('layouts.app')] class extends Component
                             class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                             Batal
                         </button>
-                        <button type="submit" wire:loading.attr="disabled" wire:target="konfirmasiBayar"
+                        <button type="submit" wire:loading.attr="disabled" wire:target="bukti,konfirmasiBayar"
                             class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
-                            Kirim Pembayaran
+                            <span wire:loading.remove wire:target="bukti,konfirmasiBayar">Kirim Pembayaran</span>
+                            <span wire:loading wire:target="bukti">Mengunggah bukti...</span>
+                            <span wire:loading wire:target="konfirmasiBayar">Mengirim...</span>
                         </button>
                     </div>
                 </form>

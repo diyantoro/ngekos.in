@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Pengaturan;
+use App\Models\SubscriptionRequest;
+use App\Services\BuktiStorage;
 use App\Services\LanggananNotifier;
 use App\Services\SubscriptionService;
 use Livewire\Attributes\Layout;
@@ -103,11 +105,19 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
-                    <div wire:loading wire:target="bukti" class="mt-2 text-xs text-gray-400">Mengunggah...</div>
+                    <div wire:loading wire:target="bukti" class="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Mengunggah... tunggu sampai selesai sebelum klik Kirim.</div>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bukti): ?>
+                        <p class="mt-2 text-xs text-emerald-600 dark:text-emerald-400">File terpilih: <?php echo e(method_exists($bukti, 'getClientOriginalName') ? $bukti->getClientOriginalName() : 'bukti pembayaran'); ?>. Pastikan pratinjau di bawah muncul sebelum klik Kirim.</p>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(method_exists($bukti, 'temporaryUrl')): ?>
+                            <img src="<?php echo e($bukti->temporaryUrl()); ?>" alt="Pratinjau bukti" class="mt-2 h-32 w-auto rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-1">
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
-                <button type="submit" wire:loading.attr="disabled"
+                <button type="submit" wire:loading.attr="disabled" wire:target="bukti,bayar"
                     class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white hover:bg-teal-500 transition disabled:opacity-50 active:scale-[0.98]">
-                    Kirim Pembayaran
+                    <span wire:loading.remove wire:target="bukti,bayar">Kirim Pembayaran</span>
+                    <span wire:loading wire:target="bukti">Mengunggah bukti...</span>
+                    <span wire:loading wire:target="bayar">Mengirim...</span>
                 </button>
                 <p class="text-center text-xs text-gray-400">Setelah terkirim, tunggu persetujuan superadmin (status: Menunggu Persetujuan).</p>
             </form>

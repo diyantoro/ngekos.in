@@ -105,8 +105,15 @@ class StorageProxyController extends \App\Http\Controllers\Controller
             return false;
         }
 
-        if ($user->hasRole('super_admin')) {
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
             return true;
+        }
+
+        // Bukti langganan (subscription_requests.bukti_path): pemilik hanya miliknya.
+        $langganan = \App\Models\SubscriptionRequest::where('bukti_path', $path)->first();
+
+        if ($langganan) {
+            return (int) $langganan->user_id === (int) $user->id;
         }
 
         $pembayaran = Pembayaran::where('bukti', $path)

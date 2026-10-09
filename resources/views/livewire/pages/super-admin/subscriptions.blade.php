@@ -278,7 +278,7 @@ new #[Layout('layouts.app')] class extends Component
                                         · Rp{{ number_format($r->amount, 0, ',', '.') }}
                                     @endif
                                     @if ($r->bukti_path)
-                                        · <a href="{{ asset('storage/'.$r->bukti_path) }}" target="_blank" class="font-semibold text-teal-600 dark:text-teal-400 hover:underline">Lihat bukti</a>
+                                        · <a href="{{ route('langganan.bukti', $r->id) }}" target="_blank" class="font-semibold text-teal-600 dark:text-teal-400 hover:underline">Lihat bukti</a>
                                     @endif
                                 </p>
                             @endif

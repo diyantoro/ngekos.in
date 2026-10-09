@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Pengaturan;
+use App\Models\SubscriptionRequest;
+use App\Services\BuktiStorage;
 use App\Services\LanggananNotifier;
 use App\Services\SubscriptionService;
 use Livewire\Attributes\Layout;
@@ -65,7 +67,19 @@ new #[Layout('layouts.app')] class extends Component
         // Nominal dikunci server-side sesuai harga paket, tidak bisa diubah user.
         $harga = (int) config("plans.{$this->plan}.price", 0);
 
-        $path = \App\Services\BuktiStorage::simpan($this->bukti, 'bukti');
+        // Cek pending SEBELUM simpan file agar tidak ada file orphan
+        // dan input file tidak ikut ter-reset sia-sia.
+        $adaPending = SubscriptionRequest::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($adaPending) {
+            $this->galat = 'Masih ada permintaan upgrade yang menunggu persetujuan admin.';
+
+            return;
+        }
+
+        $path = BuktiStorage::simpan($this->bukti, 'bukti');
 
         try {
             $permintaan = SubscriptionService::requestUpgrade($user, $this->plan, null, [
@@ -82,8 +96,11 @@ new #[Layout('layouts.app')] class extends Component
                 report($e);
             }
         } catch (\InvalidArgumentException $e) {
+            // Hapus file yang terlanjur tersimpan agar tidak jadi sampah.
+            // Jangan reset('bukti') agar file pilihan user tidak hilang
+            // dan tidak perlu pilih ulang.
+            BuktiStorage::hapus($path);
             $this->galat = $e->getMessage();
-            $this->reset('bukti');
 
             return;
         }
@@ -148,11 +165,19 @@ new #[Layout('layouts.app')] class extends Component
                     <input type="file" id="bukti" wire:model="bukti" accept="image/*"
                         class="mt-2 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-teal-500">
                     <x-input-error :messages="$errors->get('bukti')" class="mt-2" />
-                    <div wire:loading wire:target="bukti" class="mt-2 text-xs text-gray-400">Mengunggah...</div>
+                    <div wire:loading wire:target="bukti" class="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Mengunggah... tunggu sampai selesai sebelum klik Kirim.</div>
+                    @if ($bukti)
+                        <p class="mt-2 text-xs text-emerald-600 dark:text-emerald-400">File terpilih: {{ method_exists($bukti, 'getClientOriginalName') ? $bukti->getClientOriginalName() : 'bukti pembayaran' }}. Pastikan pratinjau di bawah muncul sebelum klik Kirim.</p>
+                        @if (method_exists($bukti, 'temporaryUrl'))
+                            <img src="{{ $bukti->temporaryUrl() }}" alt="Pratinjau bukti" class="mt-2 h-32 w-auto rounded-xl object-contain ring-1 ring-gray-200 dark:ring-gray-700 bg-white p-1">
+                        @endif
+                    @endif
                 </div>
-                <button type="submit" wire:loading.attr="disabled"
+                <button type="submit" wire:loading.attr="disabled" wire:target="bukti,bayar"
                     class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white hover:bg-teal-500 transition disabled:opacity-50 active:scale-[0.98]">
-                    Kirim Pembayaran
+                    <span wire:loading.remove wire:target="bukti,bayar">Kirim Pembayaran</span>
+                    <span wire:loading wire:target="bukti">Mengunggah bukti...</span>
+                    <span wire:loading wire:target="bayar">Mengirim...</span>
                 </button>
                 <p class="text-center text-xs text-gray-400">Setelah terkirim, tunggu persetujuan superadmin (status: Menunggu Persetujuan).</p>
             </form>
