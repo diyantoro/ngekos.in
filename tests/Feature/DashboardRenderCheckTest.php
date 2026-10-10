@@ -102,6 +102,13 @@ class DashboardRenderCheckTest extends TestCase
             ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
             ->firstOrFail();
 
+        // Aturan Opsi A: bulan berjalan wajib lunas dulu sebelum checkout.
+        $sewaan->tagihans()
+            ->whereNotIn('status', ['lunas', 'batal'])
+            ->whereMonth('jatuh_tempo', today()->month)
+            ->whereYear('jatuh_tempo', today()->year)
+            ->update(['status' => 'lunas']);
+
         $component = Volt::actingAs($user)->test('pages.dashboard.anak-kos');
         $component->call('checkOut', $sewaan->id)
             ->assertSet('pesan', fn ($pesan) => str_contains(strtolower($pesan), 'verifikasi'));
@@ -132,6 +139,13 @@ class DashboardRenderCheckTest extends TestCase
         $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')
             ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
             ->firstOrFail();
+
+        // Aturan Opsi A: bulan berjalan wajib lunas dulu sebelum checkout.
+        $sewaan->tagihans()
+            ->whereNotIn('status', ['lunas', 'batal'])
+            ->whereMonth('jatuh_tempo', today()->month)
+            ->whereYear('jatuh_tempo', today()->year)
+            ->update(['status' => 'lunas']);
 
         $component = Volt::actingAs($user)->test('pages.anak-kos.tagihan');
         $component->assertViewHas('sewaAktif')

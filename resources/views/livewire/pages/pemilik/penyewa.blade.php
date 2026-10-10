@@ -28,7 +28,7 @@ new #[Layout('layouts.app')] class extends Component
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
                 ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
+                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(30)
@@ -117,9 +117,13 @@ new #[Layout('layouts.app')] class extends Component
             ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas milik penyewa ini."
             : '';
 
+        $batal = ($hasil['dibatalkan'] ?? 0) > 0
+            ? ' '.($hasil['dibatalkan']).' tagihan bulan depan dibatalkan.'
+            : '';
+
         $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
 
-        $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}";
+        $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}{$batal}";
     }
 
     public function setujuiCheckout(int $sewaanId): void
@@ -153,9 +157,13 @@ new #[Layout('layouts.app')] class extends Component
             ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas milik penyewa ini."
             : '';
 
+        $batal = ($hasil['dibatalkan'] ?? 0) > 0
+            ? ' '.($hasil['dibatalkan']).' tagihan bulan depan dibatalkan.'
+            : '';
+
         $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
 
-        $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} disetujui.{$tambahan}{$catatan}";
+        $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} disetujui.{$tambahan}{$catatan}{$batal}";
     }
 
     public function tolakCheckout(int $sewaanId): void
@@ -231,11 +239,14 @@ new #[Layout('layouts.app')] class extends Component
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse ($sewaans as $sewaan)
                             @php
-                                $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
+                                $belumLunas = $sewaan->tagihans->whereNotIn('status', ['lunas', 'batal']);
                                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
                                 $anggotaAktifRow = $sewaan->anggotas->where('status', 'aktif');
                                 $isPatunganRow = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktifRow->isNotEmpty();
+                                $kurangBulanIni = \App\Services\CheckoutService::tagihanWajibBelumLunas($sewaan);
+                                $blokirCheckout = $kurangBulanIni->isNotEmpty();
+                                $alasanBlokir = $blokirCheckout ? 'Ada '.$kurangBulanIni->count().' tagihan sampai bulan ini yang belum lunas.' : null;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -280,25 +291,43 @@ new #[Layout('layouts.app')] class extends Component
                                                     Minta check-out {{ $sewaan->permintaan_keluar_pada->translatedFormat('d M Y') }}
                                                 </span>
                                                 <div class="flex justify-end gap-1.5">
-                                                    <button wire:click="setujuiCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                        wire:confirm="Setujui check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Sewa akan ditutup dan kamar kembali tersedia."
-                                                        class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
-                                                        Setujui
-                                                    </button>
+                                                    @if ($blokirCheckout)
+                                                        <button type="button" disabled title="{{ $alasanBlokir }}"
+                                                            class="inline-flex items-center rounded-lg bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                            Setujui
+                                                        </button>
+                                                    @else
+                                                        <button wire:click="setujuiCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                            wire:confirm="Setujui check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Sewa akan ditutup dan kamar kembali tersedia."
+                                                            class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                            Setujui
+                                                        </button>
+                                                    @endif
                                                     <button wire:click="tolakCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
                                                         wire:confirm="Tolak pengajuan check-out {{ $sewaan->anakKos?->nama }}? Sewa tetap berjalan aktif."
                                                         class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
                                                         Tolak
                                                     </button>
                                                 </div>
+                                                @if ($blokirCheckout)
+                                                    <span class="block text-right text-[11px] text-amber-600 dark:text-amber-400">{{ $alasanBlokir }}</span>
+                                                @endif
                                             </div>
                                         @else
-                                            <div class="flex justify-end">
-                                                <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                    wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
-                                                    class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
-                                                    Check-out
-                                                </button>
+                                            <div class="flex flex-col items-end gap-1">
+                                                @if ($blokirCheckout)
+                                                    <button type="button" disabled title="{{ $alasanBlokir }}"
+                                                        class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                        Check-out
+                                                    </button>
+                                                    <span class="text-[11px] text-amber-600 dark:text-amber-400">{{ $alasanBlokir }}</span>
+                                                @else
+                                                    <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
+                                                        class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                                        Check-out
+                                                    </button>
+                                                @endif
                                             </div>
                                         @endif
                                     @else

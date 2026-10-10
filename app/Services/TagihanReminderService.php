@@ -62,7 +62,7 @@ class TagihanReminderService
         $hasil = ['cek' => 0, 'kirim' => 0, 'lewati' => 0];
 
         Tagihan::query()
-            ->where('status', '!=', 'lunas')
+            ->whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan', fn ($q) => $q->where('status', 'aktif'))
             ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,pemilik_id', 'penyewaan.anggotas', 'penyewaan.anakKos:id,nama,email', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
             ->chunkById(100, function ($tagihans) use ($pada, &$hasil) {
@@ -137,7 +137,7 @@ class TagihanReminderService
     {
         $pada ??= Carbon::today();
 
-        if ($tagihan->status === 'lunas' || ! $tagihan->penyewaan || $tagihan->penyewaan->status !== 'aktif') {
+        if (in_array($tagihan->status, ['lunas', 'batal'], true) || ! $tagihan->penyewaan || $tagihan->penyewaan->status !== 'aktif') {
             return false;
         }
 
@@ -310,7 +310,7 @@ class TagihanReminderService
         $pada ??= Carbon::today();
         $kirim = 0;
 
-        foreach ($penyewaan->tagihans()->where('status', '!=', 'lunas')->get() as $tagihan) {
+        foreach ($penyewaan->tagihans()->whereNotIn('status', ['lunas', 'batal'])->get() as $tagihan) {
             if (self::prosesSatu($tagihan, $pada)) {
                 $kirim++;
             }

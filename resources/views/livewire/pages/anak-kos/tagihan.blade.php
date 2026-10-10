@@ -35,22 +35,46 @@ new #[Layout('layouts.app')] class extends Component
 
         $dendaGlobal = (float) \App\Models\Pengaturan::dendaPerHari();
         $olesDenda = function ($tagihan) use ($dendaGlobal) {
-            if ($tagihan->status === 'lunas') {
+            if (in_array($tagihan->status, ['lunas', 'batal'], true)) {
                 return;
             }
             $tagihan->setAttribute('denda', \App\Services\TagihanService::dendaBerjalan($tagihan));
         };
 
-        return [
-            'sewaAktif' => \App\Models\Penyewaan::where('status', 'aktif')
+        $sewaAktif = \App\Models\Penyewaan::where('status', 'aktif')
                 ->where(fn ($q) => $q->where('anak_kos_id', $id)
                     ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif')))
                 ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['kamar:id,nama,properti_id', 'properti:id,nama,kota,alamat,foto', 'properti.fotos:id,properti_id,path,urutan', 'anggotas'])
+                ->with(['kamar:id,nama,properti_id', 'properti:id,nama,kota,alamat,foto', 'properti.fotos:id,properti_id,path,urutan', 'anggotas', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
                 ->orderByDesc('tanggal_masuk')
                 ->limit(10)
-                ->get(),
+                ->get();
+
+        // Info kelayakan checkout per sewa untuk mengunci tombol di UI
+        // (server tetap memvalidasi ulang di CheckoutService).
+        $checkoutInfo = [];
+        foreach ($sewaAktif as $sewa) {
+            $adaYangStay = $sewa->anggotas->where('status', 'aktif')->where('user_id', '!=', $id)->isNotEmpty()
+                || ($sewa->anak_kos_id !== $id);
+
+            if ($adaYangStay) {
+                $sisa = \App\Services\PatunganService::sisaPorsi($sewa, $id);
+                $checkoutInfo[$sewa->id] = $sisa !== []
+                    ? ['terblokir' => true, 'alasan' => 'Lunasi dulu porsi patunganmu sebesar Rp'.number_format(array_sum(array_column($sisa, 'sisa')), 0, ',', '.').' sebelum keluar.']
+                    : ['terblokir' => false, 'alasan' => null];
+            } else {
+                $kurang = \App\Services\CheckoutService::tagihanWajibBelumLunas($sewa);
+                $checkoutInfo[$sewa->id] = $kurang->isNotEmpty()
+                    ? ['terblokir' => true, 'alasan' => 'Lunasi dulu '.$kurang->count().' tagihan sampai bulan ini sebelum check-out.']
+                    : ['terblokir' => false, 'alasan' => null];
+            }
+        }
+
+        return [
+            'sewaAktif' => $sewaAktif,
+            'checkoutInfo' => $checkoutInfo,
             'tagihans' => Tagihan::whereHas('penyewaan', $scopeSewa)
+                ->where('status', '!=', 'batal')
                 ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
                 ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,kota,alamat,foto,denda_per_hari', 'penyewaan.properti.fotos:id,properti_id,path,urutan', 'penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
                 ->orderByDesc('jatuh_tempo')
@@ -80,8 +104,8 @@ new #[Layout('layouts.app')] class extends Component
             ->with(['penyewaan.anggotas', 'penyewaan.properti'])
             ->first();
 
-        if (! $tagihan || $tagihan->status === 'lunas') {
-            $this->galat = 'Tagihan tidak ditemukan atau sudah lunas.';
+        if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
+            $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
 
             return;
         }
@@ -199,9 +223,9 @@ new #[Layout('layouts.app')] class extends Component
             ->with(['penyewaan.anggotas', 'penyewaan.properti'])
             ->first();
 
-        if (! $tagihan || $tagihan->status === 'lunas') {
+        if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
             $this->tutupModalBayar();
-            $this->galat = 'Tagihan tidak ditemukan atau sudah lunas.';
+            $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
 
             return;
         }
@@ -312,6 +336,14 @@ new #[Layout('layouts.app')] class extends Component
                                             class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
                                             Batalkan Pengajuan
                                         </button>
+                                    @elseif (($checkoutInfo[$sewa->id]['terblokir'] ?? false))
+                                        <div class="flex flex-col items-end gap-1">
+                                            <button type="button" disabled title="{{ $checkoutInfo[$sewa->id]['alasan'] }}"
+                                                class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                Ajukan Check-out
+                                            </button>
+                                            <span class="text-[11px] text-amber-600 dark:text-amber-400">{{ $checkoutInfo[$sewa->id]['alasan'] }}</span>
+                                        </div>
                                     @else
                                         <button wire:click="ajukanCheckout({{ $sewa->id }})" wire:loading.attr="disabled"
                                             wire:confirm="Ajukan check-out dari kamar {{ $sewa->kamar?->nama }}? Pengajuanmu perlu diverifikasi pemilik kos."

@@ -57,7 +57,7 @@ class ProsesTagihan extends Command
 
         while ($bulan->lessThanOrEqualTo($batas)) {
             $sudahAda = $sewaan->tagihans->contains(
-                fn ($t) => $t->jatuh_tempo?->isSameMonth($bulan)
+                fn ($t) => $t->status !== 'batal' && $t->jatuh_tempo?->isSameMonth($bulan)
             );
 
             if (! $sudahAda) {
@@ -87,7 +87,7 @@ class ProsesTagihan extends Command
         $diubah = 0;
 
         $sewaan->tagihans()
-            ->where('status', '!=', 'lunas')
+            ->whereNotIn('status', ['lunas', 'batal'])
             ->whereDate('jatuh_tempo', '<=', $hariIni->toDateString())
             ->get()
             ->each(function ($tagihan) use ($hariIni, &$diubah) {

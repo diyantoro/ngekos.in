@@ -104,7 +104,7 @@ class PemilikLaporanPremiumService
             $okupansi[] = $totalKamar > 0 ? (int) round($terisi / $totalKamar * 100) : 0;
         }
 
-        $belum = Tagihan::where('status', '!=', 'lunas')
+        $belum = Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan.properti', $scopePropertiId)
             ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.kamar.properti:id,nama'])
             ->orderBy('jatuh_tempo')

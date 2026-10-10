@@ -36,7 +36,7 @@ class DashboardController extends Controller
         $penyewaanAktif = Penyewaan::where($scopeSewa)->where('status', 'aktif')->count();
 
         $kandidatBelum = Tagihan::whereHas('penyewaan', $scopeSewa)
-            ->where('status', '!=', 'lunas')
+            ->whereNotIn('status', ['lunas', 'batal'])
             ->with([
                 'penyewaan.anggotas',
                 // TagihanService::dendaBerjalan() memanggil loadMissing
@@ -48,7 +48,7 @@ class DashboardController extends Controller
             ->orderBy('jatuh_tempo')
             ->limit(200)
             ->get()
-            ->each(fn ($t) => $t->status !== 'lunas' ? $t->setAttribute('denda', TagihanService::dendaBerjalan($t)) : null);
+            ->each(fn ($t) => ! in_array($t->status, ['lunas', 'batal'], true) ? $t->setAttribute('denda', TagihanService::dendaBerjalan($t)) : null);
 
         // Hitung hanya yang porsi user-nya masih > 0 (patungan yang sudah lunas porsi tidak dihitung).
         $tagihanBelumBayar = $kandidatBelum->filter(fn ($t) => TagihanService::wajibBayar($t, $id) > 0)->count();
@@ -180,6 +180,7 @@ class DashboardController extends Controller
             ])
             ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $uid)
                 ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->where('status', '!=', 'batal')
             ->orderBy('created_at', 'desc')
             ->limit(200)
             ->get()
@@ -187,7 +188,7 @@ class DashboardController extends Controller
                 $porsi = null;
                 if ($t->penyewaan) {
                     // Read-only: hitung denda berjalan in-memory tanpa UPDATE per baris.
-                    if ($t->status !== 'lunas') {
+                    if (! in_array($t->status, ['lunas', 'batal'], true)) {
                         $t->setAttribute('denda', TagihanService::dendaBerjalan($t));
                     }
                     $porsi = PatunganService::porsiTagihan($t->penyewaan, $t);
@@ -275,6 +276,10 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Tagihan tidak ditemukan.'], 404);
         }
 
+        if ($tagihanAwal->status === 'batal') {
+            return response()->json(['message' => 'Tagihan sudah dibatalkan karena check-out.'], 422);
+        }
+
         $wajibAwal = TagihanService::wajibBayar($tagihanAwal, $request->user()->id);
 
         if ($wajibAwal <= 0) {
@@ -308,6 +313,10 @@ class DashboardController extends Controller
 
             if ($tagihan->status === 'lunas') {
                 abort(response()->json(['message' => 'Tagihan sudah lunas.'], 422));
+            }
+
+            if ($tagihan->status === 'batal') {
+                abort(response()->json(['message' => 'Tagihan sudah dibatalkan karena check-out.'], 422));
             }
 
             if ($tagihan->pembayarans()->where('status', 'menunggu_verifikasi')->exists()) {
@@ -429,8 +438,9 @@ class DashboardController extends Controller
 
         $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
         $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
+        $batal = ($hasil['dibatalkan'] ?? 0) > 0 ? " {$hasil['dibatalkan']} tagihan bulan depan dibatalkan." : '';
 
-        return response()->json(['message' => "Pengajuan check-out $nama dari kamar $kamarNama disetujui.{$tambahan}{$catatan}"]);
+        return response()->json(['message' => "Pengajuan check-out $nama dari kamar $kamarNama disetujui.{$tambahan}{$catatan}{$batal}"]);
     }
 
     public function pemilikTolakCheckout(Request $request, int $sewaanId): JsonResponse
@@ -532,7 +542,7 @@ class DashboardController extends Controller
 
         $okupansi = $totalKamar > 0 ? (int) round($kamarTerisi / $totalKamar * 100) : 0;
 
-        $tagihanBelumQuery = fn () => Tagihan::where('status', '!=', 'lunas')
+        $tagihanBelumQuery = fn () => Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan.properti', $scopePropertiId);
 
         $tagihanBelumCount = $tagihanBelumQuery()->count();
@@ -760,7 +770,7 @@ class DashboardController extends Controller
         $hariIni = today()->toDateString();
         $kurang7 = GrafikBulan::kurangiHari('?', 7);
         $kurang30 = GrafikBulan::kurangiHari('?', 30);
-        $agregat = Tagihan::where('status', '!=', 'lunas')
+        $agregat = Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->where($scopeTagihan)
             ->selectRaw('COUNT(*) as jml, COALESCE(SUM(jumlah + denda), 0) as nilai')
             ->selectRaw('COALESCE(SUM(CASE WHEN jatuh_tempo >= ? THEN jumlah + denda ELSE 0 END), 0) as belum_jatuh_tempo', [$hariIni])
@@ -849,7 +859,7 @@ class DashboardController extends Controller
             ->limit(50)
             ->get()
             ->map(function ($s) {
-                $belumLunas = $s->tagihans->where('status', '!=', 'lunas');
+                $belumLunas = $s->tagihans->whereNotIn('status', ['lunas', 'batal']);
                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
 
@@ -1012,8 +1022,9 @@ class DashboardController extends Controller
 
         $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
         $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
+        $batal = ($hasil['dibatalkan'] ?? 0) > 0 ? " {$hasil['dibatalkan']} tagihan bulan depan dibatalkan." : '';
 
-        return response()->json(['message' => "Check-out $nama dari kamar $kamarNama berhasil.{$tambahan}{$catatan}"]);
+        return response()->json(['message' => "Check-out $nama dari kamar $kamarNama berhasil.{$tambahan}{$catatan}{$batal}"]);
     }
 
     public function pemilikProperti(Request $request): JsonResponse
@@ -1128,7 +1139,7 @@ class DashboardController extends Controller
             'total_kamar' => Kamar::whereHas('properti', $kelolaan)->count(),
             'kamar_terisi' => Kamar::where('status', 'terisi')->whereHas('properti', $kelolaan)->count(),
             'kamar_kosong' => Kamar::where('status', 'tersedia')->whereHas('properti', $kelolaan)->count(),
-            'tagihan_belum_bayar' => Tagihan::where('status', '!=', 'lunas')
+            'tagihan_belum_bayar' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
                 ->whereHas('penyewaan.properti', $kelolaan)
                 ->count(),
             'growth' => [

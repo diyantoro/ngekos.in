@@ -99,15 +99,22 @@ class PatunganService
 
     /**
      * Hitung sisa porsi user per tagihan belum lunas.
+     * Masa depan (jatuh_tempo setelah akhir bulan berjalan) dan status batal
+     * dikecualikan: yang keluar hanya wajib lunas sampai bulan berjalan,
+     * sisanya menjadi tanggung jawab yang stay / dibatalkan saat full checkout.
      * @return array<int, array{tagihan_id: int, periode: string, porsi: float, sudah_bayar: float, sisa: float}>
      */
     public static function sisaPorsi(Penyewaan $penyewaan, int $userId): array
     {
         $penyewaan->loadMissing(['tagihans.pembayarans', 'anggotas']);
 
+        $batas = now()->copy()->endOfMonth()->startOfDay();
         $hasil = [];
 
-        foreach ($penyewaan->tagihans->where('status', '!=', 'lunas') as $tagihan) {
+        foreach ($penyewaan->tagihans->whereNotIn('status', ['lunas', 'batal']) as $tagihan) {
+            if ($tagihan->jatuh_tempo && $tagihan->jatuh_tempo->copy()->startOfDay()->greaterThan($batas)) {
+                continue;
+            }
             $porsi = self::porsiTagihan($penyewaan, $tagihan);
 
             $sudah = (float) $tagihan->pembayarans
@@ -181,6 +188,7 @@ class PatunganService
                         'tanggal_keluar' => now()->toDateString(),
                         'status' => 'selesai',
                     ]);
+                    CheckoutService::batalkanTagihanMasaDepan($penyewaan);
                     optional($penyewaan->kamar)->update(['status' => 'tersedia']);
                     $fullCheckout = true;
 

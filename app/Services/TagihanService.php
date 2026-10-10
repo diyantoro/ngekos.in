@@ -66,7 +66,7 @@ class TagihanService
      */
     public static function sinkronDenda(Tagihan $tagihan, ?Carbon $pada = null): float
     {
-        if ($tagihan->status === 'lunas') {
+        if (in_array($tagihan->status, ['lunas', 'batal'], true)) {
             return (float) $tagihan->denda;
         }
 
@@ -90,7 +90,7 @@ class TagihanService
     {
         $tagihan->loadMissing(['penyewaan.anggotas']);
 
-        if ($tagihan->status !== 'lunas') {
+        if (! in_array($tagihan->status, ['lunas', 'batal'], true)) {
             $tagihan->setAttribute('denda', self::dendaBerjalan($tagihan, $pada));
         }
 
@@ -116,6 +116,10 @@ class TagihanService
      */
     public static function wajibBayar(Tagihan $tagihan, int $userId, ?Carbon $pada = null): float
     {
+        if ($tagihan->status === 'batal') {
+            return 0.0;
+        }
+
         $rincian = self::rincian($tagihan, $pada);
 
         if ($tagihan->penyewaan?->isPatungan() && $rincian['porsi'] !== null) {

@@ -40,6 +40,10 @@ class PembayaranService
                 $tagihan = $pembayaran->tagihan()->with('pembayarans')->first()
                     ?? $pembayaran->tagihan;
 
+                if ($tagihan && $tagihan->status === 'batal') {
+                    throw new DomainException('Tagihan sudah dibatalkan karena check-out.');
+                }
+
                 TagihanService::sinkronDenda($tagihan);
                 $total = $tagihan->pembayarans()->where('status', 'diverifikasi')->sum('jumlah');
 
