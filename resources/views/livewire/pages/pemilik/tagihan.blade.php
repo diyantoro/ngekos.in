@@ -25,9 +25,10 @@ new #[Layout('layouts.app')] class extends Component
             ->when(! $lihatSemua, fn ($q) => $q->whereHas('penyewaan.properti', fn ($w) => $w->where('pemilik_id', $id)))
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
             ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama'])
-            ->when($this->filter === 'belum', fn ($q) => $q->where('status', '!=', 'lunas'))
-            ->when($this->filter === 'telat', fn ($q) => $q->where('status', '!=', 'lunas')->where('jatuh_tempo', '<', today()->toDateString()))
+            ->when($this->filter === 'belum', fn ($q) => $q->whereNotIn('status', ['lunas', 'batal']))
+            ->when($this->filter === 'telat', fn ($q) => $q->whereNotIn('status', ['lunas', 'batal'])->where('jatuh_tempo', '<', today()->toDateString()))
             ->when($this->filter === 'lunas', fn ($q) => $q->where('status', 'lunas'))
+            ->when($this->filter === 'batal', fn ($q) => $q->where('status', 'batal'))
             ->when($this->cari, fn ($q) => $q->where(function ($w) {
                 $w->where('periode', 'like', "%{$this->cari}%")
                     ->orWhereHas('penyewaan.anakKos', fn ($x) => $x->where('nama', 'like', "%{$this->cari}%"))
@@ -154,6 +155,7 @@ new #[Layout('layouts.app')] class extends Component
                 <option value="belum">Belum lunas</option>
                 <option value="telat">Telat</option>
                 <option value="lunas">Lunas</option>
+                <option value="batal">Dibatalkan</option>
                 <option value="semua">Semua</option>
             </select>
             @if ($cari !== '' || $filter !== 'belum')

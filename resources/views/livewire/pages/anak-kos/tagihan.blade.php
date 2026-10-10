@@ -399,7 +399,7 @@ new #[Layout('layouts.app')] class extends Component
                                 @php
                                     $propertiKos = $daftarKos->first()->penyewaan?->properti;
                                     $kamarKos = $daftarKos->first()->penyewaan?->kamar?->nama;
-                                    $aktifKos = $daftarKos->where('status', '!=', 'lunas');
+                                    $aktifKos = $daftarKos->whereNotIn('status', ['lunas', 'batal']);
                                     $wajibKos = $daftarKos->sum(fn ($t) => \App\Services\TagihanService::wajibBayar($t, auth()->id()));
                                     $dekatKos = $aktifKos->sortBy('jatuh_tempo')->first();
                                     $telatKos = $dekatKos ? \App\Services\TagihanService::hariTelat($dekatKos) : 0;

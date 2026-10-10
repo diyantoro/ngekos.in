@@ -13,6 +13,7 @@ use App\Models\Tagihan;
 use App\Models\User;
 use App\Services\KtpStorage;
 use App\Services\KwitansiService;
+use App\Services\CheckoutService;
 use App\Services\PatunganService;
 use App\Services\PembayaranService;
 use App\Services\PemilikRekapService;
@@ -862,6 +863,8 @@ class DashboardController extends Controller
                 $belumLunas = $s->tagihans->whereNotIn('status', ['lunas', 'batal']);
                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
+                $wajib = \App\Services\CheckoutService::tagihanWajibBelumLunas($s);
+                $masaDepan = \App\Services\CheckoutService::tagihanMasaDepan($s);
 
                 return [
                     'id' => $s->id,
@@ -885,6 +888,17 @@ class DashboardController extends Controller
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),
                     'telat' => $telat,
+                    'checkout_terblokir' => $wajib->isNotEmpty(),
+                    'checkout_alasan' => $wajib->isNotEmpty()
+                        ? 'Ada '.$wajib->count().' tagihan sampai bulan ini yang belum lunas.'
+                        : null,
+                    'tagihan_akan_dibatalkan' => $masaDepan->map(fn ($t) => [
+                        'id' => $t->id,
+                        'periode' => $t->periode,
+                        'jumlah' => (float) $t->jumlah,
+                        'jatuh_tempo' => $t->jatuh_tempo?->toDateString(),
+                    ])->values(),
+                    'tagihan_akan_dibatalkan_total' => (float) $masaDepan->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda),
                 ];
             })
             ->values();

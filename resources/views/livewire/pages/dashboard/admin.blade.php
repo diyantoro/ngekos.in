@@ -90,7 +90,7 @@ new class extends Component
             'pendapatanPerBulan' => $pendapatanPerBulan,
             'needAttention' => [
                 'pembayaranMenunggu' => $pembayaranMenungguCount,
-                'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
+                'tagihanTelat' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
                     ->where('denda', '>', 0)
                     ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
                 'propertiTanpaKamar' => Properti::where($this->kelolaan())
@@ -100,7 +100,7 @@ new class extends Component
             'tagihanStatusPerBulan' => $tagihanStatusPerBulan,
             'totalKamar' => Kamar::whereHas('properti', $this->kelolaan())->count(),
             'kamarTerisi' => Kamar::where('status', 'terisi')->whereHas('properti', $this->kelolaan())->count(),
-            'tagihanBelum' => Tagihan::where('status', '!=', 'lunas')
+            'tagihanBelum' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
                 ->whereHas('penyewaan.properti', $this->kelolaan())
                 ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo'])
                 ->with(['penyewaan.anakKos:id,nama', 'penyewaan.properti:id,nama'])

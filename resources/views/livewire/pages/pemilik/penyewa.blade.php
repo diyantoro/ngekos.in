@@ -247,6 +247,8 @@ new #[Layout('layouts.app')] class extends Component
                                 $kurangBulanIni = \App\Services\CheckoutService::tagihanWajibBelumLunas($sewaan);
                                 $blokirCheckout = $kurangBulanIni->isNotEmpty();
                                 $alasanBlokir = $blokirCheckout ? 'Ada '.$kurangBulanIni->count().' tagihan sampai bulan ini yang belum lunas.' : null;
+                                $masaDepan = \App\Services\CheckoutService::tagihanMasaDepan($sewaan);
+                                $masaDepanTotal = $masaDepan->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -290,6 +292,27 @@ new #[Layout('layouts.app')] class extends Component
                                                 <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">
                                                     Minta check-out {{ $sewaan->permintaan_keluar_pada->translatedFormat('d M Y') }}
                                                 </span>
+                                                <div class="max-w-[16rem] rounded-lg bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-2.5 py-1.5 text-left">
+                                                    <p class="text-[11px] font-bold text-sky-700 dark:text-sky-300">Penjelasan tagihan check-out</p>
+                                                    @if ($blokirCheckout)
+                                                        <p class="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300">Belum bisa disetujui: {{ strtolower($alasanBlokir) }} Minta penyewa melunasinya dulu.</p>
+                                                    @else
+                                                        <p class="mt-0.5 text-[11px] text-sky-700 dark:text-sky-300">Tagihan sampai bulan ini sudah lunas, boleh disetujui.</p>
+                                                    @endif
+                                                    @if ($masaDepan->isNotEmpty())
+                                                        <p class="mt-1 text-[11px] text-gray-600 dark:text-gray-300">Bila disetujui, {{ $masaDepan->count() }} tagihan bulan depan otomatis <span class="font-bold">dibatalkan</span> (total Rp{{ number_format($masaDepanTotal, 0, ',', '.') }}):</p>
+                                                        <ul class="mt-0.5 list-disc pl-4 text-[11px] text-gray-600 dark:text-gray-300">
+                                                            @foreach ($masaDepan->take(4) as $t)
+                                                                <li>{{ $t->periode }} — Rp{{ number_format($t->jumlah, 0, ',', '.') }}</li>
+                                                            @endforeach
+                                                            @if ($masaDepan->count() > 4)
+                                                                <li>dan {{ $masaDepan->count() - 4 }} lainnya…</li>
+                                                            @endif
+                                                        </ul>
+                                                    @else
+                                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Tidak ada tagihan bulan depan yang perlu dibatalkan.</p>
+                                                    @endif
+                                                </div>
                                                 <div class="flex justify-end gap-1.5">
                                                     @if ($blokirCheckout)
                                                         <button type="button" disabled title="{{ $alasanBlokir }}"
@@ -298,7 +321,7 @@ new #[Layout('layouts.app')] class extends Component
                                                         </button>
                                                     @else
                                                         <button wire:click="setujuiCheckout({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                            wire:confirm="Setujui check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Sewa akan ditutup dan kamar kembali tersedia."
+                                                            wire:confirm="Setujui check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Sewa akan ditutup, kamar kembali tersedia{{ $masaDepan->isNotEmpty() ? ', dan '.$masaDepan->count().' tagihan bulan depan (Rp'.number_format($masaDepanTotal, 0, ',', '.').') akan dibatalkan' : '' }}."
                                                             class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
                                                             Setujui
                                                         </button>
@@ -323,10 +346,13 @@ new #[Layout('layouts.app')] class extends Component
                                                     <span class="text-[11px] text-amber-600 dark:text-amber-400">{{ $alasanBlokir }}</span>
                                                 @else
                                                     <button wire:click="checkOut({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                        wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia."
+                                                        wire:confirm="Check-out {{ $sewaan->anakKos?->nama }} dari kamar {{ $sewaan->kamar?->nama }}? Kamar akan kembali tersedia{{ $masaDepan->isNotEmpty() ? ', dan '.$masaDepan->count().' tagihan bulan depan (Rp'.number_format($masaDepanTotal, 0, ',', '.').') akan dibatalkan' : '' }}."
                                                         class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
                                                         Check-out
                                                     </button>
+                                                    @if ($masaDepan->isNotEmpty())
+                                                        <span class="text-right text-[11px] text-gray-500 dark:text-gray-400">{{ $masaDepan->count() }} tagihan bulan depan (Rp{{ number_format($masaDepanTotal, 0, ',', '.') }}) akan dibatalkan saat check-out.</span>
+                                                    @endif
                                                 @endif
                                             </div>
                                         @endif

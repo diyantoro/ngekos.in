@@ -155,7 +155,7 @@ new class extends Component
                 ->all(),
             'needAttention' => [
                 'pembayaranMenunggu' => Pembayaran::where('status', 'menunggu_verifikasi')->count(),
-                'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')->where('denda', '>', 0)->count(),
+                'tagihanTelat' => Tagihan::whereNotIn('status', ['lunas', 'batal'])->where('denda', '>', 0)->count(),
                 'propertiTanpaKamar' => Properti::whereDoesntHave('kamars')->count(),
                 'bantuanBaru' => PesanBantuan::jumlahBaru(),
             ],

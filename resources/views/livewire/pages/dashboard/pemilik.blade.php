@@ -56,12 +56,12 @@ new class extends Component
                     ->sum('jumlah'),
                 'penyewaanAktif' => Penyewaan::where('status', 'aktif')
                     ->whereHas('properti', $scope)->count(),
-                'tagihanBelumCount' => Tagihan::where('status', '!=', 'lunas')
+                'tagihanBelumCount' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
                     ->whereHas('penyewaan.properti', $scope)->count(),
-                'nilaiTagihanBelum' => (int) Tagihan::where('status', '!=', 'lunas')
+                'nilaiTagihanBelum' => (int) Tagihan::whereNotIn('status', ['lunas', 'batal'])
                     ->whereHas('penyewaan.properti', $scope)
                     ->selectRaw('COALESCE(SUM(jumlah + denda), 0) as total')->value('total'),
-                'tagihanTelat' => Tagihan::where('status', '!=', 'lunas')
+                'tagihanTelat' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
                     ->where('jatuh_tempo', '<', today()->toDateString())
                     ->whereHas('penyewaan.properti', $scope)->count(),
             ];
@@ -82,7 +82,7 @@ new class extends Component
         $labaBersihBulanIni = $pendapatanBulanIni - $pengeluaranBulanIni;
         $labaBersihBulanLalu = $pendapatanBulanLalu - $pengeluaranBulanLalu;
 
-        $tagihanBelumQuery = fn () => Tagihan::where('status', '!=', 'lunas')
+        $tagihanBelumQuery = fn () => Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan.properti', $scope);
 
         $tagihanBelumCount = $ringkas['tagihanBelumCount'];

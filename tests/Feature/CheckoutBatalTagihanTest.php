@@ -222,6 +222,20 @@ class CheckoutBatalTagihanTest extends TestCase
             ->assertDontSee('Lunasi dulu');
     }
 
+    public function test_pemilik_melihat_penjelasan_tagihan_bulan_depan(): void
+    {
+        $anak = $this->user('anak1@ngekos.test');
+        $pemilik = $this->user('pemilik1@ngekos.test');
+        $sewa = $this->sewaBulan($anak, 3);
+        $this->lunasiBulanBerjalan($sewa);
+        $sewa->refresh()->update(['permintaan_keluar_pada' => now()]);
+
+        Volt::actingAs($pemilik)->test('pages.pemilik.penyewa')
+            ->assertSee('Penjelasan tagihan check-out')
+            ->assertSee('dibatalkan')
+            ->assertSee('Tagihan sampai bulan ini sudah lunas');
+    }
+
     public function test_patungan_partial_tidak_membatalkan_masa_depan(): void
     {
         $rina = $this->user('anak1@ngekos.test');

@@ -124,7 +124,7 @@ new #[Layout('layouts.app')] class extends Component
             ->groupBy(fn ($t) => $t->updated_at->format('m/Y'))
             ->map(fn ($rows) => (int) $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda));
 
-        $belumPerBulan = Tagihan::where('status', '!=', 'lunas')
+        $belumPerBulan = Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan.properti', $scopeId)
             ->where('created_at', '>=', $mulai)
             ->get(['created_at', 'jumlah', 'denda'])
@@ -182,7 +182,7 @@ new #[Layout('layouts.app')] class extends Component
             ->all();
 
         // Aging piutang.
-        $belum = Tagihan::where('status', '!=', 'lunas')
+        $belum = Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan.properti', $scopeId)
             ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama'])
             ->orderBy('jatuh_tempo')

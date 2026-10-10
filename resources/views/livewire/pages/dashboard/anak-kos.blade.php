@@ -50,7 +50,7 @@ new class extends Component
 
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
 
-        $kandidatBerikutnya = Tagihan::where('status', '!=', 'lunas')
+        $kandidatBerikutnya = Tagihan::whereNotIn('status', ['lunas', 'batal'])
             ->whereHas('penyewaan', $scopeSewa)
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
             ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
@@ -60,7 +60,7 @@ new class extends Component
 
         $dendaGlobal = (float) \App\Models\Pengaturan::dendaPerHari();
         $olesDenda = function ($tagihan) use ($dendaGlobal) {
-            if ($tagihan->status === 'lunas') {
+            if (in_array($tagihan->status, ['lunas', 'batal'], true)) {
                 return;
             }
             $perHari = (float) ($tagihan->penyewaan?->properti?->denda_per_hari ?? $dendaGlobal);
@@ -334,8 +334,8 @@ new class extends Component
             ->with(['penyewaan.anggotas', 'penyewaan.properti'])
             ->first();
 
-        if (! $tagihan || $tagihan->status === 'lunas') {
-            $this->galat = 'Tagihan tidak ditemukan atau sudah lunas.';
+        if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
+            $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
 
             return;
         }
@@ -382,9 +382,9 @@ new class extends Component
             ->with(['penyewaan.anggotas', 'penyewaan.properti'])
             ->first();
 
-        if (! $tagihan || $tagihan->status === 'lunas') {
+        if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
             $this->tutupModalBayar();
-            $this->galat = 'Tagihan tidak ditemukan atau sudah lunas.';
+            $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
 
             return;
         }
