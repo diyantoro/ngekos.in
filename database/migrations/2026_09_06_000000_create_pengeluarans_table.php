@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PengeluaranKategori;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +12,7 @@ return new class extends Migration
         Schema::create('pengeluarans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('properti_id')->constrained('propertis')->cascadeOnDelete();
-            $table->string('kategori', 50)->default('lainnya')->index();
+            $table->enum('kategori', PengeluaranKategori::values())->default(PengeluaranKategori::Lainnya->value)->index();
             $table->text('keterangan')->nullable();
             $table->decimal('jumlah', 12, 2);
             $table->date('tanggal');

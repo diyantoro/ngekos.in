@@ -14,7 +14,7 @@ class PengaturanController extends Controller
 {
     private function bolehKelola(Request $request): bool
     {
-        return $request->user()->hasPermissionTo('konfigurasi.kelola');
+        return $request->user()->hasRole('super_admin');
     }
 
     public function index(Request $request): JsonResponse

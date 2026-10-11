@@ -62,7 +62,7 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         if ($this->kota) {
-            $query->where('kota', $this->kota);
+            $query->where('kota', 'like', "%{$this->kota}%");
         }
 
         if ($this->hargaMax) {
@@ -112,12 +112,13 @@ new #[Layout('layouts.publik')] class extends Component
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
                         class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
-                <select wire:model.live="kota" aria-label="Kota" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
-                    <option value="">Semua kota</option>
+                <input type="text" wire:model.live.debounce.300ms="kota" list="daftar-kota-katalog" aria-label="Kota" placeholder="Ketik kota…"
+                    class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2" />
+                <datalist id="daftar-kota-katalog">
                     @foreach ($daftarKota as $k)
-                        <option value="{{ $k }}">{{ $k }}</option>
+                        <option value="{{ $k }}"></option>
                     @endforeach
-                </select>
+                </datalist>
                 <select wire:model.live="hargaMax" aria-label="Harga maksimal" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
                     <option value="">Semua harga</option>
                     <option value="500000"><= Rp500rb</option>

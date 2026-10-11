@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,14 +13,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['nama', 'email', 'no_hp', 'avatar', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
+#[Fillable(['nama', 'email', 'no_hp', 'role', 'avatar', 'password', 'dinonaktifkan_pada', 'preferensi_notifikasi'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -33,7 +33,111 @@ class User extends Authenticatable
             'password' => 'hashed',
             'dinonaktifkan_pada' => 'datetime',
             'preferensi_notifikasi' => 'array',
+            'role' => UserRole::class,
         ];
+    }
+
+    /**
+     * Nilai role sebagai string (enum-sadar).
+     */
+    public function roleValue(): ?string
+    {
+        return $this->role instanceof UserRole ? $this->role->value : (is_string($this->role) ? $this->role : null);
+    }
+
+    private static function normalisasiRole(mixed $role): ?string
+    {
+        if ($role instanceof UserRole) {
+            return $role->value;
+        }
+
+        if (is_string($role) && $role !== '') {
+            return $role;
+        }
+
+        if (is_object($role) && isset($role->name)) {
+            return (string) $role->name;
+        }
+
+        return null;
+    }
+
+    /** @param string|array<int,string>|UserRole|array<int,UserRole> $roles */
+    public function hasRole(mixed $roles): bool
+    {
+        $milik = $this->roleValue();
+
+        if (is_string($roles) && str_contains($roles, '|')) {
+            $roles = explode('|', $roles);
+        }
+
+        $daftar = is_array($roles) ? $roles : [$roles];
+
+        foreach ($daftar as $peran) {
+            if (self::normalisasiRole($peran) === $milik) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param string|array<int,string> $roles */
+    public function hasAnyRole(mixed $roles): bool
+    {
+        return $this->hasRole($roles);
+    }
+
+    public function assignRole(mixed $role): static
+    {
+        $nilai = self::normalisasiRole(is_array($role) ? ($role[0] ?? null) : $role);
+
+        if ($nilai !== null) {
+            $this->role = UserRole::tryFrom($nilai) ?? $nilai;
+            if ($this->exists) {
+                $this->save();
+            }
+        }
+
+        return $this;
+    }
+
+    public function syncRoles(mixed $roles): static
+    {
+        return $this->assignRole($roles);
+    }
+
+    /** @return \Illuminate\Support\Collection<int,string> */
+    public function getRoleNames(): \Illuminate\Support\Collection
+    {
+        $nilai = $this->roleValue();
+
+        return collect($nilai !== null ? [$nilai] : []);
+    }
+
+    /** @return \Illuminate\Support\Collection<int,object> */
+    public function getRolesAttribute(): \Illuminate\Support\Collection
+    {
+        $nilai = $this->roleValue();
+
+        return collect($nilai !== null ? [(object) ['name' => $nilai]] : []);
+    }
+
+    /** Scope pengganti User::role('pemilik') ala Spatie. */
+    public function scopeRole($query, mixed $roles): void
+    {
+        if (is_string($roles) && str_contains($roles, '|')) {
+            $roles = explode('|', $roles);
+        }
+
+        $daftar = array_values(array_filter(array_map(
+            fn ($r) => self::normalisasiRole($r),
+            is_array($roles) ? $roles : [$roles]
+        )));
+
+        if ($daftar !== []) {
+            $query->whereIn('role', $daftar);
+        }
     }
 
     /**
@@ -123,9 +227,7 @@ class User extends Authenticatable
 
     public function dashboardRoute(): string
     {
-        $role = $this->relationLoaded('roles')
-            ? $this->roles->pluck('name')->first()
-            : $this->getRoleNames()->first();
+        $role = $this->roleValue();
 
         return match ($role) {
             'super_admin' => 'dashboard.super-admin',

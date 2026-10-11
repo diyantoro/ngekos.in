@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AnggotaStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +14,7 @@ return new class extends Migration
             $table->foreignId('penyewaan_id')->constrained('penyewaans')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('porsi_persen')->default(50);
-            $table->string('status')->default('aktif');
+            $table->enum('status', AnggotaStatus::values())->default(AnggotaStatus::Aktif->value);
             $table->string('ktp_path')->nullable();
             $table->date('tanggal_keluar')->nullable();
             $table->timestamps();

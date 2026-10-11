@@ -175,9 +175,9 @@ new class extends Component
     {
         $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
 
-        $users = User::with('roles:id,name')
+        $users = User::query()
             ->where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at'])
+            ->get(['id', 'created_at', 'role'])
             ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
 
         $out = ['anak_kos' => [], 'pemilik' => []];
@@ -185,8 +185,8 @@ new class extends Component
         foreach (range($bulanCount - 1, 0) as $i) {
             $key = now()->startOfMonth()->subMonths($i)->format('m/Y');
             $rows = $users[$key] ?? collect();
-            $out['anak_kos'][] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('anak_kos'))->count();
-            $out['pemilik'][] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('pemilik'))->count();
+            $out['anak_kos'][] = $rows->filter(fn ($u) => $u->roleValue() === 'anak_kos')->count();
+            $out['pemilik'][] = $rows->filter(fn ($u) => $u->roleValue() === 'pemilik')->count();
         }
 
         return $out;

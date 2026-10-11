@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
+use Illuminate\Validation\Rule;
 
 class PenggunaController extends Controller
 {
@@ -17,7 +18,7 @@ class PenggunaController extends Controller
             'peran' => 'nullable|in:super_admin,admin,pemilik,anak_kos',
         ]);
 
-        $users = User::with('roles')
+        $users = User::query()
             ->when($request->filled('search'), function ($q) use ($request) {
                 $cari = $request->search;
                 $q->where(fn ($q) => $q
@@ -25,7 +26,7 @@ class PenggunaController extends Controller
                     ->orWhere('email', 'like', "%{$cari}%"));
             })
             ->when($request->filled('peran'), function ($q) use ($request) {
-                $q->role($request->peran);
+                $q->where('role', $request->peran);
             })
             ->orderBy('nama')
             ->get();
@@ -50,16 +51,14 @@ class PenggunaController extends Controller
         }
 
         $validated = $request->validate([
-            'peran' => 'required|in:super_admin,admin,pemilik,anak_kos',
+            'peran' => ['required', Rule::enum(UserRole::class)],
         ]);
 
-        $role = Role::findByName($validated['peran']);
-
-        $user->syncRoles([$role]);
+        $user->update(['role' => $validated['peran']]);
 
         return response()->json([
-            'message' => "Peran {$user->nama} diubah menjadi {$role->name}.",
-            'pengguna' => $this->format($user->fresh()->load('roles')),
+            'message' => "Peran {$user->nama} diubah menjadi {$user->roleValue()}.",
+            'pengguna' => $this->format($user->fresh()),
         ]);
     }
 
@@ -90,12 +89,14 @@ class PenggunaController extends Controller
 
         return response()->json([
             'message' => $pesan,
-            'pengguna' => $this->format($user->fresh()->load('roles')),
+            'pengguna' => $this->format($user->fresh()),
         ]);
     }
 
     private function format(User $u): array
     {
+        $peran = $u->roleValue();
+
         return [
             'id' => $u->id,
             'nama' => $u->nama,
@@ -103,8 +104,8 @@ class PenggunaController extends Controller
             'no_hp' => $u->no_hp,
             'avatar' => $u->avatar ? '/storage/'.$u->avatar : null,
             'inisial' => $u->inisial,
-            'peran' => $u->getRoleNames()->first(),
-            'roles' => $u->roles->pluck('name')->values(),
+            'peran' => $peran,
+            'roles' => $peran !== null ? [$peran] : [],
             'dinonaktifkan_pada' => $u->dinonaktifkan_pada,
             'created_at' => $u->created_at,
         ];

@@ -545,7 +545,11 @@ new #[Layout('layouts.publik')] class extends Component
             @if ($properti->aturan)
                 <div class="mt-4">
                     <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Aturan Kos</h2>
-                    <p class="mt-1.5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{{ $properti->aturan }}</p>
+                    <ol class="mt-1.5 space-y-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed list-decimal ps-5">
+                        @foreach (\App\Support\AturanKos::fromString($properti->aturan) as $aturan)
+                            <li>{{ $aturan }}</li>
+                        @endforeach
+                    </ol>
                 </div>
             @endif
 
@@ -601,6 +605,16 @@ new #[Layout('layouts.publik')] class extends Component
                                     <div>
                                         <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">{{ $kamar->nama }}</h3>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang</p>
+                                        @if ($kamar->fasilitas)
+                                            <div class="mt-1.5 flex flex-wrap gap-1">
+                                                @foreach (array_slice($kamar->daftarFasilitas(), 0, 4) as $f)
+                                                    <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300">{{ $f }}</span>
+                                                @endforeach
+                                                @if (count($kamar->daftarFasilitas()) > 4)
+                                                    <span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">+{{ count($kamar->daftarFasilitas()) - 4 }}</span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                     <x-status-badge :status="$kamar->status" />
                                 </div>

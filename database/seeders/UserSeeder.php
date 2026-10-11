@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 class UserSeeder extends Seeder
 {
     /**
-     * Seed user dengan role yang sudah dibuat oleh RolesAndPermissionsSeeder.
+     * Seed user dengan role enum langsung di users.role.
      * Password super admin & admin: lihat konstanta di bawah.
      * Password user lain (dev) = password
      */
@@ -30,17 +31,16 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $data) {
-            $user = User::firstOrCreate(
+            User::firstOrCreate(
                 ['email' => $data['email']],
                 [
                     'nama' => $data['nama'],
                     'no_hp' => $data['no_hp'],
+                    'role' => UserRole::tryFrom($data['role']) ?? UserRole::AnakKos,
                     'password' => Hash::make($passwords[$data['email']] ?? 'password'),
                     'email_verified_at' => now(),
                 ]
             );
-
-            $user->syncRoles([$data['role']]);
         }
     }
 }

@@ -1,4 +1,4 @@
-@props(['fasilitas' => [], 'editable' => false, 'selected' => []])
+@props(['fasilitas' => [], 'editable' => false, 'selected' => [], 'field' => 'fasilitasTerpilih'])
 
 @php
     // Ikon SVG fallback untuk fasilitas tanpa file PNG.
@@ -114,7 +114,7 @@
                             $svg = $ikonSvg[$nama] ?? null;
                         @endphp
                         <label class="relative cursor-pointer select-none rounded-xl border-2 p-3 transition-all duration-200 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 has-[:checked]:ring-2 has-[:checked]:ring-teal-200 dark:has-[:checked]:border-teal-500 dark:has-[:checked]:bg-teal-500/10 dark:has-[:checked]:ring-teal-500/30">
-                            <input type="checkbox" value="{{ $nama }}" wire:model.live="fasilitasTerpilih" @checked(in_array($nama, $selected)) class="peer sr-only">
+                            <input type="checkbox" value="{{ $nama }}" wire:model.live="{{ $field }}" @checked(in_array($nama, $selected)) class="peer sr-only">
                             <span class="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white peer-checked:flex">
                                 <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </span>

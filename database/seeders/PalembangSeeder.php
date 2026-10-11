@@ -149,6 +149,7 @@ class PalembangSeeder extends Seeder
                         'kapasitas' => $kapasitas,
                         'harga_sewa_bulanan' => $hargaKamar,
                         'harga_asli' => $row['asli'] && $row['asli'] > $row['harga'] ? $row['asli'] : null,
+                        'fasilitas' => $row['fasilitas'],
                         'status' => $status,
                     ]
                 );

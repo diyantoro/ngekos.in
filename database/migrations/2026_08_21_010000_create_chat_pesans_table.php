@@ -17,6 +17,8 @@ return new class extends Migration
             $table->timestamp('dibaca_pada')->nullable();
             $table->timestamps();
             $table->index(['properti_id', 'anak_kos_id', 'created_at']);
+            $table->index(['anak_kos_id', 'dibaca_pada']);
+            $table->index(['pengirim_id', 'dibaca_pada']);
         });
     }
 

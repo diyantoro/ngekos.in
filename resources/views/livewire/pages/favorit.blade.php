@@ -93,7 +93,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </a>
                                 @php
                                     $hargaTampil = $properti->harga ?? $properti->harga_termurah;
-                                    $periode = $properti->jenis_harga ?? 'bulanan';
+                                    $periode = 'bulanan';
                                     $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
                                 @endphp
                                 <div class="mt-3 flex items-center justify-between gap-2">

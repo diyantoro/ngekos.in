@@ -126,7 +126,7 @@ class DashboardController extends Controller
                 'kota' => $p->kota,
                 'alamat' => $p->alamat,
                 'harga' => $p->harga !== null ? (float) $p->harga : null,
-                'jenis_harga' => $p->jenis_harga,
+                'jenis_harga' => 'bulanan',
                 'foto' => $p->foto ? '/storage/'.$p->foto : null,
                 'total_kamar' => (int) $p->total_kamar,
                 'kamar_terisi' => (int) $p->kamar_terisi,
@@ -1051,7 +1051,7 @@ class DashboardController extends Controller
             'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
         ])->with([
             'fotos',
-            'kamars:id,nama,kapasitas,harga_sewa_bulanan,jenis_harga,status,foto,properti_id',
+            'kamars:id,nama,kapasitas,harga_sewa_bulanan,status,foto,properti_id',
             'kamars.fotos',
         ])
             ->where('pemilik_id', $request->user()->id)
@@ -1109,9 +1109,9 @@ class DashboardController extends Controller
             ->map(fn ($i) => now()->startOfMonth()->subMonths($i)->translatedFormat('M Y'))
             ->all();
 
-        $userGrowthRows = User::with('roles:id,name')
+        $userGrowthRows = User::query()
             ->where('created_at', '>=', now()->startOfMonth()->subMonths($bulanCount - 1))
-            ->get(['id', 'created_at'])
+            ->get(['id', 'created_at', 'role'])
             ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
 
         $userAnak = [];
@@ -1120,8 +1120,8 @@ class DashboardController extends Controller
         foreach (range($bulanCount - 1, 0) as $i) {
             $key = now()->startOfMonth()->subMonths($i)->format('m/Y');
             $rows = $userGrowthRows[$key] ?? collect();
-            $userAnak[] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('anak_kos'))->count();
-            $userPemilik[] = $rows->filter(fn ($u) => $u->roles->pluck('name')->contains('pemilik'))->count();
+            $userAnak[] = $rows->filter(fn ($u) => $u->roleValue() === 'anak_kos')->count();
+            $userPemilik[] = $rows->filter(fn ($u) => $u->roleValue() === 'pemilik')->count();
         }
 
         $nilaiTransaksi = $this->sumMonthly(
@@ -1250,9 +1250,9 @@ class DashboardController extends Controller
             ->take(5)
             ->all();
 
-        $userGrowth = User::with('roles:id,name')
+        $userGrowth = User::query()
             ->where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at'])
+            ->get(['id', 'created_at', 'role'])
             ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
 
         $propertiGrowth = Properti::where('created_at', '>=', $monthStart)
@@ -1276,8 +1276,8 @@ class DashboardController extends Controller
 
             $users = $userGrowth[$key] ?? collect();
             $growthUserTotal[] = $users->count();
-            $growthUserAnak[] = $users->filter(fn ($u) => $u->roles->pluck('name')->contains('anak_kos'))->count();
-            $growthUserPemilik[] = $users->filter(fn ($u) => $u->roles->pluck('name')->contains('pemilik'))->count();
+            $growthUserAnak[] = $users->filter(fn ($u) => $u->roleValue() === 'anak_kos')->count();
+            $growthUserPemilik[] = $users->filter(fn ($u) => $u->roleValue() === 'pemilik')->count();
             $growthProperti[] = ($propertiGrowth[$key] ?? collect())->count();
             $growthPenyewaan[] = ($penyewaanGrowth[$key] ?? collect())->count();
         }
@@ -1536,7 +1536,7 @@ class DashboardController extends Controller
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
             'harga' => $p->harga !== null ? (float) $p->harga : null,
-            'jenis_harga' => $p->jenis_harga,
+            'jenis_harga' => 'bulanan',
             'status' => $p->status,
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
@@ -1547,7 +1547,8 @@ class DashboardController extends Controller
                 'nama' => $k->nama,
                 'kapasitas' => (int) $k->kapasitas,
                 'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
-                'jenis_harga' => $k->jenis_harga,
+                'jenis_harga' => 'bulanan',
+                'fasilitas' => $k->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $k->fasilitas)))) : [],
                 'status' => $k->status,
                 'foto' => $k->fotoCover(),
                 'fotos' => $k->galeriUrls(),

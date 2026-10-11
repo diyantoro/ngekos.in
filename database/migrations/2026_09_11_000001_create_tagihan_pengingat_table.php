@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PengingatJenis;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +12,7 @@ return new class extends Migration
         Schema::create('tagihan_pengingat', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tagihan_id')->constrained('tagihans')->cascadeOnDelete();
-            $table->string('jenis', 10);
+            $table->enum('jenis', PengingatJenis::values());
             $table->date('tanggal_kirim');
             $table->json('meta')->nullable();
             $table->timestamps();

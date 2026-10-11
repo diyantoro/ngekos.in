@@ -3,6 +3,7 @@
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\AturanKos;
 use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -144,6 +145,7 @@ new #[Layout('layouts.app')] class extends Component
         Log::info('Simpan kos dipanggil.', ['user_id' => auth()->id()]);
 
         $this->normalizeKosong();
+        $this->kota = $this->kanonikKota($this->kota);
 
         if ($this->bolehKelolaSemua() && $this->properti === null) {
             $this->validate([
@@ -205,7 +207,7 @@ new #[Layout('layouts.app')] class extends Component
             'alamat' => $this->alamat,
             'deskripsi' => $this->deskripsi,
             'fasilitas' => $fasilitasString,
-            'aturan' => $this->aturan,
+            'aturan' => AturanKos::normalizeString($this->aturan),
             'denda_per_hari' => $this->denda_per_hari,
             'harga' => $this->harga,
             'harga_mingguan' => $this->harga_mingguan,
@@ -263,6 +265,48 @@ new #[Layout('layouts.app')] class extends Component
                 $this->{$field} = null;
             }
         }
+    }
+
+    /**
+     * Samakan ejaan kota dengan daftar yang dikenal (anti salah ketik):
+     * cocok case-insensitive → pakai ejaan kanonik; selain itu rapikan spasi.
+     */
+    private function kanonikKota(?string $kota): ?string
+    {
+        if ($kota === null) {
+            return null;
+        }
+
+        $kota = trim(preg_replace('/\s+/', ' ', $kota) ?? $kota);
+
+        if ($kota === '') {
+            return null;
+        }
+
+        $daftar = collect(array_keys(\App\Support\Koordinat::$kota))
+            ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->pluck('kota'))
+            ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all();
+
+        foreach ($daftar as $nama) {
+            if (mb_strtolower($nama) === mb_strtolower($kota)) {
+                return $nama;
+            }
+        }
+
+        // Hapus awalan "Kota/Kab." bila sisanya cocok dengan daftar.
+        $tanpaAwalan = trim((string) preg_replace('/^(kota|kotamadya|kabupaten|kab\.?)\s+/i', '', $kota));
+
+        if ($tanpaAwalan !== $kota) {
+            foreach ($daftar as $nama) {
+                if (mb_strtolower($nama) === mb_strtolower($tanpaAwalan)) {
+                    return $nama;
+                }
+            }
+
+            return $tanpaAwalan;
+        }
+
+        return $kota;
     }
 
     public function hapusFoto(): void
@@ -367,6 +411,11 @@ new #[Layout('layouts.app')] class extends Component
     public function ambilLokasiSaya(): void
     {
         $this->dispatch('minta-lokasi');
+    }
+
+    public function isiTemplateAturan(): void
+    {
+        $this->aturan = implode("\n", \App\Support\AturanKos::template());
     }
 }; ?>
 
@@ -617,15 +666,15 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="kota" value="Kota" />
-                    <select wire:model="kota" id="kota" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="">-- Pilih kota --</option>
-                        @if ($kota && ! in_array($kota, $daftarKota))
-                            <option value="{{ $kota }}">{{ $kota }} (saat ini)</option>
-                        @endif
+                    <input wire:model="kota" id="kota" list="daftar-kota" autocomplete="off"
+                        placeholder="Ketik nama kota…"
+                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500" />
+                    <datalist id="daftar-kota">
                         @foreach ($daftarKota as $namaKota)
-                            <option value="{{ $namaKota }}">{{ $namaKota }}</option>
+                            <option value="{{ $namaKota }}"></option>
                         @endforeach
-                    </select>
+                    </datalist>
+                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Ketik untuk mencari — pilih dari saran agar tidak salah ketik.</p>
                     <x-input-error :messages="$errors->get('kota')" class="mt-2" />
                 </div>
                 <div>
@@ -750,8 +799,15 @@ new #[Layout('layouts.app')] class extends Component
 
             <!-- Aturan -->
             <div>
-                <x-input-label for="aturan" value="Aturan Kos" />
-                <textarea wire:model="aturan" id="aturan" rows="3" placeholder="Contoh: Jam malam 23.00, dilarang membawa tamu menginap"
+                <div class="flex items-center justify-between gap-2">
+                    <x-input-label for="aturan" value="Aturan Kos (terurut)" />
+                    <button type="button" wire:click="isiTemplateAturan"
+                        class="shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 hover:underline">
+                        Isi template baku
+                    </button>
+                </div>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Satu baris satu aturan, sudah terurut: identitas → jam malam → tamu → kebersihan → larangan → hewan → pembayaran → keluar. Hapus baris yang tidak perlu.</p>
+                <textarea wire:model="aturan" id="aturan" rows="6" placeholder="Contoh, satu baris satu aturan:&#10;Jam malam 22.00, gerbang dikunci&#10;Tamu wajib lapor, dilarang menginap tanpa izin&#10;Dilarang merokok di dalam kamar"
                     class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                 <x-input-error :messages="$errors->get('aturan')" class="mt-2" />
             </div>
@@ -877,20 +933,28 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     function pasangPilihKotaForm() {
-        // Pilih kota di dropdown -> pin pindah ke pusat kota + peta mengikut.
+        // Ketik/pilih kota di input -> pin pindah ke pusat kota + peta mengikut.
         if (window.__petaFormKotaOn) return;
         window.__petaFormKotaOn = true;
-        document.addEventListener('change', (e) => {
-            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
-            if (!pilih || !document.getElementById('peta-properti-form')) return;
-            const nama = (pilih.value || '').trim();
-            if (!nama) return;
+        const pindahKeKota = (nama) => {
+            if (!nama || !document.getElementById('peta-properti-form')) return;
             const tengah = pusatKotaDariNama(nama);
             if (!tengah || Number.isNaN(tengah.lat) || Number.isNaN(tengah.lng)) {
-                tulisStatusForm('Kota "' + nama + '" belum punya titik pusat di peta.');
                 return;
             }
             setKoordinatForm(tengah.lat, tengah.lng);
+        };
+        let tundaKota = null;
+        document.addEventListener('change', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih) return;
+            pindahKeKota((pilih.value || '').trim());
+        });
+        document.addEventListener('input', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih) return;
+            clearTimeout(tundaKota);
+            tundaKota = setTimeout(() => pindahKeKota((pilih.value || '').trim()), 600);
         });
     }
 

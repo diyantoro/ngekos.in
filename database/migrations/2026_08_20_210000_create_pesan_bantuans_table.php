@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BantuanStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,10 +16,11 @@ return new class extends Migration
             $table->string('email', 255);
             $table->string('subjek', 255)->nullable();
             $table->text('pesan');
-            $table->string('status')->default('baru');
+            $table->enum('status', BantuanStatus::values())->default(BantuanStatus::Baru->value);
             $table->text('balasan')->nullable();
             $table->foreignId('dibalas_oleh')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('dibalas_at')->nullable();
+            $table->timestamp('dibaca_pada')->nullable();
             $table->timestamps();
         });
     }

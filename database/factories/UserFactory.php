@@ -28,6 +28,7 @@ class UserFactory extends Factory
             'nama' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'no_hp' => '08'.fake()->unique()->numerify('##########'),
+            'role' => \App\Enums\UserRole::AnakKos,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -45,10 +46,12 @@ class UserFactory extends Factory
     }
 
     /**
-     * Menetapkan role Spatie untuk user hasil factory.
+     * Menetapkan role enum langsung di users.role.
      */
-    public function withRole(string $role): static
+    public function withRole(string|\App\Enums\UserRole $role): static
     {
-        return $this->afterCreating(fn (User $user) => $user->assignRole($role));
+        return $this->state([
+            'role' => $role instanceof \App\Enums\UserRole ? $role : (\App\Enums\UserRole::tryFrom($role) ?? \App\Enums\UserRole::AnakKos),
+        ]);
     }
 }

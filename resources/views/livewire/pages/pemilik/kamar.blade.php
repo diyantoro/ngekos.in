@@ -3,6 +3,7 @@
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Services\SubscriptionService;
+use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
@@ -36,6 +37,9 @@ new #[Layout('layouts.app')] class extends Component
 
     #[Validate('nullable|numeric|min:0')]
     public ?string $harga_asli = null;
+
+    #[Validate('nullable|array')]
+    public array $fasilitasKamarTerpilih = [];
 
     #[Validate('required|in:tersedia,terisi,perbaikan')]
     public string $status = 'tersedia';
@@ -132,6 +136,7 @@ new #[Layout('layouts.app')] class extends Component
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
+            'fasilitasKamarTerpilih' => 'nullable|array',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'fotoBaru' => 'nullable|image|max:2048',
         ];
@@ -146,6 +151,7 @@ new #[Layout('layouts.app')] class extends Component
             'harga_sewa_mingguan' => $this->harga_mingguan === '' || $this->harga_mingguan === null ? null : $this->harga_mingguan,
             'harga_sewa_harian' => $this->harga_harian === '' || $this->harga_harian === null ? null : $this->harga_harian,
             'harga_asli' => $this->harga_asli === '' || $this->harga_asli === null ? null : $this->harga_asli,
+            'fasilitas' => FacilityHelper::normalizeString(implode(', ', $this->fasilitasKamarTerpilih)),
             'status' => $this->status,
         ];
 
@@ -216,6 +222,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->harga_mingguan = $kamar->harga_sewa_mingguan ?? null;
         $this->harga_harian = $kamar->harga_sewa_harian ?? null;
         $this->harga_asli = $kamar->harga_asli ?? null;
+        $this->fasilitasKamarTerpilih = $kamar->fasilitas
+            ? array_filter(array_map('trim', explode(',', $kamar->fasilitas)))
+            : [];
         $this->status = $kamar->status;
         $this->fotoBaru = null;
         $this->galeriBaru = [];
@@ -235,6 +244,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->harga_mingguan = null;
         $this->harga_harian = null;
         $this->harga_asli = null;
+        $this->fasilitasKamarTerpilih = [];
         $this->status = 'tersedia';
         $this->fotoBaru = null;
         $this->galeriBaru = [];
@@ -388,6 +398,15 @@ new #[Layout('layouts.app')] class extends Component
             </div>
 
             <div>
+                <x-input-label value="Fasilitas Kamar (opsional)" />
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Kosongkan untuk memakai fasilitas kos. Centang bila kamar ini punya fasilitas khusus.</p>
+                <div class="mt-3">
+                    <x-facility-icons :selected="$fasilitasKamarTerpilih" field="fasilitasKamarTerpilih" :editable="true" />
+                </div>
+                @error('fasilitasKamarTerpilih') <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
                 <x-input-label for="fotoBaru" value="Foto Kamar" />
                 <input wire:model="fotoBaru" id="fotoBaru" type="file" accept="image/*"
                     class="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-600 dark:file:text-teal-300 hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
@@ -521,12 +540,19 @@ new #[Layout('layouts.app')] class extends Component
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kamar {{ $kamar->nama }}</h3>
                                 <x-status-badge :status="$kamar->status" />
                             </div>
+                            @if ($kamar->fasilitas)
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    @foreach (array_slice($kamar->daftarFasilitas(), 0, 5) as $f)
+                                        <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300">{{ $f }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                             <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $kamar->kapasitas }} orang
                                 @if ($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan)
                                     <span class="line-through text-gray-400 dark:text-gray-500">Rp{{ number_format($kamar->harga_asli, 0, ',', '.') }}</span>
                                 @endif
-                                &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/{{ $kamar->jenis_harga === 'harian' ? 'hari' : 'bulan' }}
+                                &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/bulan
                                 @if ($kamar->harga_sewa_harian)
                                     <span class="text-teal-600 dark:text-teal-400">| Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</span>
                                 @endif

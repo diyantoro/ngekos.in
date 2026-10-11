@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,8 +17,13 @@ return new class extends Migration
             $table->string('nama');
             $table->string('email')->unique();
             $table->string('no_hp')->nullable();
+            // Peran langsung di user (1 user = 1 role), tanpa tabel Spatie.
+            $table->enum('role', UserRole::values())->default(UserRole::AnakKos->value)->index();
+            $table->string('avatar')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->timestamp('dinonaktifkan_pada')->nullable();
+            $table->json('preferensi_notifikasi')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

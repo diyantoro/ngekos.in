@@ -7,6 +7,7 @@ use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\AturanKos;
 use App\Support\FacilityHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -205,6 +206,7 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
+            'fasilitas' => 'nullable|string',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
@@ -233,6 +235,7 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => $validated['harga_sewa_mingguan'] ?? null,
             'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
             'harga_asli' => $validated['harga_asli'] ?? null,
+            'fasilitas' => FacilityHelper::normalizeString($validated['fasilitas'] ?? null),
             'status' => $validated['status'],
         ];
 
@@ -271,6 +274,7 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
+            'fasilitas' => 'nullable|string',
             'status' => 'required|in:tersedia,terisi,perbaikan',
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
@@ -288,6 +292,7 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => $validated['harga_sewa_mingguan'] ?? null,
             'harga_sewa_harian' => $validated['harga_sewa_harian'] ?? null,
             'harga_asli' => $validated['harga_asli'] ?? null,
+            'fasilitas' => FacilityHelper::normalizeString($validated['fasilitas'] ?? null),
             'status' => $validated['status'],
         ];
 
@@ -387,12 +392,12 @@ class PropertiManageController extends Controller
     {
         $data = [
             'nama' => $validated['nama'],
-            'kota' => $validated['kota'] ?? null,
+            'kota' => $this->kanonikKota($validated['kota'] ?? null),
             'latitude' => $this->nullableCoord($validated['latitude'] ?? null),
             'longitude' => $this->nullableCoord($validated['longitude'] ?? null),
             'alamat' => $validated['alamat'] ?? null,
             'deskripsi' => $validated['deskripsi'] ?? null,
-            'aturan' => $validated['aturan'] ?? null,
+            'aturan' => AturanKos::normalizeString($validated['aturan'] ?? null),
             'denda_per_hari' => $validated['denda_per_hari'] ?? null,
             'harga' => $validated['harga'] ?? null,
             'harga_mingguan' => $validated['harga_mingguan'] ?? null,
@@ -453,6 +458,7 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => $k->harga_sewa_mingguan !== null ? (float) $k->harga_sewa_mingguan : null,
             'harga_sewa_harian' => $k->harga_sewa_harian !== null ? (float) $k->harga_sewa_harian : null,
             'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
+            'fasilitas' => $k->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $k->fasilitas)))) : [],
             'status' => $k->status,
             'foto' => $k->fotoCover(),
             'fotos' => $k->galeriUrls(),
@@ -549,5 +555,35 @@ class PropertiManageController extends Controller
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Samakan ejaan kota dengan daftar yang dikenal (anti salah ketik).
+     */
+    private function kanonikKota(mixed $kota): ?string
+    {
+        if (! is_string($kota)) {
+            return null;
+        }
+
+        $kota = trim(preg_replace('/\s+/', ' ', $kota) ?? $kota);
+
+        if ($kota === '') {
+            return null;
+        }
+
+        $daftar = collect(array_keys(\App\Support\Koordinat::$kota))
+            ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->pluck('kota'))
+            ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all();
+
+        foreach ($daftar as $nama) {
+            if (mb_strtolower($nama) === mb_strtolower($kota)) {
+                return $nama;
+            }
+        }
+
+        $tanpaAwalan = trim((string) preg_replace('/^(kota|kotamadya|kabupaten|kab\.?)\s+/i', '', $kota));
+
+        return $tanpaAwalan !== '' ? $tanpaAwalan : null;
     }
 }

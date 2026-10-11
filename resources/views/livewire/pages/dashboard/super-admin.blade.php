@@ -34,22 +34,16 @@ new class extends Component
             ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
-        $anakPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
-            ->join('users', 'users.id', '=', 'model_has_roles.model_id')
-            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-            ->where('model_has_roles.model_type', (new User)->getMorphClass())
-            ->where('roles.name', 'anak_kos')
-            ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(DISTINCT users.id) as total')
+        $anakPerBulan = \Illuminate\Support\Facades\DB::table('users')
+            ->where('role', 'anak_kos')
+            ->where('created_at', '>=', $monthStart)
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
-        $pemilikPerBulan = \Illuminate\Support\Facades\DB::table('model_has_roles')
-            ->join('users', 'users.id', '=', 'model_has_roles.model_id')
-            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-            ->where('model_has_roles.model_type', (new User)->getMorphClass())
-            ->where('roles.name', 'pemilik')
-            ->where('users.created_at', '>=', $monthStart)
-            ->selectRaw(GrafikBulan::kolomBulan('users.created_at').', COUNT(DISTINCT users.id) as total')
+        $pemilikPerBulan = \Illuminate\Support\Facades\DB::table('users')
+            ->where('role', 'pemilik')
+            ->where('created_at', '>=', $monthStart)
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', COUNT(*) as total')
             ->groupBy('bulan')
             ->pluck('total', 'bulan')->all();
         $propertiPerBulan = Properti::where('created_at', '>=', $monthStart)
@@ -130,7 +124,7 @@ new class extends Component
             'totalAnakKos' => User::role('anak_kos')->count(),
             'totalAdmin' => User::role('admin')->count(),
             'totalSuperAdmin' => User::role('super_admin')->count(),
-            'totalTanpaPeran' => User::whereDoesntHave('roles')->count(),
+            'totalTanpaPeran' => User::whereNull('role')->count(),
             'terisiDidukungSewa' => Kamar::where('status', 'terisi')
                 ->whereIn('id', Penyewaan::where('status', 'aktif')->select('kamar_id'))
                 ->count(),

@@ -12,7 +12,7 @@ class Kamar extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'jenis_harga', 'harga_asli', 'status', 'foto',
+        'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'fasilitas', 'status', 'foto',
     ];
 
     protected function casts(): array
@@ -23,6 +23,16 @@ class Kamar extends Model
             'harga_sewa_harian' => 'decimal:2',
             'harga_asli' => 'decimal:2',
         ];
+    }
+
+    /** @return array<int,string> */
+    public function daftarFasilitas(): array
+    {
+        if (blank($this->fasilitas)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', (string) $this->fasilitas))));
     }
 
     public function properti(): BelongsTo

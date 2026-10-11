@@ -15,7 +15,6 @@ new class extends Component
     public function with(): array
     {
         $user = auth()->user();
-        $user->loadMissing('roles');
         $dashboardRoute = $user->dashboardRoute();
 
         $links = [];
@@ -287,9 +286,10 @@ new class extends Component
                     <div class="sidebar-label min-w-0 flex-1 text-left">
                         <div x-data="{{ json_encode(['nama' => auth()->user()->nama]) }}" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"
                              class="truncate text-sm font-semibold leading-tight text-white"></div>
-                        @if (auth()->user()->roles->isNotEmpty())
+                        @php $peranTampil = auth()->user()->roleValue(); @endphp
+                        @if ($peranTampil)
                             <span class="text-[11px] font-medium text-slate-400">
-                                {{ str(auth()->user()->roles->first()->name)->replace('_', ' ')->title() }}
+                                {{ str($peranTampil)->replace('_', ' ')->title() }}
                             </span>
                         @endif
                     </div>
