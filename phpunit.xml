@@ -4,13 +4,11 @@
          bootstrap="vendor/autoload.php"
          colors="true"
 >
-   ```xml
-<testsuites>
-    <testsuite name="Feature">
-        <directory>tests/Feature</directory>
-    </testsuite>
-</testsuites>
-```
+    <testsuites>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
     <source>
         <include>
             <directory>app</directory>
