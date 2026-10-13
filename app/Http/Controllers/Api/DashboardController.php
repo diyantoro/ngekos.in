@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PembayaranStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ChatPesan;
 use App\Models\Kamar;
@@ -24,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
@@ -154,9 +156,8 @@ class DashboardController extends Controller
                 'mode_hunian' => $s->mode_hunian ?? 'tunggal',
                 'is_utama' => $s->anak_kos_id === $uid,
                 'ktp_path' => null,
-                'butuh_ktp' => $s->anak_kos_id === $uid
-                    ? ! $s->ktp_path
-                    : ! $s->anggotas->firstWhere('user_id', $uid)?->ktp_path,
+                // KTP tidak lagi diminta saat booking (privasi) — pengaman booking adalah DP.
+                'butuh_ktp' => false,
                 'anggotas' => $s->anggotas->map(fn ($a) => [
                     'user_id' => $a->user_id,
                     'nama' => $a->user?->nama,
@@ -876,7 +877,8 @@ class DashboardController extends Controller
                     'status' => $s->status,
                     'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
                     'ktp_url' => $s->ktp_path ? route('penyewaan.ktp', $s->id) : null,
-                    'butuh_ktp' => ! $s->ktp_path,
+                    // KTP tidak lagi diminta untuk booking baru; URL hanya untuk data lama.
+                    'butuh_ktp' => false,
                     'mode_hunian' => $s->mode_hunian ?? 'tunggal',
                     'anggotas' => $s->anggotas->map(fn ($a) => [
                         'user_id' => $a->user_id,
@@ -953,10 +955,8 @@ class DashboardController extends Controller
 
         $validated = $request->validate([
             'email' => 'required|email|exists:users,email',
-            'ktp' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:2048',
         ], [
             'email.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
-            'ktp.required' => 'Foto KTP teman wajib diunggah.',
         ]);
 
         $teman = User::where('email', $validated['email'])->first();
@@ -965,13 +965,9 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
         }
 
-        $ktpPath = KtpStorage::simpan($request->file('ktp'));
-
         try {
-            $anggota = PatunganService::tambahAnggota($sewaan, $teman, $ktpPath);
+            $anggota = PatunganService::tambahAnggota($sewaan, $teman);
         } catch (\DomainException $e) {
-            KtpStorage::hapus($ktpPath);
-
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
@@ -1325,7 +1321,7 @@ class DashboardController extends Controller
                 'alamat' => $p->alamat,
                 'total_kamar' => (int) $p->total_kamar,
                 'kamar_terisi' => (int) $p->kamar_terisi,
-                'status' => $p->status,
+                'status' => $p->status?->value,
             ])->values(),
             'checkouts' => $this->formatCheckouts($checkouts),
         ]);
@@ -1333,7 +1329,7 @@ class DashboardController extends Controller
 
     public function verifikasiPembayaran(Request $request, int $pembayaranId): JsonResponse
     {
-        $status = $request->validate(['status' => 'required|in:diverifikasi,ditolak'])['status'];
+        $status = $request->validate(['status' => ['required', Rule::in([PembayaranStatus::Diverifikasi->value, PembayaranStatus::Ditolak->value])]])['status'];
 
         $pembayaran = Pembayaran::where('id', $pembayaranId)
             ->where('status', 'menunggu_verifikasi')
@@ -1537,7 +1533,7 @@ class DashboardController extends Controller
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
             'harga' => $p->harga !== null ? (float) $p->harga : null,
             'jenis_harga' => 'bulanan',
-            'status' => $p->status,
+            'status' => $p->status?->value,
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) $p->total_kamar,
@@ -1549,7 +1545,7 @@ class DashboardController extends Controller
                 'harga_sewa_bulanan' => (float) $k->harga_sewa_bulanan,
                 'jenis_harga' => 'bulanan',
                 'fasilitas' => $k->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $k->fasilitas)))) : [],
-                'status' => $k->status,
+                'status' => $k->status?->value,
                 'foto' => $k->fotoCover(),
                 'fotos' => $k->galeriUrls(),
             ])->values(),

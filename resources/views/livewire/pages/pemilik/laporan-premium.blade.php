@@ -192,6 +192,7 @@ new #[Layout('layouts.app')] class extends Component
                                 </a>
                             </div>
                         </div>
+                        <x-premium-lock requiredPlan="pro" title="Laporan Premium" message="Tersedia di paket PRO." />
                     @else
                         <x-premium-lock requiredPlan="pro" title="Laporan Premium" message="Tersedia di paket PRO." />
                     @endif
@@ -224,7 +225,7 @@ new #[Layout('layouts.app')] class extends Component
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Ekspor Laporan Premium</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Unduh laporan lengkap dalam PDF atau Excel. Nama file memuat tier paket. Paket BUSINESS mendapat 4 bagian tambahan: rincian tiap kos, transaksi detail, pertumbuhan bulanan, serta metode &amp; top penyewa.</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Unduh laporan lengkap dalam PDF atau Excel (nama file laporan-premium-{bulan}). Excel paket BUSINESS memuat 2 sheet tambahan — rincian tiap kos dan transaksi detail — dan halaman ini menampilkan 4 bagian analisis tambahan untuk BUSINESS.</p>
                 </div>
                 <form method="GET" class="flex flex-wrap items-center gap-2 lg:justify-end" target="_blank" rel="noopener">
                     <input type="month" name="bulan" value="{{ $data['bulan'] }}"

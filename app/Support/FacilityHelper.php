@@ -52,9 +52,65 @@ class FacilityHelper
     ];
 
     /**
-     * Peta varian (dinormalisasi) -> label kanonik.
-     * Normalisasi: huruf kecil + buang semua karakter non-alfanumerik.
+     * Fasilitas level KOS (umum/bersama, dipakai di form kos).
+     * Prinsip: hanya yang dipakai bersama seluruh penghuni.
      */
+    public const FASILITAS_KOS = [
+        'WiFi',
+        'Dapur',
+        'Dapur Bersama',
+        'Ruang Tamu',
+        'Penjaga Kos',
+        'Tempat Jemuran',
+        'Laundry',
+        'Parkir',
+        'Parkir Mobil',
+        'Parkir Motor',
+        'Parkir Motor & Sepeda',
+    ];
+
+    /**
+     * Fasilitas level KAMAR (privat, dipakai di form kamar).
+     * Prinsip: hanya yang ada di dalam / milik kamar tersebut,
+     * termasuk kamar mandi dan status listrik kamar.
+     */
+    public const FASILITAS_KAMAR = [
+        'AC',
+        'Kipas Angin',
+        'Kulkas',
+        'Kasur',
+        'Lemari',
+        'Meja',
+        'Kursi',
+        'Meja & Kursi',
+        'Rak Baju',
+        'Jendela',
+        'Bantal',
+        'Cermin',
+        'Ventilasi',
+        'Kamar Mandi Dalam',
+        'Kamar Mandi Luar',
+        'Kloset Duduk',
+        'Shower',
+        'Ember',
+        'Air Panas',
+        'Termasuk Listrik',
+        'Tidak Termasuk Listrik',
+    ];
+
+    /**
+     * Peraturan level KOS (berlaku untuk seluruh kos, dipakai di form kos).
+     * Disimpan di kolom fasilitas seperti sebelumnya agar data lama tetap jalan,
+     * berdampingan dengan kolom Aturan Kos bebas (untuk aturan kustom per baris).
+     */
+    public const PERATURAN_KOS = [
+        'Dilarang Merokok',
+        'Dilarang Bawa Tamu lawan jenis',
+        'Akses',
+        'Lawan Jenis',
+        'Tamu',
+    ];
+
     private const ALIAS = [
         'ac' => 'AC',
         'kipas' => 'Kipas Angin',
@@ -186,5 +242,50 @@ class FacilityHelper
     private static function normKey(string $value): string
     {
         return strtolower(preg_replace('/[^a-z0-9]+/i', '', $value) ?? '');
+    }
+
+    /**
+     * Daftar fasilitas untuk satu scope ('kos'|'kamar'|'semua').
+     * Scope kos sudah termasuk peraturan kos (berlaku untuk seluruh kos).
+     *
+     * @return array<int,string>
+     */
+    public static function untukScope(string $scope): array
+    {
+        return match ($scope) {
+            'kos' => array_values(array_unique(array_merge(self::FASILITAS_KOS, self::PERATURAN_KOS))),
+            'kamar' => self::FASILITAS_KAMAR,
+            default => array_values(array_unique(array_merge(self::FASILITAS_KOS, self::PERATURAN_KOS, self::FASILITAS_KAMAR))),
+        };
+    }
+
+    /**
+     * Pisahkan string fasilitas campuran menjadi [kos, kamar].
+     * Item tak dikenal ikut kedua sisi agar tidak hilang (kompatibel data lama).
+     *
+     * @return array{kos: array<int,string>, kamar: array<int,string>}
+     */
+    public static function pecahKosKamar(?string $value): array
+    {
+        $labels = self::normalizeList(self::fromString($value));
+        $kos = [];
+        $kamar = [];
+
+        foreach ($labels as $label) {
+            $diKos = in_array($label, self::FASILITAS_KOS, true) || in_array($label, self::PERATURAN_KOS, true);
+            $diKamar = in_array($label, self::FASILITAS_KAMAR, true);
+
+            if ($diKos && ! $diKamar) {
+                $kos[] = $label;
+            } elseif ($diKamar && ! $diKos) {
+                $kamar[] = $label;
+            } else {
+                // Tak dikenal: tampilkan di kedua sisi agar tidak hilang.
+                $kos[] = $label;
+                $kamar[] = $label;
+            }
+        }
+
+        return ['kos' => $kos, 'kamar' => $kamar];
     }
 }

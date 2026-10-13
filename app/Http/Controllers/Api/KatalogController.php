@@ -13,7 +13,7 @@ class KatalogController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'kota' => 'nullable|string|max:100',
+            'kota' => 'nullable|string|max:50',
             'search' => 'nullable|string|max:100',
             'harga_min' => 'nullable|numeric|min:0',
             'harga_max' => 'nullable|numeric|min:0',
@@ -25,7 +25,8 @@ class KatalogController extends Controller
         $query = Properti::withCount([
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
-        ])->with(['fotos:id,properti_id,path,urutan'])
+        ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->with(['fotos:id,properti_id,path,urutan'])
             ->where('status', 'aktif');
 
         if ($request->filled('kota')) {
@@ -69,9 +70,10 @@ class KatalogController extends Controller
             } elseif ($sort === 'tersedia') {
                 $query->orderByRaw('kamar_tersedia desc');
             } elseif ($sort === 'termurah') {
-                $query->orderBy('harga', 'asc');
+                // Harga resmi dari kamar termurah; fallback ke kolom legasi bila belum ada kamar.
+                $query->orderByRaw('COALESCE(harga_termurah, harga) asc');
             } elseif ($sort === 'termahal') {
-                $query->orderBy('harga', 'desc');
+                $query->orderByRaw('COALESCE(harga_termurah, harga) desc');
             }
         } else {
             $query->orderBy('created_at', 'desc');
@@ -106,11 +108,47 @@ class KatalogController extends Controller
     }
 
     /**
+     * Daftar kota baku untuk autocomplete (filter ?q=).
+     */
+    public function daftarKota(Request $request): JsonResponse
+    {
+        $request->validate(['q' => 'nullable|string|max:50']);
+
+        $q = trim((string) $request->input('q', ''));
+
+        $kota = $q !== ''
+            ? \App\Support\DaftarKota::saran($q, 30)
+            : \App\Support\DaftarKota::semua();
+
+        return response()->json(['kota' => array_values($kota)]);
+    }
+
+    /**
+     * Daftar fasilitas per scope (?scope=kos|kamar|semua).
+     */
+    public function daftarFasilitas(Request $request): JsonResponse
+    {
+        $request->validate(['scope' => 'nullable|in:kos,kamar,semua']);
+
+        $scope = $request->input('scope', 'semua');
+
+        return response()->json([
+            'scope' => $scope,
+            'fasilitas' => \App\Support\FacilityHelper::untukScope($scope),
+            'kos' => \App\Support\FacilityHelper::FASILITAS_KOS,
+            'kamar' => \App\Support\FacilityHelper::FASILITAS_KAMAR,
+        ]);
+    }
+
+    /**
      * Bentuk ringkas untuk daftar katalog.
      */
     private function formatRingkas(Properti $p): array
     {
         $p->loadMissing('fotos');
+
+        // Harga tampil = kamar termurah; kolom kos hanya fallback legasi.
+        $hargaTampil = ($p->harga_termurah ?? null) ?: ($p->harga ?? null);
 
         return [
             'id' => $p->id,
@@ -122,12 +160,14 @@ class KatalogController extends Controller
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
-            'harga' => $p->harga !== null ? (float) $p->harga : null,
+            'harga' => $hargaTampil !== null ? (float) $hargaTampil : null,
+            'harga_kos_legasi' => $p->harga !== null ? (float) $p->harga : null,
+            'harga_termurah' => $p->harga_termurah !== null ? (float) $p->harga_termurah : null,
             'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
             'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
             'jenis_harga' => 'bulanan',
-            'status' => $p->status,
+            'status' => $p->status?->value,
             'total_kamar' => (int) $p->total_kamar,
             'kamar_tersedia' => (int) $p->kamar_tersedia,
         ];
@@ -140,6 +180,9 @@ class KatalogController extends Controller
     {
         $p->loadMissing(['fotos', 'kamars.fotos']);
 
+        $tersedia = $p->kamars->where('status', \App\Enums\KamarStatus::Tersedia);
+        $termurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->min('harga_sewa_bulanan');
+
         return [
             'id' => $p->id,
             'nama' => $p->nama,
@@ -151,12 +194,14 @@ class KatalogController extends Controller
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
-            'harga' => $p->harga !== null ? (float) $p->harga : null,
+            'harga' => ($termurah ?? $p->harga) !== null ? (float) ($termurah ?? $p->harga) : null,
+            'harga_termurah' => $termurah !== null ? (float) $termurah : null,
+            'harga_kos_legasi' => $p->harga !== null ? (float) $p->harga : null,
             'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
             'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
             'jenis_harga' => 'bulanan',
-            'status' => $p->status,
+            'status' => $p->status?->value,
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) $p->total_kamar,
@@ -177,7 +222,7 @@ class KatalogController extends Controller
                 'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
                 'jenis_harga' => 'bulanan',
                 'fasilitas' => $this->fasilitasArray($k->fasilitas),
-                'status' => $k->status,
+                'status' => $k->status?->value,
                 'foto' => $k->fotoCover(),
                 'fotos' => $k->galeriUrls(),
             ])->values(),

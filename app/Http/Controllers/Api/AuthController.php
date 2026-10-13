@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\PesanBantuan;
 use App\Models\User;
@@ -25,9 +26,9 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
-            'role' => 'nullable|string|in:anak_kos,pemilik',
+            'role' => ['nullable', 'string', \Illuminate\Validation\Rule::in([UserRole::AnakKos->value, UserRole::Pemilik->value])],
             // Alias: aplikasi mobile ada yang mengirim `peran` (seperti di register).
-            'peran' => 'nullable|string|in:anak_kos,pemilik',
+            'peran' => ['nullable', 'string', \Illuminate\Validation\Rule::in([UserRole::AnakKos->value, UserRole::Pemilik->value])],
         ]);
 
         // Samakan dengan login web: abaikan spasi / huruf besar di email.
@@ -90,10 +91,10 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:255',
+            'nama' => 'required|string|max:100',
             'email' => 'required|string|lowercase|email|max:255|unique:users',
             'no_hp' => 'nullable|string|regex:/^08[0-9]{8,12}$/|max:15',
-            'peran' => 'required|in:anak_kos,pemilik',
+            'peran' => ['required', \Illuminate\Validation\Rule::in([UserRole::AnakKos->value, UserRole::Pemilik->value])],
             'password' => 'required|string|confirmed|min:8',
             'avatar' => 'nullable|image|max:2048',
         ], [
@@ -112,7 +113,7 @@ class AuthController extends Controller
         $user->assignRole($validated['peran']);
 
         // Pemilik baru otomatis dapat Free 7 hari (1 kamar). Setelah habis wajib beli Pro/Business.
-        if ($validated['peran'] === 'pemilik') {
+        if ($validated['peran'] === UserRole::Pemilik->value) {
             \App\Services\SubscriptionService::mulaiTrialFree($user);
         }
 
@@ -141,7 +142,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'nama' => 'sometimes|string|max:255',
+            'nama' => 'sometimes|string|max:100',
             'no_hp' => 'nullable|string|regex:/^08[0-9]{8,12}$/|max:15',
             'avatar' => 'nullable|image|max:2048',
         ], [

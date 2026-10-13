@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\LanggananPlan;
+use App\Enums\LanggananStatus;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\Subscription;
@@ -92,11 +94,18 @@ class SubscriptionService
      * sementara Super Admin sudah menjadwalkan paket PRO mulai besok. Baris
      * terjadwal belum boleh dianggap aktif, dan baris lama tidak boleh
      * menutupi paket yang sedang berjalan.
+     *
+     * Hanya baris terbaru yang sudah mulai yang menentukan paket berjalan:
+     * bila baris tersebut tidak aktif (cancelled/expired/kedaluwarsa),
+     * hasilnya null (fallback FREE) meski baris yang lebih lama masih
+     * valid — baris baru mencabut akses paket berbayar sebelumnya.
      */
     public static function getSubscriptionAktif(User $user): ?Subscription
     {
-        return self::langgananUser($user)
-            ->first(fn (Subscription $s) => $s->isActive());
+        $berjalan = self::langgananUser($user)
+            ->first(fn (Subscription $s) => ! $s->starts_at?->isFuture());
+
+        return $berjalan && $berjalan->isActive() ? $berjalan : null;
     }
 
     /**
@@ -530,15 +539,15 @@ class SubscriptionService
      */
     public static function store(int $userId, array $attrs): Subscription
     {
-        if (! in_array($attrs['plan'] ?? null, ['free', 'pro', 'business'], true)) {
+        if (! in_array($attrs['plan'] ?? null, LanggananPlan::values(), true)) {
             throw new \InvalidArgumentException('Plan tidak valid.');
         }
 
-        if (! in_array($attrs['status'] ?? null, ['active', 'expired', 'cancelled'], true)) {
+        if (! in_array($attrs['status'] ?? null, LanggananStatus::values(), true)) {
             throw new \InvalidArgumentException('Status tidak valid.');
         }
 
-        if (($attrs['status'] ?? null) === 'active') {
+        if (($attrs['status'] ?? null) === LanggananStatus::Active->value) {
             try {
                 $mulai = ! empty($attrs['starts_at']) ? Carbon::parse($attrs['starts_at']) : null;
                 $akhir = ! empty($attrs['expires_at']) ? Carbon::parse($attrs['expires_at']) : null;
@@ -583,8 +592,8 @@ class SubscriptionService
         // menggantikan trial Free: akhiri trial agar getPlan() tidak
         // lagi tertahan di 'free'. Yang terjadwal (mulai di masa depan)
         // sengaja tidak menyentuh trial sampai tanggal mulai tiba.
-        if (in_array($attrs['plan'] ?? null, ['pro', 'business'], true)
-            && ($attrs['status'] ?? null) === 'active'
+        if (in_array($attrs['plan'] ?? null, [LanggananPlan::Pro->value, LanggananPlan::Business->value], true)
+            && ($attrs['status'] ?? null) === LanggananStatus::Active->value
             && $sub->isActive()
         ) {
             self::akhiriTrialAktif($userId);
@@ -779,18 +788,9 @@ class SubscriptionService
 
         $plan = self::getPlan($user);
 
-        // Free yang masa 7 harinya habis: blokir total, wajib upgrade.
-        if ($plan === 'free' && self::trialExpired($user)) {
-            return [
-                'allowed' => false,
-                'used' => self::usage($user, $resource),
-                'limit' => self::limitFor($plan, $resource),
-                'plan' => $plan,
-                'required_plan' => 'pro',
-                'message' => 'Masa Free 7 hari sudah habis. Silakan upgrade ke Pro/Business untuk menambah kamar.',
-            ];
-        }
-
+        // Free murni (tanpa trial / trial habis) tetap boleh tambah sampai
+        // batas paket (1 kos, 1 kamar). Hanya laporan premium yang dikunci
+        // via laporanDikunci(), bukan via checkLimit().
         $limit = self::limitFor($plan, $resource);
         $used = self::usage($user, $resource);
 

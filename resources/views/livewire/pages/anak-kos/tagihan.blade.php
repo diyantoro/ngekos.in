@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PembayaranMetode;
 use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Tagihan;
@@ -249,13 +250,13 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->validate([
-            'metodeBayar' => ['required', 'in:transfer,cash'],
+            'metodeBayar' => ['required', \Illuminate\Validation\Rule::enum(PembayaranMetode::class)],
             'bukti' => $this->metodeBayar === 'transfer'
                 ? ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048']
                 : ['nullable'],
         ], [
             'metodeBayar.required' => 'Pilih metode pembayaran terlebih dahulu.',
-            'metodeBayar.in' => 'Metode pembayaran tidak valid.',
+            'metodeBayar.enum' => 'Metode pembayaran tidak valid.',
             'bukti.required' => 'Lampirkan bukti transfer terlebih dahulu.',
             'bukti.mimes' => 'Bukti transfer harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
             'bukti.max' => 'Ukuran bukti transfer maksimal 2MB.',
@@ -311,6 +312,7 @@ new #[Layout('layouts.app')] class extends Component
                             @php
                                 $coverSewa = $sewa->properti?->fotoCover();
                                 $pengajuanSewa = $sewa->permintaan_keluar_pada;
+                                $dpLunasSewa = $sewa->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
                             @endphp
                             <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/60 p-3 sm:p-4">
                                 <div class="flex min-w-0 flex-1 items-center gap-3">
@@ -324,6 +326,9 @@ new #[Layout('layouts.app')] class extends Component
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm font-bold text-slate-900 dark:text-gray-100">{{ $sewa->properti?->nama ?? 'Kos tidak tersedia' }}{{ $sewa->kamar ? ' · Kamar '.$sewa->kamar->nama : '' }}</p>
                                         <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Masuk {{ $sewa->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}</p>
+                                        @if (! $dpLunasSewa)
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP — bayar tagihan pertamamu agar booking fiks</span>
+                                        @endif
                                         @if ($pengajuanSewa)
                                             <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu verifikasi pemilik</span>
                                         @endif
@@ -606,6 +611,14 @@ new #[Layout('layouts.app')] class extends Component
             ? round(max(0, $porsiModal - (float) $tagihanModal->pembayarans()->where('anak_kos_id', auth()->id())->where('status', 'diverifikasi')->sum('jumlah')), 2)
             : $totalTagihan;
         $jatuhModal = $tagihanModal?->jatuh_tempo?->translatedFormat('d M Y') ?? '-';
+        // Uang Muka (DP) = tagihan pertama penyewaan yang belum ada pembayaran terverifikasi.
+        $adalahDpModal = false;
+        if ($tagihanModal?->penyewaan_id) {
+            $tagihanPertamaId = \App\Models\Tagihan::where('penyewaan_id', $tagihanModal->penyewaan_id)->orderBy('id')->value('id');
+            $adalahDpModal = $tagihanPertamaId === $tagihanModal->id
+                && ! \App\Models\Pembayaran::whereHas('tagihan', fn ($q) => $q->where('penyewaan_id', $tagihanModal->penyewaan_id))
+                    ->where('status', 'diverifikasi')->exists();
+        }
     @endphp
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
         <button type="button" wire:click="tutupModalBayar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
@@ -613,13 +626,16 @@ new #[Layout('layouts.app')] class extends Component
             <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <div class="min-w-0">
-                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Bayar Tagihan {{ $tagihanModal?->periode }}</p>
+                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $adalahDpModal ? 'Bayar Uang Muka (DP)' : 'Bayar Tagihan' }} {{ $tagihanModal?->periode }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Jatuh tempo {{ $tagihanModal?->jatuh_tempo?->translatedFormat('d F Y') ?? '-' }}
                             @if ($isPatunganModal)
                                 · Porsimu: <span class="font-bold text-sky-600 dark:text-sky-400">Rp{{ number_format($porsiModal, 0, ',', '.') }}</span>
                             @endif
                         </p>
+                        @if ($adalahDpModal)
+                            <p class="mt-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-2.5 py-1.5 text-[11px] font-semibold text-teal-700 dark:text-teal-300">Uang Muka (DP) — bayar tagihan pertama ini agar booking kamarmu fiks. Tanpa perlu KTP.</p>
+                        @endif
                         @php
                             $sisaModal = $tagihanModal ? \App\Services\TagihanService::selisihHari($tagihanModal) : 0;
                             $telatModal = $hariTelatModal;

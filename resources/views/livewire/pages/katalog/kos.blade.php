@@ -75,12 +75,14 @@ new #[Layout('layouts.publik')] class extends Component
 
         return [
             'propertis' => $query->orderBy('nama')->paginate(12),
-            'daftarKota' => cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
-                ->whereNotNull('kota')
-                ->distinct()
-                ->orderBy('kota')
-                ->pluck('kota')
-                ->all()),
+            'daftarKota' => collect(\App\Support\DaftarKota::semua())
+                ->merge(cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
+                    ->whereNotNull('kota')
+                    ->distinct()
+                    ->orderBy('kota')
+                    ->pluck('kota')
+                    ->all()))
+                ->map(fn ($k) => trim((string) $k))->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all(),
             'markers' => cache()->remember('katalog.markers', 3600, fn () => Properti::where('status', 'aktif')
                 ->get(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
@@ -112,7 +114,7 @@ new #[Layout('layouts.publik')] class extends Component
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
                         class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
-                <input type="text" wire:model.live.debounce.300ms="kota" list="daftar-kota-katalog" aria-label="Kota" placeholder="Ketik kota…"
+                <input type="text" wire:model.live.debounce.300ms="kota" list="daftar-kota-katalog" aria-label="Kota" placeholder="Filter kota… (mis. Bandung)"
                     class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2" />
                 <datalist id="daftar-kota-katalog">
                     @foreach ($daftarKota as $k)
@@ -205,8 +207,8 @@ new #[Layout('layouts.publik')] class extends Component
                                 </span>
                             @endif
                             @if ($properti->tipe_hunian)
-                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white {{ $properti->tipe_hunian === 'putri' ? 'bg-rose-700' : ($properti->tipe_hunian === 'putra' ? 'bg-slate-700' : 'bg-brand-800') }}">
-                                    {{ ucfirst($properti->tipe_hunian) }}
+                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white {{ $properti->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-rose-700' : ($properti->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-slate-700' : 'bg-brand-800') }}">
+                                    {{ $properti->tipe_hunian->label() }}
                                 </span>
                             @endif
                         </div>
@@ -241,7 +243,8 @@ new #[Layout('layouts.publik')] class extends Component
                                 <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
                                 <div class="text-end">
                                     @php
-                                        $hargaTampil = $properti->harga ?? $properti->harga_termurah;
+                                        // Harga resmi dari kamar termurah; harga kos hanya fallback legasi.
+                                        $hargaTampil = ($properti->harga_termurah ?? null) ?: ($properti->harga ?? null);
                                         $adaDiskon = $properti->harga_asli && (float) $hargaTampil > 0 && $properti->harga_asli > $hargaTampil;
                                     @endphp
                                     @if ((float) $hargaTampil > 0)

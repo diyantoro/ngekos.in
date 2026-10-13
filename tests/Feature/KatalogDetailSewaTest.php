@@ -41,28 +41,20 @@ class KatalogDetailSewaTest extends TestCase
         $component->call('pesanKamar', $kamar->id)
             ->assertSet('modalKamarId', $kamar->id);
 
-        // Tanpa KTP: ditolak.
+        // Tanpa KTP: langsung berhasil (KTP tidak lagi diminta — privasi).
         $component->set('tanggalMasuk', today()->toDateString())
-            ->call('konfirmasiSewa')
-            ->assertHasErrors(['ktp' => 'required']);
-
-        $kamar->refresh();
-        $this->assertSame('tersedia', $kamar->status);
-
-        // Dengan KTP: berhasil.
-        $component->set('ktp', \Illuminate\Http\UploadedFile::fake()->image('ktp.jpg'))
             ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
             ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil dipesan'));
 
         $kamar->refresh();
-        $this->assertSame('terisi', $kamar->status);
+        $this->assertSame('terisi', $kamar->status->value);
 
         $penyewaan = Penyewaan::where('anak_kos_id', $user->id)
             ->where('kamar_id', $kamar->id)
             ->firstOrFail();
         $this->assertSame('aktif', $penyewaan->status);
-        $this->assertNotNull($penyewaan->ktp_path);
+        $this->assertNull($penyewaan->ktp_path);
         $this->assertSame(1, $penyewaan->tagihans()->count());
         $tagihan = $penyewaan->tagihans()->first();
         $this->assertSame('belum_bayar', $tagihan->status);
@@ -82,7 +74,7 @@ class KatalogDetailSewaTest extends TestCase
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
         $service = app(PenyewaanService::class);
-        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 3, null, 'ktp/test.jpg');
+        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 3);
 
         $this->assertSame(3, $penyewaan->tagihans()->count());
         $this->assertSame(3, $penyewaan->tagihans()->where('status', 'belum_bayar')->count());
@@ -123,7 +115,7 @@ class KatalogDetailSewaTest extends TestCase
             ->assertHasErrors(['tanggalMasuk' => 'after_or_equal']);
 
         $kamar->refresh();
-        $this->assertSame('tersedia', $kamar->status);
+        $this->assertSame('tersedia', $kamar->status->value);
     }
 
     public function test_tanggal_masuk_maksimal_10_hari_ke_depan(): void
@@ -141,12 +133,13 @@ class KatalogDetailSewaTest extends TestCase
             ->assertHasErrors(['tanggalMasuk' => 'before_or_equal']);
 
         $kamar->refresh();
-        $this->assertSame('tersedia', $kamar->status);
+        $this->assertSame('tersedia', $kamar->status->value);
 
-        // Tepat 10 hari ke depan: lolos validasi tanggal (gagal di KTP saja).
+        // Tepat 10 hari ke depan: lolos validasi tanggal dan langsung berhasil (tanpa KTP).
         $component->set('tanggalMasuk', today()->addDays(10)->toDateString())
             ->call('konfirmasiSewa')
-            ->assertHasErrors(['ktp' => 'required']);
+            ->assertSet('modalKamarId', null)
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil dipesan'));
     }
 
     public function test_service_menolak_tanggal_masuk_lebih_dari_10_hari(): void
@@ -158,14 +151,14 @@ class KatalogDetailSewaTest extends TestCase
         $service = app(PenyewaanService::class);
 
         try {
-            $service->sewaKamar($user, $kamar, today()->addDays(11)->toDateString(), 1, null, 'ktp/test.jpg');
+            $service->sewaKamar($user, $kamar, today()->addDays(11)->toDateString(), 1);
             $this->fail('Seharusnya menolak tanggal masuk lebih dari 10 hari ke depan.');
         } catch (\DomainException $e) {
             $this->assertStringContainsString('10 hari', $e->getMessage());
         }
 
         $kamar->refresh();
-        $this->assertSame('tersedia', $kamar->status);
+        $this->assertSame('tersedia', $kamar->status->value);
     }
 
     public function test_double_booking_kamar_yang_sama_ditolak(): void
@@ -176,13 +169,13 @@ class KatalogDetailSewaTest extends TestCase
 
         $service = app(PenyewaanService::class);
 
-        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, 'ktp/test.jpg');
+        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString(), 1);
         $this->assertNotNull($sewaanPertama);
 
         $this->expectException(\DomainException::class);
 
         try {
-            $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, 'ktp/test.jpg');
+            $service->sewaKamar($user, $kamar, today()->toDateString(), 1);
         } finally {
             $this->assertSame(1, Penyewaan::where('kamar_id', $kamar->id)->count());
         }
@@ -213,13 +206,12 @@ class KatalogDetailSewaTest extends TestCase
         $component->set('tanggalMasuk', today()->toDateString())
             ->set('periodeSewa', 'harian')
             ->set('durasiHari', 3)
-            ->set('ktp', \Illuminate\Http\UploadedFile::fake()->image('ktp.jpg'))
             ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
             ->assertSet('pesan', fn ($pesan) => str_contains($pesan, '3 hari'));
 
         $kamar->refresh();
-        $this->assertSame('terisi', $kamar->status);
+        $this->assertSame('terisi', $kamar->status->value);
 
         $penyewaan = Penyewaan::where('anak_kos_id', $user->id)
             ->where('kamar_id', $kamar->id)
@@ -240,7 +232,7 @@ class KatalogDetailSewaTest extends TestCase
         $kamar->update(['harga_sewa_harian' => 75000]);
 
         $service = app(PenyewaanService::class);
-        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 4, 'ktp/test.jpg');
+        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 4);
 
         $this->assertSame('aktif', $penyewaan->status);
         $this->assertEquals(today()->addDays(3)->toDateString(), $penyewaan->tanggal_keluar->toDateString());
@@ -264,18 +256,25 @@ class KatalogDetailSewaTest extends TestCase
         $service = app(PenyewaanService::class);
 
         $this->expectException(\DomainException::class);
-        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 2, 'ktp/test.jpg');
+        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, 2);
     }
 
-    public function test_sewa_ditolak_tanpa_ktp(): void
+    public function test_modal_bayar_tagihan_pertama_berlabel_dp(): void
     {
         $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
-        $service = app(PenyewaanService::class);
+        $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, today()->toDateString(), 1);
+        $tagihan = $penyewaan->tagihans()->firstOrFail();
 
-        $this->expectException(\DomainException::class);
-        $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null);
+        // Tanpa KTP: ktp_path null, tagihan DP menunggu dibayar.
+        $this->assertNull($penyewaan->ktp_path);
+        $this->assertSame('belum_bayar', $tagihan->status);
+
+        Volt::actingAs($user)->test('pages.anak-kos.tagihan')
+            ->call('bayarTagihan', $tagihan->id)
+            ->assertSee('Uang Muka (DP)')
+            ->assertSee('Menunggu DP');
     }
 }

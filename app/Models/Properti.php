@@ -27,6 +27,8 @@ class Properti extends Model
             'harga_asli' => 'decimal:2',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'status' => \App\Enums\PropertiStatus::class,
+            'tipe_hunian' => \App\Enums\TipeHunian::class,
         ];
     }
 

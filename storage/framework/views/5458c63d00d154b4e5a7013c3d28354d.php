@@ -100,7 +100,7 @@ use Livewire\Volt\Component;
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5 pt-14">
                                 <p class="text-white font-bold truncate"><?php echo e($heroKos->nama); ?></p>
                                 <p class="text-white/70 text-xs truncate"><?php echo e($heroKos->kota ?? $heroKos->alamat); ?></p>
-                                <p class="mt-1 text-amber-300 font-extrabold">Rp<?php echo e(number_format($heroKos->harga ?? $heroKos->harga_termurah ?? 0, 0, ',', '.')); ?><span class="text-xs font-medium text-white/70">/bln</span></p>
+                                <p class="mt-1 text-amber-300 font-extrabold">Rp<?php echo e(number_format(($heroKos->harga_termurah ?? null) ?: ($heroKos->harga ?? 0), 0, ',', '.')); ?><span class="text-xs font-medium text-white/70">/bln</span></p>
                             </div>
                         <?php else: ?>
                             <div class="h-80 w-full bg-white/10 backdrop-blur flex items-center justify-center">

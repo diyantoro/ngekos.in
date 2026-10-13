@@ -1,4 +1,4 @@
-@props(['fasilitas' => [], 'editable' => false, 'selected' => [], 'field' => 'fasilitasTerpilih'])
+@props(['fasilitas' => [], 'editable' => false, 'selected' => [], 'field' => 'fasilitasTerpilih', 'scope' => 'semua'])
 
 @php
     // Ikon SVG fallback untuk fasilitas tanpa file PNG.
@@ -65,30 +65,49 @@
         'Ventilasi' => 'jendela.png',
         'Tamu' => 'tamu.png',
         'Lawan Jenis' => 'lawan_jenis.png',
+        'Termasuk Listrik' => 'tidak_listrik.png',
         'Tidak Termasuk Listrik' => 'tidak_listrik.png',
         'Tidak Listrik' => 'tidak_listrik.png',
+        'Kloset Duduk' => 'kamar_mandi_dalam.png',
+        'Air Panas' => 'shower.png',
     ];
 
-    // Kelompok fasilitas (alamat = label dibatasi di form). Key = judul grup.
-    $kelompokFasilitas = [
+    // Kelompok fasilitas per scope.
+    // scope=kos   -> hanya fasilitas umum/bersama (form kos).
+    // scope=kamar -> hanya fasilitas privat kamar + kamar mandi (form kamar).
+    // scope=semua -> semua (tampilan detail / kompatibel data lama).
+    $semuaKelompok = [
         'Fasilitas Kamar' => [
             'AC', 'Kipas Angin', 'Kulkas', 'Kasur', 'Lemari', 'Meja & Kursi',
-            'Jendela', 'Bantal', 'Cermin',
+            'Meja', 'Kursi', 'Rak Baju', 'Jendela', 'Bantal', 'Cermin', 'Ventilasi',
+            'Termasuk Listrik', 'Tidak Termasuk Listrik',
         ],
         'Fasilitas Kamar Mandi' => [
-            'Kamar Mandi Dalam', 'Kamar Mandi Luar', 'Shower', 'Ember',
+            'Kamar Mandi Dalam', 'Kamar Mandi Luar', 'Kloset Duduk', 'Shower', 'Ember', 'Air Panas',
         ],
-        'Fasilitas Umum' => [
-            'WiFi', 'Dapur Bersama', 'Ruang Tamu', 'Penjaga Kos',
-            'Dilarang Merokok', 'Laundry',
+        'Fasilitas Umum Kos' => [
+            'WiFi', 'Dapur', 'Dapur Bersama', 'Ruang Tamu', 'Penjaga Kos', 'Tempat Jemuran', 'Laundry',
         ],
-        'Fasilitas Parkir' => [
-            'Parkir Motor & Sepeda', 'Parkir Mobil',
+        'Fasilitas Parkir Kos' => [
+            'Parkir', 'Parkir Motor & Sepeda', 'Parkir Motor', 'Parkir Mobil',
         ],
-        'Peraturan Khusus' => [
-            'Dilarang Bawa Tamu lawan jenis', 'Akses',
+        'Peraturan Kos' => [
+            'Dilarang Merokok', 'Dilarang Bawa Tamu lawan jenis', 'Akses', 'Lawan Jenis', 'Tamu',
         ],
     ];
+
+    $kelompokFasilitas = match ($scope) {
+        'kos' => [
+            'Fasilitas Umum Kos' => $semuaKelompok['Fasilitas Umum Kos'],
+            'Fasilitas Parkir Kos' => $semuaKelompok['Fasilitas Parkir Kos'],
+            'Peraturan Kos' => $semuaKelompok['Peraturan Kos'],
+        ],
+        'kamar' => [
+            'Fasilitas Kamar' => $semuaKelompok['Fasilitas Kamar'],
+            'Fasilitas Kamar Mandi' => $semuaKelompok['Fasilitas Kamar Mandi'],
+        ],
+        default => $semuaKelompok,
+    };
 
     // Fungsi menentukan apakah item punya PNG. Untuk mempermudah, buat closure.
     $assetFasilitas = function ($nama) use ($ikonPng) {

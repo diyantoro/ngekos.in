@@ -19,12 +19,13 @@ use Livewire\WithPagination;
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
                         class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
-                <select wire:model.live="kota" aria-label="Kota" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
-                    <option value="">Semua kota</option>
+                <input type="text" wire:model.live.debounce.300ms="kota" list="daftar-kota-katalog" aria-label="Kota" placeholder="Filter kota… (mis. Bandung)"
+                    class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2" />
+                <datalist id="daftar-kota-katalog">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarKota; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $k): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <option value="<?php echo e($k); ?>"><?php echo e($k); ?></option>
+                        <option value="<?php echo e($k); ?>"></option>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                </select>
+                </datalist>
                 <select wire:model.live="hargaMax" aria-label="Harga maksimal" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
                     <option value="">Semua harga</option>
                     <option value="500000"><= Rp500rb</option>
@@ -131,8 +132,8 @@ use Livewire\WithPagination;
                                 </span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($properti->tipe_hunian): ?>
-                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white <?php echo e($properti->tipe_hunian === 'putri' ? 'bg-rose-700' : ($properti->tipe_hunian === 'putra' ? 'bg-slate-700' : 'bg-brand-800')); ?>">
-                                    <?php echo e(ucfirst($properti->tipe_hunian)); ?>
+                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white <?php echo e($properti->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-rose-700' : ($properti->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-slate-700' : 'bg-brand-800')); ?>">
+                                    <?php echo e($properti->tipe_hunian->label()); ?>
 
                                 </span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -188,7 +189,8 @@ use Livewire\WithPagination;
                                 <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
                                 <div class="text-end">
                                     <?php
-                                        $hargaTampil = $properti->harga ?? $properti->harga_termurah;
+                                        // Harga resmi dari kamar termurah; harga kos hanya fallback legasi.
+                                        $hargaTampil = ($properti->harga_termurah ?? null) ?: ($properti->harga ?? null);
                                         $adaDiskon = $properti->harga_asli && (float) $hargaTampil > 0 && $properti->harga_asli > $hargaTampil;
                                     ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((float) $hargaTampil > 0): ?>

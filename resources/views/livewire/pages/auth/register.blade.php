@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
@@ -36,10 +37,10 @@ new #[Layout('layouts.guest')] class extends Component
         \Illuminate\Support\Facades\RateLimiter::hit($kunci, 60);
 
         $validated = $this->validate([
-            'nama' => ['required', 'string', 'max:255'],
+            'nama' => ['required', 'string', 'max:100'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'no_hp' => ['nullable', 'string', 'regex:/^08[0-9]{8,12}$/', 'max:15'],
-            'peran' => ['required', 'in:anak_kos,pemilik'],
+            'peran' => ['required', \Illuminate\Validation\Rule::in([UserRole::AnakKos->value, UserRole::Pemilik->value])],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
             'avatar' => ['nullable', 'image', 'max:2048'],
         ], [

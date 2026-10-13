@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\LanggananPlan;
 use App\Models\Pengaturan;
 use App\Models\SubscriptionRequest;
 use App\Services\BuktiStorage;

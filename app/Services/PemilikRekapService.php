@@ -94,7 +94,7 @@ class PemilikRekapService
                 'id' => $p->id,
                 'nama' => $p->nama,
                 'alamat' => $p->alamat,
-                'status' => $p->status,
+                'status' => $p->status?->value,
                 'total_kamar' => (int) $p->total_kamar,
                 'kamar_terisi' => (int) $p->kamar_terisi,
             ])->values()->all(),

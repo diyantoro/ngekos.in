@@ -18,7 +18,9 @@ return new class extends Migration
     /**
      * Skema domain ternormalisasi (hasil squash):
      * - Pilihan tetap memakai native ENUM (role/status/jenis/tipe/metode).
-     * - Teks panjang memakai TEXT (alamat/deskripsi/fasilitas/aturan/catatan/keterangan).
+     * - Varchar dirapatkan (nama kos 100, kota 50, alamat 500, nama kamar 50,
+     *   periode 100, nomor kwitansi 50); konten panjang memakai TEXT
+     *   (deskripsi/fasilitas/aturan/catatan/keterangan).
      * - Harga + fasilitas ada di KAMAR (per kamar); harga di properti hanya
      *   ringkasan tampilan (nullable). Kolom jenis_harga yang redundan dibuang:
      *   periode aktif ditentukan dari kolom harga yang terisi.
@@ -30,9 +32,9 @@ return new class extends Migration
         Schema::create('propertis', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pemilik_id')->constrained('users')->cascadeOnDelete();
-            $table->string('nama');
-            $table->string('kota')->nullable();
-            $table->text('alamat')->nullable();
+            $table->string('nama', 100);
+            $table->string('kota', 50)->nullable();
+            $table->string('alamat', 500)->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
             $table->text('deskripsi')->nullable();
@@ -57,7 +59,7 @@ return new class extends Migration
         Schema::create('kamars', function (Blueprint $table) {
             $table->id();
             $table->foreignId('properti_id')->constrained('propertis')->cascadeOnDelete();
-            $table->string('nama');
+            $table->string('nama', 50);
             $table->unsignedSmallInteger('kapasitas')->default(1);
             // Harga per kamar: bulanan wajib, mingguan/harian opsional.
             $table->decimal('harga_sewa_bulanan', 12, 2);
@@ -97,7 +99,7 @@ return new class extends Migration
         Schema::create('tagihans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('penyewaan_id')->constrained('penyewaans')->cascadeOnDelete();
-            $table->string('periode');
+            $table->string('periode', 100);
             $table->decimal('jumlah', 12, 2);
             $table->decimal('denda', 12, 2)->default(0);
             $table->date('jatuh_tempo');
@@ -114,7 +116,7 @@ return new class extends Migration
             $table->decimal('jumlah', 12, 2);
             $table->string('bukti')->nullable();
             $table->enum('status', PembayaranStatus::values())->default(PembayaranStatus::MenungguVerifikasi->value);
-            $table->string('nomor_kwitansi')->nullable()->unique();
+            $table->string('nomor_kwitansi', 50)->nullable()->unique();
             $table->string('file_kwitansi')->nullable();
             $table->foreignId('diverifikasi_oleh')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('verified_at')->nullable();

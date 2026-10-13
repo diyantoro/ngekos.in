@@ -65,7 +65,7 @@ class TagihanDendaReminderTest extends TestCase
         ]);
 
         return app(PenyewaanService::class)->sewaKamar(
-            $anak, $kamar, today()->toDateString(), 1, null, 'ktp/uji.jpg'
+            $anak, $kamar, today()->toDateString(), 1
         );
     }
 
@@ -158,7 +158,7 @@ class TagihanDendaReminderTest extends TestCase
         $yoga = $this->user('anak2@ngekos.test');
         $sewa = $this->sewaAktif($rina);
         $sewa->kamar->update(['kapasitas' => 2]);
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga, 'ktp/yoga.jpg');
+        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
 
         $tagihan = $sewa->tagihans()->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(2)->toDateString(), 'denda' => 0]);

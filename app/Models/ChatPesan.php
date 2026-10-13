@@ -92,7 +92,7 @@ class ChatPesan extends Model
             'anak_kos_id' => $utamaId,
             'pengirim_id' => $temanId,
             'isi' => 'Halo '.$utamaNama.', '.$temanNama.' sudah bergabung di kamar '
-                .$kamarNama.' (patungan 50/50). KTP-nya sudah tersimpan dan bisa dicek pemilik.',
+                .$kamarNama.' (patungan 50/50).',
         ]);
 
         return ['ke_teman' => $keTeman, 'ke_utama' => $keUtama];

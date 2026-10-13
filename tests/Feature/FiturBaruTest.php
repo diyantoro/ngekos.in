@@ -7,6 +7,7 @@ use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\User;
+use App\Services\BuktiStorage;
 use App\Services\PatunganService;
 use App\Services\PembayaranService;
 use App\Services\PenyewaanService;
@@ -36,9 +37,9 @@ class FiturBaruTest extends TestCase
         return User::where('email', $email)->firstOrFail();
     }
 
-    // ---------- 1. KTP wajib saat pesan ----------
+    // ---------- 1. Booking tanpa KTP, konfirmasi via DP ----------
 
-    public function test_api_sewa_ditolak_tanpa_ktp(): void
+    public function test_api_sewa_berhasil_tanpa_ktp(): void
     {
         $anak = $this->user('anak1@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
@@ -46,34 +47,18 @@ class FiturBaruTest extends TestCase
 
         Sanctum::actingAs($anak, ['*']);
 
+        // Tanpa KTP: booking langsung berhasil, ktp_path null.
         $this->postJson("/api/kos/{$properti->id}/kamar/{$kamar->id}/sewa", [
             'tanggal_masuk' => today()->toDateString(),
             'durasi_bulan' => 1,
-        ])->assertStatus(422)->assertJsonValidationErrors('ktp');
-
-        $this->assertSame('tersedia', $kamar->refresh()->status);
-    }
-
-    public function test_api_sewa_berhasil_dengan_ktp(): void
-    {
-        Storage::fake('public');
-        Storage::fake('private');
-
-        $anak = $this->user('anak1@ngekos.test');
-        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
-        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
-
-        Sanctum::actingAs($anak, ['*']);
-
-        $this->postJson("/api/kos/{$properti->id}/kamar/{$kamar->id}/sewa", [
-            'tanggal_masuk' => today()->toDateString(),
-            'durasi_bulan' => 1,
-            'ktp' => UploadedFile::fake()->image('ktp.jpg'),
         ])->assertCreated();
 
+        $this->assertSame('terisi', $kamar->refresh()->status->value);
+
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('kamar_id', $kamar->id)->firstOrFail();
-        $this->assertNotNull($sewa->ktp_path);
-        Storage::disk('private')->assertExists($sewa->ktp_path);
+        $this->assertNull($sewa->ktp_path);
+        $this->assertSame(1, $sewa->tagihans()->count());
+        $this->assertSame('belum_bayar', $sewa->tagihans()->first()->status);
     }
 
     // ---------- 2. Kwitansi otomatis ----------
@@ -81,6 +66,8 @@ class FiturBaruTest extends TestCase
     public function test_verifikasi_membuat_kwitansi_pdf_dan_chat(): void
     {
         Storage::fake('public');
+        // Kwitansi wajib di disk privat (kontrak BuktiStorage); samakan fake.
+        Storage::fake(BuktiStorage::DISK);
 
         $pemilik = $this->user('pemilik1@ngekos.test');
         $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
@@ -92,7 +79,7 @@ class FiturBaruTest extends TestCase
         $this->assertNotNull($hasil['pembayaran']->nomor_kwitansi);
         $this->assertMatchesRegularExpression('/^KWT-\d{6}-\d{4}$/', $hasil['pembayaran']->nomor_kwitansi);
         $this->assertNotNull($hasil['kwitansi_url']);
-        Storage::disk('public')->assertExists($hasil['pembayaran']->file_kwitansi);
+        Storage::disk(BuktiStorage::DISK)->assertExists($hasil['pembayaran']->file_kwitansi);
 
         $this->assertDatabaseHas('chat_pesans', ['anak_kos_id' => $pembayaran->anak_kos_id]);
 
@@ -105,6 +92,7 @@ class FiturBaruTest extends TestCase
     public function test_kwitansi_idempoten_tidak_dibuat_ulang(): void
     {
         Storage::fake('public');
+        Storage::fake(BuktiStorage::DISK);
 
         $pemilik = $this->user('pemilik1@ngekos.test');
         $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
@@ -150,10 +138,10 @@ class FiturBaruTest extends TestCase
         ]);
 
         $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+            $rina, $kamar, today()->toDateString(), 1
         );
 
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga, 'ktp/yoga.jpg');
+        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
 
         return $sewa->refresh();
     }
@@ -259,7 +247,7 @@ class FiturBaruTest extends TestCase
         $sewa->refresh();
         $this->assertSame('aktif', $sewa->status);
         $this->assertSame('tunggal', $sewa->mode_hunian);
-        $this->assertSame('terisi', $sewa->kamar->refresh()->status);
+        $this->assertSame('terisi', $sewa->kamar->refresh()->status->value);
         $this->assertSame(
             'keluar',
             $sewa->anggotas()->where('user_id', $yoga->id)->firstOrFail()->status
@@ -291,9 +279,9 @@ class FiturBaruTest extends TestCase
         $b2->update(['kapasitas' => 2]);
 
         $sewa = app(PenyewaanService::class)->sewaKamar(
-            $maya, $b2, today()->toDateString(), 1, null, 'ktp/maya.jpg'
+            $maya, $b2, today()->toDateString(), 1
         );
-        PatunganService::tambahAnggota($sewa->refresh(), $rina, 'ktp/rina.jpg');
+        PatunganService::tambahAnggota($sewa->refresh(), $rina);
         $sewa->refresh();
 
         // Keduanya lunasi porsi agar boleh keluar.
@@ -315,7 +303,7 @@ class FiturBaruTest extends TestCase
         $sewa->refresh();
         $this->assertSame('aktif', $sewa->status);
         $this->assertSame($rina->id, $sewa->anak_kos_id);
-        $this->assertSame('terisi', $sewa->kamar->refresh()->status);
+        $this->assertSame('terisi', $sewa->kamar->refresh()->status->value);
     }
 
     public function test_tambah_anggota_ditolak_untuk_kamar_kapasitas_1(): void
@@ -325,36 +313,39 @@ class FiturBaruTest extends TestCase
         $a1 = Kamar::where('nama', 'A1')->firstOrFail();
 
         $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $a1, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+            $rina, $a1, today()->toDateString(), 1
         );
 
         $this->expectException(\DomainException::class);
-        PatunganService::tambahAnggota($sewa, $yoga, 'ktp/yoga.jpg');
+        PatunganService::tambahAnggota($sewa, $yoga);
     }
 
-    public function test_tambah_anggota_ditolak_tanpa_ktp(): void
+    public function test_tambah_anggota_berhasil_tanpa_ktp(): void
     {
         $rina = $this->user('anak1@ngekos.test');
         $yoga = $this->user('anak2@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = Kamar::create([
             'properti_id' => $properti->id,
-            'nama' => 'KTP-'.uniqid(),
+            'nama' => 'DP-'.uniqid(),
             'kapasitas' => 2,
             'harga_sewa_bulanan' => 1200000,
             'harga_sewa_harian' => 60000,
             'status' => 'tersedia',
         ]);
         $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+            $rina, $kamar, today()->toDateString(), 1
         );
 
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessageMatches('/KTP teman wajib/');
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
+        // Tanpa KTP: tambah teman langsung berhasil.
+        $anggota = PatunganService::tambahAnggota($sewa->refresh(), $yoga);
+
+        $this->assertSame('aktif', $anggota->status);
+        $this->assertNull($anggota->ktp_path);
+        $this->assertSame('patungan', $sewa->refresh()->mode_hunian);
     }
 
-    public function test_volt_tambah_teman_ditolak_tanpa_ktp(): void
+    public function test_volt_tambah_teman_berhasil_tanpa_ktp(): void
     {
         $rina = $this->user('anak1@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
@@ -367,16 +358,17 @@ class FiturBaruTest extends TestCase
             'status' => 'tersedia',
         ]);
         $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1, null, 'ktp/rina.jpg'
+            $rina, $kamar, today()->toDateString(), 1
         );
 
         Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
             ->call('bukaModalTeman', $sewa->id)
             ->set('emailTeman', 'anak2@ngekos.test')
             ->call('simpanTeman')
-            ->assertHasErrors('ktpTeman');
+            ->assertHasNoErrors()
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil ditambahkan'));
 
-        $this->assertSame('tunggal', $sewa->refresh()->mode_hunian);
+        $this->assertSame('patungan', $sewa->refresh()->mode_hunian);
     }
 
     public function test_api_tambah_anggota_dan_keluar_partial(): void
@@ -388,17 +380,27 @@ class FiturBaruTest extends TestCase
         $rina = $this->user('anak1@ngekos.test');
         $yoga = $this->user('anak2@ngekos.test');
 
-        // Tanpa KTP ditolak validasi.
+        // Tanpa KTP: tambah teman langsung berhasil (KTP tidak lagi diminta).
         Sanctum::actingAs($rina, ['*']);
 
-        $this->postJson("/api/penyewaan/{$sewa->id}/anggota", [
-            'email' => 'anak3@ngekos.test',
-        ])->assertStatus(422)->assertJsonValidationErrors('ktp');
+        $kamarBaru = Kamar::create([
+            'properti_id' => $sewa->properti_id,
+            'nama' => 'PT-'.uniqid(),
+            'kapasitas' => 2,
+            'harga_sewa_bulanan' => 1200000,
+            'status' => 'tersedia',
+        ]);
+        $sewaBaru = app(PenyewaanService::class)->sewaKamar(
+            $rina, $kamarBaru, today()->toDateString(), 1
+        );
 
-        // Kamar penuh (2/2): tambah orang ketiga ditolak walau bawa KTP.
-        $this->postJson("/api/penyewaan/{$sewa->id}/anggota", [
+        $this->postJson("/api/penyewaan/{$sewaBaru->id}/anggota", [
             'email' => 'anak3@ngekos.test',
-            'ktp' => UploadedFile::fake()->image('ktp.jpg'),
+        ])->assertCreated();
+
+        // Kamar penuh (2/2): tambah orang yang sama lagi tetap ditolak.
+        $this->postJson("/api/penyewaan/{$sewaBaru->id}/anggota", [
+            'email' => 'anak3@ngekos.test',
         ])->assertStatus(422);
 
         // Yoga keluar partial via API (porsinya belum lunas -> 422).
@@ -451,6 +453,7 @@ class FiturBaruTest extends TestCase
             'nama' => $properti->nama,
             'jenis_harga' => 'bulanan',
             'status' => 'aktif',
+            'fasilitas' => 'WiFi, Parkir',
             'fotos' => [
                 UploadedFile::fake()->image('g1.jpg'),
                 UploadedFile::fake()->image('g2.jpg'),
@@ -495,21 +498,17 @@ class FiturBaruTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_volt_lengkapi_ktp_susulan(): void
+    public function test_volt_tambah_teman_tanpa_ktp_dan_dp_terdeteksi(): void
     {
-        Storage::fake('public');
-        Storage::fake('private');
-
         $anak = $this->user('anak1@ngekos.test');
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('status', 'aktif')->firstOrFail();
         $sewa->update(['ktp_path' => null]);
 
+        // Modal KTP susulan sudah dihapus — booking baru tidak butuh KTP sama sekali.
+        // Pastikan halaman dashboard anak kos tetap terbuka normal.
         Volt::actingAs($anak)->test('pages.dashboard.anak-kos')
-            ->call('bukaModalKtp', $sewa->id)
-            ->set('ktpSusulan', UploadedFile::fake()->image('ktp.jpg'))
-            ->call('simpanKtpSusulan')
-            ->assertSet('modalKtpId', null);
+            ->assertHasNoErrors();
 
-        $this->assertNotNull($sewa->refresh()->ktp_path);
+        $this->assertNull($sewa->refresh()->ktp_path);
     }
 }

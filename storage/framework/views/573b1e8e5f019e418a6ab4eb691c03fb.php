@@ -29,6 +29,8 @@ foreach ($attributes->all() as $__key => $__value) {
 unset($__defined_vars, $__key, $__value); ?>
 
 <?php
+    // Terima string maupun BackedEnum (mis. PropertiStatus/KamarStatus dari cast model).
+    $status = $status instanceof \BackedEnum ? $status->value : (string) $status;
     $colors = [
         'tersedia' => 'bg-emerald-50 text-emerald-700 ring-emerald-200/80 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800',
         'terisi' => 'bg-amber-50 text-amber-700 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800',

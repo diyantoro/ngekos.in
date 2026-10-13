@@ -15,7 +15,7 @@ class PenggunaController extends Controller
     {
         $request->validate([
             'search' => 'nullable|string|max:100',
-            'peran' => 'nullable|in:super_admin,admin,pemilik,anak_kos',
+            'peran' => ['nullable', Rule::enum(UserRole::class)],
         ]);
 
         $users = User::query()

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\Properti;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Storage;
@@ -56,9 +57,10 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        $properti->update(['status' => $status === 'aktif' ? 'aktif' : 'nonaktif']);
+        $statusEnum = PropertiStatus::tryFrom($status) ?? PropertiStatus::Nonaktif;
+        $properti->update(['status' => $statusEnum]);
 
-        $this->pesan = $status === 'aktif'
+        $this->pesan = $statusEnum === PropertiStatus::Aktif
             ? "Kos \"{$properti->nama}\" kini tampil di halaman Cari Kos."
             : "Kos \"{$properti->nama}\" disembunyikan dari halaman Cari Kos.";
     }
@@ -181,7 +183,7 @@ new #[Layout('layouts.app')] class extends Component
                                class="inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                 Ubah
                             </a>
-                            @if ($properti->status === 'aktif')
+                            @if ($properti->status === \App\Enums\PropertiStatus::Aktif)
                                 <button wire:click="ubahStatus({{ $properti->id }}, 'nonaktif')"
                                     class="inline-flex items-center justify-center rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition">
                                     Sembunyikan

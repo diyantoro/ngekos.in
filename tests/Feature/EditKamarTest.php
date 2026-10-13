@@ -38,7 +38,7 @@ class EditKamarTest extends TestCase
             ->assertSet('kapasitas', (int) $kamar->kapasitas)
             ->assertSet('harga', $kamar->harga_sewa_bulanan)
             ->assertSet('harga_harian', $kamar->harga_sewa_harian)
-            ->assertSet('status', $kamar->status);
+            ->assertSet('status', $kamar->status->value);
 
         $component->set('nama', 'Kamar A1 Revisi')
             ->set('harga', '1200000')
@@ -64,9 +64,17 @@ class EditKamarTest extends TestCase
 
     public function test_ubah_muncul_di_form_dan_kamar_baru_bisa_langsung_diedit(): void
     {
-        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        // Pemilik segar dalam kuota FREE (0 kamar) agar penambahan kamar
+        // diizinkan aturan paket; trial tidak menghapus batas kuota.
+        $pemilik = User::factory()->create();
+        $pemilik->assignRole('pemilik');
+        $pemilik = $pemilik->refresh();
         \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
-        $properti = Properti::where('pemilik_id', $pemilik->id)->firstOrFail();
+        $properti = Properti::create([
+            'pemilik_id' => $pemilik->id,
+            'nama' => 'Kos Uji Kamar',
+            'status' => 'aktif',
+        ]);
 
         // Tambah kamar baru via komponen.
         $component = Livewire::actingAs($pemilik)->test('pages.pemilik.kamar', ['properti' => $properti]);

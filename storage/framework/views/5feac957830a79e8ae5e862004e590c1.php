@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
+use App\Support\AturanKos;
 use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -529,15 +531,15 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <select wire:model="kota" id="kota" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="">-- Pilih kota --</option>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kota && ! in_array($kota, $daftarKota)): ?>
-                            <option value="<?php echo e($kota); ?>"><?php echo e($kota); ?> (saat ini)</option>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <input wire:model.live.debounce.300ms="kota" id="kota" list="daftar-kota" autocomplete="off"
+                        placeholder="Ketik nama kota… (mis. Bandung, Surabaya)"
+                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500" />
+                    <datalist id="daftar-kota">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $daftarKota; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $namaKota): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <option value="<?php echo e($namaKota); ?>"><?php echo e($namaKota); ?></option>
+                            <option value="<?php echo e($namaKota); ?>"></option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    </select>
+                    </datalist>
+                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500"><?php echo e(count($daftarKota)); ?> kota/kabupaten baku tersedia — ketik lalu pilih dari saran agar ejaan sesuai (contoh: “Surabaya” bukan “surabya”). Awalan “Kota/Kab.” otomatis dirapikan saat disimpan.</p>
                     <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('kota'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -581,8 +583,9 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="aktif">Aktif -- tampil di Cari Kos</option>
-                        <option value="nonaktif">Nonaktif -- disembunyikan</option>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\PropertiStatus::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opsiStatus): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($opsiStatus->value); ?>"><?php echo e($opsiStatus->label()); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </select>
                     <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
@@ -898,42 +901,33 @@ use Livewire\WithFileUploads;
 <?php endif; ?>
             </div>
 
-            <!-- Harga: sekali input bulanan + mingguan + harian -->
-            <div>
-                <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['value' => 'Harga Sewa (sekali isi, pencari kos yang memilih)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('input-label'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['value' => 'Harga Sewa (sekali isi, pencari kos yang memilih)']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
-<?php $attributes = $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
-<?php unset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
-<?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
-<?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
-<?php endif; ?>
-                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Isi harga per bulan (wajib). Harga per minggu & per hari opsional — kosongkan bila tidak menerima periode itu.</p>
+            <!-- Harga: kini diatur per kamar, bukan per kos -->
+            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3">
+                <p class="text-sm font-bold text-teal-800 dark:text-teal-200">Harga diatur per kamar</p>
+                <p class="mt-0.5 text-xs text-teal-700 dark:text-teal-300 leading-relaxed">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($properti): ?>
+                        Harga tampil di katalog diambil otomatis dari kamar termurah kos ini. Atur / ubah harga di halaman
+                        <a href="<?php echo e(route('pemilik.kamar', $properti->id)); ?>" wire:navigate class="font-bold underline hover:no-underline">Kelola Kamar</a>.
+                    <?php else: ?>
+                        Simpan kos dulu, lalu atur harga tiap kamar di halaman <span class="font-bold">Kelola Kamar</span> (per bulan wajib, per minggu / per hari opsional).
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    Kolom harga kos lama di bawah hanya untuk kompatibilitas data lama dan boleh dikosongkan.
+                </p>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+            <details class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 px-4 py-3">
+                <summary class="cursor-pointer text-xs font-semibold text-gray-500 dark:text-gray-400">Harga kos lama (opsional, boleh dikosongkan)</summary>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga','value' => 'Harga per Bulan (Rp)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga','value' => 'Harga per Bulan (Rp) — legasi']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['for' => 'harga','value' => 'Harga per Bulan (Rp)']); ?>
+<?php $component->withAttributes(['for' => 'harga','value' => 'Harga per Bulan (Rp) — legasi']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -944,16 +938,16 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga','id' => 'harga','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 750000']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga','id' => 'harga','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('text-input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'harga','id' => 'harga','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 750000']); ?>
+<?php $component->withAttributes(['wire:model' => 'harga','id' => 'harga','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
@@ -964,7 +958,7 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
 <?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('harga'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-error'); ?>
@@ -984,18 +978,18 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
-                </div>
-                <div>
-                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+                    </div>
+                    <div>
+                        <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_mingguan','value' => 'Harga per Minggu (Rp)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_mingguan','value' => 'Harga per Minggu (Rp) — legasi']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['for' => 'harga_mingguan','value' => 'Harga per Minggu (Rp)']); ?>
+<?php $component->withAttributes(['for' => 'harga_mingguan','value' => 'Harga per Minggu (Rp) — legasi']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -1006,16 +1000,16 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_mingguan','id' => 'harga_mingguan','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 200000']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_mingguan','id' => 'harga_mingguan','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('text-input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'harga_mingguan','id' => 'harga_mingguan','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 200000']); ?>
+<?php $component->withAttributes(['wire:model' => 'harga_mingguan','id' => 'harga_mingguan','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
@@ -1026,7 +1020,7 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
 <?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('harga_mingguan'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-error'); ?>
@@ -1046,18 +1040,18 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
-                </div>
-                <div>
-                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+                    </div>
+                    <div>
+                        <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_harian','value' => 'Harga per Hari (Rp)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_harian','value' => 'Harga per Hari (Rp) — legasi']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['for' => 'harga_harian','value' => 'Harga per Hari (Rp)']); ?>
+<?php $component->withAttributes(['for' => 'harga_harian','value' => 'Harga per Hari (Rp) — legasi']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -1068,16 +1062,16 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_harian','id' => 'harga_harian','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 40000']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_harian','id' => 'harga_harian','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('text-input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'harga_harian','id' => 'harga_harian','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 40000']); ?>
+<?php $component->withAttributes(['wire:model' => 'harga_harian','id' => 'harga_harian','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
@@ -1088,7 +1082,7 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
 <?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('harga_harian'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-error'); ?>
@@ -1108,20 +1102,20 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
+                    </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_asli','value' => 'Harga Asli / Sebelum Diskon (Rp)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'harga_asli','value' => 'Harga Asli / Sebelum Diskon (Rp) — legasi']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['for' => 'harga_asli','value' => 'Harga Asli / Sebelum Diskon (Rp)']); ?>
+<?php $component->withAttributes(['for' => 'harga_asli','value' => 'Harga Asli / Sebelum Diskon (Rp) — legasi']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -1132,16 +1126,16 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginal18c21970322f9e5c938bc954620c12bb = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal18c21970322f9e5c938bc954620c12bb = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_asli','id' => 'harga_asli','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 900000 (dicoret)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.text-input','data' => ['wire:model' => 'harga_asli','id' => 'harga_asli','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('text-input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'harga_asli','id' => 'harga_asli','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Contoh: 900000 (dicoret)']); ?>
+<?php $component->withAttributes(['wire:model' => 'harga_asli','id' => 'harga_asli','class' => 'mt-1 block w-full','type' => 'number','min' => '0','placeholder' => 'Kosongkan — isi di kamar']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal18c21970322f9e5c938bc954620c12bb)): ?>
@@ -1152,7 +1146,7 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginal18c21970322f9e5c938bc954620c12bb; ?>
 <?php unset($__componentOriginal18c21970322f9e5c938bc954620c12bb); ?>
 <?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-error','data' => ['messages' => $errors->get('harga_asli'),'class' => 'mt-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-error'); ?>
@@ -1172,21 +1166,22 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginalf94ed9c5393ef72725d159fe01139746; ?>
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
+                    </div>
                 </div>
-            </div>
+            </details>
 
             <!-- Fasilitas - Checkboxes dengan Ikon -->
             <div>
                 <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['value' => 'Fasilitas yang Tersedia']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['value' => 'Fasilitas & Peraturan Kos (Umum / Bersama)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['value' => 'Fasilitas yang Tersedia']); ?>
+<?php $component->withAttributes(['value' => 'Fasilitas & Peraturan Kos (Umum / Bersama)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -1197,18 +1192,18 @@ use Livewire\WithFileUploads;
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Pilih fasilitas yang tersedia di kos Anda.</p>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Pilih fasilitas bersama (WiFi, dapur bersama, parkir) dan peraturan yang berlaku untuk seluruh kos. Fasilitas privat kamar (AC, kasur, kamar mandi dalam) diisi di halaman Kelola Kamar. Aturan kustom lainnya bisa ditulis di kolom Aturan Kos di bawah.</p>
                 <div class="mt-3">
                     <?php if (isset($component)) { $__componentOriginalb22b9ef51f0fdeb575f9479da907b656 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalb22b9ef51f0fdeb575f9479da907b656 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.facility-icons','data' => ['selected' => $fasilitasTerpilih,'editable' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.facility-icons','data' => ['selected' => $fasilitasTerpilih,'editable' => true,'scope' => 'kos']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('facility-icons'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['selected' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($fasilitasTerpilih),'editable' => true]); ?>
+<?php $component->withAttributes(['selected' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($fasilitasTerpilih),'editable' => true,'scope' => 'kos']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalb22b9ef51f0fdeb575f9479da907b656)): ?>
@@ -1296,16 +1291,17 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
             <!-- Aturan -->
             <div>
-                <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+                <div class="flex items-center justify-between gap-2">
+                    <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'aturan','value' => 'Aturan Kos']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['for' => 'aturan','value' => 'Aturan Kos (terurut)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('input-label'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['for' => 'aturan','value' => 'Aturan Kos']); ?>
+<?php $component->withAttributes(['for' => 'aturan','value' => 'Aturan Kos (terurut)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
@@ -1316,7 +1312,13 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
-                <textarea wire:model="aturan" id="aturan" rows="3" placeholder="Contoh: Jam malam 23.00, dilarang membawa tamu menginap"
+                    <button type="button" wire:click="isiTemplateAturan"
+                        class="shrink-0 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 hover:underline">
+                        Isi template baku
+                    </button>
+                </div>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Satu baris satu aturan, sudah terurut: identitas → jam malam → tamu → kebersihan → larangan → hewan → pembayaran → keluar. Hapus baris yang tidak perlu.</p>
+                <textarea wire:model="aturan" id="aturan" rows="6" placeholder="Contoh, satu baris satu aturan:&#10;Jam malam 22.00, gerbang dikunci&#10;Tamu wajib lapor, dilarang menginap tanpa izin&#10;Dilarang merokok di dalam kamar"
                     class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
                 <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
@@ -1476,27 +1478,48 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         try {
             const el = document.getElementById('peta-properti-form');
             const peta = el ? JSON.parse(el.dataset.pusatKota || '{}') : {};
-            const t = peta[nama];
-            if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+            // Cocok persis dulu, lalu case-insensitive (ketikan "padang" -> "Padang").
+            // Awalan "Kota/Kab." diabaikan ("Kota Bandung" -> "Bandung").
+            const bersih = String(nama || '').trim().replace(/^(kota|kotamadya|kabupaten|kab\.?)\s+/i, '').trim();
+            const kunci = [nama, bersih, String(nama || '').trim()];
+            for (const k of kunci) {
+                const t = peta[k];
+                if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+            }
+            const cari = bersih.toLowerCase();
+            for (const k of Object.keys(peta)) {
+                if (k.toLowerCase() === cari) {
+                    const t = peta[k];
+                    if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+                }
+            }
         } catch (e) {}
         return null;
     }
 
     function pasangPilihKotaForm() {
-        // Pilih kota di dropdown -> pin pindah ke pusat kota + peta mengikut.
+        // Ketik/pilih kota di input -> pin pindah ke pusat kota + peta mengikut.
         if (window.__petaFormKotaOn) return;
         window.__petaFormKotaOn = true;
-        document.addEventListener('change', (e) => {
-            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
-            if (!pilih || !document.getElementById('peta-properti-form')) return;
-            const nama = (pilih.value || '').trim();
-            if (!nama) return;
+        const pindahKeKota = (nama) => {
+            if (!nama || !document.getElementById('peta-properti-form')) return;
             const tengah = pusatKotaDariNama(nama);
             if (!tengah || Number.isNaN(tengah.lat) || Number.isNaN(tengah.lng)) {
-                tulisStatusForm('Kota "' + nama + '" belum punya titik pusat di peta.');
                 return;
             }
             setKoordinatForm(tengah.lat, tengah.lng);
+        };
+        let tundaKota = null;
+        document.addEventListener('change', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih) return;
+            pindahKeKota((pilih.value || '').trim());
+        });
+        document.addEventListener('input', (e) => {
+            const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
+            if (!pilih) return;
+            clearTimeout(tundaKota);
+            tundaKota = setTimeout(() => pindahKeKota((pilih.value || '').trim()), 600);
         });
     }
 

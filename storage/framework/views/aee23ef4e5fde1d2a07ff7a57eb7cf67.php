@@ -97,6 +97,7 @@ use Livewire\Volt\Component;
                 <option value="belum">Belum lunas</option>
                 <option value="telat">Telat</option>
                 <option value="lunas">Lunas</option>
+                <option value="batal">Dibatalkan</option>
                 <option value="semua">Semua</option>
             </select>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($cari !== '' || $filter !== 'belum'): ?>

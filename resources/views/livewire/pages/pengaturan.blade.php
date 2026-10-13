@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -65,9 +66,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public function bolehKelola(): bool
     {
-        return Auth::user()
-            ->getAllPermissions()
-            ->contains('name', 'konfigurasi.kelola');
+        return Auth::user()?->hasRole(UserRole::SuperAdmin) ?? false;
     }
 
     public function simpanSitus(): void

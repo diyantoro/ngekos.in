@@ -149,11 +149,35 @@ class TambahPropertiTest extends TestCase
             ->test('pages.pemilik.properti-form')
             ->html();
 
+        // Form kos hanya menampilkan fasilitas umum/bersama + peraturan kos
+        // (fasilitas privat kamar pindah ke Kelola Kamar).
+        $this->assertStringContainsString('Fasilitas &amp; Peraturan Kos', $view);
+        $this->assertStringContainsString('Fasilitas Umum Kos', $view);
+        $this->assertStringContainsString('Fasilitas Parkir Kos', $view);
+        $this->assertStringContainsString('Peraturan Kos', $view);
+        $this->assertStringContainsString('Dilarang Merokok', $view);
+        $this->assertStringContainsString('images/fasilitas/wifi.png', $view);
+        $this->assertStringNotContainsString('Fasilitas Kamar Mandi', $view);
+    }
+
+    public function test_form_kamar_hanya_tampil_fasilitas_kamar(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+        $properti = Properti::create([
+            'pemilik_id' => $pemilik->id,
+            'nama' => 'Kos Uji Kamar',
+            'kota' => 'Bandung',
+            'fasilitas' => 'WiFi',
+            'status' => 'aktif',
+        ]);
+
+        $view = Livewire::actingAs($pemilik)
+            ->test('pages.pemilik.kamar', ['properti' => $properti])
+            ->html();
+
         $this->assertStringContainsString('Fasilitas Kamar', $view);
         $this->assertStringContainsString('Fasilitas Kamar Mandi', $view);
-        $this->assertStringContainsString('Fasilitas Parkir', $view);
-        $this->assertStringContainsString('Fasilitas Umum', $view);
-        $this->assertStringContainsString('Peraturan Khusus', $view);
-        $this->assertStringContainsString('images/fasilitas/ac.png', $view);
+        $this->assertStringNotContainsString('Fasilitas Umum Kos', $view);
     }
 }

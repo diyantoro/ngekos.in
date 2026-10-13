@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('pengaturans', function (Blueprint $table) {
             $table->id();
-            $table->string('kunci')->unique();
+            $table->string('kunci', 100)->unique();
             $table->text('nilai')->nullable();
             $table->timestamps();
         });

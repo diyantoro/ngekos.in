@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\LanggananPlan;
+use App\Enums\LanggananStatus;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
@@ -117,9 +119,9 @@ use Livewire\Volt\Component;
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
                 <select wire:model="plan" id="plan" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                    <option value="free">FREE</option>
-                    <option value="pro">PRO</option>
-                    <option value="business">BUSINESS</option>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\LanggananPlan::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opsiPlan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($opsiPlan->value); ?>"><?php echo e(strtoupper($opsiPlan->value)); ?></option>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </select>
                 <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
@@ -164,9 +166,9 @@ use Livewire\Volt\Component;
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
                 <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                    <option value="active">ACTIVE</option>
-                    <option value="expired">EXPIRED</option>
-                    <option value="cancelled">CANCELLED</option>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\LanggananStatus::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opsiStatus): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($opsiStatus->value); ?>"><?php echo e(strtoupper($opsiStatus->value)); ?></option>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </select>
                 <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\KamarStatus;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\Ulasan;
@@ -33,8 +34,6 @@ new #[Layout('layouts.publik')] class extends Component
     public string $periodeSewa = 'bulanan';
 
     public int $langkahSewa = 1;
-
-    public $ktp = null;
 
     public bool $favorit = false;
 
@@ -92,7 +91,7 @@ new #[Layout('layouts.publik')] class extends Component
             ->where('properti_id', $this->properti->id)
             ->orderBy('nama')
             ->get();
-        $tersedia = $kamars->where('status', 'tersedia');
+        $tersedia = $kamars->where('status', KamarStatus::Tersedia);
 
         return [
             'kamars' => $kamars,
@@ -122,7 +121,7 @@ new #[Layout('layouts.publik')] class extends Component
 
         $kamar = Kamar::where('id', $kamarId)->where('properti_id', $this->properti->id)->first();
 
-        if (! $kamar || $kamar->status !== 'tersedia') {
+        if (! $kamar || $kamar->status !== KamarStatus::Tersedia) {
             $this->galat = 'Kamar tidak tersedia saat ini.';
             $this->pesan = null;
 
@@ -157,7 +156,6 @@ new #[Layout('layouts.publik')] class extends Component
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
-        $this->ktp = null;
         $this->resetValidation();
     }
 
@@ -192,7 +190,6 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $rules = array_merge([
             'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addDays(10)->toDateString()],
-            'ktp' => PenyewaanService::ATURAN_KTP,
         ], $this->aturanDurasi());
 
         $this->validate($rules, array_merge([
@@ -200,7 +197,7 @@ new #[Layout('layouts.publik')] class extends Component
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
             'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 10 hari ke depan.',
-        ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
+        ], $this->pesanDurasi()));
 
         // Pastikan periode yang dipilih memang punya harga.
         $kamar = Kamar::where('id', $this->modalKamarId)->where('properti_id', $this->properti->id)->first();
@@ -232,7 +229,6 @@ new #[Layout('layouts.publik')] class extends Component
 
         $rules = array_merge([
             'tanggalMasuk' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:' . today()->addDays(10)->toDateString()],
-            'ktp' => PenyewaanService::ATURAN_KTP,
         ], $this->aturanDurasi());
 
         $this->validate($rules, array_merge([
@@ -240,7 +236,7 @@ new #[Layout('layouts.publik')] class extends Component
             'tanggalMasuk.date' => 'Tanggal masuk tidak valid.',
             'tanggalMasuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
             'tanggalMasuk.before_or_equal' => 'Tanggal masuk maksimal 10 hari ke depan.',
-        ], $this->pesanDurasi(), PenyewaanService::pesanKtp()));
+        ], $this->pesanDurasi()));
 
         $kamar = Kamar::with('properti')
             ->where('id', $this->modalKamarId)
@@ -262,8 +258,6 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
-        $ktpPath = $this->ktp ? \App\Services\KtpStorage::simpan($this->ktp) : null;
-
         try {
             app(PenyewaanService::class)->sewaKamar(
                 auth()->user(),
@@ -271,11 +265,9 @@ new #[Layout('layouts.publik')] class extends Component
                 $this->tanggalMasuk,
                 $this->durasiBulan,
                 $this->periodeSewa === 'harian' ? $this->durasiHari : null,
-                $ktpPath,
                 $this->periodeSewa === 'mingguan' ? $this->durasiMinggu : null,
             );
         } catch (DomainException $e) {
-            \App\Services\KtpStorage::hapus($ktpPath);
             $this->resetForm();
             $this->galat = $e->getMessage();
 
@@ -296,7 +288,7 @@ new #[Layout('layouts.publik')] class extends Component
         $totalTagihan = round((float) $harga * $durasi);
         $pesanBaru = 'Kamar '.$kamar->nama.' berhasil dipesan selama '.$durasi.' '.$satuan.'. '
             .'Rencana masuk: '.Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
-            .' — tagihan Rp'.number_format($totalTagihan, 0, ',', '.').' menunggu pembayaran.';
+            .' — tagihan Rp'.number_format($totalTagihan, 0, ',', '.').' menunggu pembayaran. Segera bayar Uang Muka (DP) agar booking fiks.';
         $this->pesan = $pesanBaru;
         $this->resetForm();
         $this->dispatch('booking-sukses', pesan: $pesanBaru);
@@ -357,7 +349,6 @@ new #[Layout('layouts.publik')] class extends Component
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
-        $this->ktp = null;
         $this->resetValidation();
     }
 }; ?>
@@ -535,10 +526,11 @@ new #[Layout('layouts.publik')] class extends Component
 
             @if ($properti->fasilitas)
                 <div class="mt-4">
-                    <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas</h2>
+                    <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas Kos (Umum / Bersama)</h2>
                     <div class="mt-2">
                         <x-facility-icons :fasilitas="$properti->fasilitas" />
                     </div>
+                    <p class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Fasilitas privat tiap kamar (AC, kasur, kamar mandi dalam, dll) tercantum di masing-masing kamar di bawah.</p>
                 </div>
             @endif
 
@@ -624,7 +616,7 @@ new #[Layout('layouts.publik')] class extends Component
                                         <x-harga-tiga-periode :bulanan="$kamar->harga_sewa_bulanan" :mingguan="$kamar->harga_sewa_mingguan" :harian="$kamar->harga_sewa_harian" :asli="($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan) ? $kamar->harga_asli : null" varian="rincian" />
                                     </div>
 
-                                    @if ($kamar->status === 'tersedia')
+                                    @if ($kamar->status === \App\Enums\KamarStatus::Tersedia)
                                         @auth
                                             @if (auth()->user()->hasRole('anak_kos'))
                                                 <div class="flex items-center gap-2">
@@ -795,7 +787,7 @@ new #[Layout('layouts.publik')] class extends Component
                 <form wire:submit="konfirmasiSewa" class="p-5 space-y-4">
                     {{-- Step 1: Pilih tanggal --}}
                     <div wire:key="langkah-1" @if ($langkahSewa !== 1) class="hidden" @endif>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 10 hari ke depan) dan lama sewa. Tagihan dibuat otomatis untuk dibayar.</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi dan tanpa perlu upload KTP. Pilih tanggal kamu berencana masuk (maksimal 10 hari ke depan) dan lama sewa. Tagihan dibuat otomatis — bayar Uang Muka (DP) agar booking fiks.</p>
                         <div class="mt-4">
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Masuk</label>
                             <input type="date" wire:model="tanggalMasuk" min="{{ today()->toDateString() }}" max="{{ today()->addDays(10)->toDateString() }}"
@@ -863,16 +855,8 @@ new #[Layout('layouts.publik')] class extends Component
                                 @error('durasiBulan') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             @endif
                         </div>
-                        <div class="mt-4">
-                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto KTP <span class="text-rose-500">*</span></label>
-                            <input type="file" wire:model="ktp" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
-                            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Wajib. JPG/PNG/WEBP/PDF, maks 2MB. Data hanya untuk verifikasi pemilik.</p>
-                            @error('ktp') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
-                            <div wire:loading wire:target="ktp" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
-                                <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                Mengunggah KTP...
-                            </div>
+                        <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-xs text-teal-800 dark:text-teal-200">
+                            Tanpa KTP — privasimu aman. Cukup bayar <span class="font-bold">Uang Muka (DP) Rp{{ number_format($kamarModal?->hargaUntuk($periodeSewa) ?? 0, 0, ',', '.') }}</span> (tagihan pertama) setelah booking agar kamar fiks untukmu.
                         </div>
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
@@ -925,7 +909,7 @@ new #[Layout('layouts.publik')] class extends Component
                             </div>
                         </div>
 
-                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu. Kamu akan melihat tagihan sewa di dashboard.</p>
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu — tanpa upload KTP. Kamu akan melihat tagihan sewa di dashboard; bayar Uang Muka (DP) agar booking fiks.</p>
 
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="kembaliKeTanggal" wire:loading.attr="disabled"

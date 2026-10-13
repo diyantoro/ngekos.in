@@ -55,8 +55,7 @@ class PemilikLaporanPremiumController extends Controller
     public function pdf(Request $request): StreamedResponse
     {
         $data = $this->garantikanAkses($request);
-        $tier = strtoupper($data['tier'] ?? 'pro');
-        $nama = "laporan-{$tier}-".$data['bulan'].'.pdf';
+        $nama = 'laporan-premium-'.$data['bulan'].'.pdf';
 
         $pdf = Pdf::loadView('exports.laporan-premium', $data)
             ->setPaper('a4', 'portrait');
@@ -71,8 +70,7 @@ class PemilikLaporanPremiumController extends Controller
     public function excel(Request $request): StreamedResponse
     {
         $data = $this->garantikanAkses($request);
-        $tier = strtoupper($data['tier'] ?? 'pro');
-        $nama = "laporan-{$tier}-".$data['bulan'].'.xlsx';
+        $nama = 'laporan-premium-'.$data['bulan'].'.xlsx';
 
         $spreadsheet = new Spreadsheet();
         $this->sheetRingkasan($spreadsheet->getActiveSheet(), $data);
@@ -81,11 +79,10 @@ class PemilikLaporanPremiumController extends Controller
         $this->sheetTren($spreadsheet->createSheet(), $data);
         $this->sheetKategori($spreadsheet->createSheet(), $data);
 
+        // BUSINESS = 5 sheet dasar + 2 tambahan (total 7, sesuai "Excel 7 sheet").
         if (($data['tier'] ?? 'pro') === 'business') {
             $this->sheetRincianTiapKos($spreadsheet->createSheet(), $data);
             $this->sheetTransaksiDetail($spreadsheet->createSheet(), $data);
-            $this->sheetPertumbuhan($spreadsheet->createSheet(), $data);
-            $this->sheetPenyewaMetode($spreadsheet->createSheet(), $data);
         }
 
         $spreadsheet->setActiveSheetIndex(0);
@@ -408,77 +405,5 @@ class PemilikLaporanPremiumController extends Controller
             $baris++;
         }
         $this->finalisasi($sheet, 8, $baris - 1, [8]);
-    }
-
-    private function sheetPertumbuhan(Worksheet $sheet, array $data): void
-    {
-        $baris = $this->tulisKepala($sheet, 'Pertumbuhan Bulanan', 'Pertumbuhan Bulan ke Bulan (Khusus BUSINESS)', $this->metaDasar($data), ['Bulan', 'Pendapatan (Rp)', 'Naik/Turun (%)', 'Pengeluaran (Rp)', 'Naik/Turun (%)', 'Untung Bersih (Rp)', 'Naik/Turun (%)', 'Okupansi (%)']);
-
-        foreach ($data['pertumbuhan'] ?? [] as $p) {
-            $sheet->setCellValue("A{$baris}", $p['bulan']);
-            $sheet->setCellValue("B{$baris}", (int) $p['pendapatan']);
-            $sheet->setCellValue("C{$baris}", (int) $p['pendapatan_pct']);
-            $sheet->setCellValue("D{$baris}", (int) $p['pengeluaran']);
-            $sheet->setCellValue("E{$baris}", (int) $p['pengeluaran_pct']);
-            $sheet->setCellValue("F{$baris}", (int) $p['laba']);
-            $sheet->setCellValue("G{$baris}", (int) $p['laba_pct']);
-            $sheet->setCellValue("H{$baris}", (int) $p['okupansi']);
-            $baris++;
-        }
-        $this->finalisasi($sheet, 8, $baris - 1, [2, 4, 6], [3, 5, 7, 8]);
-    }
-
-    private function sheetPenyewaMetode(Worksheet $sheet, array $data): void
-    {
-        $baris = $this->tulisKepala($sheet, 'Penyewa & Metode', 'Metode Pembayaran & Top Penyewa (Khusus BUSINESS)', $this->metaDasar($data), ['Metode', 'Jumlah Transaksi', 'Total (Rp)']);
-
-        foreach ($data['metode_pembayaran'] ?? [] as $m) {
-            $sheet->setCellValue("A{$baris}", $m['label']);
-            $sheet->setCellValue("B{$baris}", (int) $m['jumlah_transaksi']);
-            $sheet->setCellValue("C{$baris}", (int) $m['total']);
-            $baris++;
-        }
-        $this->finalisasi($sheet, 3, $baris - 1, [3]);
-
-        $baris += 2;
-        $sheet->setCellValue("A{$baris}", 'Top 10 penyewa dengan pembayaran terbesar');
-        $sheet->getStyle("A{$baris}")->getFont()->setBold(true)->setSize(12)->getColor()->setRGB('0D9488');
-        $baris++;
-
-        $headers = ['Peringkat', 'Penyewa', 'Jumlah Transaksi', 'Total Bayar (Rp)'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(Coordinate::stringFromColumnIndex($i + 1).$baris, $h);
-        }
-        $sheet->getStyle("A{$baris}:D{$baris}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
-        $sheet->getStyle("A{$baris}:D{$baris}")->getFill()
-            ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D9488');
-        $barisAwal = $baris + 1;
-        $baris = $barisAwal;
-        $no = 1;
-        foreach ($data['top_penyewa'] ?? [] as $p) {
-            $sheet->setCellValue("A{$baris}", $no++);
-            $sheet->setCellValue("B{$baris}", $p['nama']);
-            $sheet->setCellValue("C{$baris}", (int) $p['jumlah_transaksi']);
-            $sheet->setCellValue("D{$baris}", (int) $p['total']);
-            $baris++;
-        }
-
-        if ($baris > $barisAwal) {
-            $sheet->freezePane('A'.($barisAwal + 1));
-            $sheet->setAutoFilter("A{$barisAwal}:D".($baris - 1));
-            $sheet->getStyle("D{$barisAwal}:D".($baris - 1))->getNumberFormat()->setFormatCode('#,##0');
-            $sheet->setCellValue("A{$baris}", 'TOTAL');
-            $sheet->setCellValue("D{$baris}", "=SUM(D{$barisAwal}:D".($baris - 1).')');
-            $sheet->getStyle("D{$baris}")->getNumberFormat()->setFormatCode('#,##0');
-            $sheet->getStyle("A{$baris}:D{$baris}")->getFont()->setBold(true);
-        } else {
-            $sheet->setCellValue("A{$barisAwal}", 'Belum ada data pada periode ini.');
-            $sheet->getStyle("A{$barisAwal}")->getFont()->setItalic(true)->getColor()->setRGB('9CA3AF');
-        }
-
-        foreach (range(1, 4) as $c) {
-            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
-        }
-        $sheet->getPageSetup()->setFitToPage(true);
     }
 }

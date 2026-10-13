@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PembayaranStatus;
 use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use DomainException;
@@ -18,7 +19,7 @@ class PembayaranService
      */
     public static function verifikasi(Pembayaran $pembayaran, int $verifikatorId, string $status = 'diverifikasi'): array
     {
-        if (! in_array($status, ['diverifikasi', 'ditolak'], true)) {
+        if (! in_array($status, [PembayaranStatus::Diverifikasi->value, PembayaranStatus::Ditolak->value], true)) {
             throw new DomainException('Status verifikasi tidak valid.');
         }
 

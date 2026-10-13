@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\LanggananPlan;
+use App\Enums\LanggananStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
@@ -74,8 +76,8 @@ class SubscriptionController extends Controller
     {
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'plan' => ['required', 'in:free,pro,business'],
-            'status' => ['required', 'in:active,expired,cancelled'],
+            'plan' => ['required', \Illuminate\Validation\Rule::enum(LanggananPlan::class)],
+            'status' => ['required', \Illuminate\Validation\Rule::enum(LanggananStatus::class)],
             'starts_at' => ['required_if:status,active', 'nullable', 'date'],
             'expires_at' => ['required_if:status,active', 'nullable', 'date', 'after:starts_at'],
         ]);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\Pengaturan;
 use App\Models\Properti;
 use Illuminate\Support\Facades\Storage;
@@ -96,7 +97,7 @@ new #[Layout('layouts.app')] class extends Component
         if ($this->heroPropertiId) {
             $kos = Properti::select(['id', 'status'])->find($this->heroPropertiId);
 
-            if (! $kos || $kos->status !== 'aktif') {
+            if (! $kos || $kos->status !== PropertiStatus::Aktif) {
                 $this->galat = 'Kos terpilih tidak aktif sehingga tidak bisa dipin di hero.';
 
                 return;
@@ -433,7 +434,7 @@ new #[Layout('layouts.app')] class extends Component
                             <option value="{{ $heroProperti->id }}">{{ $heroProperti->nama }} — terpin saat ini</option>
                         @endif
                         @foreach ($landingPropertis as $lp)
-                            <option value="{{ $lp->id }}">{{ $lp->nama }} — {{ $lp->kota ?? '-' }} ({{ $lp->status }})</option>
+                            <option value="{{ $lp->id }}">{{ $lp->nama }} — {{ $lp->kota ?? '-' }} ({{ $lp->status?->value ?? '-' }})</option>
                         @endforeach
                     </select>
                     <div class="flex gap-2">
@@ -460,7 +461,7 @@ new #[Layout('layouts.app')] class extends Component
                         </div>
                         <span class="ml-auto shrink-0"><x-status-badge :status="$heroProperti->status" /></span>
                     </div>
-                    @if ($heroProperti->status !== 'aktif')
+                    @if ($heroProperti->status !== \App\Enums\PropertiStatus::Aktif)
                         <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">Kos ini tidak aktif — landing otomatis memakai kos terbaru sampai Anda ganti pin.</p>
                     @endif
                 @else

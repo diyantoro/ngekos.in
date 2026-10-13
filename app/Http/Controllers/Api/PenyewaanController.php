@@ -34,8 +34,7 @@ class PenyewaanController extends Controller
             'durasi_bulan' => ['required_if:periode,bulanan', 'integer', 'min:1', 'max:12'],
             'durasi_minggu' => ['required_if:periode,mingguan', 'integer', 'min:1', 'max:12'],
             'durasi_hari' => ['required_if:periode,harian', 'integer', 'min:1', 'max:90'],
-            'ktp' => \App\Services\PenyewaanService::ATURAN_KTP,
-        ], array_merge([
+        ], [
             'tanggal_masuk.required' => 'Tanggal masuk wajib diisi.',
             'tanggal_masuk.date' => 'Tanggal masuk tidak valid.',
             'tanggal_masuk.after_or_equal' => 'Tanggal masuk tidak boleh mundur dari hari ini.',
@@ -50,7 +49,7 @@ class PenyewaanController extends Controller
             'durasi_hari.required_if' => 'Lama sewa harian wajib diisi.',
             'durasi_hari.min' => 'Lama sewa harian minimal 1 hari.',
             'durasi_hari.max' => 'Lama sewa harian maksimal 90 hari.',
-        ], \App\Services\PenyewaanService::pesanKtp()));
+        ]);
 
         $kamar = Kamar::with('properti')
             ->where('id', $kamarId)
@@ -73,22 +72,18 @@ class PenyewaanController extends Controller
             ], 422);
         }
 
-        $ktpPath = \App\Services\KtpStorage::simpan($request->file('ktp'));
-
         try {
-            $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, $validated['tanggal_masuk'], $durasiBulan, $durasiHari, $ktpPath, $durasiMinggu);
+            $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, $validated['tanggal_masuk'], $durasiBulan, $durasiHari, $durasiMinggu);
         } catch (DomainException $e) {
-            \App\Services\KtpStorage::hapus($ktpPath);
-
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $tanggalLabel = Carbon::parse($penyewaan->tanggal_masuk)->locale('id')->translatedFormat('d F Y');
 
         $pesan = match ($periode) {
-            'harian' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiHari.' hari. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat dan menunggu pembayaran.',
-            'mingguan' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiMinggu.' minggu. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat dan menunggu pembayaran.',
-            default => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiBulan.' bulan. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat dan menunggu pembayaran.',
+            'harian' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiHari.' hari. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
+            'mingguan' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiMinggu.' minggu. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
+            default => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiBulan.' bulan. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
         };
 
         return response()->json([

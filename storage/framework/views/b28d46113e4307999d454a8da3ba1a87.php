@@ -67,11 +67,18 @@ use Livewire\Volt\Component;
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $sewaans; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sewaan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <?php
-                                $belumLunas = $sewaan->tagihans->where('status', '!=', 'lunas');
+                                $belumLunas = $sewaan->tagihans->whereNotIn('status', ['lunas', 'batal']);
                                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
                                 $anggotaAktifRow = $sewaan->anggotas->where('status', 'aktif');
                                 $isPatunganRow = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktifRow->isNotEmpty();
+                                $kurangBulanIni = \App\Services\CheckoutService::tagihanWajibBelumLunas($sewaan);
+                                $blokirCheckout = $kurangBulanIni->isNotEmpty();
+                                $alasanBlokir = $blokirCheckout ? 'Ada '.$kurangBulanIni->count().' tagihan sampai bulan ini yang belum lunas.' : null;
+                                $masaDepan = \App\Services\CheckoutService::tagihanMasaDepan($sewaan);
+                                $masaDepanTotal = $masaDepan->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+                                // DP = pembayaran terverifikasi pertama. Tanpa itu booking belum fiks.
+                                $dpLunas = $sewaan->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
                             ?>
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -79,17 +86,13 @@ use Livewire\Volt\Component;
 
                                     <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sewaan->ktp_path): ?>
-                                            <button type="button" wire:click="lihatKtp(<?php echo e($sewaan->id); ?>)" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama</button>
-                                        <?php else: ?>
-                                            <span class="font-semibold text-amber-600 dark:text-amber-400">KTP utama belum ada</span>
+                                            <button type="button" wire:click="lihatKtp(<?php echo e($sewaan->id); ?>)" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama (data lama)</button>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </span>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $anggotaAktifRow; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                         <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ <?php echo e($ag->user?->nama); ?> (<?php echo e((int) $ag->porsi_persen); ?>%)
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ag->ktp_path): ?>
-                                                · <button type="button" wire:click="lihatKtp(<?php echo e($sewaan->id); ?>, <?php echo e($ag->user_id); ?>)" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP</button>
-                                            <?php else: ?>
-                                                · <span class="font-semibold text-amber-600 dark:text-amber-400">KTP belum ada</span>
+                                                · <button type="button" wire:click="lihatKtp(<?php echo e($sewaan->id); ?>, <?php echo e($ag->user_id); ?>)" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP (data lama)</button>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         </span>
                                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -129,16 +132,83 @@ use Livewire\Volt\Component;
 <?php if (isset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62)): ?>
 <?php $component = $__componentOriginal8c81617a70e11bcf247c4db924ab1b62; ?>
 <?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
-<?php endif; ?></td>
+<?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $dpLunas): ?>
+                                        <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP</span>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </td>
                                 <td class="px-4 py-4">
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sewaan->status === 'aktif'): ?>
-                                        <div class="flex justify-end">
-                                            <button wire:click="checkOut(<?php echo e($sewaan->id); ?>)" wire:loading.attr="disabled"
-                                                wire:confirm="Check-out <?php echo e($sewaan->anakKos?->nama); ?> dari kamar <?php echo e($sewaan->kamar?->nama); ?>? Kamar akan kembali tersedia."
-                                                class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
-                                                Check-out
-                                            </button>
-                                        </div>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sewaan->permintaan_keluar_pada): ?>
+                                            <div class="flex flex-col items-end gap-1.5">
+                                                <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">
+                                                    Minta check-out <?php echo e($sewaan->permintaan_keluar_pada->translatedFormat('d M Y')); ?>
+
+                                                </span>
+                                                <div class="max-w-[16rem] rounded-lg bg-sky-50 dark:bg-sky-500/10 ring-1 ring-sky-200 dark:ring-sky-500/30 px-2.5 py-1.5 text-left">
+                                                    <p class="text-[11px] font-bold text-sky-700 dark:text-sky-300">Penjelasan tagihan check-out</p>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($blokirCheckout): ?>
+                                                        <p class="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300">Belum bisa disetujui: <?php echo e(strtolower($alasanBlokir)); ?> Minta penyewa melunasinya dulu.</p>
+                                                    <?php else: ?>
+                                                        <p class="mt-0.5 text-[11px] text-sky-700 dark:text-sky-300">Tagihan sampai bulan ini sudah lunas, boleh disetujui.</p>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($masaDepan->isNotEmpty()): ?>
+                                                        <p class="mt-1 text-[11px] text-gray-600 dark:text-gray-300">Bila disetujui, <?php echo e($masaDepan->count()); ?> tagihan bulan depan otomatis <span class="font-bold">dibatalkan</span> (total Rp<?php echo e(number_format($masaDepanTotal, 0, ',', '.')); ?>):</p>
+                                                        <ul class="mt-0.5 list-disc pl-4 text-[11px] text-gray-600 dark:text-gray-300">
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $masaDepan->take(4); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                                <li><?php echo e($t->periode); ?> — Rp<?php echo e(number_format($t->jumlah, 0, ',', '.')); ?></li>
+                                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($masaDepan->count() > 4): ?>
+                                                                <li>dan <?php echo e($masaDepan->count() - 4); ?> lainnya…</li>
+                                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        </ul>
+                                                    <?php else: ?>
+                                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Tidak ada tagihan bulan depan yang perlu dibatalkan.</p>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                </div>
+                                                <div class="flex justify-end gap-1.5">
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($blokirCheckout): ?>
+                                                        <button type="button" disabled title="<?php echo e($alasanBlokir); ?>"
+                                                            class="inline-flex items-center rounded-lg bg-gray-200 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                            Setujui
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button wire:click="setujuiCheckout(<?php echo e($sewaan->id); ?>)" wire:loading.attr="disabled"
+                                                            wire:confirm="Setujui check-out <?php echo e($sewaan->anakKos?->nama); ?> dari kamar <?php echo e($sewaan->kamar?->nama); ?>? Sewa akan ditutup, kamar kembali tersedia<?php echo e($masaDepan->isNotEmpty() ? ', dan '.$masaDepan->count().' tagihan bulan depan (Rp'.number_format($masaDepanTotal, 0, ',', '.').') akan dibatalkan' : ''); ?>."
+                                                            class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                            Setujui
+                                                        </button>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <button wire:click="tolakCheckout(<?php echo e($sewaan->id); ?>)" wire:loading.attr="disabled"
+                                                        wire:confirm="Tolak pengajuan check-out <?php echo e($sewaan->anakKos?->nama); ?>? Sewa tetap berjalan aktif."
+                                                        class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                                        Tolak
+                                                    </button>
+                                                </div>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($blokirCheckout): ?>
+                                                    <span class="block text-right text-[11px] text-amber-600 dark:text-amber-400"><?php echo e($alasanBlokir); ?></span>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="flex flex-col items-end gap-1">
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($blokirCheckout): ?>
+                                                    <button type="button" disabled title="<?php echo e($alasanBlokir); ?>"
+                                                        class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                        Check-out
+                                                    </button>
+                                                    <span class="text-[11px] text-amber-600 dark:text-amber-400"><?php echo e($alasanBlokir); ?></span>
+                                                <?php else: ?>
+                                                    <button wire:click="checkOut(<?php echo e($sewaan->id); ?>)" wire:loading.attr="disabled"
+                                                        wire:confirm="Check-out <?php echo e($sewaan->anakKos?->nama); ?> dari kamar <?php echo e($sewaan->kamar?->nama); ?>? Kamar akan kembali tersedia<?php echo e($masaDepan->isNotEmpty() ? ', dan '.$masaDepan->count().' tagihan bulan depan (Rp'.number_format($masaDepanTotal, 0, ',', '.').') akan dibatalkan' : ''); ?>."
+                                                        class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                                        Check-out
+                                                    </button>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($masaDepan->isNotEmpty()): ?>
+                                                        <span class="text-right text-[11px] text-gray-500 dark:text-gray-400"><?php echo e($masaDepan->count()); ?> tagihan bulan depan (Rp<?php echo e(number_format($masaDepanTotal, 0, ',', '.')); ?>) akan dibatalkan saat check-out.</span>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php else: ?>
                                         <span class="block text-right text-xs text-gray-400 dark:text-gray-500">
                                             Keluar: <?php echo e($sewaan->tanggal_keluar?->translatedFormat('d M Y')); ?>

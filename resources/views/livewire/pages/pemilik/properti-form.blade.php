@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
@@ -19,10 +20,10 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?Properti $properti = null;
 
-    #[Validate('required|string|max:255')]
+    #[Validate('required|string|max:100')]
     public string $nama = '';
 
-    #[Validate('nullable|string|max:100')]
+    #[Validate('nullable|string|max:50')]
     public ?string $kota = null;
 
     #[Validate('nullable|numeric|between:-90,90')]
@@ -46,19 +47,21 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|numeric|min:0')]
     public ?string $denda_per_hari = null;
 
-    #[Validate('required|numeric|gt:0')]
+    // Harga kos (LEGASI): harga resmi kini diatur per kamar di halaman Kelola Kamar.
+    // Kolom tetap ada agar data lama + API lama tidak rusak, tapi tidak lagi wajib diisi.
+    #[Validate('nullable|numeric|gt:0')]
     public ?string $harga = null;
 
-    #[Validate('nullable|numeric|min:0')]
+    #[Validate('nullable|numeric|gt:0')]
     public ?string $harga_mingguan = null;
 
-    #[Validate('nullable|numeric|min:0')]
+    #[Validate('nullable|numeric|gt:0')]
     public ?string $harga_harian = null;
 
     #[Validate('nullable|numeric|min:0')]
     public ?string $harga_asli = null;
 
-    #[Validate('required|in:aktif,nonaktif')]
+    #[Validate('required|string')]
     public string $status = 'aktif';
 
     #[Validate('nullable|image|max:2048')]
@@ -101,7 +104,7 @@ new #[Layout('layouts.app')] class extends Component
             $this->harga_mingguan = $this->properti->harga_mingguan;
             $this->harga_harian = $this->properti->harga_harian;
             $this->harga_asli = $this->properti->harga_asli;
-            $this->status = $this->properti->status;
+            $this->status = $this->properti->status?->value ?? 'aktif';
         }
     }
 
@@ -133,9 +136,10 @@ new #[Layout('layouts.app')] class extends Component
             'galeri' => $this->properti
                 ? $this->properti->fotos()->orderBy('urutan')->orderBy('id')->get()
                 : collect(),
-            'daftarKota' => collect(array_keys(\App\Support\Koordinat::$kota))
+            'daftarKota' => collect(\App\Support\DaftarKota::semua())
                 ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->orderBy('kota')->pluck('kota'))
-                ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all(),
+                ->merge(array_keys(\App\Support\Koordinat::$kota))
+                ->map(fn ($k) => trim((string) $k))->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all(),
             'pusatKota' => \App\Support\Koordinat::$kota,
         ];
     }
@@ -162,26 +166,25 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->validate([
-            'nama' => 'required|string|max:255',
-            'kota' => 'nullable|string|max:100',
+            'nama' => 'required|string|max:100',
+            'kota' => 'nullable|string|max:50',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string|max:500',
             'deskripsi' => 'nullable|string',
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'required|numeric|gt:0',
+            'harga' => 'nullable|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'status' => 'required|in:aktif,nonaktif',
+            'status' => ['required', Rule::enum(PropertiStatus::class)],
             'fasilitasTerpilih' => 'required|array|min:1',
             'galeriBaru' => ['nullable', 'array', 'max:10'],
             'galeriBaru.*' => ['image', 'max:8192'],
         ], [
-            'harga.required' => 'Harga per bulan wajib diisi.',
             'harga.numeric' => 'Harga per bulan harus berupa angka.',
-            'harga.gt' => 'Harga per bulan harus lebih dari Rp0.',
+            'harga.gt' => 'Harga per bulan harus lebih dari Rp0 atau dikosongkan (harga resmi diatur per kamar).',
             'fasilitasTerpilih.required' => 'Pilih minimal 1 fasilitas.',
             'fasilitasTerpilih.min' => 'Pilih minimal 1 fasilitas.',
             'galeriBaru.max' => 'Maksimal 10 foto tambahan sekaligus.',
@@ -268,45 +271,12 @@ new #[Layout('layouts.app')] class extends Component
     }
 
     /**
-     * Samakan ejaan kota dengan daftar yang dikenal (anti salah ketik):
-     * cocok case-insensitive → pakai ejaan kanonik; selain itu rapikan spasi.
+     * Samakan ejaan kota dengan daftar baku Indonesia (anti salah ketik):
+     * DaftarKota::kanonik() cocok case-insensitive + abaikan awalan Kota/Kab.
      */
     private function kanonikKota(?string $kota): ?string
     {
-        if ($kota === null) {
-            return null;
-        }
-
-        $kota = trim(preg_replace('/\s+/', ' ', $kota) ?? $kota);
-
-        if ($kota === '') {
-            return null;
-        }
-
-        $daftar = collect(array_keys(\App\Support\Koordinat::$kota))
-            ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->pluck('kota'))
-            ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all();
-
-        foreach ($daftar as $nama) {
-            if (mb_strtolower($nama) === mb_strtolower($kota)) {
-                return $nama;
-            }
-        }
-
-        // Hapus awalan "Kota/Kab." bila sisanya cocok dengan daftar.
-        $tanpaAwalan = trim((string) preg_replace('/^(kota|kotamadya|kabupaten|kab\.?)\s+/i', '', $kota));
-
-        if ($tanpaAwalan !== $kota) {
-            foreach ($daftar as $nama) {
-                if (mb_strtolower($nama) === mb_strtolower($tanpaAwalan)) {
-                    return $nama;
-                }
-            }
-
-            return $tanpaAwalan;
-        }
-
-        return $kota;
+        return \App\Support\DaftarKota::kanonik($kota);
     }
 
     public function hapusFoto(): void
@@ -666,22 +636,23 @@ new #[Layout('layouts.app')] class extends Component
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="kota" value="Kota" />
-                    <input wire:model="kota" id="kota" list="daftar-kota" autocomplete="off"
-                        placeholder="Ketik nama kota…"
+                    <input wire:model.live.debounce.300ms="kota" id="kota" list="daftar-kota" autocomplete="off"
+                        placeholder="Ketik nama kota… (mis. Bandung, Surabaya)"
                         class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500" />
                     <datalist id="daftar-kota">
                         @foreach ($daftarKota as $namaKota)
                             <option value="{{ $namaKota }}"></option>
                         @endforeach
                     </datalist>
-                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Ketik untuk mencari — pilih dari saran agar tidak salah ketik.</p>
+                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{{ count($daftarKota) }} kota/kabupaten baku tersedia — ketik lalu pilih dari saran agar ejaan sesuai (contoh: “Surabaya” bukan “surabya”). Awalan “Kota/Kab.” otomatis dirapikan saat disimpan.</p>
                     <x-input-error :messages="$errors->get('kota')" class="mt-2" />
                 </div>
                 <div>
                     <x-input-label for="status" value="Status Tampil" />
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="aktif">Aktif -- tampil di Cari Kos</option>
-                        <option value="nonaktif">Nonaktif -- disembunyikan</option>
+                        @foreach (\App\Enums\PropertiStatus::cases() as $opsiStatus)
+                            <option value="{{ $opsiStatus->value }}">{{ $opsiStatus->label() }}</option>
+                        @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                 </div>
@@ -750,42 +721,53 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('deskripsi')" class="mt-2" />
             </div>
 
-            <!-- Harga: sekali input bulanan + mingguan + harian -->
-            <div>
-                <x-input-label value="Harga Sewa (sekali isi, pencari kos yang memilih)" />
-                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Isi harga per bulan (wajib). Harga per minggu & per hari opsional — kosongkan bila tidak menerima periode itu.</p>
+            <!-- Harga: kini diatur per kamar, bukan per kos -->
+            <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3">
+                <p class="text-sm font-bold text-teal-800 dark:text-teal-200">Harga diatur per kamar</p>
+                <p class="mt-0.5 text-xs text-teal-700 dark:text-teal-300 leading-relaxed">
+                    @if ($properti)
+                        Harga tampil di katalog diambil otomatis dari kamar termurah kos ini. Atur / ubah harga di halaman
+                        <a href="{{ route('pemilik.kamar', $properti->id) }}" wire:navigate class="font-bold underline hover:no-underline">Kelola Kamar</a>.
+                    @else
+                        Simpan kos dulu, lalu atur harga tiap kamar di halaman <span class="font-bold">Kelola Kamar</span> (per bulan wajib, per minggu / per hari opsional).
+                    @endif
+                    Kolom harga kos lama di bawah hanya untuk kompatibilitas data lama dan boleh dikosongkan.
+                </p>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                    <x-input-label for="harga" value="Harga per Bulan (Rp)" />
-                    <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 750000" />
-                    <x-input-error :messages="$errors->get('harga')" class="mt-2" />
+            <details class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 px-4 py-3">
+                <summary class="cursor-pointer text-xs font-semibold text-gray-500 dark:text-gray-400">Harga kos lama (opsional, boleh dikosongkan)</summary>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <x-input-label for="harga" value="Harga per Bulan (Rp) — legasi" />
+                        <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
+                        <x-input-error :messages="$errors->get('harga')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="harga_mingguan" value="Harga per Minggu (Rp) — legasi" />
+                        <x-text-input wire:model="harga_mingguan" id="harga_mingguan" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
+                        <x-input-error :messages="$errors->get('harga_mingguan')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="harga_harian" value="Harga per Hari (Rp) — legasi" />
+                        <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
+                        <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
+                    </div>
                 </div>
-                <div>
-                    <x-input-label for="harga_mingguan" value="Harga per Minggu (Rp)" />
-                    <x-text-input wire:model="harga_mingguan" id="harga_mingguan" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 200000" />
-                    <x-input-error :messages="$errors->get('harga_mingguan')" class="mt-2" />
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp) — legasi" />
+                        <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
+                        <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
+                    </div>
                 </div>
-                <div>
-                    <x-input-label for="harga_harian" value="Harga per Hari (Rp)" />
-                    <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 40000" />
-                    <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
-                </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp)" />
-                    <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 900000 (dicoret)" />
-                    <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
-                </div>
-            </div>
+            </details>
 
             <!-- Fasilitas - Checkboxes dengan Ikon -->
             <div>
-                <x-input-label value="Fasilitas yang Tersedia" />
-                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Pilih fasilitas yang tersedia di kos Anda.</p>
+                <x-input-label value="Fasilitas & Peraturan Kos (Umum / Bersama)" />
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Pilih fasilitas bersama (WiFi, dapur bersama, parkir) dan peraturan yang berlaku untuk seluruh kos. Fasilitas privat kamar (AC, kasur, kamar mandi dalam) diisi di halaman Kelola Kamar. Aturan kustom lainnya bisa ditulis di kolom Aturan Kos di bawah.</p>
                 <div class="mt-3">
-                    <x-facility-icons :selected="$fasilitasTerpilih" :editable="true" />
+                    <x-facility-icons :selected="$fasilitasTerpilih" :editable="true" scope="kos" />
                 </div>
                 @error('fasilitasTerpilih') <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
             </div>
@@ -926,8 +908,21 @@ new #[Layout('layouts.app')] class extends Component
         try {
             const el = document.getElementById('peta-properti-form');
             const peta = el ? JSON.parse(el.dataset.pusatKota || '{}') : {};
-            const t = peta[nama];
-            if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+            // Cocok persis dulu, lalu case-insensitive (ketikan "padang" -> "Padang").
+            // Awalan "Kota/Kab." diabaikan ("Kota Bandung" -> "Bandung").
+            const bersih = String(nama || '').trim().replace(/^(kota|kotamadya|kabupaten|kab\.?)\s+/i, '').trim();
+            const kunci = [nama, bersih, String(nama || '').trim()];
+            for (const k of kunci) {
+                const t = peta[k];
+                if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+            }
+            const cari = bersih.toLowerCase();
+            for (const k of Object.keys(peta)) {
+                if (k.toLowerCase() === cari) {
+                    const t = peta[k];
+                    if (Array.isArray(t) && t.length >= 2) return { lat: parseFloat(t[0]), lng: parseFloat(t[1]) };
+                }
+            }
         } catch (e) {}
         return null;
     }

@@ -1,0 +1,1 @@
+<x-promo-ads :interval-ms="5" />

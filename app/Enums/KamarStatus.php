@@ -13,4 +13,13 @@ enum KamarStatus: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Tersedia => 'Tersedia',
+            self::Terisi => 'Terisi',
+            self::Perbaikan => 'Perbaikan',
+        };
+    }
 }

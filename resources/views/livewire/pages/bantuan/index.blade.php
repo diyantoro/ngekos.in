@@ -8,13 +8,13 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.publik')] class extends Component
 {
-    #[Validate('required|string|max:255')]
+    #[Validate('required|string|max:100')]
     public string $nama = '';
 
     #[Validate('required|email|max:255')]
     public string $email = '';
 
-    #[Validate('nullable|string|max:255')]
+    #[Validate('nullable|string|max:150')]
     public ?string $subjek = null;
 
     #[Validate('required|string|min:10|max:2000')]

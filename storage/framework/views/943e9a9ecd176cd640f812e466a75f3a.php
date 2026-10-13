@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\KamarStatus;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Models\Ulasan;
@@ -261,7 +262,7 @@ use Livewire\WithFileUploads;
 
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($properti->fasilitas): ?>
                 <div class="mt-4">
-                    <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas</h2>
+                    <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas Kos (Umum / Bersama)</h2>
                     <div class="mt-2">
                         <?php if (isset($component)) { $__componentOriginalb22b9ef51f0fdeb575f9479da907b656 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalb22b9ef51f0fdeb575f9479da907b656 = $attributes; } ?>
@@ -284,13 +285,18 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginalb22b9ef51f0fdeb575f9479da907b656); ?>
 <?php endif; ?>
                     </div>
+                    <p class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Fasilitas privat tiap kamar (AC, kasur, kamar mandi dalam, dll) tercantum di masing-masing kamar di bawah.</p>
                 </div>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($properti->aturan): ?>
                 <div class="mt-4">
                     <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Aturan Kos</h2>
-                    <p class="mt-1.5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed"><?php echo e($properti->aturan); ?></p>
+                    <ol class="mt-1.5 space-y-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed list-decimal ps-5">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Support\AturanKos::fromString($properti->aturan); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $aturan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <li><?php echo e($aturan); ?></li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </ol>
                 </div>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -404,6 +410,16 @@ use Livewire\WithFileUploads;
                                     <div>
                                         <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100"><?php echo e($kamar->nama); ?></h3>
                                         <p class="text-xs text-gray-500 dark:text-gray-400"><?php echo e($kamar->kapasitas); ?> orang</p>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->fasilitas): ?>
+                                            <div class="mt-1.5 flex flex-wrap gap-1">
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = array_slice($kamar->daftarFasilitas(), 0, 4); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $f): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300"><?php echo e($f); ?></span>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($kamar->daftarFasilitas()) > 4): ?>
+                                                    <span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">+<?php echo e(count($kamar->daftarFasilitas()) - 4); ?></span>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                     <?php if (isset($component)) { $__componentOriginal8c81617a70e11bcf247c4db924ab1b62 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal8c81617a70e11bcf247c4db924ab1b62 = $attributes; } ?>
@@ -451,7 +467,7 @@ use Livewire\WithFileUploads;
 <?php endif; ?>
                                     </div>
 
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->status === 'tersedia'): ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->status === \App\Enums\KamarStatus::Tersedia): ?>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->guard()->check()): ?>
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('anak_kos')): ?>
                                                 <div class="flex items-center gap-2">
@@ -698,10 +714,10 @@ use Livewire\WithFileUploads;
                 <form wire:submit="konfirmasiSewa" class="p-5 space-y-4">
                     
                     <div wire:key="langkah-1" <?php if($langkahSewa !== 1): ?> class="hidden" <?php endif; ?>>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi. Pilih tanggal kamu berencana masuk (maksimal 3 bulan ke depan) dan lama sewa. Tagihan dibuat otomatis untuk dibayar.</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Kamar yang tersedia akan langsung terkunci untukmu — tanpa menunggu konfirmasi dan tanpa perlu upload KTP. Pilih tanggal kamu berencana masuk (maksimal 10 hari ke depan) dan lama sewa. Tagihan dibuat otomatis — bayar Uang Muka (DP) agar booking fiks.</p>
                         <div class="mt-4">
                             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Masuk</label>
-                            <input type="date" wire:model="tanggalMasuk" min="<?php echo e(today()->toDateString()); ?>" max="<?php echo e(today()->addMonths(3)->toDateString()); ?>"
+                            <input type="date" wire:model="tanggalMasuk" min="<?php echo e(today()->toDateString()); ?>" max="<?php echo e(today()->addDays(10)->toDateString()); ?>"
                                 class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['tanggalMasuk'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -804,23 +820,8 @@ endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                        <div class="mt-4">
-                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Foto KTP <span class="text-rose-500">*</span></label>
-                            <input type="file" wire:model="ktp" accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 dark:file:bg-teal-500/10 file:px-4 file:py-2 file:text-teal-700 dark:file:text-teal-300 file:font-semibold hover:file:bg-teal-100 dark:hover:file:bg-teal-500/20">
-                            <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Wajib. JPG/PNG/WEBP/PDF, maks 2MB. Data hanya untuk verifikasi pemilik.</p>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['ktp'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400"><?php echo e($message); ?></p> <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <div wire:loading wire:target="ktp" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-teal-600">
-                                <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                Mengunggah KTP...
-                            </div>
+                        <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-xs text-teal-800 dark:text-teal-200">
+                            Tanpa KTP — privasimu aman. Cukup bayar <span class="font-bold">Uang Muka (DP) Rp<?php echo e(number_format($kamarModal?->hargaUntuk($periodeSewa) ?? 0, 0, ',', '.')); ?></span> (tagihan pertama) setelah booking agar kamar fiks untukmu.
                         </div>
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
@@ -873,7 +874,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             </div>
                         </div>
 
-                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu. Kamu akan melihat tagihan sewa di dashboard.</p>
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu — tanpa upload KTP. Kamu akan melihat tagihan sewa di dashboard; bayar Uang Muka (DP) agar booking fiks.</p>
 
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="kembaliKeTanggal" wire:loading.attr="disabled"

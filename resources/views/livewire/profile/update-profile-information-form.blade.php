@@ -35,7 +35,7 @@ new class extends Component
         $user = Auth::user();
 
         $validated = $this->validate([
-            'nama' => ['required', 'string', 'max:255'],
+            'nama' => ['required', 'string', 'max:100'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
             'no_hp' => ['nullable', 'string', 'regex:/^08[0-9]{8,12}$/', 'max:15'],
             'fotoProfil' => ['nullable', 'image', 'max:2048'],

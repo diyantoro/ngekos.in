@@ -30,13 +30,14 @@ unset($__defined_vars, $__key, $__value); ?>
 
 <?php
     $p = $properti;
-    $hargaTampil = $p->harga ?? $p->harga_termurah;
+    // Harga resmi = dari kamar termurah. Kolom harga kos hanya fallback legasi.
+    $hargaTampil = ($p->harga_termurah ?? null) ?: ($p->harga ?? null);
     $selisih = ($p->harga_asli && $hargaTampil && $p->harga_asli > $hargaTampil) ? $p->harga_asli - $hargaTampil : 0;
     $labelDiskon = $selisih >= 1000 ? 'Diskon '.rtrim(rtrim(number_format($selisih / 1000, 1, ',', '.'), '0'), ',').'rb' : null;
     $fasilitas = collect(explode(',', (string) ($p->fasilitas ?? '')))->map(fn ($f) => trim($f))->filter()->take(6);
     $rating = (float) ($p->rating_ulasan ?? 0);
     $totalUlasan = (int) ($p->total_ulasan ?? 0);
-    $tipe = strtolower((string) ($p->tipe_hunian ?? 'campur'));
+    $tipe = strtolower($p->tipe_hunian?->value ?? 'campur');
     $warnaTipe = $tipe === 'putri' ? 'bg-pink-600' : ($tipe === 'putra' ? 'bg-sky-600' : 'bg-emerald-600');
     $labelTipe = $tipe === 'putri' ? 'Putri' : ($tipe === 'putra' ? 'Putra' : 'Campur');
     $sisa = (int) ($p->kamar_tersedia ?? 0);

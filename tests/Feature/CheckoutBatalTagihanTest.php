@@ -56,7 +56,7 @@ class CheckoutBatalTagihanTest extends TestCase
         ]);
 
         return app(PenyewaanService::class)->sewaKamar(
-            $anak, $kamar, today()->toDateString(), $durasiBulan, null, 'ktp/uji.jpg'
+            $anak, $kamar, today()->toDateString(), $durasiBulan
         );
     }
 
@@ -86,7 +86,7 @@ class CheckoutBatalTagihanTest extends TestCase
         $this->assertTrue($setuju['kamar_tersedia']);
         $this->assertSame(2, $setuju['dibatalkan']);
         $this->assertSame('selesai', $sewa->refresh()->status);
-        $this->assertSame('tersedia', $sewa->refresh()->kamar->status);
+        $this->assertSame('tersedia', $sewa->refresh()->kamar->status->value);
         $this->assertSame(2, $sewa->tagihans()->where('status', 'batal')->count());
         $this->assertSame(1, $sewa->tagihans()->where('status', 'lunas')->count());
         $this->assertSame(0, $setuju['tagihan_belum_lunas']);
@@ -241,7 +241,7 @@ class CheckoutBatalTagihanTest extends TestCase
         $rina = $this->user('anak1@ngekos.test');
         $yoga = $this->user('anak2@ngekos.test');
         $sewa = $this->sewaBulan($rina, 3);
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga, 'ktp/yoga.jpg');
+        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
 
         // Lunasi porsi yoga sampai bulan berjalan agar boleh keluar partial.
         foreach ($sewa->refresh()->tagihans()->whereNotIn('status', ['lunas', 'batal'])->get() as $t) {

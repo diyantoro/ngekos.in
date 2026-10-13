@@ -316,18 +316,26 @@ new class extends Component
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Platform Revenue</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Total upgrade paket PRO/Business yang disetujui</p>
-                    <p class="mt-3 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($platformRevenue ?? 0, 0, ',', '.') }}</p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $upgradeApproved ?? 0 }} transaksi upgrade disetujui</p>
+                    @if (($upgradeApproved ?? 0) > 0)
+                        <p class="mt-3 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($platformRevenue ?? 0, 0, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $upgradeApproved ?? 0 }} transaksi upgrade disetujui</p>
+                    @else
+                        <p class="mt-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Data belum tersedia</p>
+                    @endif
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-6">
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Premium Conversion</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Pemilik berlangganan PRO/Business aktif</p>
                     @php $konversi = $konversiPremium ?? ['total_pemilik' => 0, 'premium_aktif' => 0, 'persen' => 0]; @endphp
-                    <p class="mt-3 text-3xl font-extrabold text-teal-600 dark:text-teal-400">{{ $konversi['persen'] }}%</p>
-                    <div class="mt-2 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                        <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500" style="width: {{ min(100, max(0, (float) $konversi['persen'])) }}%"></div>
-                    </div>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $konversi['premium_aktif'] }} dari {{ $konversi['total_pemilik'] }} pemilik memakai paket premium</p>
+                    @if (($konversi['premium_aktif'] ?? 0) > 0)
+                        <p class="mt-3 text-3xl font-extrabold text-teal-600 dark:text-teal-400">{{ $konversi['persen'] }}%</p>
+                        <div class="mt-2 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500" style="width: {{ min(100, max(0, (float) $konversi['persen'])) }}%"></div>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $konversi['premium_aktif'] }} dari {{ $konversi['total_pemilik'] }} pemilik memakai paket premium</p>
+                    @else
+                        <p class="mt-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">Data belum tersedia</p>
+                    @endif
                 </div>
             </div>
         </div>

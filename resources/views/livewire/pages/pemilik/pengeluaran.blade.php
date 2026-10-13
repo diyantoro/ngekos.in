@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PengeluaranKategori;
 use App\Models\Pengeluaran;
 use App\Models\Properti;
 use Livewire\Attributes\Computed;
@@ -18,7 +19,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|integer')]
     public ?int $properti_id = null;
 
-    #[Validate('required|in:listrik,air,internet,maintenance,kebersihan,gaji,renovasi,lainnya')]
+    #[Validate(['required', new \Illuminate\Validation\Rules\Enum(PengeluaranKategori::class)])]
     public string $kategori = 'lainnya';
 
     #[Validate('nullable|string|max:255')]
@@ -193,14 +194,9 @@ new #[Layout('layouts.app')] class extends Component
                 <div>
                     <x-input-label for="kategori" value="Kategori" />
                     <select wire:model="kategori" id="kategori" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="listrik">Listrik</option>
-                        <option value="air">Air</option>
-                        <option value="internet">Internet</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="kebersihan">Kebersihan</option>
-                        <option value="gaji">Gaji</option>
-                        <option value="renovasi">Renovasi</option>
-                        <option value="lainnya">Lainnya</option>
+                        @foreach (\App\Enums\PengeluaranKategori::cases() as $opsiKategori)
+                            <option value="{{ $opsiKategori->value }}">{{ ucfirst($opsiKategori->value) }}</option>
+                        @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('kategori')" class="mt-2" />
                 </div>

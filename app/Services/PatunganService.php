@@ -19,8 +19,9 @@ class PatunganService
 {
     /**
      * Tambah teman sekamar sebagai anggota aktif.
+     * Tanpa meminta KTP (dokumen identitas terlalu sensitif untuk dibagikan).
      */
-    public static function tambahAnggota(Penyewaan $penyewaan, User $user, ?string $ktpPath = null): PenyewaanAnggota
+    public static function tambahAnggota(Penyewaan $penyewaan, User $user): PenyewaanAnggota
     {
         $penyewaan->loadMissing(['kamar', 'anggotas']);
 
@@ -62,19 +63,13 @@ class PatunganService
             throw new DomainException('User ini sudah punya sewa aktif di kamar tersebut.');
         }
 
-        $ktpLama = PenyewaanAnggota::where('penyewaan_id', $penyewaan->id)->where('user_id', $user->id)->value('ktp_path');
-
-        if (! $ktpPath && ! $ktpLama) {
-            throw new DomainException('Foto KTP teman wajib diunggah sebelum ditambah sebagai anggota.');
-        }
-
-        return DB::transaction(function () use ($penyewaan, $user, $ktpPath, $ktpLama) {
+        return DB::transaction(function () use ($penyewaan, $user) {
             $anggota = PenyewaanAnggota::updateOrCreate(
                 ['penyewaan_id' => $penyewaan->id, 'user_id' => $user->id],
                 [
                     'porsi_persen' => 50,
                     'status' => 'aktif',
-                    'ktp_path' => $ktpPath ?? $ktpLama,
+                    'ktp_path' => null,
                     'tanggal_keluar' => null,
                 ]
             );

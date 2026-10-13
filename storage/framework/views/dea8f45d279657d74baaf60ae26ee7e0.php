@@ -158,9 +158,10 @@ use Livewire\Volt\Component;
                     <div class="sidebar-label min-w-0 flex-1 text-left">
                         <div x-data="<?php echo e(json_encode(['nama' => auth()->user()->nama])); ?>" x-text="nama" x-on:profile-updated.window="nama = $event.detail.nama"
                              class="truncate text-sm font-semibold leading-tight text-white"></div>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->roles->isNotEmpty()): ?>
+                        <?php $peranTampil = auth()->user()->roleValue(); ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($peranTampil): ?>
                             <span class="text-[11px] font-medium text-slate-400">
-                                <?php echo e(str(auth()->user()->roles->first()->name)->replace('_', ' ')->title()); ?>
+                                <?php echo e(str($peranTampil)->replace('_', ' ')->title()); ?>
 
                             </span>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

@@ -14,9 +14,9 @@ class BantuanController extends Controller
     public function kirim(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nama' => 'required|string|max:255',
+            'nama' => 'required|string|max:100',
             'email' => 'required|email|max:255',
-            'subjek' => 'nullable|string|max:255',
+            'subjek' => 'nullable|string|max:150',
             'pesan' => 'required|string|min:10|max:2000',
         ], [
             'nama.required' => 'Nama wajib diisi.',

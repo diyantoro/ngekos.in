@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PembayaranMetode;
 use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Tagihan;
@@ -17,8 +18,74 @@ use Livewire\WithFileUploads;
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                 Kembali ke dashboard
             </a>
-            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Tagihan &amp; Pembayaran</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kapan tagihan jatuh tempo, berapa yang harus dibayar, dan riwayat pembayaranmu.</p>
+            <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Kos Saya</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kos yang sedang kamu tempati, tagihan yang harus dibayar, dan riwayat pembayaranmu.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+            <div class="px-4 sm:px-6 pt-4 pb-1">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kos yang Saya Tempati</h2>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Mau keluar kos? Ajukan check-out — pemilik akan memverifikasi pengajuanmu.</p>
+            </div>
+            <div class="p-4 sm:p-6 pt-3">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($sewaAktif ?? collect())->isEmpty()): ?>
+                    <p class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Kamu belum menempati kos mana pun. Yuk cari kos dulu.</p>
+                <?php else: ?>
+                    <div class="space-y-3">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $sewaAktif; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sewa): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php
+                                $coverSewa = $sewa->properti?->fotoCover();
+                                $pengajuanSewa = $sewa->permintaan_keluar_pada;
+                                $dpLunasSewa = $sewa->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
+                            ?>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/60 p-3 sm:p-4">
+                                <div class="flex min-w-0 flex-1 items-center gap-3">
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($coverSewa): ?>
+                                        <img src="<?php echo e($coverSewa); ?>" alt="<?php echo e($sewa->properti?->nama ?? 'Kos'); ?>" loading="lazy" class="h-14 w-14 rounded-xl object-cover shrink-0">
+                                    <?php else: ?>
+                                        <div class="h-14 w-14 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
+                                            <svg class="h-7 w-7 text-brand-700 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                                        </div>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-bold text-slate-900 dark:text-gray-100"><?php echo e($sewa->properti?->nama ?? 'Kos tidak tersedia'); ?><?php echo e($sewa->kamar ? ' · Kamar '.$sewa->kamar->nama : ''); ?></p>
+                                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Masuk <?php echo e($sewa->tanggal_masuk?->translatedFormat('d M Y') ?? '-'); ?></p>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $dpLunasSewa): ?>
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP — bayar tagihan pertamamu agar booking fiks</span>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pengajuanSewa): ?>
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu verifikasi pemilik</span>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    </div>
+                                </div>
+                                <div class="shrink-0">
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pengajuanSewa): ?>
+                                        <button wire:click="batalkanCheckout(<?php echo e($sewa->id); ?>)" wire:loading.attr="disabled"
+                                            wire:confirm="Batalkan pengajuan check-out dari kamar <?php echo e($sewa->kamar?->nama); ?>?"
+                                            class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                            Batalkan Pengajuan
+                                        </button>
+                                    <?php elseif(($checkoutInfo[$sewa->id]['terblokir'] ?? false)): ?>
+                                        <div class="flex flex-col items-end gap-1">
+                                            <button type="button" disabled title="<?php echo e($checkoutInfo[$sewa->id]['alasan']); ?>"
+                                                class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60">
+                                                Ajukan Check-out
+                                            </button>
+                                            <span class="text-[11px] text-amber-600 dark:text-amber-400"><?php echo e($checkoutInfo[$sewa->id]['alasan']); ?></span>
+                                        </div>
+                                    <?php else: ?>
+                                        <button wire:click="ajukanCheckout(<?php echo e($sewa->id); ?>)" wire:loading.attr="disabled"
+                                            wire:confirm="Ajukan check-out dari kamar <?php echo e($sewa->kamar?->nama); ?>? Pengajuanmu perlu diverifikasi pemilik kos."
+                                            class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                            Ajukan Check-out
+                                        </button>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </div>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
         </div>
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pesan): ?>
@@ -80,7 +147,7 @@ use Livewire\WithFileUploads;
                                 <?php
                                     $propertiKos = $daftarKos->first()->penyewaan?->properti;
                                     $kamarKos = $daftarKos->first()->penyewaan?->kamar?->nama;
-                                    $aktifKos = $daftarKos->where('status', '!=', 'lunas');
+                                    $aktifKos = $daftarKos->whereNotIn('status', ['lunas', 'batal']);
                                     $wajibKos = $daftarKos->sum(fn ($t) => \App\Services\TagihanService::wajibBayar($t, auth()->id()));
                                     $dekatKos = $aktifKos->sortBy('jatuh_tempo')->first();
                                     $telatKos = $dekatKos ? \App\Services\TagihanService::hariTelat($dekatKos) : 0;
@@ -330,6 +397,14 @@ use Livewire\WithFileUploads;
             ? round(max(0, $porsiModal - (float) $tagihanModal->pembayarans()->where('anak_kos_id', auth()->id())->where('status', 'diverifikasi')->sum('jumlah')), 2)
             : $totalTagihan;
         $jatuhModal = $tagihanModal?->jatuh_tempo?->translatedFormat('d M Y') ?? '-';
+        // Uang Muka (DP) = tagihan pertama penyewaan yang belum ada pembayaran terverifikasi.
+        $adalahDpModal = false;
+        if ($tagihanModal?->penyewaan_id) {
+            $tagihanPertamaId = \App\Models\Tagihan::where('penyewaan_id', $tagihanModal->penyewaan_id)->orderBy('id')->value('id');
+            $adalahDpModal = $tagihanPertamaId === $tagihanModal->id
+                && ! \App\Models\Pembayaran::whereHas('tagihan', fn ($q) => $q->where('penyewaan_id', $tagihanModal->penyewaan_id))
+                    ->where('status', 'diverifikasi')->exists();
+        }
     ?>
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
         <button type="button" wire:click="tutupModalBayar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
@@ -337,7 +412,7 @@ use Livewire\WithFileUploads;
             <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                 <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                     <div class="min-w-0">
-                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Bayar Tagihan <?php echo e($tagihanModal?->periode); ?></p>
+                        <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate"><?php echo e($adalahDpModal ? 'Bayar Uang Muka (DP)' : 'Bayar Tagihan'); ?> <?php echo e($tagihanModal?->periode); ?></p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Jatuh tempo <?php echo e($tagihanModal?->jatuh_tempo?->translatedFormat('d F Y') ?? '-'); ?>
 
@@ -345,6 +420,9 @@ use Livewire\WithFileUploads;
                                 · Porsimu: <span class="font-bold text-sky-600 dark:text-sky-400">Rp<?php echo e(number_format($porsiModal, 0, ',', '.')); ?></span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </p>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($adalahDpModal): ?>
+                            <p class="mt-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-2.5 py-1.5 text-[11px] font-semibold text-teal-700 dark:text-teal-300">Uang Muka (DP) — bayar tagihan pertama ini agar booking kamarmu fiks. Tanpa perlu KTP.</p>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php
                             $sisaModal = $tagihanModal ? \App\Services\TagihanService::selisihHari($tagihanModal) : 0;
                             $telatModal = $hariTelatModal;

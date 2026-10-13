@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\Pengaturan;
 use App\Models\Properti;
 use Illuminate\Support\Facades\Storage;
@@ -67,7 +68,7 @@ use Livewire\WithFileUploads;
                             <option value="<?php echo e($heroProperti->id); ?>"><?php echo e($heroProperti->nama); ?> — terpin saat ini</option>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $landingPropertis; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $lp): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <option value="<?php echo e($lp->id); ?>"><?php echo e($lp->nama); ?> — <?php echo e($lp->kota ?? '-'); ?> (<?php echo e($lp->status); ?>)</option>
+                            <option value="<?php echo e($lp->id); ?>"><?php echo e($lp->nama); ?> — <?php echo e($lp->kota ?? '-'); ?> (<?php echo e($lp->status?->value ?? '-'); ?>)</option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </select>
                     <div class="flex gap-2">
@@ -120,7 +121,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
 <?php endif; ?></span>
                     </div>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($heroProperti->status !== 'aktif'): ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($heroProperti->status !== \App\Enums\PropertiStatus::Aktif): ?>
                         <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">Kos ini tidak aktif — landing otomatis memakai kos terbaru sampai Anda ganti pin.</p>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 <?php else: ?>

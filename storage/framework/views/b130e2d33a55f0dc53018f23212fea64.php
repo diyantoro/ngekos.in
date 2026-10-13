@@ -72,7 +72,7 @@ use Illuminate\Support\Facades\Auth;
                                 </a>
                                 <?php
                                     $hargaTampil = $properti->harga ?? $properti->harga_termurah;
-                                    $periode = $properti->jenis_harga ?? 'bulanan';
+                                    $periode = 'bulanan';
                                     $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
                                 ?>
                                 <div class="mt-3 flex items-center justify-between gap-2">

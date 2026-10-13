@@ -19,7 +19,8 @@ class AturanKos
     public static function template(): array
     {
         return [
-            'Penghuni wajib menyerahkan fotokopi KTP dan mengisi data diri saat masuk.',
+            'Penghuni wajib mengisi data diri (nama & no. HP aktif) saat masuk.',
+            'Booking dikonfirmasi setelah Uang Muka (DP) dibayar dan diverifikasi pemilik kos.',
             'Jam malam pukul 22.00 — gerbang dikunci, pulang lewat jam tersebut wajib lapor penjaga kos.',
             'Tamu lawan jenis dilarang masuk kamar; tamu umum wajib lapor dan maksimal berkunjung sampai pukul 21.00.',
             'Dilarang membawa tamu menginap tanpa izin tertulis pemilik kos.',

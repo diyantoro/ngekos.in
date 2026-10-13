@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PengeluaranKategori;
 use App\Models\Pengeluaran;
 use App\Models\Properti;
 use Livewire\Attributes\Computed;
@@ -119,14 +120,9 @@ use Livewire\Volt\Component;
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
                     <select wire:model="kategori" id="kategori" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="listrik">Listrik</option>
-                        <option value="air">Air</option>
-                        <option value="internet">Internet</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="kebersihan">Kebersihan</option>
-                        <option value="gaji">Gaji</option>
-                        <option value="renovasi">Renovasi</option>
-                        <option value="lainnya">Lainnya</option>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\PengeluaranKategori::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opsiKategori): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($opsiKategori->value); ?>"><?php echo e(ucfirst($opsiKategori->value)); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </select>
                     <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>

@@ -12,9 +12,9 @@ return new class extends Migration
         Schema::create('pesan_bantuans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('nama', 255);
+            $table->string('nama', 100);
             $table->string('email', 255);
-            $table->string('subjek', 255)->nullable();
+            $table->string('subjek', 150)->nullable();
             $table->text('pesan');
             $table->enum('status', BantuanStatus::values())->default(BantuanStatus::Baru->value);
             $table->text('balasan')->nullable();

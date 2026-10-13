@@ -28,7 +28,7 @@ new #[Layout('layouts.app')] class extends Component
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
                 ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'anggotas.user:id,nama'])
+                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,status', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(30)
@@ -249,23 +249,21 @@ new #[Layout('layouts.app')] class extends Component
                                 $alasanBlokir = $blokirCheckout ? 'Ada '.$kurangBulanIni->count().' tagihan sampai bulan ini yang belum lunas.' : null;
                                 $masaDepan = \App\Services\CheckoutService::tagihanMasaDepan($sewaan);
                                 $masaDepanTotal = $masaDepan->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
+                                // DP = pembayaran terverifikasi pertama. Tanpa itu booking belum fiks.
+                                $dpLunas = $sewaan->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {{ $sewaan->anakKos?->nama ?? '-' }}
                                     <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
                                         @if ($sewaan->ktp_path)
-                                            <button type="button" wire:click="lihatKtp({{ $sewaan->id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama</button>
-                                        @else
-                                            <span class="font-semibold text-amber-600 dark:text-amber-400">KTP utama belum ada</span>
+                                            <button type="button" wire:click="lihatKtp({{ $sewaan->id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama (data lama)</button>
                                         @endif
                                     </span>
                                     @foreach ($anggotaAktifRow as $ag)
                                         <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ {{ $ag->user?->nama }} ({{ (int) $ag->porsi_persen }}%)
                                             @if ($ag->ktp_path)
-                                                · <button type="button" wire:click="lihatKtp({{ $sewaan->id }}, {{ $ag->user_id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP</button>
-                                            @else
-                                                · <span class="font-semibold text-amber-600 dark:text-amber-400">KTP belum ada</span>
+                                                · <button type="button" wire:click="lihatKtp({{ $sewaan->id }}, {{ $ag->user_id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP (data lama)</button>
                                             @endif
                                         </span>
                                     @endforeach
@@ -284,7 +282,11 @@ new #[Layout('layouts.app')] class extends Component
                                         {{ $belumLunas->isEmpty() ? 'Semua lunas' : $belumLunas->count() . ' tagihan belum lunas' . ($telat > 0 ? " ({$telat} telat)" : '') }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-4"><x-status-badge :status="$sewaan->status" /></td>
+                                <td class="px-4 py-4"><x-status-badge :status="$sewaan->status" />
+                                    @if (! $dpLunas)
+                                        <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-4">
                                     @if ($sewaan->status === 'aktif')
                                         @if ($sewaan->permintaan_keluar_pada)

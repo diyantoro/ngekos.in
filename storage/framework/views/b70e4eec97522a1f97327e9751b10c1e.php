@@ -1,9 +1,12 @@
 <?php
 
+use App\Enums\KamarStatus;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Services\SubscriptionService;
+use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -466,9 +469,9 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
 <?php endif; ?>
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="tersedia">Tersedia</option>
-                        <option value="terisi">Terisi</option>
-                        <option value="perbaikan">Perbaikan</option>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\KamarStatus::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opsiStatus): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($opsiStatus->value); ?>"><?php echo e($opsiStatus->label()); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </select>
                     <?php if (isset($component)) { $__componentOriginalf94ed9c5393ef72725d159fe01139746 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf94ed9c5393ef72725d159fe01139746 = $attributes; } ?>
@@ -491,6 +494,60 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginalf94ed9c5393ef72725d159fe01139746); ?>
 <?php endif; ?>
                 </div>
+            </div>
+
+            <div>
+                <?php if (isset($component)) { $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input-label','data' => ['value' => 'Fasilitas Kamar (privat kamar ini)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input-label'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['value' => 'Fasilitas Kamar (privat kamar ini)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $attributes = $__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__attributesOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581)): ?>
+<?php $component = $__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581; ?>
+<?php unset($__componentOriginale3da9d84bb64e4bc2eeebaafabfb2581); ?>
+<?php endif; ?>
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Centang fasilitas yang ada di dalam kamar ini (AC, kasur, kamar mandi dalam, dll). Fasilitas bersama kos (WiFi, dapur bersama, parkir) sudah diatur di halaman kos.</p>
+                <div class="mt-3">
+                    <?php if (isset($component)) { $__componentOriginalb22b9ef51f0fdeb575f9479da907b656 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb22b9ef51f0fdeb575f9479da907b656 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.facility-icons','data' => ['selected' => $fasilitasKamarTerpilih,'field' => 'fasilitasKamarTerpilih','editable' => true,'scope' => 'kamar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('facility-icons'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['selected' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($fasilitasKamarTerpilih),'field' => 'fasilitasKamarTerpilih','editable' => true,'scope' => 'kamar']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb22b9ef51f0fdeb575f9479da907b656)): ?>
+<?php $attributes = $__attributesOriginalb22b9ef51f0fdeb575f9479da907b656; ?>
+<?php unset($__attributesOriginalb22b9ef51f0fdeb575f9479da907b656); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb22b9ef51f0fdeb575f9479da907b656)): ?>
+<?php $component = $__componentOriginalb22b9ef51f0fdeb575f9479da907b656; ?>
+<?php unset($__componentOriginalb22b9ef51f0fdeb575f9479da907b656); ?>
+<?php endif; ?>
+                </div>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['fasilitasKamarTerpilih'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
 
             <div>
@@ -760,13 +817,19 @@ use Livewire\WithFileUploads;
 <?php unset($__componentOriginal8c81617a70e11bcf247c4db924ab1b62); ?>
 <?php endif; ?>
                             </div>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->fasilitas): ?>
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = array_slice($kamar->daftarFasilitas(), 0, 5); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $f): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300"><?php echo e($f); ?></span>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </div>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
                                 <?php echo e($kamar->kapasitas); ?> orang
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan): ?>
                                     <span class="line-through text-gray-400 dark:text-gray-500">Rp<?php echo e(number_format($kamar->harga_asli, 0, ',', '.')); ?></span>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                &middot; Rp<?php echo e(number_format($kamar->harga_sewa_bulanan, 0, ',', '.')); ?>/<?php echo e($kamar->jenis_harga === 'harian' ? 'hari' : 'bulan'); ?>
-
+                                &middot; Rp<?php echo e(number_format($kamar->harga_sewa_bulanan, 0, ',', '.')); ?>/bulan
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($kamar->harga_sewa_harian): ?>
                                     <span class="text-teal-600 dark:text-teal-400">| Rp<?php echo e(number_format($kamar->harga_sewa_harian, 0, ',', '.')); ?>/hari</span>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

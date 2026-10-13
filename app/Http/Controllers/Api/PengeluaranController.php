@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PengeluaranKategori;
 use App\Http\Controllers\Controller;
 use App\Models\Pengeluaran;
 use App\Models\Properti;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PengeluaranController extends Controller
 {
@@ -60,7 +62,7 @@ class PengeluaranController extends Controller
 
         $validated = $request->validate([
             'properti_id' => 'required|integer',
-            'kategori' => 'required|in:listrik,air,internet,maintenance,kebersihan,gaji,renovasi,lainnya',
+            'kategori' => ['required', Rule::enum(PengeluaranKategori::class)],
             'keterangan' => 'nullable|string|max:255',
             'jumlah' => 'required|numeric|min:0',
             'tanggal' => 'required|date',
@@ -108,7 +110,7 @@ class PengeluaranController extends Controller
 
         $validated = $request->validate([
             'properti_id' => 'required|integer',
-            'kategori' => 'required|in:listrik,air,internet,maintenance,kebersihan,gaji,renovasi,lainnya',
+            'kategori' => ['required', Rule::enum(PengeluaranKategori::class)],
             'keterangan' => 'nullable|string|max:255',
             'jumlah' => 'required|numeric|min:0',
             'tanggal' => 'required|date',

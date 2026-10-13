@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\ChatPesan;
 use App\Models\Properti;
 use App\Models\User;
@@ -20,7 +21,7 @@ new #[Layout('layouts.publik')] class extends Component
 
         if ($user->hasRole('anak_kos')) {
             // Anak kos hanya boleh chat di properti aktif (cegah IDOR ke properti nonaktif).
-            abort_unless($this->properti->status === 'aktif', 404);
+            abort_unless($this->properti->status === PropertiStatus::Aktif, 404);
 
             // Paksa identitas percakapan = user login (cegah tampering Livewire payload).
             $this->anakKos = $user;
@@ -90,7 +91,7 @@ new #[Layout('layouts.publik')] class extends Component
 
         if ($user->hasRole('anak_kos')) {
             return (int) $this->anakKos->id === (int) $user->id
-                && $this->properti->status === 'aktif';
+                && $this->properti->status === PropertiStatus::Aktif;
         }
 
         return $this->bisaKelola();

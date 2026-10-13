@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertiStatus;
 use App\Models\ChatPesan;
 use App\Models\Properti;
 use App\Models\User;

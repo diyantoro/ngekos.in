@@ -32,6 +32,10 @@ Route::post('/forgot-password/verify', [AuthController::class, 'verifyPasswordOt
 Route::get('/kos', [KatalogController::class, 'index'])->middleware('throttle:60,1');
 Route::get('/kos/{properti}', [KatalogController::class, 'show'])->middleware('throttle:60,1');
 
+// Referensi publik: daftar kota baku + fasilitas per scope (untuk autocomplete mobile)
+Route::get('/referensi/kota', [KatalogController::class, 'daftarKota'])->middleware('throttle:60,1');
+Route::get('/referensi/fasilitas', [KatalogController::class, 'daftarFasilitas'])->middleware('throttle:60,1');
+
 // Authenticated routes (semua butuh login; fitur butuh email terverifikasi)
 Route::middleware('auth:sanctum')->group(function () {
     // Boleh tanpa verifikasi email: lihat profil, keluar, kirim ulang verifikasi.

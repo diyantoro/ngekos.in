@@ -117,7 +117,7 @@ class DashboardRenderCheckTest extends TestCase
         // Pengajuan saja: sewa tetap aktif & kamar tetap terisi sampai pemilik verifikasi.
         $this->assertEquals('aktif', $sewaan->status);
         $this->assertNotNull($sewaan->permintaan_keluar_pada);
-        $this->assertEquals('terisi', $sewaan->kamar->status);
+        $this->assertEquals('terisi', $sewaan->kamar->status->value);
 
         // Pemilik menyetujui pengajuan → sewa selesai & kamar tersedia.
         $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
@@ -129,7 +129,7 @@ class DashboardRenderCheckTest extends TestCase
         $sewaan->refresh();
         $this->assertEquals('selesai', $sewaan->status);
         $this->assertNotNull($sewaan->tanggal_keluar);
-        $this->assertEquals('tersedia', $sewaan->kamar->status);
+        $this->assertEquals('tersedia', $sewaan->kamar->status->value);
     }
 
     public function test_checkout_butuh_verifikasi_pemilik_bisa_ditolak_dan_dibatalkan(): void
@@ -170,7 +170,7 @@ class DashboardRenderCheckTest extends TestCase
         $sewaan->refresh();
         $this->assertEquals('aktif', $sewaan->status);
         $this->assertNull($sewaan->permintaan_keluar_pada);
-        $this->assertEquals('terisi', $sewaan->kamar->status);
+        $this->assertEquals('terisi', $sewaan->kamar->status->value);
 
         // Anak kos bisa mengajukan ulang lalu membatalkannya sendiri.
         // (Buat instance baru agar konteks auth kembali sebagai anak kos,
@@ -278,7 +278,9 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.pemilik'))
             ->assertOk()
             ->assertSee('Lihat Bukti')
-            ->assertSee('bukti-pembayaran/bukti-test.jpg', false);
+            // Path storage privat tidak pernah dirender mentah; dashboard
+            // menautkan ke proxy berotorisasi pembayaran.bukti.
+            ->assertSee(route('pembayaran.bukti', $pembayaran->id), false);
     }
 
     public function test_pemilik_dashboard_menampilkan_ringkas_tanpa_grafik(): void

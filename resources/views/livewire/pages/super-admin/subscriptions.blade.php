@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\LanggananPlan;
+use App\Enums\LanggananStatus;
 use App\Models\Subscription;
 use App\Models\SubscriptionRequest;
 use App\Models\User;
@@ -69,8 +71,8 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->validate([
             'userId' => ['required', 'integer', 'exists:users,id'],
-            'plan' => ['required', 'in:free,pro,business'],
-            'status' => ['required', 'in:active,expired,cancelled'],
+            'plan' => ['required', \Illuminate\Validation\Rule::enum(LanggananPlan::class)],
+            'status' => ['required', \Illuminate\Validation\Rule::enum(LanggananStatus::class)],
             'startsAt' => ['required', 'date'],
             'durasiHari' => ['required', 'integer', 'min:1', 'max:366'],
         ], [], [
@@ -213,18 +215,18 @@ new #[Layout('layouts.app')] class extends Component
             <div>
                 <x-input-label for="plan" value="Plan" />
                 <select wire:model="plan" id="plan" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                    <option value="free">FREE</option>
-                    <option value="pro">PRO</option>
-                    <option value="business">BUSINESS</option>
+                    @foreach (\App\Enums\LanggananPlan::cases() as $opsiPlan)
+                        <option value="{{ $opsiPlan->value }}">{{ strtoupper($opsiPlan->value) }}</option>
+                    @endforeach
                 </select>
                 <x-input-error :messages="$errors->get('plan')" class="mt-2" />
             </div>
             <div>
                 <x-input-label for="status" value="Status" />
                 <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                    <option value="active">ACTIVE</option>
-                    <option value="expired">EXPIRED</option>
-                    <option value="cancelled">CANCELLED</option>
+                    @foreach (\App\Enums\LanggananStatus::cases() as $opsiStatus)
+                        <option value="{{ $opsiStatus->value }}">{{ strtoupper($opsiStatus->value) }}</option>
+                    @endforeach
                 </select>
                 <x-input-error :messages="$errors->get('status')" class="mt-2" />
             </div>

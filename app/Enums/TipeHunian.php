@@ -13,4 +13,13 @@ enum TipeHunian: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Putra => 'Putra',
+            self::Putri => 'Putri',
+            self::Campur => 'Campur',
+        };
+    }
 }

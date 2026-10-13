@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\KamarStatus;
+use App\Enums\PropertiStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Kamar;
 use App\Models\Properti;
@@ -57,6 +59,23 @@ class PropertiManageController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Batas paket diperiksa SEBELUM validasi payload: bila kuota
+        // properti target sudah penuh, tolak 403 walau payload belum tentu
+        // valid (mis. fasilitas kosong). Bila kuota masih tersedia,
+        // validasi normal tetap berjalan (fasilitas kosong => 422).
+        $targetAwal = $this->targetPemilik($request);
+
+        if ($targetAwal) {
+            $cekAwal = SubscriptionService::checkLimit($targetAwal, 'property');
+
+            if (! $cekAwal['allowed']) {
+                return response()->json([
+                    'message' => $cekAwal['message'],
+                    'required_plan' => $cekAwal['required_plan'],
+                ], 403);
+            }
+        }
+
         $validated = $this->validateProperti($request, null);
 
         if ($this->bolehKelolaSemua($request)) {
@@ -200,14 +219,14 @@ class PropertiManageController extends Controller
         }
 
         $validated = $request->validate([
-            'nama' => 'required|string|max:100',
+            'nama' => 'required|string|max:50',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|gt:0',
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'fasilitas' => 'nullable|string',
-            'status' => 'required|in:tersedia,terisi,perbaikan',
+            'status' => ['required', Rule::enum(KamarStatus::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
@@ -268,14 +287,14 @@ class PropertiManageController extends Controller
         }
 
         $validated = $request->validate([
-            'nama' => 'required|string|max:100',
+            'nama' => 'required|string|max:50',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga_sewa_bulanan' => 'required|numeric|gt:0',
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'fasilitas' => 'nullable|string',
-            'status' => 'required|in:tersedia,terisi,perbaikan',
+            'status' => ['required', Rule::enum(KamarStatus::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
@@ -348,11 +367,33 @@ class PropertiManageController extends Controller
             ->find($id);
     }
 
+    /**
+     * Calon pemilik kos berdasarkan input, tanpa validasi penuh.
+     * Return null bila tak bisa ditentukan (mis. pemilik_id tak dikenal)
+     * agar validasi normal yang memutuskan (422).
+     */
+    private function targetPemilik(Request $request): ?User
+    {
+        if ($this->bolehKelolaSemua($request)) {
+            $pemilikId = $request->input('pemilik_id')
+                ?? $request->input('pemilikId')
+                ?? null;
+
+            if ($pemilikId === null) {
+                return $request->user();
+            }
+
+            return User::find($pemilikId);
+        }
+
+        return $request->user();
+    }
+
     private function validateProperti(Request $request, ?Properti $properti): array
     {
         return $request->validate([
-            'nama' => 'required|string|max:255',
-            'kota' => 'nullable|string|max:100',
+            'nama' => 'required|string|max:100',
+            'kota' => 'nullable|string|max:50',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'alamat' => 'nullable|string|max:500',
@@ -369,11 +410,12 @@ class PropertiManageController extends Controller
             ],
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'required|numeric|gt:0',
+            // Harga resmi diatur per kamar; harga kos opsional (legasi, fallback tampilan).
+            'harga' => 'nullable|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'status' => 'required|in:aktif,nonaktif',
+            'status' => ['required', Rule::enum(PropertiStatus::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
@@ -381,9 +423,8 @@ class PropertiManageController extends Controller
             'hapus_foto_ids.*' => 'integer',
             'pemilik_id' => $properti === null ? ['nullable', 'integer', Rule::exists('users', 'id')] : ['nullable'],
         ], [
-            'harga.required' => 'Harga per bulan wajib diisi.',
             'harga.numeric' => 'Harga per bulan harus berupa angka.',
-            'harga.gt' => 'Harga per bulan harus lebih dari Rp0.',
+            'harga.gt' => 'Harga per bulan harus lebih dari Rp0 atau dikosongkan (harga resmi diatur per kamar).',
             'fasilitas.required' => 'Pilih minimal 1 fasilitas.',
         ]);
     }
@@ -437,7 +478,7 @@ class PropertiManageController extends Controller
             'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
             'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
             'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
-            'status' => $p->status,
+            'status' => $p->status?->value,
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) ($p->total_kamar ?? 0),
@@ -459,7 +500,7 @@ class PropertiManageController extends Controller
             'harga_sewa_harian' => $k->harga_sewa_harian !== null ? (float) $k->harga_sewa_harian : null,
             'harga_asli' => $k->harga_asli !== null ? (float) $k->harga_asli : null,
             'fasilitas' => $k->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $k->fasilitas)))) : [],
-            'status' => $k->status,
+            'status' => $k->status?->value,
             'foto' => $k->fotoCover(),
             'fotos' => $k->galeriUrls(),
         ];
@@ -558,7 +599,7 @@ class PropertiManageController extends Controller
     }
 
     /**
-     * Samakan ejaan kota dengan daftar yang dikenal (anti salah ketik).
+     * Samakan ejaan kota dengan daftar baku Indonesia (anti salah ketik).
      */
     private function kanonikKota(mixed $kota): ?string
     {
@@ -566,24 +607,6 @@ class PropertiManageController extends Controller
             return null;
         }
 
-        $kota = trim(preg_replace('/\s+/', ' ', $kota) ?? $kota);
-
-        if ($kota === '') {
-            return null;
-        }
-
-        $daftar = collect(array_keys(\App\Support\Koordinat::$kota))
-            ->merge(Properti::whereNotNull('kota')->where('kota', '!=', '')->distinct()->pluck('kota'))
-            ->map(fn ($k) => trim((string) $k))->filter()->unique()->values()->all();
-
-        foreach ($daftar as $nama) {
-            if (mb_strtolower($nama) === mb_strtolower($kota)) {
-                return $nama;
-            }
-        }
-
-        $tanpaAwalan = trim((string) preg_replace('/^(kota|kotamadya|kabupaten|kab\.?)\s+/i', '', $kota));
-
-        return $tanpaAwalan !== '' ? $tanpaAwalan : null;
+        return \App\Support\DaftarKota::kanonik($kota);
     }
 }

@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\KamarStatus;
 use App\Models\Kamar;
 use App\Models\Properti;
 use App\Services\SubscriptionService;
 use App\Support\FacilityHelper;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Validate;
 use Livewire\Volt\Component;
@@ -20,7 +22,7 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?int $kamarId = null;
 
-    #[Validate('required|string|max:100')]
+    #[Validate('required|string|max:50')]
     public string $nama = '';
 
     #[Validate('required|integer|min:1|max:10')]
@@ -41,7 +43,7 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|array')]
     public array $fasilitasKamarTerpilih = [];
 
-    #[Validate('required|in:tersedia,terisi,perbaikan')]
+    #[Validate('required|string')]
     public string $status = 'tersedia';
 
     #[Validate('nullable|image|max:2048')]
@@ -130,14 +132,14 @@ new #[Layout('layouts.app')] class extends Component
     private function aturanValidasi(): array
     {
         return [
-            'nama' => 'required|string|max:100',
+            'nama' => 'required|string|max:50',
             'kapasitas' => 'required|integer|min:1|max:10',
             'harga' => 'required|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
             'fasilitasKamarTerpilih' => 'nullable|array',
-            'status' => 'required|in:tersedia,terisi,perbaikan',
+            'status' => ['required', Rule::enum(KamarStatus::class)],
             'fotoBaru' => 'nullable|image|max:2048',
         ];
     }
@@ -225,7 +227,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->fasilitasKamarTerpilih = $kamar->fasilitas
             ? array_filter(array_map('trim', explode(',', $kamar->fasilitas)))
             : [];
-        $this->status = $kamar->status;
+        $this->status = $kamar->status?->value ?? 'tersedia';
         $this->fotoBaru = null;
         $this->galeriBaru = [];
         $this->hapusGaleriIds = [];
@@ -389,19 +391,19 @@ new #[Layout('layouts.app')] class extends Component
                 <div>
                     <x-input-label for="status" value="Status" />
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
-                        <option value="tersedia">Tersedia</option>
-                        <option value="terisi">Terisi</option>
-                        <option value="perbaikan">Perbaikan</option>
+                        @foreach (\App\Enums\KamarStatus::cases() as $opsiStatus)
+                            <option value="{{ $opsiStatus->value }}">{{ $opsiStatus->label() }}</option>
+                        @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                 </div>
             </div>
 
             <div>
-                <x-input-label value="Fasilitas Kamar (opsional)" />
-                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Kosongkan untuk memakai fasilitas kos. Centang bila kamar ini punya fasilitas khusus.</p>
+                <x-input-label value="Fasilitas Kamar (privat kamar ini)" />
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Centang fasilitas yang ada di dalam kamar ini (AC, kasur, kamar mandi dalam, dll). Fasilitas bersama kos (WiFi, dapur bersama, parkir) sudah diatur di halaman kos.</p>
                 <div class="mt-3">
-                    <x-facility-icons :selected="$fasilitasKamarTerpilih" field="fasilitasKamarTerpilih" :editable="true" />
+                    <x-facility-icons :selected="$fasilitasKamarTerpilih" field="fasilitasKamarTerpilih" :editable="true" scope="kamar" />
                 </div>
                 @error('fasilitasKamarTerpilih') <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
             </div>

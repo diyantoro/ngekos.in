@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\LanggananPlan;
 use App\Models\Pengaturan;
 use App\Models\SubscriptionRequest;
 use App\Services\BuktiStorage;
@@ -25,7 +26,7 @@ new #[Layout('layouts.app')] class extends Component
             $this->redirect(route('dashboard'));
         }
 
-        if (! in_array($this->plan, ['pro', 'business'], true)) {
+        if (! in_array($this->plan, [LanggananPlan::Pro->value, LanggananPlan::Business->value], true)) {
             $this->redirect(route('langganan.plans'));
         }
     }
@@ -58,7 +59,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->validate([
-            'plan' => ['required', 'in:pro,business'],
+            'plan' => ['required', \Illuminate\Validation\Rule::in([LanggananPlan::Pro->value, LanggananPlan::Business->value])],
             'bukti' => ['required', 'image', 'max:2048'],
         ], [], [
             'bukti' => 'bukti pembayaran',

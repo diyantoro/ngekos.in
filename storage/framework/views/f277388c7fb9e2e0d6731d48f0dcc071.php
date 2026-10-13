@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;

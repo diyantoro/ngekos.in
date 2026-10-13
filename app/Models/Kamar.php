@@ -22,6 +22,7 @@ class Kamar extends Model
             'harga_sewa_mingguan' => 'decimal:2',
             'harga_sewa_harian' => 'decimal:2',
             'harga_asli' => 'decimal:2',
+            'status' => \App\Enums\KamarStatus::class,
         ];
     }
 
