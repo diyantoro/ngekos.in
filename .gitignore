@@ -11,6 +11,7 @@
 /check_roles.php
 .phpactor.json
 .phpunit.result.cache
+test-results.txt
 /.codex
 /.cursor/
 /.idea
