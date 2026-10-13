@@ -81,9 +81,9 @@ class KatalogDetailSewaTest extends TestCase
         $periodes = $penyewaan->tagihans()->pluck('periode')->all();
         $this->assertSame(
             [
-                today()->startOfMonth()->translatedFormat('F Y'),
-                today()->startOfMonth()->addMonthsNoOverflow(1)->translatedFormat('F Y'),
-                today()->startOfMonth()->addMonthsNoOverflow(2)->translatedFormat('F Y'),
+                today()->startOfMonth()->locale('id')->translatedFormat('F Y'),
+                today()->startOfMonth()->addMonthsNoOverflow(1)->locale('id')->translatedFormat('F Y'),
+                today()->startOfMonth()->addMonthsNoOverflow(2)->locale('id')->translatedFormat('F Y'),
             ],
             $periodes,
         );

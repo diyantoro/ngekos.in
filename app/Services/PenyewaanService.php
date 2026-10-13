@@ -159,7 +159,7 @@ class PenyewaanService
             for ($i = 0; $i < $durasiBulan; $i++) {
                 $bulan = $bulanAwal->copy()->addMonthsNoOverflow($i);
                 $penyewaan->tagihans()->create([
-                    'periode' => $bulan->translatedFormat('F Y'),
+                    'periode' => $bulan->locale('id')->translatedFormat('F Y'),
                     'jumlah' => $kamarTerkunci->harga_sewa_bulanan,
                     'denda' => 0,
                     'jatuh_tempo' => Pengaturan::jatuhTempoUntuk($bulan)->toDateString(),
