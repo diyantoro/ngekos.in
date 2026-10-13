@@ -1,11 +1,13 @@
 ```yaml
 name: Laravel
 
-on:
+'on':
   push:
-    branches: ["project"]
+    branches:
+      - project
   pull_request:
-    branches: ["project"]
+    branches:
+      - project
 
 jobs:
   laravel-tests:
@@ -18,7 +20,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: '8.3'
           extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite
           coverage: none
 
