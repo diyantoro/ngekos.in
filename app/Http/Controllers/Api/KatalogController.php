@@ -26,6 +26,9 @@ class KatalogController extends Controller
             'kamars as total_kamar',
             'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
         ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->withMin(['kamars as mingguan_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_mingguan', '>', 0)], 'harga_sewa_mingguan')
+            ->withMin(['kamars as harian_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_harian', '>', 0)], 'harga_sewa_harian')
+            ->addSelect(['asli_termurah' => Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->where('status', 'aktif');
 
@@ -70,10 +73,10 @@ class KatalogController extends Controller
             } elseif ($sort === 'tersedia') {
                 $query->orderByRaw('kamar_tersedia desc');
             } elseif ($sort === 'termurah') {
-                // Harga resmi dari kamar termurah; fallback ke kolom legasi bila belum ada kamar.
-                $query->orderByRaw('COALESCE(harga_termurah, harga) asc');
+                // Harga resmi dari kamar termurah.
+                $query->orderByRaw('harga_termurah asc');
             } elseif ($sort === 'termahal') {
-                $query->orderByRaw('COALESCE(harga_termurah, harga) desc');
+                $query->orderByRaw('harga_termurah desc');
             }
         } else {
             $query->orderBy('created_at', 'desc');
@@ -147,8 +150,10 @@ class KatalogController extends Controller
     {
         $p->loadMissing('fotos');
 
-        // Harga tampil = kamar termurah; kolom kos hanya fallback legasi.
-        $hargaTampil = ($p->harga_termurah ?? null) ?: ($p->harga ?? null);
+        // Harga tampil = kamar termurah (bulanan wajib, mingguan/harian min kamar).
+        $hargaTampil = $p->harga_termurah ?? null;
+        $asliTampil = ($p->asli_termurah ?? null) && $hargaTampil && $p->asli_termurah > $hargaTampil
+            ? (float) $p->asli_termurah : null;
 
         return [
             'id' => $p->id,
@@ -161,11 +166,10 @@ class KatalogController extends Controller
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
             'harga' => $hargaTampil !== null ? (float) $hargaTampil : null,
-            'harga_kos_legasi' => $p->harga !== null ? (float) $p->harga : null,
-            'harga_termurah' => $p->harga_termurah !== null ? (float) $p->harga_termurah : null,
-            'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
-            'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
-            'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
+            'harga_termurah' => $hargaTampil !== null ? (float) $hargaTampil : null,
+            'harga_mingguan' => $p->mingguan_termurah !== null ? (float) $p->mingguan_termurah : null,
+            'harga_harian' => $p->harian_termurah !== null ? (float) $p->harian_termurah : null,
+            'harga_asli' => $asliTampil,
             'jenis_harga' => 'bulanan',
             'status' => $p->status?->value,
             'total_kamar' => (int) $p->total_kamar,
@@ -182,6 +186,9 @@ class KatalogController extends Controller
 
         $tersedia = $p->kamars->where('status', \App\Enums\KamarStatus::Tersedia);
         $termurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->min('harga_sewa_bulanan');
+        $kamarTermurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->sortBy('harga_sewa_bulanan')->first();
+        $asliTermurah = $kamarTermurah?->harga_asli;
+        $asliTampil = $asliTermurah && $termurah && $asliTermurah > $termurah ? (float) $asliTermurah : null;
 
         return [
             'id' => $p->id,
@@ -194,12 +201,16 @@ class KatalogController extends Controller
             'fasilitas' => $this->fasilitasArray($p->fasilitas),
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
-            'harga' => ($termurah ?? $p->harga) !== null ? (float) ($termurah ?? $p->harga) : null,
+            // Rekening tujuan transfer DP (wajib diisi pemilik agar booking bulanan bisa jalan).
+            'bank_nama' => $p->bank_nama,
+            'no_rekening' => $p->no_rekening,
+            'rekening_nama' => $p->rekening_nama,
+            'dp_nominal' => \App\Services\PenyewaanService::DP_NOMINAL,
+            'harga' => $termurah !== null ? (float) $termurah : null,
             'harga_termurah' => $termurah !== null ? (float) $termurah : null,
-            'harga_kos_legasi' => $p->harga !== null ? (float) $p->harga : null,
-            'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
-            'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
-            'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
+            'harga_mingguan' => ($m = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_mingguan > 0)->min('harga_sewa_mingguan')) !== null ? (float) $m : null,
+            'harga_harian' => ($h = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_harian > 0)->min('harga_sewa_harian')) !== null ? (float) $h : null,
+            'harga_asli' => $asliTampil,
             'jenis_harga' => 'bulanan',
             'status' => $p->status?->value,
             'foto' => $p->fotoCover(),

@@ -13,7 +13,7 @@ new #[Layout('layouts.app')] class extends Component
             'favorits' => Auth::user()->favorits()->with(['fotos'])->withCount([
                 'kamars as total_kamar',
                 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
-            ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')->get(),
+            ])->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')->withMin(['kamars as harian_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_harian', '>', 0)], 'harga_sewa_harian')->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])->get(),
         ];
     }
 
@@ -92,21 +92,22 @@ new #[Layout('layouts.app')] class extends Component
                                     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{{ $properti->kota ?? $properti->alamat ?? 'Lokasi belum diisi' }}</p>
                                 </a>
                                 @php
-                                    $hargaTampil = $properti->harga ?? $properti->harga_termurah;
+                                    $hargaTampil = $properti->harga_termurah ?? null;
+                                    $asliTampil = $properti->asli_termurah ?? null;
                                     $periode = 'bulanan';
-                                    $adaDiskon = $properti->harga_asli && $hargaTampil && $properti->harga_asli > $hargaTampil;
+                                    $adaDiskon = $asliTampil && $hargaTampil && $asliTampil > $hargaTampil;
                                 @endphp
                                 <div class="mt-3 flex items-center justify-between gap-2">
                                     <div class="text-end">
                                         @if ($hargaTampil)
                                             @if ($adaDiskon)
-                                                <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($properti->harga_asli, 0, ',', '.') }}</span>
+                                                <span class="block text-xs font-semibold text-gray-400 dark:text-gray-500 line-through">Rp{{ number_format($asliTampil, 0, ',', '.') }}</span>
                                             @endif
                                             <span class="text-sm font-extrabold text-teal-600 dark:text-teal-400">
                                                 Rp{{ number_format($hargaTampil, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/{{ $periode === 'harian' ? 'hari' : 'bln' }}</span>
                                             </span>
-                                            @if ($properti->harga_harian)
-                                                <span class="block text-[10px] font-medium text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harga_harian, 0, ',', '.') }}/hari</span>
+                                            @if ($properti->harian_termurah)
+                                                <span class="block text-[10px] font-medium text-gray-400 dark:text-gray-500">Rp{{ number_format($properti->harian_termurah, 0, ',', '.') }}/hari</span>
                                             @endif
                                         @else
                                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>

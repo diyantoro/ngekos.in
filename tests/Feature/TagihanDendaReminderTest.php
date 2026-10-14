@@ -54,6 +54,9 @@ class TagihanDendaReminderTest extends TestCase
             'nama' => 'Kos Uji '.uniqid(),
             'kota' => 'Yogyakarta',
             'denda_per_hari' => $dendaPerHari,
+            'bank_nama' => 'BCA',
+            'no_rekening' => '999000222',
+            'rekening_nama' => 'Pemilik Uji',
             'status' => 'aktif',
         ]);
         $kamar = Kamar::create([
@@ -64,9 +67,7 @@ class TagihanDendaReminderTest extends TestCase
             'status' => 'tersedia',
         ]);
 
-        return app(PenyewaanService::class)->sewaKamar(
-            $anak, $kamar, today()->toDateString(), 1
-        );
+        return $this->sewaBulananAktif($anak, $kamar, 1);
     }
 
     // ---------- TagihanService: denda sesuai hari bayar ----------
@@ -75,24 +76,24 @@ class TagihanDendaReminderTest extends TestCase
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->addDays(5)->toDateString()]);
 
         $this->assertSame(0, TagihanService::hariTelat($tagihan));
         $this->assertEquals(0, TagihanService::dendaBerjalan($tagihan->refresh()));
-        $this->assertEquals(1000000, TagihanService::totalBerjalan($tagihan->refresh()));
+        $this->assertEquals(900000, TagihanService::totalBerjalan($tagihan->refresh()));
     }
 
     public function test_denda_bertambah_per_hari_sesuai_waktu_bayar(): void
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(5)->toDateString(), 'denda' => 0]);
 
         $this->assertSame(5, TagihanService::hariTelat($tagihan->refresh()));
         $this->assertEquals(25000, TagihanService::dendaBerjalan($tagihan->refresh()));
-        $this->assertEquals(1025000, TagihanService::totalBerjalan($tagihan->refresh()));
+        $this->assertEquals(925000, TagihanService::totalBerjalan($tagihan->refresh()));
 
         $this->assertEquals(25000, TagihanService::sinkronDenda($tagihan->refresh()));
         $this->assertEquals(25000, (float) $tagihan->refresh()->denda);
@@ -102,7 +103,7 @@ class TagihanDendaReminderTest extends TestCase
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak, 10000);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(2)->toDateString(), 'denda' => 0]);
 
         $this->assertEquals(20000, TagihanService::dendaBerjalan($tagihan->refresh()));
@@ -112,7 +113,7 @@ class TagihanDendaReminderTest extends TestCase
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->toDateString(), 'denda' => 999]);
 
         $this->artisan(ProsesTagihan::class)->assertSuccessful();
@@ -129,26 +130,27 @@ class TagihanDendaReminderTest extends TestCase
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(3)->toDateString(), 'denda' => 0]);
 
         Sanctum::actingAs($anak, ['*']);
 
+        // Sisa bulan pertama = 900.000 + denda 3 hari x 5.000 = 915.000.
         $this->postJson('/api/dashboard/anak-kos/bayar', [
             'tagihan_id' => $tagihan->id,
             'metode' => 'cash',
-            'jumlah' => 1000000,
+            'jumlah' => 900000,
         ])->assertStatus(422)->assertJsonPath('message', fn ($m) => str_contains($m, 'kurang'));
 
         $this->postJson('/api/dashboard/anak-kos/bayar', [
             'tagihan_id' => $tagihan->id,
             'metode' => 'cash',
-            'jumlah' => 1015000,
+            'jumlah' => 915000,
         ])->assertCreated();
 
         $this->assertDatabaseHas('pembayarans', [
             'tagihan_id' => $tagihan->id,
-            'jumlah' => 1015000,
+            'jumlah' => 915000,
         ]);
     }
 
@@ -160,21 +162,22 @@ class TagihanDendaReminderTest extends TestCase
         $sewa->kamar->update(['kapasitas' => 2]);
         PatunganService::tambahAnggota($sewa->refresh(), $yoga);
 
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(2)->toDateString(), 'denda' => 0]);
 
         Sanctum::actingAs($yoga, ['*']);
 
+        // Porsi patungan dari sisa 900.000 + denda 2 hari (10.000) = 455.000.
         $this->postJson('/api/dashboard/anak-kos/bayar', [
             'tagihan_id' => $tagihan->id,
             'metode' => 'cash',
-            'jumlah' => 500000,
+            'jumlah' => 450000,
         ])->assertStatus(422);
 
         $this->postJson('/api/dashboard/anak-kos/bayar', [
             'tagihan_id' => $tagihan->id,
             'metode' => 'cash',
-            'jumlah' => 505000,
+            'jumlah' => 455000,
         ])->assertCreated();
     }
 
@@ -183,7 +186,7 @@ class TagihanDendaReminderTest extends TestCase
         $pemilik = $this->user('pemilik1@ngekos.test');
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(4)->toDateString(), 'denda' => 0]);
 
         $bayar = Pembayaran::create([
@@ -207,7 +210,7 @@ class TagihanDendaReminderTest extends TestCase
         Mail::fake();
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
 
         foreach ([
             [3, 'h-3', '3 hari lagi'],
@@ -232,7 +235,7 @@ class TagihanDendaReminderTest extends TestCase
         Mail::fake();
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDay()->toDateString(), 'status' => 'belum_bayar']);
 
         $chatAwal = ChatPesan::where('anak_kos_id', $anak->id)->count();
@@ -253,7 +256,7 @@ class TagihanDendaReminderTest extends TestCase
         Mail::fake();
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->subDays(5)->toDateString(), 'status' => 'belum_bayar']);
 
         $hari1 = Carbon::today();
@@ -271,7 +274,7 @@ class TagihanDendaReminderTest extends TestCase
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
 
         $tagihan->update(['jatuh_tempo' => today()->addDays(7)->toDateString(), 'status' => 'belum_bayar']);
         $this->assertFalse(TagihanReminderService::prosesSatu($tagihan->refresh()));
@@ -288,7 +291,7 @@ class TagihanDendaReminderTest extends TestCase
         $anak = $this->user('anak1@ngekos.test');
         $anak->update(['preferensi_notifikasi' => ['pengingat_tagihan' => false, 'tagihan_telat' => true]]);
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->addDays(3)->toDateString(), 'status' => 'belum_bayar']);
 
         $this->assertTrue(TagihanReminderService::prosesSatu($tagihan->refresh()));
@@ -309,8 +312,10 @@ class TagihanDendaReminderTest extends TestCase
         Mail::fake();
         $anak = $this->user('anak1@ngekos.test');
         $sewa = $this->sewaAktif($anak);
-        $tagihan = $sewa->tagihans()->firstOrFail();
+        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
         $tagihan->update(['jatuh_tempo' => today()->addDays(2)->toDateString(), 'status' => 'belum_bayar']);
+        // Isolasi: tagihan DP (jatuh tempo hari masuk) dilunasi agar tidak ikut terhitung.
+        $sewa->tagihans()->where('id', '!=', $tagihan->id)->update(['status' => 'lunas']);
 
         $hasil = TagihanReminderService::kirimHarian();
 

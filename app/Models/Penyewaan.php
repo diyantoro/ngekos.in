@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Penyewaan extends Model
 {
     protected $fillable = [
-        'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'permintaan_keluar_pada',
+        'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir',
+        'perpanjangan_status', 'perpanjangan_ditawarkan_pada',
+        'status', 'permintaan_keluar_pada',
         'ktp_path', 'mode_hunian',
     ];
 
@@ -18,6 +20,8 @@ class Penyewaan extends Model
         return [
             'tanggal_masuk' => 'date',
             'tanggal_keluar' => 'date',
+            'tanggal_berakhir' => 'date',
+            'perpanjangan_ditawarkan_pada' => 'date',
             'permintaan_keluar_pada' => 'datetime',
         ];
     }

@@ -87,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware(['role:anak_kos', 'throttle:30,1']);
     Route::post('/dashboard/anak-kos/{sewaanId}/batal-keluar', [DashboardController::class, 'anakKosBatalkanKeluar'])
         ->middleware(['role:anak_kos', 'throttle:30,1']);
+    Route::post('/dashboard/anak-kos/{sewaanId}/perpanjangan', [DashboardController::class, 'anakKosPerpanjangan'])
+        ->middleware(['role:anak_kos', 'throttle:30,1']);
 
     // Dashboard - Pemilik
     Route::get('/dashboard/pemilik', [DashboardController::class, 'pemilik'])

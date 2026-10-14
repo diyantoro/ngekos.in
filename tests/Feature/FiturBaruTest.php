@@ -41,24 +41,39 @@ class FiturBaruTest extends TestCase
 
     public function test_api_sewa_berhasil_tanpa_ktp(): void
     {
+        Storage::fake('private');
+
         $anak = $this->user('anak1@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
         Sanctum::actingAs($anak, ['*']);
 
-        // Tanpa KTP: booking langsung berhasil, ktp_path null.
+        // Tanpa bukti transfer DP: booking bulanan ditolak.
         $this->postJson("/api/kos/{$properti->id}/kamar/{$kamar->id}/sewa", [
             'tanggal_masuk' => today()->toDateString(),
             'durasi_bulan' => 1,
+        ])->assertStatus(422);
+
+        // Dengan bukti DP: booking tercatat tapi BELUM otomatis tersewa.
+        $this->post("/api/kos/{$properti->id}/kamar/{$kamar->id}/sewa", [
+            'tanggal_masuk' => today()->toDateString(),
+            'durasi_bulan' => 1,
+            'bukti_dp' => UploadedFile::fake()->image('dp.jpg'),
         ])->assertCreated();
 
+        // Kamar ditahan untuk pemesan, tapi sewa menunggu verifikasi.
         $this->assertSame('terisi', $kamar->refresh()->status->value);
 
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('kamar_id', $kamar->id)->firstOrFail();
         $this->assertNull($sewa->ktp_path);
-        $this->assertSame(1, $sewa->tagihans()->count());
-        $this->assertSame('belum_bayar', $sewa->tagihans()->first()->status);
+        $this->assertSame('menunggu_verifikasi', $sewa->status);
+        $this->assertSame(2, $sewa->tagihans()->count());
+        $this->assertDatabaseHas('pembayarans', [
+            'tagihan_id' => $sewa->tagihans()->where('jenis', 'dp')->firstOrFail()->id,
+            'jumlah' => 100000,
+            'status' => 'menunggu_verifikasi',
+        ]);
     }
 
     // ---------- 2. Kwitansi otomatis ----------
@@ -137,9 +152,7 @@ class FiturBaruTest extends TestCase
             'status' => 'tersedia',
         ]);
 
-        $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1
-        );
+        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
 
         PatunganService::tambahAnggota($sewa->refresh(), $yoga);
 
@@ -278,9 +291,7 @@ class FiturBaruTest extends TestCase
         $b2 = Kamar::where('nama', 'B2')->firstOrFail();
         $b2->update(['kapasitas' => 2]);
 
-        $sewa = app(PenyewaanService::class)->sewaKamar(
-            $maya, $b2, today()->toDateString(), 1
-        );
+        $sewa = $this->sewaBulananAktif($maya, $b2, 1);
         PatunganService::tambahAnggota($sewa->refresh(), $rina);
         $sewa->refresh();
 
@@ -312,9 +323,7 @@ class FiturBaruTest extends TestCase
         $yoga = $this->user('anak2@ngekos.test');
         $a1 = Kamar::where('nama', 'A1')->firstOrFail();
 
-        $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $a1, today()->toDateString(), 1
-        );
+        $sewa = $this->sewaBulananAktif($rina, $a1, 1);
 
         $this->expectException(\DomainException::class);
         PatunganService::tambahAnggota($sewa, $yoga);
@@ -333,9 +342,7 @@ class FiturBaruTest extends TestCase
             'harga_sewa_harian' => 60000,
             'status' => 'tersedia',
         ]);
-        $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1
-        );
+        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
 
         // Tanpa KTP: tambah teman langsung berhasil.
         $anggota = PatunganService::tambahAnggota($sewa->refresh(), $yoga);
@@ -357,9 +364,7 @@ class FiturBaruTest extends TestCase
             'harga_sewa_harian' => 60000,
             'status' => 'tersedia',
         ]);
-        $sewa = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamar, today()->toDateString(), 1
-        );
+        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
 
         Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
             ->call('bukaModalTeman', $sewa->id)
@@ -390,9 +395,7 @@ class FiturBaruTest extends TestCase
             'harga_sewa_bulanan' => 1200000,
             'status' => 'tersedia',
         ]);
-        $sewaBaru = app(PenyewaanService::class)->sewaKamar(
-            $rina, $kamarBaru, today()->toDateString(), 1
-        );
+        $sewaBaru = $this->sewaBulananAktif($rina, $kamarBaru, 1);
 
         $this->postJson("/api/penyewaan/{$sewaBaru->id}/anggota", [
             'email' => 'anak3@ngekos.test',

@@ -22,13 +22,16 @@
         'Kolam Renang' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />',
         'Air' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4s-4.5 5.06-4.5 8.25a4.5 4.5 0 109 0C16.5 9.06 12 4 12 4z" />',
         'air' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4s-4.5 5.06-4.5 8.25a4.5 4.5 0 109 0C16.5 9.06 12 4 12 4z" />',
-        'Air Panas' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9.25 13.75a2.75 2.75 0 105.5 0c0-2.3-2.75-6.5-2.75-6.5S9.25 11.45 9.25 13.75zM11.5 5.75l.5-.75M13.75 6.75l.5-.9" />',
         'Listrik' => '<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L4.5 14.25h5.25L9 19.5l9-9.75h-5.25L13.5 4.5z" />',
         'Termasuk Listrik' => '<circle cx="12" cy="12" r="8.25" /><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 8.25L8.75 13h2.35l-.85 2.75L15 11h-2.35l.85-2.75z" />',
         'Kloset Duduk' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5h13.5V9H5.25zM4 11.5a8 8 0 0116 0v-.75H4zM8.5 16.75h7M6.75 18.5h10.5" />',
+        'Kloset Jongkok' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5h13.5V9H5.25zM4 11.5a8 8 0 0116 0v-.75H4zM8.5 16.75h7M6.75 18.5h10.5" />',
         'Kipas' => '<circle cx="12" cy="8.5" r="4.75" /><circle cx="12" cy="8.5" r="1.1" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.5V5.6M12 8.5l2.5 1.45M12 8.5l-2.5 1.45M12 13.25v4.25M7.25 19h9.5" />',
         'kipas' => '<circle cx="12" cy="8.5" r="4.75" /><circle cx="12" cy="8.5" r="1.1" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.5V5.6M12 8.5l2.5 1.45M12 8.5l-2.5 1.45M12 13.25v4.25M7.25 19h9.5" />',
         'Kipas Angin' => '<circle cx="12" cy="8.5" r="4.75" /><circle cx="12" cy="8.5" r="1.1" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.5V5.6M12 8.5l2.5 1.45M12 8.5l-2.5 1.45M12 13.25v4.25M7.25 19h9.5" />',
+        'Jam Malam 22.00' => '<circle cx="12" cy="12" r="8.25" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5V12l3 2" />',
+        'Dilarang Bawa Hewan' => '<circle cx="12" cy="12" r="8.25" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 8.5c.8-.8 2.6-.8 3.5 0m2.5 2.5c.8.8.8 2.6 0 3.5M7 17l10-10" />',
+        'Dilarang Miras & Narkoba' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.5h4.5V9l2 9.5a1.5 1.5 0 01-1.5 1.75h-5.5A1.5 1.5 0 017.75 18.5L9.75 9V3.5zM7 17l10-10" />',
     ];
 
     // Daftar fasilitas yang punya file PNG. Key = label fasilitas (nama yang disimpan),
@@ -56,6 +59,7 @@
         'Penjaga Kos' => 'penjaga_kos.png',
         'Dilarang Merokok' => 'dilarang_merokok.png',
         'Dilarang Bawa Tamu lawan jenis' => 'lawan_jenis.png',
+        'Akses 24 Jam' => 'akses.png',
         'Akses' => 'akses.png',
         'Parkir Motor' => 'parkir_motor_sepeda.png',
         'Parkir Motor & Sepeda' => 'parkir_motor_sepeda.png',
@@ -69,7 +73,7 @@
         'Tidak Termasuk Listrik' => 'tidak_listrik.png',
         'Tidak Listrik' => 'tidak_listrik.png',
         'Kloset Duduk' => 'kamar_mandi_dalam.png',
-        'Air Panas' => 'shower.png',
+        'Kloset Jongkok' => 'kamar_mandi_dalam.png',
     ];
 
     // Kelompok fasilitas per scope.
@@ -83,16 +87,16 @@
             'Termasuk Listrik', 'Tidak Termasuk Listrik',
         ],
         'Fasilitas Kamar Mandi' => [
-            'Kamar Mandi Dalam', 'Kamar Mandi Luar', 'Kloset Duduk', 'Shower', 'Ember', 'Air Panas',
+            'Kamar Mandi Dalam', 'Kamar Mandi Luar', 'Kloset Duduk', 'Kloset Jongkok', 'Shower', 'Ember', 'Air',
         ],
         'Fasilitas Umum Kos' => [
             'WiFi', 'Dapur', 'Dapur Bersama', 'Ruang Tamu', 'Penjaga Kos', 'Tempat Jemuran', 'Laundry',
         ],
         'Fasilitas Parkir Kos' => [
-            'Parkir', 'Parkir Motor & Sepeda', 'Parkir Motor', 'Parkir Mobil',
+            'Parkir', 'Parkir Motor & Sepeda', 'Parkir Mobil',
         ],
         'Peraturan Kos' => [
-            'Dilarang Merokok', 'Dilarang Bawa Tamu lawan jenis', 'Akses', 'Lawan Jenis', 'Tamu',
+            'Dilarang Merokok', 'Dilarang Bawa Tamu lawan jenis', 'Akses 24 Jam', 'Jam Malam 22.00', 'Dilarang Bawa Hewan', 'Dilarang Miras & Narkoba',
         ],
     ];
 
@@ -118,8 +122,13 @@
 @if ($editable)
     {{-- Widget checklist fasilitas: murni Livewire + CSS, tanpa Alpine.
         Setiap item memakai wire:model.live sehingga status ceklis selalu
-        tersinkron ke server walau form di-render ulang (mis. habis validasi gagal). --}}
-    <div class="space-y-7">
+        tersinkron ke server walau form di-render ulang (mis. habis validasi gagal).
+        Pasangan bertentangan (AC vs Kipas Angin, dst.) berlaku seperti radio:
+        mencentang satu otomatis melepas centang lawannya (JS di bawah +
+        pengaman di server via FacilityHelper::EKSKLUSIF). Semua kotak selalu
+        bisa diklik. --}}
+    @php $grupEksklusif = \App\Support\FacilityHelper::EKSKLUSIF; @endphp
+    <div class="space-y-7" data-fasilitas-eksklusif='@json($grupEksklusif)'>
         @foreach ($kelompokFasilitas as $judul => $items)
             <div>
                 <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
@@ -132,20 +141,20 @@
                             $png = $assetFasilitas($nama);
                             $svg = $ikonSvg[$nama] ?? null;
                         @endphp
-                        <label class="relative cursor-pointer select-none rounded-xl border-2 p-3 transition-all duration-200 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 has-[:checked]:ring-2 has-[:checked]:ring-teal-200 dark:has-[:checked]:border-teal-500 dark:has-[:checked]:bg-teal-500/10 dark:has-[:checked]:ring-teal-500/30">
-                            <input type="checkbox" value="{{ $nama }}" wire:model.live="{{ $field }}" @checked(in_array($nama, $selected)) class="peer sr-only">
+                        <label data-fasilitas-label="{{ $nama }}" class="relative cursor-pointer select-none rounded-xl border-2 p-3 transition-all duration-200 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 has-[:checked]:ring-2 has-[:checked]:ring-teal-200 dark:has-[:checked]:border-teal-500 dark:has-[:checked]:bg-teal-500/10 dark:has-[:checked]:ring-teal-500/30">
+                            <input type="checkbox" value="{{ $nama }}" wire:model.live="{{ $field }}" @checked(in_array($nama, $selected)) data-fasilitas-input="{{ $nama }}" class="peer sr-only">
                             <span class="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white peer-checked:flex">
                                 <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </span>
                             <span class="flex items-center gap-2.5">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700">
+                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-500/10">
                                     @if ($png)
                                         <img src="{{ asset('images/fasilitas/' . $png) }}" alt="{{ $nama }}"
                                             class="h-6 w-6 object-contain">
                                     @elseif ($svg)
-                                        <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $svg !!}</svg>
+                                        <svg class="h-5 w-5 text-teal-600 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $svg !!}</svg>
                                     @else
-                                        <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg class="h-5 w-5 text-teal-600 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     @endif
                                 </span>
                                 <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $nama }}</span>
@@ -156,23 +165,64 @@
             </div>
         @endforeach
     </div>
+    @once
+    <script>
+    (function () {
+        // Mencentang satu pilihan otomatis melepas centang lawannya dalam
+        // grup eksklusif yang sama (perilaku seperti radio, tapi bisa
+        // di-uncheck semua). Tidak memakai disabled agar tidak terkunci
+        // dan tidak bentrok dengan render ulang Livewire.
+        function lawanDari(grup, nama) {
+            var lawan = [];
+            grup.forEach(function (pasangan) {
+                if (pasangan.indexOf(nama) !== -1) {
+                    pasangan.forEach(function (item) {
+                        if (item !== nama) lawan.push(item);
+                    });
+                }
+            });
+            return lawan;
+        }
+
+        document.addEventListener('change', function (e) {
+            var input = e.target && e.target.closest ? e.target.closest('[data-fasilitas-input]') : null;
+            if (!input || !input.checked) return;
+            var wadah = input.closest('[data-fasilitas-eksklusif]');
+            if (!wadah) return;
+            var grup = [];
+            try { grup = JSON.parse(wadah.getAttribute('data-fasilitas-eksklusif') || '[]'); } catch (err) { grup = []; }
+            var lawan = lawanDari(grup, input.getAttribute('data-fasilitas-input'));
+            if (!lawan.length) return;
+            lawan.forEach(function (item) {
+                var el = wadah.querySelector('[data-fasilitas-input="' + String(item).replace(/"/g, '') + '"]');
+                if (el && el.checked) {
+                    el.checked = false;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        });
+    })();
+    </script>
+    @endonce
 @else
     <div class="flex flex-wrap gap-2">
         @foreach (array_filter(array_map('trim', explode(',', $fasilitas))) as $f)
-            @if (isset($ikonPng[$f]))
+            @php $tampil = \App\Support\FacilityHelper::normalize($f); @endphp
+            @if (isset($ikonPng[$tampil]))
                 <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
-                    <img src="{{ asset('images/fasilitas/' . $ikonPng[$f]) }}" class="h-4 w-4 object-contain" alt="">
-                    {{ $f }}
+                    <img src="{{ asset('images/fasilitas/' . $ikonPng[$tampil]) }}" class="h-4 w-4 object-contain" alt="">
+                    {{ $tampil }}
                 </span>
-            @elseif (isset($ikonSvg[$f]))
+            @elseif (isset($ikonSvg[$tampil]))
                 <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$f] !!}</svg>
-                    {{ $f }}
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$tampil] !!}</svg>
+                    {{ $tampil }}
                 </span>
             @else
-                <span class="inline-flex items-center gap-1 rounded-xl bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-200 dark:ring-gray-700">
-                    <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    {{ $f }}
+                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {{ $tampil }}
                 </span>
             @endif
         @endforeach

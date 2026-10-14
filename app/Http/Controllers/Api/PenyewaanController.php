@@ -34,6 +34,8 @@ class PenyewaanController extends Controller
             'durasi_bulan' => ['required_if:periode,bulanan', 'integer', 'min:1', 'max:12'],
             'durasi_minggu' => ['required_if:periode,mingguan', 'integer', 'min:1', 'max:12'],
             'durasi_hari' => ['required_if:periode,harian', 'integer', 'min:1', 'max:90'],
+            // Booking bulanan wajib melampirkan bukti transfer DP.
+            'bukti_dp' => ['required_if:periode,bulanan', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048'],
         ], [
             'tanggal_masuk.required' => 'Tanggal masuk wajib diisi.',
             'tanggal_masuk.date' => 'Tanggal masuk tidak valid.',
@@ -49,6 +51,9 @@ class PenyewaanController extends Controller
             'durasi_hari.required_if' => 'Lama sewa harian wajib diisi.',
             'durasi_hari.min' => 'Lama sewa harian minimal 1 hari.',
             'durasi_hari.max' => 'Lama sewa harian maksimal 90 hari.',
+            'bukti_dp.required_if' => 'Lampirkan bukti transfer DP Rp100.000 terlebih dahulu sebelum menyewa bulanan.',
+            'bukti_dp.mimes' => 'Bukti transfer harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
+            'bukti_dp.max' => 'Ukuran bukti transfer maksimal 2MB.',
         ]);
 
         $kamar = Kamar::with('properti')
@@ -73,17 +78,24 @@ class PenyewaanController extends Controller
         }
 
         try {
-            $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, $validated['tanggal_masuk'], $durasiBulan, $durasiHari, $durasiMinggu);
+            $buktiDpPath = null;
+            if ($periode === 'bulanan' && $request->hasFile('bukti_dp')) {
+                $buktiDpPath = \App\Services\BuktiStorage::simpan($request->file('bukti_dp'), 'bukti-pembayaran');
+            }
+
+            $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, $validated['tanggal_masuk'], $durasiBulan, $durasiHari, $durasiMinggu, $buktiDpPath);
         } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $tanggalLabel = Carbon::parse($penyewaan->tanggal_masuk)->locale('id')->translatedFormat('d F Y');
 
+        $dp = $periode === 'bulanan' ? PenyewaanService::dpUntuk((float) $kamar->harga_sewa_bulanan) : 0;
+
         $pesan = match ($periode) {
             'harian' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiHari.' hari. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
             'mingguan' => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiMinggu.' minggu. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
-            default => 'Kamar '.$kamar->nama.' berhasil dipesan untuk '.$durasiBulan.' bulan. Rencana masuk: '.$tanggalLabel.'. Tagihan sewa sudah dibuat — segera bayar Uang Muka (DP) agar booking fiks.',
+            default => 'Pengajuan booking kamar '.$kamar->nama.' terkirim ('.$durasiBulan.' bulan, masuk '.$tanggalLabel.'). Bukti DP Rp'.number_format($dp, 0, ',', '.').' sudah dilampirkan — kamar BELUM otomatis tersewa. Sewa aktif setelah pemilik/admin memverifikasi. H-3 sebelum berakhir kamu ditanya mau lanjut atau tidak.',
         };
 
         return response()->json([
@@ -94,6 +106,9 @@ class PenyewaanController extends Controller
                 'properti' => $kamar->properti->nama,
                 'tanggal_masuk' => $penyewaan->tanggal_masuk,
                 'tanggal_keluar' => $penyewaan->tanggal_keluar,
+                'tanggal_berakhir' => $penyewaan->tanggal_berakhir,
+                'dp_nominal' => $periode === 'bulanan' ? $dp : null,
+                'sisa_bulan_pertama' => $periode === 'bulanan' ? max(0, (float) $kamar->harga_sewa_bulanan - $dp) : null,
                 'periode' => $periode,
                 'durasi_bulan' => $periode === 'bulanan' ? $durasiBulan : null,
                 'durasi_minggu' => $periode === 'mingguan' ? $durasiMinggu : null,

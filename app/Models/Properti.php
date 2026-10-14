@@ -14,17 +14,14 @@ class Properti extends Model
 
     protected $fillable = [
         'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
-        'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'tipe_hunian', 'foto',
+        'bank_nama', 'no_rekening', 'rekening_nama',
+        'status', 'tipe_hunian', 'foto',
     ];
 
     protected function casts(): array
     {
         return [
             'denda_per_hari' => 'decimal:2',
-            'harga' => 'decimal:2',
-            'harga_mingguan' => 'decimal:2',
-            'harga_harian' => 'decimal:2',
-            'harga_asli' => 'decimal:2',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'status' => \App\Enums\PropertiStatus::class,
@@ -50,6 +47,32 @@ class Properti extends Model
     public function pemilik(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pemilik_id');
+    }
+
+    /**
+     * True bila pemilik sudah mencantumkan rekening tujuan transfer DP.
+     */
+    public function punyaRekening(): bool
+    {
+        return filled($this->bank_nama) && filled($this->no_rekening);
+    }
+
+    /**
+     * Ringkasan rekening untuk ditampilkan ke penyewa ("BCA 1234567890 a.n. Budi").
+     */
+    public function labelRekening(): ?string
+    {
+        if (! $this->punyaRekening()) {
+            return null;
+        }
+
+        $label = trim((string) $this->bank_nama.' '.(string) $this->no_rekening);
+
+        if (filled($this->rekening_nama)) {
+            $label .= ' a.n. '.$this->rekening_nama;
+        }
+
+        return $label;
     }
 
     public function admins(): BelongsToMany
@@ -103,38 +126,6 @@ class Properti extends Model
         $galeri = $this->galeriUrls();
 
         return $galeri[0] ?? null;
-    }
-
-    /**
-     * Harga acuan properti untuk satu periode.
-     */
-    public function hargaUntuk(string $periode): ?float
-    {
-        $nilai = match ($periode) {
-            'mingguan' => $this->harga_mingguan,
-            'harian' => $this->harga_harian,
-            default => $this->harga,
-        };
-
-        return $nilai !== null ? (float) $nilai : null;
-    }
-
-    /**
-     * @return array<int,string>
-     */
-    public function periodeTersedia(): array
-    {
-        $daftar = [];
-
-        foreach (['bulanan', 'mingguan', 'harian'] as $periode) {
-            $harga = $this->hargaUntuk($periode);
-
-            if ($harga !== null && $harga > 0) {
-                $daftar[] = $periode;
-            }
-        }
-
-        return $daftar;
     }
 
     public function peminat(): BelongsToMany

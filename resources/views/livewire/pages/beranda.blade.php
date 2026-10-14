@@ -23,11 +23,12 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
+            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'status', 'created_at'])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan');
+            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->addSelect(['asli_termurah' => Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)]);
 
         if ($this->cari) {
             $query->where(fn ($q) => $q
@@ -47,11 +48,12 @@ new #[Layout('layouts.publik')] class extends Component
         if ($promoIds !== []) {
             $propertiPromo = Properti::query()
                 ->where('status', 'aktif')
-                ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
+                ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'status', 'created_at'])
                 ->with(['fotos:id,properti_id,path,urutan'])
                 ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
                 ->withAvg('ulasans as rating_ulasan', 'rating')
                 ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->addSelect(['asli_termurah' => Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
                 ->whereIn('id', $promoIds)
                 ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $promoIds)).')')
                 ->take(8)
@@ -60,8 +62,7 @@ new #[Layout('layouts.publik')] class extends Component
 
         if ($propertiPromo->isEmpty()) {
             $propertiPromo = (clone $query)
-                ->whereNotNull('harga_asli')
-                ->whereColumn('harga_asli', '>', 'harga')
+                ->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->whereColumn('harga_asli', '>', 'harga_sewa_bulanan'))
                 ->latest('created_at')
                 ->take(8)
                 ->get();
@@ -70,11 +71,12 @@ new #[Layout('layouts.publik')] class extends Component
         $heroId = Pengaturan::landingHeroId();
         $heroKos = $heroId ? Properti::query()
             ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'status', 'created_at'])
+            ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian', 'status', 'created_at'])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
             ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->addSelect(['asli_termurah' => Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
             ->find($heroId) : null;
 
         if (! $heroKos) {
@@ -223,7 +225,7 @@ new #[Layout('layouts.publik')] class extends Component
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5 pt-14">
                                 <p class="text-white font-bold truncate">{{ $heroKos->nama }}</p>
                                 <p class="text-white/70 text-xs truncate">{{ $heroKos->kota ?? $heroKos->alamat }}</p>
-                                <p class="mt-1 text-amber-300 font-extrabold">Rp{{ number_format(($heroKos->harga_termurah ?? null) ?: ($heroKos->harga ?? 0), 0, ',', '.') }}<span class="text-xs font-medium text-white/70">/bln</span></p>
+                                <p class="mt-1 text-amber-300 font-extrabold">Rp{{ number_format($heroKos->harga_termurah ?? 0, 0, ',', '.') }}<span class="text-xs font-medium text-white/70">/bln</span></p>
                             </div>
                         @else
                             <div class="h-80 w-full bg-white/10 backdrop-blur flex items-center justify-center">

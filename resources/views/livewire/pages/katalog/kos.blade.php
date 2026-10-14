@@ -30,7 +30,15 @@ new #[Layout('layouts.publik')] class extends Component
 
     public function updatedKota(): void
     {
+        $kanonik = \App\Support\DaftarKota::kanonik(trim((string) $this->kota));
+        $this->kota = $kanonik ?? trim((string) $this->kota);
         $this->resetPage();
+    }
+
+    public function mount(): void
+    {
+        $kanonik = \App\Support\DaftarKota::kanonik(trim((string) $this->kota));
+        $this->kota = $kanonik ?? '';
     }
 
     public function updatedHargaMax($value): void
@@ -46,13 +54,17 @@ new #[Layout('layouts.publik')] class extends Component
 
     public function with(): array
     {
+        $kotaFilter = \App\Support\DaftarKota::kanonik(trim((string) $this->kota)) ?? trim((string) $this->kota);
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli', 'tipe_hunian'])
+            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'tipe_hunian'])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
-            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan');
+            ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+            ->withMin(['kamars as mingguan_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_mingguan', '>', 0)], 'harga_sewa_mingguan')
+            ->withMin(['kamars as harian_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_harian', '>', 0)], 'harga_sewa_harian')
+            ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)]);
 
         if ($this->cari) {
             $query->where(fn ($q) => $q
@@ -62,7 +74,8 @@ new #[Layout('layouts.publik')] class extends Component
         }
 
         if ($this->kota) {
-            $query->where('kota', 'like', "%{$this->kota}%");
+            $varian = array_unique([$kotaFilter, 'Kota '.$kotaFilter, 'Kabupaten '.$kotaFilter, 'Kab. '.$kotaFilter]);
+            $query->whereIn('kota', $varian);
         }
 
         if ($this->hargaMax) {
@@ -73,17 +86,9 @@ new #[Layout('layouts.publik')] class extends Component
             $query->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->where('kapasitas', '>=', $this->kapasitas));
         }
 
-        return [
-            'propertis' => $query->orderBy('nama')->paginate(12),
-            'daftarKota' => collect(\App\Support\DaftarKota::semua())
-                ->merge(cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
-                    ->whereNotNull('kota')
-                    ->distinct()
-                    ->orderBy('kota')
-                    ->pluck('kota')
-                    ->all()))
-                ->map(fn ($k) => trim((string) $k))->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all(),
-            'markers' => cache()->remember('katalog.markers', 3600, fn () => Properti::where('status', 'aktif')
+        $kunciMarker = 'katalog.markers.'.md5(json_encode([$this->cari, $kotaFilter, $this->hargaMax, $this->kapasitas]));
+        $markers = cache()->remember($kunciMarker, 300, function () use ($query) {
+            return (clone $query)->reorder()->limit(300)
                 ->get(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude'])
                 ->map(function ($p) {
                     $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
@@ -99,7 +104,22 @@ new #[Layout('layouts.publik')] class extends Component
                 })
                 ->filter()
                 ->values()
-                ->all()),
+                ->all();
+        });
+
+        return [
+            'propertis' => $query->orderBy('nama')->paginate(12),
+            'daftarKota' => cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
+                    ->whereNotNull('kota')
+                    ->where('kota', '!=', '')
+                    ->distinct()
+                    ->orderBy('kota')
+                    ->pluck('kota')
+                    ->map(fn ($k) => \App\Support\DaftarKota::kanonik(trim((string) $k)) ?? trim((string) $k))
+                    ->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all()),
+            'markers' => $markers,
+            'kotaFilter' => $kotaFilter,
+            'pusatKotaFilter' => $kotaFilter !== '' ? \App\Support\Koordinat::kota($kotaFilter) : null,
         ];
     }
 }; ?>
@@ -114,13 +134,12 @@ new #[Layout('layouts.publik')] class extends Component
                     <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari nama kos, kota, atau alamat..."
                         class="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 border-0 focus:ring-0 focus:outline-none p-0">
                 </div>
-                <input type="text" wire:model.live.debounce.300ms="kota" list="daftar-kota-katalog" aria-label="Kota" placeholder="Filter kota… (mis. Bandung)"
-                    class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2" />
-                <datalist id="daftar-kota-katalog">
+                <select wire:model.live="kota" aria-label="Filter kota" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
+                    <option value="">Semua kota</option>
                     @foreach ($daftarKota as $k)
-                        <option value="{{ $k }}"></option>
+                        <option value="{{ $k }}">{{ $k }}</option>
                     @endforeach
-                </datalist>
+                </select>
                 <select wire:model.live="hargaMax" aria-label="Harga maksimal" class="rounded-lg border-gray-200 dark:border-gray-600 text-xs focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 dark:text-gray-100 transition-colors py-2">
                     <option value="">Semua harga</option>
                     <option value="500000"><= Rp500rb</option>
@@ -155,11 +174,11 @@ new #[Layout('layouts.publik')] class extends Component
         <div class="flex items-center justify-between gap-3 mb-3">
             <p class="text-xs text-gray-500 dark:text-gray-400">
                 Menampilkan <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $propertis->count() }}</span> kos
-                @if ($kota) di <span class="font-semibold text-teal-600 dark:text-teal-400">{{ $kota }}</span> @endif
+                @if ($kotaFilter) di <span class="font-semibold text-teal-600 dark:text-teal-400">{{ $kotaFilter }}</span> @endif
             </p>
             <button @click="tampilkanPeta = !tampilkanPeta; $nextTick(() => togglePetaNgekos(tampilkanPeta))"
-                class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ count($markers) ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500' }}"
-                @if (! count($markers)) disabled title="Belum ada koordinat" @endif>
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95 {{ count($markers) || $pusatKotaFilter ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-sm' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500' }}"
+                @if (! count($markers) && ! $pusatKotaFilter) disabled title="Belum ada koordinat" @endif>
                 <svg x-show="!tampilkanPeta" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                 <svg x-show="tampilkanPeta" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M9 21V9h6v12" /></svg>
                 <span x-text="tampilkanPeta ? 'Lihat Daftar' : 'Lihat Peta'"></span>
@@ -173,9 +192,10 @@ new #[Layout('layouts.publik')] class extends Component
              x-transition:enter-end="opacity-100 translate-y-0"
              class="mb-5">
             <div class="rounded-2xl overflow-hidden shadow-card ring-1 ring-gray-100 dark:ring-gray-700">
-                <div id="peta-kos" class="h-96 sm:h-[30rem] w-full bg-gray-100 dark:bg-gray-800"></div>
+                <div id="peta-kos-data" data-markers='@json($markers)' data-pusat-lat="{{ $pusatKotaFilter[0] ?? '' }}" data-pusat-lng="{{ $pusatKotaFilter[1] ?? '' }}" data-kota="{{ $kotaFilter }}" class="hidden"></div>
+                <div id="peta-kos" wire:ignore class="h-96 sm:h-[30rem] w-full bg-gray-100 dark:bg-gray-800"></div>
             </div>
-            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta menggunakan koordinat properti; jika belum diisi, titik diambil dari pusat kota.</p>
+            <p class="mt-2 text-[10px] text-gray-400 dark:text-gray-500 text-center">Peta mengikuti filter kota & pencarian — titik dari koordinat properti, atau pusat kota bila belum diisi.</p>
         </div>
 
         <!-- Cards - Mobile-first list layout -->
@@ -207,7 +227,7 @@ new #[Layout('layouts.publik')] class extends Component
                                 </span>
                             @endif
                             @if ($properti->tipe_hunian)
-                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white {{ $properti->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-rose-700' : ($properti->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-slate-700' : 'bg-brand-800') }}">
+                                <span class="absolute top-2 left-2 inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold text-white {{ $properti->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-rose-700' : ($properti->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-slate-700' : ($properti->tipe_hunian === \App\Enums\TipeHunian::Bebas ? 'bg-amber-700' : 'bg-brand-800')) }}">
                                     {{ $properti->tipe_hunian->label() }}
                                 </span>
                             @endif
@@ -234,7 +254,7 @@ new #[Layout('layouts.publik')] class extends Component
                                             <span class="inline-flex items-center rounded bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-800 dark:text-brand-200">{{ $f }}</span>
                                         @endforeach
                                         @if (count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) > 3)
-                                            <span class="inline-flex items-center rounded bg-stone-100 dark:bg-gray-700 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:text-gray-400">+{{ count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) - 3 }}</span>
+                                            <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-medium text-teal-700 dark:text-teal-300">+{{ count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) - 3 }}</span>
                                         @endif
                                     </div>
                                 @endif
@@ -243,12 +263,13 @@ new #[Layout('layouts.publik')] class extends Component
                                 <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Mulai dari</span>
                                 <div class="text-end">
                                     @php
-                                        // Harga resmi dari kamar termurah; harga kos hanya fallback legasi.
-                                        $hargaTampil = ($properti->harga_termurah ?? null) ?: ($properti->harga ?? null);
-                                        $adaDiskon = $properti->harga_asli && (float) $hargaTampil > 0 && $properti->harga_asli > $hargaTampil;
+                                        // Harga resmi dari kamar termurah (bulanan wajib, mingguan/harian opsional).
+                                        $hargaTampil = $properti->harga_termurah ?? null;
+                                        $asliTampil = $properti->asli_termurah ?? null;
+                                        $adaDiskon = $asliTampil && (float) $hargaTampil > 0 && $asliTampil > $hargaTampil;
                                     @endphp
                                     @if ((float) $hargaTampil > 0)
-                                        <x-harga-tiga-periode :bulanan="$hargaTampil" :mingguan="$properti->harga_mingguan" :harian="$properti->harga_harian" :asli="$adaDiskon ? $properti->harga_asli : null" />
+                                        <x-harga-tiga-periode :bulanan="$hargaTampil" :mingguan="$properti->mingguan_termurah" :harian="$properti->harian_termurah" :asli="$adaDiskon ? $asliTampil : null" />
                                     @else
                                         <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                                     @endif
@@ -301,23 +322,54 @@ new #[Layout('layouts.publik')] class extends Component
         <script>
             let ngekosMap = null;
             let ngekosBounds = null;
+            let ngekosMarkers = [];
+            let ngekosHash = '';
             const dataPetaKos = @json($markers);
 
-            async function fallbackPetaKos() {
+            function bacaDataPetaKos() {
+                try {
+                    const wadah = document.getElementById('peta-kos-data');
+                    if (wadah && wadah.dataset.markers) {
+                        const arr = JSON.parse(wadah.dataset.markers);
+                        if (Array.isArray(arr)) return arr;
+                    }
+                } catch (e) {}
+                return Array.isArray(dataPetaKos) ? dataPetaKos : [];
+            }
+
+            function bacaPusatKotaFilter() {
+                try {
+                    const wadah = document.getElementById('peta-kos-data');
+                    if (!wadah) return null;
+                    const lat = parseFloat(wadah.dataset.pusatLat);
+                    const lng = parseFloat(wadah.dataset.pusatLng);
+                    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+                } catch (e) {}
+                return null;
+            }
+
+            async function fallbackPetaKos(data) {
                 const el = document.getElementById('peta-kos');
-                if (!el || !dataPetaKos.length) return;
+                if (!el) return;
+                const list = Array.isArray(data) ? data : bacaDataPetaKos();
+                const pusat = bacaPusatKotaFilter();
+                if (!list.length && !pusat) return;
+                const titik = list.length ? list : [{ nama: '', lat: pusat.lat, lng: pusat.lng }];
                 if (typeof window.buatPetaDaftarOsm === 'function') {
                     try {
-                        await window.buatPetaDaftarOsm(el, dataPetaKos);
+                        await window.buatPetaDaftarOsm(el, titik);
                         return;
                     } catch (e) {}
                 }
+                const tengah = list.length
+                    ? list.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 })
+                    : null;
+                const cLat = list.length ? tengah.lat / list.length : pusat.lat;
+                const cLng = list.length ? tengah.lng / list.length : pusat.lng;
                 if (typeof window.pasangOsmEmbed === 'function') {
-                    const sum = dataPetaKos.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                    window.pasangOsmEmbed(el, sum.lat / dataPetaKos.length, sum.lng / dataPetaKos.length, 10, dataPetaKos);
+                    window.pasangOsmEmbed(el, cLat, cLng, list.length <= 1 ? 13 : 11, titik);
                 } else if (typeof window.pasangGoogleEmbed === 'function') {
-                    const sum = dataPetaKos.reduce((a, m) => ({ lat: a.lat + m.lat, lng: a.lng + m.lng }), { lat: 0, lng: 0 });
-                    window.pasangGoogleEmbed(el, sum.lat / dataPetaKos.length, sum.lng / dataPetaKos.length, dataPetaKos.length <= 1 ? 14 : 10);
+                    window.pasangGoogleEmbed(el, cLat, cLng, list.length <= 1 ? 14 : 11);
                 } else {
                     el.innerHTML = '<div class="h-full w-full flex items-center justify-center p-4 text-center text-sm text-gray-400">' +
                         'Peta tidak dapat dimuat saat ini.</div>';
@@ -326,39 +378,68 @@ new #[Layout('layouts.publik')] class extends Component
 
             function inisialisasiPetaKos(percobaan) {
                 const el = document.getElementById('peta-kos');
-                if (!el || !dataPetaKos.length) return;
+                if (!el) return;
+                const data = bacaDataPetaKos();
+                const pusat = bacaPusatKotaFilter();
+                if (!data.length && !pusat) return;
+                const hash = JSON.stringify(data.map((m) => m.id + ':' + m.lat + ',' + m.lng));
+                const berubah = hash !== ngekosHash;
                 if (el.offsetWidth === 0) {
                     if ((percobaan || 0) < 10) requestAnimationFrame(() => inisialisasiPetaKos((percobaan || 0) + 1));
                     return;
                 }
                 if (el._petaLeaflet) {
-                    try { el._petaLeaflet.invalidateSize(); } catch (e) {}
-                    return;
+                    // Leaflet (OSM) dikelola helper global; bangun ulang bila filter berubah.
+                    if (!berubah) {
+                        try { el._petaLeaflet.invalidateSize(); } catch (e) {}
+                        return;
+                    }
+                    try {
+                        if (typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(el);
+                        else { el.innerHTML = ''; delete el._petaLeaflet; }
+                    } catch (e) {}
                 }
                 if (typeof google === 'undefined' || !google.maps) {
-                    try { const r = fallbackPetaKos(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
+                    try { const r = fallbackPetaKos(data); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch (e) {}
+                    ngekosHash = hash;
                     return;
                 }
-                if (ngekosMap) {
+                if (ngekosMap && !berubah) {
                     requestAnimationFrame(() => {
                         google.maps.event.trigger(ngekosMap, 'resize');
                         if (ngekosBounds) ngekosMap.fitBounds(ngekosBounds);
+                        else if (pusat) ngekosMap.panTo(pusat);
                     });
+                    return;
+                }
+                // Filter berubah -> bangun ulang dari nol agar peta selalu ngikut.
+                if (ngekosMap && berubah) {
+                    try { ngekosMarkers.forEach((m) => m.setMap(null)); } catch (e) {}
+                    ngekosMarkers = [];
+                    ngekosMap = null;
+                    ngekosBounds = null;
+                }
+
+                if (!data.length && pusat) {
+                    ngekosBounds = null;
+                    ngekosMap = new google.maps.Map(el, { center: pusat, zoom: 12, mapTypeId: 'roadmap' });
+                    new google.maps.Marker({ position: pusat, map: ngekosMap });
+                    ngekosHash = hash;
                     return;
                 }
 
                 ngekosBounds = new google.maps.LatLngBounds();
-                dataPetaKos.forEach((m) => ngekosBounds.extend({ lat: m.lat, lng: m.lng }));
+                data.forEach((m) => ngekosBounds.extend({ lat: m.lat, lng: m.lng }));
 
                 ngekosMap = new google.maps.Map(el, { mapTypeId: 'roadmap' });
-                if (dataPetaKos.length === 1) {
+                if (data.length === 1) {
                     ngekosMap.setCenter(ngekosBounds.getCenter());
                     ngekosMap.setZoom(14);
                 } else {
                     ngekosMap.fitBounds(ngekosBounds);
                 }
 
-                const markers = dataPetaKos.map(function (m) {
+                ngekosMarkers = data.map(function (m) {
                     const pemuat = new google.maps.Marker({ position: { lat: m.lat, lng: m.lng }, map: ngekosMap, title: m.nama });
                     const info = new google.maps.InfoWindow();
                     pemuat.addListener('click', () => {
@@ -371,7 +452,8 @@ new #[Layout('layouts.publik')] class extends Component
                     });
                     return pemuat;
                 });
-                if (typeof window.pasangCluster === 'function') window.pasangCluster(markers, ngekosMap);
+                if (typeof window.pasangCluster === 'function') window.pasangCluster(ngekosMarkers, ngekosMap);
+                ngekosHash = hash;
             }
 
             window.togglePetaNgekos = function (show) {
@@ -393,6 +475,14 @@ new #[Layout('layouts.publik')] class extends Component
                     } catch (e) {}
                     ngekosMap = null;
                     ngekosBounds = null;
+                    ngekosMarkers = [];
+                    ngekosHash = '';
+                });
+                // Filter berubah (Livewire morph) -> peta ikut rebuild bila sedang tampil.
+                document.addEventListener('livewire:updated', () => {
+                    const el = document.getElementById('peta-kos');
+                    if (!el || el.offsetWidth === 0) return;
+                    try { inisialisasiPetaKos(); } catch (e) {}
                 });
             }
             if (typeof window.loadNgekosMaps === 'function') window.loadNgekosMaps(inisialisasiPetaKos);

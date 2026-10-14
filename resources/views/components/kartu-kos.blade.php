@@ -3,15 +3,16 @@
 @php
     $p = $properti;
     // Harga resmi = dari kamar termurah. Kolom harga kos hanya fallback legasi.
-    $hargaTampil = ($p->harga_termurah ?? null) ?: ($p->harga ?? null);
-    $selisih = ($p->harga_asli && $hargaTampil && $p->harga_asli > $hargaTampil) ? $p->harga_asli - $hargaTampil : 0;
+    $hargaTampil = $p->harga_termurah ?? null;
+    $asliTampil = $p->asli_termurah ?? null;
+    $selisih = ($asliTampil && $hargaTampil && $asliTampil > $hargaTampil) ? $asliTampil - $hargaTampil : 0;
     $labelDiskon = $selisih >= 1000 ? 'Diskon '.rtrim(rtrim(number_format($selisih / 1000, 1, ',', '.'), '0'), ',').'rb' : null;
     $fasilitas = collect(explode(',', (string) ($p->fasilitas ?? '')))->map(fn ($f) => trim($f))->filter()->take(6);
     $rating = (float) ($p->rating_ulasan ?? 0);
     $totalUlasan = (int) ($p->total_ulasan ?? 0);
     $tipe = strtolower($p->tipe_hunian?->value ?? 'campur');
-    $warnaTipe = $tipe === 'putri' ? 'bg-pink-600' : ($tipe === 'putra' ? 'bg-sky-600' : 'bg-emerald-600');
-    $labelTipe = $tipe === 'putri' ? 'Putri' : ($tipe === 'putra' ? 'Putra' : 'Campur');
+    $warnaTipe = $tipe === 'putri' ? 'bg-pink-600' : ($tipe === 'putra' ? 'bg-sky-600' : ($tipe === 'bebas' ? 'bg-amber-600' : 'bg-emerald-600'));
+    $labelTipe = $tipe === 'putri' ? 'Putri' : ($tipe === 'putra' ? 'Putra' : ($tipe === 'bebas' ? 'Bebas' : 'Campur'));
     $sisa = (int) ($p->kamar_tersedia ?? 0);
 @endphp
 
@@ -53,7 +54,7 @@
         <div class="mt-2">
             @if ($labelDiskon)
                 <p class="text-[11px] font-bold text-green-600 dark:text-emerald-400">{{ $labelDiskon }}</p>
-                <p class="text-xs text-slate-400 dark:text-gray-500 line-through">Rp{{ number_format($p->harga_asli, 0, ',', '.') }}</p>
+                <p class="text-xs text-slate-400 dark:text-gray-500 line-through">Rp{{ number_format($asliTampil, 0, ',', '.') }}</p>
             @endif
             @if ($hargaTampil)
                 <p class="text-sm sm:text-base font-extrabold text-brand-700 dark:text-brand-200 tabular-nums truncate">Rp{{ number_format($hargaTampil, 0, ',', '.') }}</p>

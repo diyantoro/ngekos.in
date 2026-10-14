@@ -61,17 +61,19 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         return [
-            'landingPropertis' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status', 'harga', 'harga_asli'])
+            'landingPropertis' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
                 ->when($this->cari, fn ($q) => $q->where(fn ($w) => $w->where('nama', 'like', "%{$this->cari}%")->orWhere('kota', 'like', "%{$this->cari}%")))
                 ->orderBy('nama')
                 ->limit(30)
                 ->get(),
-            'heroProperti' => $this->heroPropertiId ? Properti::select(['id', 'nama', 'kota', 'alamat', 'status', 'harga', 'harga_asli'])
+            'heroProperti' => $this->heroPropertiId ? Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
                 ->find($this->heroPropertiId) : null,
-            'promoTerpilih' => $this->promoIds !== [] ? Properti::select(['id', 'nama', 'kota', 'status', 'harga', 'harga_asli'])
+            'promoTerpilih' => $this->promoIds !== [] ? Properti::select(['id', 'nama', 'kota', 'status'])
                 ->whereIn('id', $this->promoIds)
+                ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+                ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
                 ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $this->promoIds)).')')
                 ->get() : collect(),
         ];
@@ -498,7 +500,7 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-[11px] font-extrabold text-white">{{ $urutan + 1 }}</span>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{{ $pp->nama }}</p>
-                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">{{ $pp->kota ?? '-' }} · Rp{{ number_format($pp->harga ?? 0, 0, ',', '.') }}@if ($pp->harga_asli && $pp->harga_asli > $pp->harga) <span class="line-through">Rp{{ number_format($pp->harga_asli, 0, ',', '.') }}</span>@endif</p>
+                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">{{ $pp->kota ?? '-' }} · Mulai Rp{{ number_format($pp->harga_termurah ?? 0, 0, ',', '.') }}@if (($pp->asli_termurah ?? null) && $pp->asli_termurah > ($pp->harga_termurah ?? 0)) <span class="line-through">Rp{{ number_format($pp->asli_termurah, 0, ',', '.') }}</span>@endif</p>
                                 </div>
                                 <div class="flex shrink-0 items-center gap-1">
                                     <button wire:click="naikPromo({{ $pp->id }})" title="Naik" class="rounded-md px-1.5 py-1 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">↑</button>

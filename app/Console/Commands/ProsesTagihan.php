@@ -55,6 +55,16 @@ class ProsesTagihan extends Command
         $bulan = $sewaan->tanggal_masuk->copy()->startOfDay()->startOfMonth();
         $batas = $hariIni->copy()->startOfMonth();
 
+        // Sewa bulanan fixed-term (tanggal_berakhir terisi): jangan buat tagihan
+        // untuk bulan setelah berakhir — bulan baru hanya dibuat saat anak kos
+        // memilih LANJUT via PerpanjanganService.
+        if ($sewaan->tanggal_berakhir) {
+            $batasAkhir = $sewaan->tanggal_berakhir->copy()->startOfMonth();
+            if ($batas->greaterThan($batasAkhir)) {
+                $batas = $batasAkhir;
+            }
+        }
+
         while ($bulan->lessThanOrEqualTo($batas)) {
             $sudahAda = $sewaan->tagihans->contains(
                 fn ($t) => $t->status !== 'batal' && $t->jatuh_tempo?->isSameMonth($bulan)
@@ -64,6 +74,7 @@ class ProsesTagihan extends Command
                 $sewaan->tagihans()->create([
                     'periode' => $bulan->translatedFormat('F Y'),
                     'jumlah' => $sewaan->kamar->harga_sewa_bulanan,
+                    'jenis' => 'sewa',
                     'denda' => 0,
                     'jatuh_tempo' => Pengaturan::jatuhTempoUntuk($bulan)->toDateString(),
                     'status' => 'belum_bayar',

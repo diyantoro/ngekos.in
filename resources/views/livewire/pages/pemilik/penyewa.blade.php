@@ -27,8 +27,8 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,status', 'anggotas.user:id,nama'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
+                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,bukti,status', 'anggotas.user:id,nama'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->limit(30)
@@ -195,6 +195,67 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} ditolak. Sewa tetap berjalan aktif.";
     }
+
+    public function setujuiBooking(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'menunggu_verifikasi')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'tagihans.pembayarans', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Booking tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            $hasil = app(\App\Services\PenyewaanService::class)->setujuiBooking($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $kwi = $hasil['pembayaran']->nomor_kwitansi ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis dibuat." : '';
+        $this->pesan = "Booking {$sewaan->anakKos?->nama} (kamar {$sewaan->kamar?->nama}) disetujui — sewa resmi AKTIF.{$kwi}";
+    }
+
+    public function tolakBooking(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'menunggu_verifikasi')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'tagihans.pembayarans', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Booking tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            app(\App\Services\PenyewaanService::class)->tolakBooking($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = "Booking {$sewaan->anakKos?->nama} (kamar {$sewaan->kamar?->nama}) ditolak — booking dibatalkan dan kamar kembali tersedia.";
+    }
 }; ?>
 
 <div class="py-10">
@@ -251,6 +312,11 @@ new #[Layout('layouts.app')] class extends Component
                                 $masaDepanTotal = $masaDepan->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda);
                                 // DP = pembayaran terverifikasi pertama. Tanpa itu booking belum fiks.
                                 $dpLunas = $sewaan->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
+                                $dpTagihanRow = $sewaan->tagihans->first(fn ($t) => ($t->jenis ?? 'sewa') === 'dp');
+                                $dpBayarRow = $dpTagihanRow
+                                    ? $dpTagihanRow->pembayarans->firstWhere('status', 'menunggu_verifikasi')
+                                        ?? $dpTagihanRow->pembayarans->firstWhere('status', 'diverifikasi')
+                                    : null;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -283,12 +349,40 @@ new #[Layout('layouts.app')] class extends Component
                                     </span>
                                 </td>
                                 <td class="px-4 py-4"><x-status-badge :status="$sewaan->status" />
-                                    @if (! $dpLunas)
+                                    @if ($sewaan->status === 'menunggu_verifikasi')
+                                        <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Booking: cek bukti DP lalu Setujui/Tolak</span>
+                                    @elseif (! $dpLunas)
                                         <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-4">
-                                    @if ($sewaan->status === 'aktif')
+                                    @if ($sewaan->status === 'menunggu_verifikasi')
+                                        <div class="flex flex-col items-end gap-1.5">
+                                            @if ($dpTagihanRow)
+                                                <span class="text-[11px] font-semibold text-gray-600 dark:text-gray-300">DP Rp{{ number_format($dpTagihanRow->jumlah, 0, ',', '.') }}</span>
+                                            @endif
+                                            @if ($dpBayarRow?->bukti)
+                                                <a href="{{ route('pembayaran.bukti', $dpBayarRow->id) }}" target="_blank" rel="noopener"
+                                                    class="inline-flex items-center gap-1 rounded-lg border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-2.5 py-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                                    Lihat Bukti DP
+                                                </a>
+                                            @else
+                                                <span class="text-[11px] italic text-gray-400">Bukti belum ada</span>
+                                            @endif
+                                            <div class="flex justify-end gap-1.5">
+                                                <button wire:click="setujuiBooking({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                    wire:confirm="Setujui booking {{ $sewaan->anakKos?->nama }} (kamar {{ $sewaan->kamar?->nama }})? Sewa langsung AKTIF."
+                                                    class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                    Setujui
+                                                </button>
+                                                <button wire:click="tolakBooking({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                    wire:confirm="Tolak booking {{ $sewaan->anakKos?->nama }}? Booking dibatalkan dan kamar kembali tersedia."
+                                                    class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                                    Tolak
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @elseif ($sewaan->status === 'aktif')
                                         @if ($sewaan->permintaan_keluar_pada)
                                             <div class="flex flex-col items-end gap-1.5">
                                                 <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">

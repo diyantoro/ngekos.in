@@ -103,7 +103,7 @@ new class extends Component
 
                 return Properti::query()
                     ->whereIn('id', $ids)
-                    ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'harga', 'harga_asli', 'tipe_hunian'])
+                    ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian'])
                     ->with('fotos:id,properti_id,path,urutan')
                     ->withCount([
                         'kamars as total_kamar',
@@ -113,6 +113,7 @@ new class extends Component
                     ])
                     ->withAvg('ulasans as rating_ulasan', 'rating')
                     ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+                    ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
                     ->get()
                     ->sortBy(fn ($p) => array_search($p->id, $ids))
                     ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi)
@@ -121,18 +122,19 @@ new class extends Component
             'kosPromo' => (function () use ($propertiTerpakai, $idFavorit) {
                 return Properti::query()
                     ->where('status', 'aktif')
-                    ->whereNotNull('harga_asli')
-                    ->whereColumn('harga_asli', '>', 'harga')
+                    ->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->whereColumn('harga_asli', '>', 'harga_sewa_bulanan'))
                     ->whereNotIn('id', $propertiTerpakai->all())
                     ->whereNotIn('id', $idFavorit->all())
-                    ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'harga', 'harga_asli', 'tipe_hunian'])
+                    ->select(['id', 'nama', 'kota', 'alamat', 'foto', 'fasilitas', 'tipe_hunian'])
                     ->with('fotos:id,properti_id,path,urutan')
                     ->withCount([
                         'kamars as total_kamar',
                         'kamars as kamar_terisi' => fn ($q) => $q->where('status', 'terisi'),
                         'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'),
                     ])
-                    ->orderBy('harga')
+                    ->withMin(['kamars as harga_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)], 'harga_sewa_bulanan')
+                    ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
+                    ->orderBy('harga_termurah')
                     ->limit(8)
                     ->get()
                     ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi)
@@ -500,8 +502,9 @@ new class extends Component
                     @foreach ($rekomendasi as $k)
                         @php
                             $sisaK = $k->total_kamar - $k->kamar_terisi;
-                            $hargaK = $k->harga ?? $k->harga_termurah;
-                            $diskonK = $k->harga_asli && $hargaK && $k->harga_asli > $hargaK ? $k->harga_asli - $hargaK : 0;
+                            $hargaK = $k->harga_termurah ?? null;
+                            $asliK = $k->asli_termurah ?? null;
+                            $diskonK = $asliK && $hargaK && $asliK > $hargaK ? $asliK - $hargaK : 0;
                             $fasilitasK = array_filter(array_map('trim', explode('·', str_replace(',', '·', $k->fasilitas ?? ''))));
                         @endphp
                         <a href="{{ route('kos.detail', $k) }}" wire:navigate
@@ -516,7 +519,7 @@ new class extends Component
                                     </div>
                                 @endif
                                 @if ($k->tipe_hunian)
-                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white {{ $k->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-pink-600' : ($k->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-sky-700' : 'bg-violet-700') }}">{{ $k->tipe_hunian->label() }}</span>
+                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white {{ $k->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-pink-600' : ($k->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-sky-700' : ($k->tipe_hunian === \App\Enums\TipeHunian::Bebas ? 'bg-amber-600' : 'bg-violet-700')) }}">{{ $k->tipe_hunian->label() }}</span>
                                 @endif
                                 <span class="absolute top-2 right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white {{ $sisaK > 0 ? 'bg-emerald-600' : 'bg-gray-800' }}">
                                     {{ $sisaK > 0 ? 'Sisa ' . $sisaK . ' kamar' : 'Penuh' }}
@@ -537,7 +540,7 @@ new class extends Component
                                 @if ($hargaK)
                                     <div class="mt-1.5">
                                         @if ($diskonK > 0)
-                                            <p class="text-[11px] text-gray-400">Diskon {{ number_format($diskonK / 1000, 0) }}rb <span class="line-through">Rp{{ number_format($k->harga_asli, 0, ',', '.') }}</span></p>
+                                            <p class="text-[11px] text-gray-400">Diskon {{ number_format($diskonK / 1000, 0) }}rb <span class="line-through">Rp{{ number_format($asliK, 0, ',', '.') }}</span></p>
                                         @endif
                                         <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp{{ number_format($hargaK, 0, ',', '.') }} <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
                                     </div>
@@ -580,7 +583,7 @@ new class extends Component
                                     </div>
                                 @endif
                                 @if ($kp->tipe_hunian)
-                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white {{ $kp->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-pink-600' : ($kp->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-sky-700' : 'bg-violet-700') }}">{{ $kp->tipe_hunian->label() }}</span>
+                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white {{ $kp->tipe_hunian === \App\Enums\TipeHunian::Putri ? 'bg-pink-600' : ($kp->tipe_hunian === \App\Enums\TipeHunian::Putra ? 'bg-sky-700' : ($kp->tipe_hunian === \App\Enums\TipeHunian::Bebas ? 'bg-amber-600' : 'bg-violet-700')) }}">{{ $kp->tipe_hunian->label() }}</span>
                                 @endif
                                 <span class="absolute {{ $kp->tipe_hunian ? 'top-9' : 'top-2' }} right-2 rounded-full px-2 py-1 text-[10px] font-bold text-white {{ $sisaP > 0 ? 'bg-emerald-600' : 'bg-gray-800' }}">{{ $sisaP > 0 ? 'Sisa ' . $sisaP . ' kamar' : 'Penuh' }}</span>
                             </div>
@@ -590,9 +593,15 @@ new class extends Component
                                 @if ($fasilitasP !== [])
                                     <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500 truncate">{{ implode('·', array_slice($fasilitasP, 0, 5)) }}</p>
                                 @endif
-                                @if ($kp->harga)
-                                    <p class="mt-1.5 text-[11px] text-gray-400">Diskon {{ number_format(($kp->harga_asli - $kp->harga) / 1000, 0) }}rb <span class="line-through">Rp{{ number_format($kp->harga_asli, 0, ',', '.') }}</span></p>
-                                    <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp{{ number_format($kp->harga, 0, ',', '.') }} <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
+                                @php
+                                    $hargaP = $kp->harga_termurah ?? null;
+                                    $asliP = $kp->asli_termurah ?? null;
+                                @endphp
+                                @if ($hargaP && $asliP && $asliP > $hargaP)
+                                    <p class="mt-1.5 text-[11px] text-gray-400">Diskon {{ number_format(($asliP - $hargaP) / 1000, 0) }}rb <span class="line-through">Rp{{ number_format($asliP, 0, ',', '.') }}</span></p>
+                                    <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp{{ number_format($hargaP, 0, ',', '.') }} <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
+                                @elseif ($hargaP)
+                                    <p class="text-sm font-extrabold text-gray-900 dark:text-gray-100">Rp{{ number_format($hargaP, 0, ',', '.') }} <span class="text-[10px] font-medium text-gray-400">(Bulan pertama)</span></p>
                                 @endif
                             </div>
                         </a>

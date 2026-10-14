@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Tagihan extends Model
 {
     protected $fillable = [
-        'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status',
+        'penyewaan_id', 'periode', 'jumlah', 'jenis', 'denda', 'jatuh_tempo', 'status',
     ];
 
     protected function casts(): array

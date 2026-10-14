@@ -45,8 +45,8 @@ new #[Layout('layouts.app')] class extends Component
         $sewaAktif = \App\Models\Penyewaan::where('status', 'aktif')
                 ->where(fn ($q) => $q->where('anak_kos_id', $id)
                     ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif')))
-                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'status', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['kamar:id,nama,properti_id', 'properti:id,nama,kota,alamat,foto', 'properti.fotos:id,properti_id,path,urutan', 'anggotas', 'tagihans:id,penyewaan_id,periode,jumlah,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'perpanjangan_status', 'perpanjangan_ditawarkan_pada', 'status', 'mode_hunian', 'permintaan_keluar_pada'])
+                ->with(['kamar:id,nama,properti_id,harga_sewa_bulanan', 'properti:id,nama,kota,alamat,foto', 'properti.fotos:id,properti_id,path,urutan', 'anggotas', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
                 ->orderByDesc('tanggal_masuk')
                 ->limit(10)
                 ->get();
@@ -73,10 +73,23 @@ new #[Layout('layouts.app')] class extends Component
 
         return [
             'sewaAktif' => $sewaAktif,
+            'bookingMenunggu' => \App\Models\Penyewaan::where('status', 'menunggu_verifikasi')
+                ->where(fn ($q) => $q->where('anak_kos_id', $id)
+                    ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif')))
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_berakhir', 'status', 'created_at'])
+                ->with(['kamar:id,nama,properti_id,harga_sewa_bulanan', 'properti:id,nama,kota,alamat,foto', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get(),
             'checkoutInfo' => $checkoutInfo,
+            'perpanjanganInfo' => $sewaAktif->mapWithKeys(fn ($s) => [$s->id => [
+                'sisa_hari' => \App\Services\PerpanjanganService::sisaHari($s),
+                'ditawarkan' => $s->perpanjangan_status === 'ditawarkan',
+                'menolak' => $s->perpanjangan_status === 'tidak',
+            ]])->all(),
             'tagihans' => Tagihan::whereHas('penyewaan', $scopeSewa)
                 ->where('status', '!=', 'batal')
-                ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+                ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'jenis', 'denda', 'jatuh_tempo', 'status'])
                 ->with(['penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama,kota,alamat,foto,denda_per_hari', 'penyewaan.properti.fotos:id,properti_id,path,urutan', 'penyewaan.anggotas', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
                 ->orderByDesc('jatuh_tempo')
                 ->limit(50)
@@ -107,6 +120,12 @@ new #[Layout('layouts.app')] class extends Component
 
         if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
             $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
+
+            return;
+        }
+
+        if (($tagihan->penyewaan?->status ?? 'aktif') !== 'aktif') {
+            $this->galat = 'Booking kamar ini belum diverifikasi pemilik/admin, jadi belum bisa dibayar. Pantau status booking di atas.';
 
             return;
         }
@@ -209,6 +228,40 @@ new #[Layout('layouts.app')] class extends Component
         $this->pesan = "Pengajuan check-out dari kamar {$sewaan->kamar?->nama} dibatalkan. Sewamu tetap berjalan aktif.";
     }
 
+    public function jawabPerpanjangan(int $sewaanId, string $keputusan): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $uid = auth()->id();
+
+        $sewaan = \App\Models\Penyewaan::where('id', $sewaanId)
+            ->where('status', 'aktif')
+            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
+                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->with(['kamar', 'anggotas', 'tagihans', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Penyewaan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            if ($keputusan === 'lanjut') {
+                \App\Services\PerpanjanganService::lanjutkan($sewaan, $uid);
+                $this->pesan = "Sewamu dilanjut 1 bulan sampai {$sewaan->refresh()->tanggal_berakhir?->translatedFormat('d F Y')}. Tagihan bulan baru sudah dibuat — segera bayar.";
+            } elseif ($keputusan === 'tidak') {
+                \App\Services\PerpanjanganService::tolak($sewaan, $uid);
+                $this->pesan = "Baik, sewamu tidak dilanjut. Kamar otomatis tersedia lagi setelah {$sewaan->tanggal_berakhir?->translatedFormat('d F Y')}. Pastikan tagihan sampai bulan ini lunas.";
+            } else {
+                $this->galat = 'Keputusan tidak valid.';
+            }
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+        }
+    }
+
     public function ubahMetodeBayar(string $metode): void
     {
         $this->metodeBayar = $metode;
@@ -227,6 +280,13 @@ new #[Layout('layouts.app')] class extends Component
         if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
             $this->tutupModalBayar();
             $this->galat = 'Tagihan tidak ditemukan, sudah lunas, atau sudah dibatalkan.';
+
+            return;
+        }
+
+        if (($tagihan->penyewaan?->status ?? 'aktif') !== 'aktif') {
+            $this->tutupModalBayar();
+            $this->galat = 'Booking kamar ini belum diverifikasi pemilik/admin, jadi belum bisa dibayar. Pantau status booking di atas.';
 
             return;
         }
@@ -298,6 +358,41 @@ new #[Layout('layouts.app')] class extends Component
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Kos yang sedang kamu tempati, tagihan yang harus dibayar, dan riwayat pembayaranmu.</p>
         </div>
 
+        @if (($bookingMenunggu ?? collect())->isNotEmpty())
+            <div class="bg-amber-50 dark:bg-amber-500/10 rounded-2xl shadow-sm ring-1 ring-amber-200 dark:ring-amber-500/30 overflow-hidden">
+                <div class="px-4 sm:px-6 pt-4 pb-1">
+                    <h2 class="text-sm font-bold text-amber-800 dark:text-amber-200">Booking Menunggu Verifikasi</h2>
+                    <p class="mt-0.5 text-xs text-amber-700 dark:text-amber-300">Bukti DP sudah dilampirkan — kamar <span class="font-bold">belum otomatis tersewa</span>. Sewa aktif setelah pemilik/admin memverifikasi.</p>
+                </div>
+                <div class="p-4 sm:p-6 pt-3 space-y-3">
+                    @foreach ($bookingMenunggu as $booking)
+                        @php
+                            $dpBooking = $booking->tagihans->first(fn ($t) => ($t->jenis ?? 'sewa') === 'dp' || str_starts_with((string) $t->periode, 'DP - '));
+                            $dpMenunggu = $dpBooking && $dpBooking->pembayarans->where('status', 'menunggu_verifikasi')->isNotEmpty();
+                        @endphp
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-gray-800 p-3 sm:p-4">
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-bold text-slate-900 dark:text-gray-100">{{ $booking->properti?->nama ?? 'Kos tidak tersedia' }}{{ $booking->kamar ? ' · Kamar '.$booking->kamar->nama : '' }}</p>
+                                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                    Diajukan {{ $booking->created_at?->translatedFormat('d M Y H:i') ?? '-' }}
+                                    · Masuk {{ $booking->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}
+                                    @if ($dpBooking)
+                                        · DP Rp{{ number_format($dpBooking->jumlah, 0, ',', '.') }}
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="shrink-0 flex items-center gap-2">
+                                <x-status-badge :status="$booking->status" />
+                                @if ($dpMenunggu)
+                                    <span class="text-[11px] font-semibold text-amber-700 dark:text-amber-300">Bukti DP menunggu verifikasi</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
             <div class="px-4 sm:px-6 pt-4 pb-1">
                 <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">Kos yang Saya Tempati</h2>
@@ -313,8 +408,13 @@ new #[Layout('layouts.app')] class extends Component
                                 $coverSewa = $sewa->properti?->fotoCover();
                                 $pengajuanSewa = $sewa->permintaan_keluar_pada;
                                 $dpLunasSewa = $sewa->tagihans->flatMap(fn ($t) => $t->pembayarans)->where('status', 'diverifikasi')->isNotEmpty();
+                                $dpTagihan = $sewa->tagihans->first(fn ($t) => ($t->jenis ?? 'sewa') === 'dp' || str_starts_with((string) $t->periode, 'DP - '));
+                                $sisaTagihan = $sewa->tagihans->first(fn ($t) => str_starts_with((string) $t->periode, 'Sisa '));
+                                $dpLunas = $dpTagihan ? $dpTagihan->pembayarans->where('status', 'diverifikasi')->sum('jumlah') >= (float) $dpTagihan->jumlah : true;
+                                $infoPanjang = $perpanjanganInfo[$sewa->id] ?? ['sisa_hari' => null, 'ditawarkan' => false, 'menolak' => false];
                             @endphp
-                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/60 p-3 sm:p-4">
+                            <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/60 p-3 sm:p-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                                 <div class="flex min-w-0 flex-1 items-center gap-3">
                                     @if ($coverSewa)
                                         <img src="{{ $coverSewa }}" alt="{{ $sewa->properti?->nama ?? 'Kos' }}" loading="lazy" class="h-14 w-14 rounded-xl object-cover shrink-0">
@@ -325,8 +425,22 @@ new #[Layout('layouts.app')] class extends Component
                                     @endif
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm font-bold text-slate-900 dark:text-gray-100">{{ $sewa->properti?->nama ?? 'Kos tidak tersedia' }}{{ $sewa->kamar ? ' · Kamar '.$sewa->kamar->nama : '' }}</p>
-                                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Masuk {{ $sewa->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}</p>
-                                        @if (! $dpLunasSewa)
+                                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                            Masuk {{ $sewa->tanggal_masuk?->translatedFormat('d M Y') ?? '-' }}
+                                            @if ($sewa->tanggal_berakhir)
+                                                · sampai {{ $sewa->tanggal_berakhir?->translatedFormat('d M Y') }}
+                                                @if ($infoPanjang['sisa_hari'] !== null && $infoPanjang['sisa_hari'] >= 0)
+                                                    (sisa {{ $infoPanjang['sisa_hari'] }} hari)
+                                                @endif
+                                            @endif
+                                        </p>
+                                        @if ($dpTagihan && ! $dpLunas)
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">DP Rp{{ number_format($dpTagihan->jumlah, 0, ',', '.') }} belum lunas — bayar dulu agar booking fiks</span>
+                                        @endif
+                                        @if ($dpTagihan && $dpLunas && $sisaTagihan && $sisaTagihan->status !== 'lunas')
+                                            <span class="mt-1 inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300 ring-1 ring-sky-200 dark:ring-sky-500/30">DP lunas — sisa bulan pertama Rp{{ number_format($sisaTagihan->jumlah + $sisaTagihan->denda, 0, ',', '.') }}</span>
+                                        @endif
+                                        @if (! $dpTagihan && ! $dpLunasSewa)
                                             <span class="mt-1 inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">Menunggu DP — bayar tagihan pertamamu agar booking fiks</span>
                                         @endif
                                         @if ($pengajuanSewa)
@@ -357,6 +471,29 @@ new #[Layout('layouts.app')] class extends Component
                                         </button>
                                     @endif
                                 </div>
+                            </div>
+                            @if ($infoPanjang['ditawarkan'])
+                                <div class="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3">
+                                    <p class="text-xs font-bold text-amber-800 dark:text-amber-200">Masa sewamu berakhir {{ $sewa->tanggal_berakhir?->translatedFormat('d F Y') }} (sisa {{ $infoPanjang['sisa_hari'] }} hari). Mau lanjut 1 bulan lagi?</p>
+                                    <p class="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300">Kalau pilih TIDAK (atau tidak menjawab sampai tanggal berakhir), sewamu otomatis selesai dan kamar kembali tersedia.</p>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        <button wire:click="jawabPerpanjangan({{ $sewa->id }}, 'lanjut')" wire:loading.attr="disabled"
+                                            wire:confirm="Lanjut sewa 1 bulan lagi sampai bulan depan? Tagihan bulan baru akan dibuat."
+                                            class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                            Ya, Lanjut 1 Bulan
+                                        </button>
+                                        <button wire:click="jawabPerpanjangan({{ $sewa->id }}, 'tidak')" wire:loading.attr="disabled"
+                                            wire:confirm="Tidak lanjut? Sewamu otomatis selesai saat masa berakhir dan kamar kembali tersedia."
+                                            class="inline-flex items-center rounded-lg border border-amber-300 dark:border-amber-500/40 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition disabled:opacity-50">
+                                            Tidak, Selesaikan
+                                        </button>
+                                    </div>
+                                </div>
+                            @elseif ($infoPanjang['menolak'] && $sewa->tanggal_berakhir)
+                                <div class="rounded-xl bg-gray-50 dark:bg-gray-700/40 ring-1 ring-gray-200 dark:ring-gray-600 px-4 py-2.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                    Kamu memilih tidak lanjut. Sewa otomatis selesai {{ $sewa->tanggal_berakhir?->translatedFormat('d F Y') }} dan kamar kembali tersedia.
+                                </div>
+                            @endif
                             </div>
                         @endforeach
                     </div>
@@ -593,7 +730,7 @@ new #[Layout('layouts.app')] class extends Component
     @php
         $tagihanModal = $tagihans->firstWhere('id', $modalBayarId);
         if (! $tagihanModal) {
-            $tagihanModal = \App\Models\Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
+            $tagihanModal = \App\Models\Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'jenis', 'denda', 'jatuh_tempo', 'status'])
                 ->with(['penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari'])
                 ->find($modalBayarId);
             if ($tagihanModal) {
@@ -611,9 +748,10 @@ new #[Layout('layouts.app')] class extends Component
             ? round(max(0, $porsiModal - (float) $tagihanModal->pembayarans()->where('anak_kos_id', auth()->id())->where('status', 'diverifikasi')->sum('jumlah')), 2)
             : $totalTagihan;
         $jatuhModal = $tagihanModal?->jatuh_tempo?->translatedFormat('d M Y') ?? '-';
-        // Uang Muka (DP) = tagihan pertama penyewaan yang belum ada pembayaran terverifikasi.
-        $adalahDpModal = false;
-        if ($tagihanModal?->penyewaan_id) {
+        // Uang Muka (DP) = tagihan berjenis DP (Rp100.000, mengurangi bulan pertama).
+        $adalahDpModal = (bool) ($tagihanModal
+            && (($tagihanModal->jenis ?? 'sewa') === 'dp' || str_starts_with((string) $tagihanModal->periode, 'DP - ')));
+        if (! $adalahDpModal && $tagihanModal?->penyewaan_id) {
             $tagihanPertamaId = \App\Models\Tagihan::where('penyewaan_id', $tagihanModal->penyewaan_id)->orderBy('id')->value('id');
             $adalahDpModal = $tagihanPertamaId === $tagihanModal->id
                 && ! \App\Models\Pembayaran::whereHas('tagihan', fn ($q) => $q->where('penyewaan_id', $tagihanModal->penyewaan_id))

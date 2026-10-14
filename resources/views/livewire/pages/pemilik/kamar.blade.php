@@ -68,6 +68,29 @@ new #[Layout('layouts.app')] class extends Component
         );
     }
 
+    /**
+     * Otomatis lepas ceklis lawan yang bertentangan (AC vs Kipas Angin,
+     * Termasuk vs Tidak Termasuk Listrik, KM Dalam vs KM Luar,
+     * Kloset Duduk vs Kloset Jongkok). Pilihan TERBARU yang dipertahankan
+     * (nilai yang baru dicentang selalu ditambahkan di akhir array).
+     */
+    public function updatedFasilitasKamarTerpilih(): void
+    {
+        if ($this->fasilitasKamarTerpilih === []) {
+            return;
+        }
+
+        $terakhir = end($this->fasilitasKamarTerpilih);
+        $bersih = FacilityHelper::tanpaKonflik(
+            $this->fasilitasKamarTerpilih,
+            is_string($terakhir) ? $terakhir : null
+        );
+
+        if ($bersih !== $this->fasilitasKamarTerpilih) {
+            $this->fasilitasKamarTerpilih = $bersih;
+        }
+    }
+
     public function with(): array
     {
         $owner = $this->properti->pemilik ?? auth()->user();
@@ -85,6 +108,13 @@ new #[Layout('layouts.app')] class extends Component
 
     public function simpanKamar(): void
     {
+        // Tolak kombinasi bertentangan sebelum validasi lain.
+        if ($pesanKonflik = FacilityHelper::konflikEksklusif($this->fasilitasKamarTerpilih)) {
+            $this->addError('fasilitasKamarTerpilih', $pesanKonflik);
+
+            return;
+        }
+
         $this->validate(array_merge(
             $this->aturanValidasi(),
             ['galeriBaru' => ['nullable', 'array', 'max:10'], 'galeriBaru.*' => ['image', 'max:4096']],
@@ -138,7 +168,15 @@ new #[Layout('layouts.app')] class extends Component
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'fasilitasKamarTerpilih' => 'nullable|array',
+            'fasilitasKamarTerpilih' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_array($value) && ($pesan = FacilityHelper::konflikEksklusif($value))) {
+                        $fail($pesan);
+                    }
+                },
+            ],
             'status' => ['required', Rule::enum(KamarStatus::class)],
             'fotoBaru' => 'nullable|image|max:2048',
         ];
@@ -225,7 +263,7 @@ new #[Layout('layouts.app')] class extends Component
         $this->harga_harian = $kamar->harga_sewa_harian ?? null;
         $this->harga_asli = $kamar->harga_asli ?? null;
         $this->fasilitasKamarTerpilih = $kamar->fasilitas
-            ? array_filter(array_map('trim', explode(',', $kamar->fasilitas)))
+            ? FacilityHelper::normalizeList(array_filter(array_map('trim', explode(',', $kamar->fasilitas))))
             : [];
         $this->status = $kamar->status?->value ?? 'tersedia';
         $this->fotoBaru = null;

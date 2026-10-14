@@ -27,11 +27,12 @@ class FacilityHelper
         'Cermin',
         'Ventilasi',
         'Kloset Duduk',
+        'Kloset Jongkok',
         'Kamar Mandi Dalam',
         'Kamar Mandi Luar',
         'Shower',
         'Ember',
-        'Air Panas',
+        'Air',
         'WiFi',
         'Dapur',
         'Dapur Bersama',
@@ -40,12 +41,16 @@ class FacilityHelper
         'Tempat Jemuran',
         'Laundry',
         'Dilarang Merokok',
+        'Dilarang Bawa Tamu lawan jenis',
+        'Jam Malam 22.00',
+        'Dilarang Bawa Hewan',
+        'Dilarang Miras & Narkoba',
         'Parkir',
         'Parkir Mobil',
         'Parkir Motor',
         'Parkir Motor & Sepeda',
         'Lawan Jenis',
-        'Akses',
+        'Akses 24 Jam',
         'Tamu',
         'Termasuk Listrik',
         'Tidak Termasuk Listrik',
@@ -65,7 +70,6 @@ class FacilityHelper
         'Laundry',
         'Parkir',
         'Parkir Mobil',
-        'Parkir Motor',
         'Parkir Motor & Sepeda',
     ];
 
@@ -91,9 +95,10 @@ class FacilityHelper
         'Kamar Mandi Dalam',
         'Kamar Mandi Luar',
         'Kloset Duduk',
+        'Kloset Jongkok',
         'Shower',
         'Ember',
-        'Air Panas',
+        'Air',
         'Termasuk Listrik',
         'Tidak Termasuk Listrik',
     ];
@@ -106,9 +111,21 @@ class FacilityHelper
     public const PERATURAN_KOS = [
         'Dilarang Merokok',
         'Dilarang Bawa Tamu lawan jenis',
-        'Akses',
-        'Lawan Jenis',
-        'Tamu',
+        'Akses 24 Jam',
+        'Jam Malam 22.00',
+        'Dilarang Bawa Hewan',
+        'Dilarang Miras & Narkoba',
+    ];
+
+    /**
+     * Pasangan fasilitas kamar yang saling bertentangan (tidak boleh
+     * dipilih bersamaan). Dipakai di form kamar (web + API).
+     */
+    public const EKSKLUSIF = [
+        ['AC', 'Kipas Angin'],
+        ['Termasuk Listrik', 'Tidak Termasuk Listrik'],
+        ['Kamar Mandi Dalam', 'Kamar Mandi Luar'],
+        ['Kloset Duduk', 'Kloset Jongkok'],
     ];
 
     private const ALIAS = [
@@ -130,6 +147,10 @@ class FacilityHelper
         'cermin' => 'Cermin',
         'ventilasi' => 'Ventilasi',
         'klosetduduk' => 'Kloset Duduk',
+        'klosetjongkok' => 'Kloset Jongkok',
+        'closetduduk' => 'Kloset Duduk',
+        'closetjongkok' => 'Kloset Jongkok',
+        'klosetdudukjongkok' => 'Kloset Duduk',
         'kamarmandidalam' => 'Kamar Mandi Dalam',
         'kmandidalam' => 'Kamar Mandi Dalam',
         'kmdalam' => 'Kamar Mandi Dalam',
@@ -137,9 +158,20 @@ class FacilityHelper
         'kmandiluar' => 'Kamar Mandi Luar',
         'kmluar' => 'Kamar Mandi Luar',
         'shower' => 'Shower',
+        'showerairdingin' => 'Shower',
+        'showerdingin' => 'Shower',
+        'pancuran' => 'Shower',
+        'pancuranairdingin' => 'Shower',
+        'pancurandingin' => 'Shower',
         'ember' => 'Ember',
         'embermandi' => 'Ember',
-        'airpanas' => 'Air Panas',
+        'air' => 'Air',
+        'airbersih' => 'Air',
+        'airpanas' => 'Air',
+        'showerairpanas' => 'Air',
+        'showerpanas' => 'Air',
+        'waterheater' => 'Air',
+        'pemanasair' => 'Air',
         'dapur' => 'Dapur',
         'dapurbersama' => 'Dapur Bersama',
         'ruangtamu' => 'Ruang Tamu',
@@ -150,15 +182,26 @@ class FacilityHelper
         'laundry' => 'Laundry',
         'dilarangmerokok' => 'Dilarang Merokok',
         'dilarangmerokokdikamar' => 'Dilarang Merokok',
+        'jammalam2200' => 'Jam Malam 22.00',
+        'jammalam' => 'Jam Malam 22.00',
+        'jammalam10malam' => 'Jam Malam 22.00',
+        'dilarangbawahewan' => 'Dilarang Bawa Hewan',
+        'dilaranghewan' => 'Dilarang Bawa Hewan',
+        'dilarangmemeliharahewan' => 'Dilarang Bawa Hewan',
+        'dilarangmirasnarkoba' => 'Dilarang Miras & Narkoba',
+        'dilarangbawamirasnarkoba' => 'Dilarang Miras & Narkoba',
+        'dilarangmiras' => 'Dilarang Miras & Narkoba',
+        'dilarangnarkoba' => 'Dilarang Miras & Narkoba',
         'parkir' => 'Parkir',
         'parkirmobil' => 'Parkir Mobil',
-        'parkirmotor' => 'Parkir Motor',
+        'parkirmotor' => 'Parkir Motor & Sepeda',
         'parkirmotorsepeda' => 'Parkir Motor & Sepeda',
         'parkirmotordansepeda' => 'Parkir Motor & Sepeda',
         'lawanjenis' => 'Lawan Jenis',
         'lawanjenisdilarangkekamar' => 'Lawan Jenis',
         'dilarangtamuwalawanjenis' => 'Lawan Jenis',
-        'akses' => 'Akses',
+        'akses' => 'Akses 24 Jam',
+        'akses24jam' => 'Akses 24 Jam',
         'tamu' => 'Tamu',
         'tamubolehmenginap' => 'Tamu',
         'tamumenginapdikenakanbiaya' => 'Tamu',
@@ -242,6 +285,84 @@ class FacilityHelper
     private static function normKey(string $value): string
     {
         return strtolower(preg_replace('/[^a-z0-9]+/i', '', $value) ?? '');
+    }
+
+    /**
+     * Cari pasangan bertentangan yang terpilih bersamaan.
+     * Return null bila aman, atau pesan galat bila ada konflik.
+     */
+    public static function konflikEksklusif(array $labels): ?string
+    {
+        $dipilih = self::normalizeList($labels);
+
+        foreach (self::EKSKLUSIF as $grup) {
+            $kena = array_values(array_intersect($grup, $dipilih));
+            if (count($kena) > 1) {
+                return 'Pilihan bertentangan: "'.implode('" dan "', $kena).'" tidak boleh dipilih bersamaan. Pilih salah satu saja.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Bersihkan konflik dengan mempertahankan pilihan terakhir.
+     * Dipakai di Livewire updated hook agar ceklis lawan otomatis lepas.
+     */
+    public static function tanpaKonflik(array $labels, ?string $terakhir = null): array
+    {
+        $dipilih = self::normalizeList($labels);
+
+        if ($terakhir === null || $terakhir === '') {
+            // Tanpa info terakhir: lepas item kedua dst. dari tiap grup.
+            foreach (self::EKSKLUSIF as $grup) {
+                $pertama = null;
+                foreach ($dipilih as $i => $label) {
+                    if (in_array($label, $grup, true)) {
+                        if ($pertama === null) {
+                            $pertama = $label;
+                        } else {
+                            unset($dipilih[$i]);
+                        }
+                    }
+                }
+            }
+
+            return array_values($dipilih);
+        }
+
+        $terakhir = self::normalize($terakhir);
+
+        foreach (self::EKSKLUSIF as $grup) {
+            if (! in_array($terakhir, $grup, true)) {
+                continue;
+            }
+            // Pertahankan pilihan terakhir, lepas lawannya.
+            $dipilih = array_values(array_filter(
+                $dipilih,
+                fn ($label) => $label === $terakhir || ! in_array($label, $grup, true)
+            ));
+        }
+
+        return $dipilih;
+    }
+
+    /**
+     * Lawan eksklusif dari satu label (untuk frontend).
+     *
+     * @return array<int,string>
+     */
+    public static function lawanEksklusif(string $label): array
+    {
+        $label = self::normalize($label);
+
+        foreach (self::EKSKLUSIF as $grup) {
+            if (in_array($label, $grup, true)) {
+                return array_values(array_filter($grup, fn ($item) => $item !== $label));
+            }
+        }
+
+        return [];
     }
 
     /**

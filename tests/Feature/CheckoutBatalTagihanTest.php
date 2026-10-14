@@ -45,6 +45,9 @@ class CheckoutBatalTagihanTest extends TestCase
             'nama' => 'Kos Uji '.uniqid(),
             'kota' => 'Yogyakarta',
             'denda_per_hari' => 0,
+            'bank_nama' => 'BCA',
+            'no_rekening' => '999000111',
+            'rekening_nama' => 'Pemilik Uji',
             'status' => 'aktif',
         ]);
         $kamar = Kamar::create([
@@ -55,9 +58,7 @@ class CheckoutBatalTagihanTest extends TestCase
             'status' => 'tersedia',
         ]);
 
-        return app(PenyewaanService::class)->sewaKamar(
-            $anak, $kamar, today()->toDateString(), $durasiBulan
-        );
+        return $this->sewaBulananAktif($anak, $kamar, $durasiBulan);
     }
 
     private function lunasiBulanBerjalan(Penyewaan $sewa): void
@@ -73,7 +74,8 @@ class CheckoutBatalTagihanTest extends TestCase
         $pemilik = $this->user('pemilik1@ngekos.test');
         $sewa = $this->sewaBulan($anak, 3);
 
-        $this->assertCount(3, $sewa->tagihans);
+        // Durasi 3 bulan: 1 DP + 3 sewa.
+        $this->assertCount(4, $sewa->tagihans);
 
         $this->lunasiBulanBerjalan($sewa);
 
@@ -88,7 +90,8 @@ class CheckoutBatalTagihanTest extends TestCase
         $this->assertSame('selesai', $sewa->refresh()->status);
         $this->assertSame('tersedia', $sewa->refresh()->kamar->status->value);
         $this->assertSame(2, $sewa->tagihans()->where('status', 'batal')->count());
-        $this->assertSame(1, $sewa->tagihans()->where('status', 'lunas')->count());
+        // Bulan berjalan = DP + sisa, keduanya lunas.
+        $this->assertSame(2, $sewa->tagihans()->where('status', 'lunas')->count());
         $this->assertSame(0, $setuju['tagihan_belum_lunas']);
     }
 

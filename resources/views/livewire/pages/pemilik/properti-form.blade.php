@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PropertiStatus;
+use App\Enums\TipeHunian;
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\SubscriptionService;
@@ -23,16 +24,16 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|string|max:100')]
     public string $nama = '';
 
-    #[Validate('nullable|string|max:50')]
+    #[Validate('required|string|max:50')]
     public ?string $kota = null;
 
-    #[Validate('nullable|numeric|between:-90,90')]
+    #[Validate('required|numeric|between:-90,90')]
     public ?string $latitude = null;
 
-    #[Validate('nullable|numeric|between:-180,180')]
+    #[Validate('required|numeric|between:-180,180')]
     public ?string $longitude = null;
 
-    #[Validate('nullable|string|max:500')]
+    #[Validate('required|string|max:500')]
     public ?string $alamat = null;
 
     #[Validate('nullable|string')]
@@ -47,22 +48,20 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('nullable|numeric|min:0')]
     public ?string $denda_per_hari = null;
 
-    // Harga kos (LEGASI): harga resmi kini diatur per kamar di halaman Kelola Kamar.
-    // Kolom tetap ada agar data lama + API lama tidak rusak, tapi tidak lagi wajib diisi.
-    #[Validate('nullable|numeric|gt:0')]
-    public ?string $harga = null;
+    #[Validate('nullable|string|max:50')]
+    public ?string $bank_nama = null;
 
-    #[Validate('nullable|numeric|gt:0')]
-    public ?string $harga_mingguan = null;
+    #[Validate('nullable|string|max:50')]
+    public ?string $no_rekening = null;
 
-    #[Validate('nullable|numeric|gt:0')]
-    public ?string $harga_harian = null;
-
-    #[Validate('nullable|numeric|min:0')]
-    public ?string $harga_asli = null;
+    #[Validate('nullable|string|max:100')]
+    public ?string $rekening_nama = null;
 
     #[Validate('required|string')]
     public string $status = 'aktif';
+
+    #[Validate('required|string')]
+    public string $tipe_hunian = 'campur';
 
     #[Validate('nullable|image|max:2048')]
     public $fotoBaru = null;
@@ -96,15 +95,15 @@ new #[Layout('layouts.app')] class extends Component
             $this->alamat = $this->properti->alamat;
             $this->deskripsi = $this->properti->deskripsi;
             $this->fasilitasTerpilih = $this->properti->fasilitas
-                ? array_filter(array_map('trim', explode(',', $this->properti->fasilitas)))
+                ? \App\Support\FacilityHelper::normalizeList(array_filter(array_map('trim', explode(',', $this->properti->fasilitas))))
                 : [];
             $this->aturan = $this->properti->aturan;
             $this->denda_per_hari = $this->properti->denda_per_hari;
-            $this->harga = $this->properti->harga;
-            $this->harga_mingguan = $this->properti->harga_mingguan;
-            $this->harga_harian = $this->properti->harga_harian;
-            $this->harga_asli = $this->properti->harga_asli;
+            $this->bank_nama = $this->properti->bank_nama;
+            $this->no_rekening = $this->properti->no_rekening;
+            $this->rekening_nama = $this->properti->rekening_nama;
             $this->status = $this->properti->status?->value ?? 'aktif';
+            $this->tipe_hunian = $this->properti->tipe_hunian?->value ?? 'campur';
         }
     }
 
@@ -167,24 +166,29 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->validate([
             'nama' => 'required|string|max:100',
-            'kota' => 'nullable|string|max:50',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-            'alamat' => 'nullable|string|max:500',
+            'kota' => 'required|string|max:50',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'alamat' => 'required|string|max:500',
             'deskripsi' => 'nullable|string',
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            'harga' => 'nullable|numeric|gt:0',
-            'harga_mingguan' => 'nullable|numeric|gt:0',
-            'harga_harian' => 'nullable|numeric|gt:0',
-            'harga_asli' => 'nullable|numeric|min:0',
+            'bank_nama' => 'nullable|string|max:50',
+            'no_rekening' => 'nullable|string|max:50',
+            'rekening_nama' => 'nullable|string|max:100',
             'status' => ['required', Rule::enum(PropertiStatus::class)],
+            'tipe_hunian' => ['required', Rule::enum(TipeHunian::class)],
             'fasilitasTerpilih' => 'required|array|min:1',
             'galeriBaru' => ['nullable', 'array', 'max:10'],
             'galeriBaru.*' => ['image', 'max:8192'],
         ], [
-            'harga.numeric' => 'Harga per bulan harus berupa angka.',
-            'harga.gt' => 'Harga per bulan harus lebih dari Rp0 atau dikosongkan (harga resmi diatur per kamar).',
+            'nama.required' => 'Nama kos wajib diisi.',
+            'kota.required' => 'Kota wajib dipilih dari saran.',
+            'latitude.required' => 'Titik peta wajib ditandai (geser pin / klik peta / gunakan lokasi saya).',
+            'latitude.numeric' => 'Latitude tidak valid.',
+            'longitude.required' => 'Titik peta wajib ditandai (geser pin / klik peta / gunakan lokasi saya).',
+            'longitude.numeric' => 'Longitude tidak valid.',
+            'alamat.required' => 'Alamat lengkap wajib diisi.',
             'fasilitasTerpilih.required' => 'Pilih minimal 1 fasilitas.',
             'fasilitasTerpilih.min' => 'Pilih minimal 1 fasilitas.',
             'galeriBaru.max' => 'Maksimal 10 foto tambahan sekaligus.',
@@ -212,11 +216,11 @@ new #[Layout('layouts.app')] class extends Component
             'fasilitas' => $fasilitasString,
             'aturan' => AturanKos::normalizeString($this->aturan),
             'denda_per_hari' => $this->denda_per_hari,
-            'harga' => $this->harga,
-            'harga_mingguan' => $this->harga_mingguan,
-            'harga_harian' => $this->harga_harian,
-            'harga_asli' => $this->harga_asli,
+            'bank_nama' => $this->bank_nama,
+            'no_rekening' => $this->no_rekening,
+            'rekening_nama' => $this->rekening_nama,
             'status' => $this->status,
+            'tipe_hunian' => $this->tipe_hunian,
         ];
 
         try {
@@ -263,7 +267,7 @@ new #[Layout('layouts.app')] class extends Component
 
     private function normalizeKosong(): void
     {
-        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'harga', 'harga_mingguan', 'harga_harian', 'harga_asli'] as $field) {
+        foreach (['kota', 'latitude', 'longitude', 'alamat', 'deskripsi', 'aturan', 'denda_per_hari', 'bank_nama', 'no_rekening', 'rekening_nama'] as $field) {
             if ($this->{$field} === '') {
                 $this->{$field} = null;
             }
@@ -633,10 +637,10 @@ new #[Layout('layouts.app')] class extends Component
             @endif
 
             <!-- Lokasi -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                    <x-input-label for="kota" value="Kota" />
-                    <input wire:model.live.debounce.300ms="kota" id="kota" list="daftar-kota" autocomplete="off"
+                    <x-input-label for="kota" value="Kota *" />
+                    <input wire:model="kota" id="kota" list="daftar-kota" autocomplete="off"
                         placeholder="Ketik nama kota… (mis. Bandung, Surabaya)"
                         class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500" />
                     <datalist id="daftar-kota">
@@ -656,18 +660,27 @@ new #[Layout('layouts.app')] class extends Component
                     </select>
                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                 </div>
+                <div>
+                    <x-input-label for="tipe_hunian" value="Tipe Kos *" />
+                    <select wire:model="tipe_hunian" id="tipe_hunian" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:border-teal-500 focus:ring-teal-500">
+                        @foreach (\App\Enums\TipeHunian::cases() as $opsiTipe)
+                            <option value="{{ $opsiTipe->value }}">Kos {{ $opsiTipe->label() }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('tipe_hunian')" class="mt-2" />
+                </div>
             </div>
 
             <div>
-                <x-input-label for="alamat" value="Alamat Lengkap" />
+                <x-input-label for="alamat" value="Alamat Lengkap *" />
                 <x-text-input wire:model="alamat" id="alamat" class="mt-1 block w-full" placeholder="Jalan, RT/RW, kecamatan" />
                 <x-input-error :messages="$errors->get('alamat')" class="mt-2" />
             </div>
 
             <!-- Lokasi Peta -->
             <div>
-                <x-input-label value="Lokasi di Peta (Opsional)" />
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Geser pin / klik pada peta untuk menandai lokasi kos. Bisa juga isi koordinat manual di bawah.</p>
+                <x-input-label value="Lokasi di Peta *" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Peta otomatis mengikuti pilihan kota & ketikan alamat. Geser pin / klik peta untuk menandai lokasi — alamat ikut diperbarui otomatis (tinggal sesuaikan nomor rumah). Bisa juga isi koordinat manual di bawah.</p>
             </div>
 
             @php
@@ -721,46 +734,18 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-error :messages="$errors->get('deskripsi')" class="mt-2" />
             </div>
 
-            <!-- Harga: kini diatur per kamar, bukan per kos -->
+            <!-- Harga: diatur per kamar, bukan per kos -->
             <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3">
                 <p class="text-sm font-bold text-teal-800 dark:text-teal-200">Harga diatur per kamar</p>
                 <p class="mt-0.5 text-xs text-teal-700 dark:text-teal-300 leading-relaxed">
                     @if ($properti)
-                        Harga tampil di katalog diambil otomatis dari kamar termurah kos ini. Atur / ubah harga di halaman
+                        Harga tampil di katalog ("Mulai dari …") diambil otomatis dari kamar termurah kos ini. Atur / ubah harga di halaman
                         <a href="{{ route('pemilik.kamar', $properti->id) }}" wire:navigate class="font-bold underline hover:no-underline">Kelola Kamar</a>.
                     @else
-                        Simpan kos dulu, lalu atur harga tiap kamar di halaman <span class="font-bold">Kelola Kamar</span> (per bulan wajib, per minggu / per hari opsional).
+                        Simpan kos dulu, lalu atur harga tiap kamar di halaman <span class="font-bold">Kelola Kamar</span> (per bulan wajib, per minggu / per hari opsional, plus harga coret bila ada diskon).
                     @endif
-                    Kolom harga kos lama di bawah hanya untuk kompatibilitas data lama dan boleh dikosongkan.
                 </p>
             </div>
-            <details class="rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 px-4 py-3">
-                <summary class="cursor-pointer text-xs font-semibold text-gray-500 dark:text-gray-400">Harga kos lama (opsional, boleh dikosongkan)</summary>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                        <x-input-label for="harga" value="Harga per Bulan (Rp) — legasi" />
-                        <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
-                        <x-input-error :messages="$errors->get('harga')" class="mt-2" />
-                    </div>
-                    <div>
-                        <x-input-label for="harga_mingguan" value="Harga per Minggu (Rp) — legasi" />
-                        <x-text-input wire:model="harga_mingguan" id="harga_mingguan" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
-                        <x-input-error :messages="$errors->get('harga_mingguan')" class="mt-2" />
-                    </div>
-                    <div>
-                        <x-input-label for="harga_harian" value="Harga per Hari (Rp) — legasi" />
-                        <x-text-input wire:model="harga_harian" id="harga_harian" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
-                        <x-input-error :messages="$errors->get('harga_harian')" class="mt-2" />
-                    </div>
-                </div>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <x-input-label for="harga_asli" value="Harga Asli / Sebelum Diskon (Rp) — legasi" />
-                        <x-text-input wire:model="harga_asli" id="harga_asli" class="mt-1 block w-full" type="number" min="0" placeholder="Kosongkan — isi di kamar" />
-                        <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
-                    </div>
-                </div>
-            </details>
 
             <!-- Fasilitas - Checkboxes dengan Ikon -->
             <div>
@@ -777,6 +762,29 @@ new #[Layout('layouts.app')] class extends Component
                 <x-input-label for="denda_per_hari" value="Denda Terlambat per Hari (Rp)" />
                 <x-text-input wire:model="denda_per_hari" id="denda_per_hari" class="mt-1 block w-full sm:w-64" type="number" min="0" placeholder="5000" />
                 <x-input-error :messages="$errors->get('denda_per_hari')" class="mt-2" />
+            </div>
+
+            <!-- Rekening transfer DP -->
+            <div class="rounded-2xl bg-teal-50/60 dark:bg-teal-500/5 ring-1 ring-teal-100 dark:ring-teal-500/20 p-4 sm:p-5">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Rekening Transfer DP</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Calon penyewa wajib transfer DP Rp100.000 ke rekening ini dan melampirkan bukti sebelum menekan Sewa. Tanpa rekening, booking bulanan di kos ini tidak bisa dilakukan.</p>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <x-input-label for="bank_nama" value="Bank" />
+                        <x-text-input wire:model="bank_nama" id="bank_nama" class="mt-1 block w-full" placeholder="Contoh: BCA" />
+                        <x-input-error :messages="$errors->get('bank_nama')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="no_rekening" value="Nomor Rekening" />
+                        <x-text-input wire:model="no_rekening" id="no_rekening" class="mt-1 block w-full" placeholder="Contoh: 1234567890" />
+                        <x-input-error :messages="$errors->get('no_rekening')" class="mt-2" />
+                    </div>
+                    <div>
+                        <x-input-label for="rekening_nama" value="Atas Nama" />
+                        <x-text-input wire:model="rekening_nama" id="rekening_nama" class="mt-1 block w-full" placeholder="Contoh: Budi Santoso" />
+                        <x-input-error :messages="$errors->get('rekening_nama')" class="mt-2" />
+                    </div>
+                </div>
             </div>
 
             <!-- Aturan -->
@@ -866,13 +874,30 @@ new #[Layout('layouts.app')] class extends Component
         return input ? input.value.trim() : ($wire.alamat || '').trim();
     }
 
-    function isiAlamatDariPeta(lat, lng) {
-        if (alamatSaatIni() !== '') return;
+    function tulisAlamatDariPeta(teks) {
+        if (!teks) return;
+        const input = document.getElementById('alamat');
+        // Jangan timpa saat pengguna sedang mengetik alamat manual.
+        if (input && document.activeElement === input) return;
+        if (input) input.value = teks;
+        $wire.set('alamat', teks);
+        tulisStatusForm('Alamat diperbarui mengikuti titik pin — sesuaikan nomor/no. rumah bila perlu.');
+    }
 
+    function pinMasihDiTitik(lat, lng) {
+        const el = document.getElementById('peta-properti-form');
+        if (!el) return false;
+        const cLat = parseFloat(el.dataset.lat);
+        const cLng = parseFloat(el.dataset.lng);
+        return Number.isFinite(cLat) && Number.isFinite(cLng)
+            && Math.abs(cLat - lat) < 0.00001 && Math.abs(cLng - lng) < 0.00001;
+    }
+
+    function isiAlamatDariPeta(lat, lng) {
         if (typeof google !== 'undefined' && google.maps) {
             geocoderFormDapat().geocode({ location: { lat, lng } }, (hasil, status) => {
-                if (status === 'OK' && hasil && hasil.length && alamatSaatIni() === '') {
-                    $wire.set('alamat', hasil[0].formatted_address);
+                if (status === 'OK' && hasil && hasil.length && pinMasihDiTitik(lat, lng)) {
+                    tulisAlamatDariPeta(hasil[0].formatted_address);
                 }
             });
             return;
@@ -881,8 +906,8 @@ new #[Layout('layouts.app')] class extends Component
         fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=id&lat=' + lat + '&lon=' + lng)
             .then(r => r.json())
             .then(j => {
-                if (j && j.display_name && alamatSaatIni() === '') {
-                    $wire.set('alamat', j.display_name);
+                if (j && j.display_name && pinMasihDiTitik(lat, lng)) {
+                    tulisAlamatDariPeta(j.display_name);
                 }
             })
             .catch(() => {});
@@ -929,6 +954,7 @@ new #[Layout('layouts.app')] class extends Component
 
     function pasangPilihKotaForm() {
         // Ketik/pilih kota di input -> pin pindah ke pusat kota + peta mengikut.
+        // Ketik alamat -> otomatis geocode (debounce) agar peta ngikut alamat.
         if (window.__petaFormKotaOn) return;
         window.__petaFormKotaOn = true;
         const pindahKeKota = (nama) => {
@@ -940,6 +966,7 @@ new #[Layout('layouts.app')] class extends Component
             setKoordinatForm(tengah.lat, tengah.lng);
         };
         let tundaKota = null;
+        let tundaAlamat = null;
         document.addEventListener('change', (e) => {
             const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
             if (!pilih) return;
@@ -947,9 +974,20 @@ new #[Layout('layouts.app')] class extends Component
         });
         document.addEventListener('input', (e) => {
             const pilih = e.target && e.target.closest ? e.target.closest('#kota') : null;
-            if (!pilih) return;
-            clearTimeout(tundaKota);
-            tundaKota = setTimeout(() => pindahKeKota((pilih.value || '').trim()), 600);
+            if (pilih) {
+                clearTimeout(tundaKota);
+                tundaKota = setTimeout(() => pindahKeKota((pilih.value || '').trim()), 600);
+                return;
+            }
+            const alamatEl = e.target && e.target.closest ? e.target.closest('#alamat') : null;
+            if (alamatEl) {
+                clearTimeout(tundaAlamat);
+                tundaAlamat = setTimeout(() => {
+                    const q = ((alamatEl.value || '').trim() + ' ' + ((document.getElementById('kota')?.value || '').trim())).trim();
+                    if (q.length < 8) return;
+                    cariAlamatForm();
+                }, 1200);
+            }
         });
     }
 

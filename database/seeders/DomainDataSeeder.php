@@ -38,9 +38,9 @@ class DomainDataSeeder extends Seeder
             'fasilitas' => 'WiFi, Kamar mandi dalam, Kasur, Lemari, Kipas Angin',
             'aturan' => 'Jam malam 23.00, dilarang membawa tamu menginap.',
             'denda_per_hari' => 5000,
-            'harga' => 1000000,
-            'harga_harian' => 50000,
-            'harga_asli' => 1200000,
+            'bank_nama' => 'BCA',
+            'no_rekening' => '1234567890',
+            'rekening_nama' => 'Budi Pemilik',
             'status' => 'aktif',
         ]);
         $melati->admins()->syncWithoutDetaching([$admin->id]);
@@ -55,6 +55,9 @@ class DomainDataSeeder extends Seeder
             'fasilitas' => 'WiFi, Dapur bersama, Parkir motor',
             'aturan' => 'Dilarang merokok di dalam kamar.',
             'denda_per_hari' => 5000,
+            'bank_nama' => 'BCA',
+            'no_rekening' => '1234567891',
+            'rekening_nama' => 'Budi Pemilik',
             'status' => 'aktif',
         ]);
         $mawar->admins()->syncWithoutDetaching([$admin->id]);
@@ -69,6 +72,9 @@ class DomainDataSeeder extends Seeder
             'fasilitas' => 'AC, WiFi, Kulkas, Kamar mandi dalam',
             'aturan' => 'Bebas jam malam, dilarang bising.',
             'denda_per_hari' => 10000,
+            'bank_nama' => 'Mandiri',
+            'no_rekening' => '1234567892',
+            'rekening_nama' => 'Siti Pemilik',
             'status' => 'aktif',
         ]);
         $anggrek->admins()->syncWithoutDetaching([$admin->id]);

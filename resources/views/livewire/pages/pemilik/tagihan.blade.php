@@ -80,7 +80,40 @@ new #[Layout('layouts.app')] class extends Component
 
         $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
             . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.'
-            . ($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim." : '');
+            . ($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim." : '')
+            . (! empty($hasil['booking_disetujui']) ? ' Booking disetujui — sewa resmi AKTIF.' : '');
+    }
+
+    public function tolakPembayaran(int $id): void
+    {
+        $this->reset(['pesan', 'galat']);
+
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $pembayaran = Pembayaran::query()
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('tagihan.penyewaan.properti', fn ($w) => $w->where('pemilik_id', auth()->id())))
+            ->where('id', $id)
+            ->with('anakKos', 'tagihan')
+            ->first();
+
+        if (! $pembayaran || $pembayaran->status !== 'menunggu_verifikasi') {
+            $this->galat = 'Pembayaran tidak ditemukan atau sudah diproses.';
+
+            return;
+        }
+
+        try {
+            $hasil = \App\Services\PembayaranService::verifikasi($pembayaran, auth()->id(), 'ditolak');
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
+            . number_format($pembayaran->jumlah, 0, ',', '.') . ' ditolak.'
+            . (! empty($hasil['booking_dibatalkan']) ? ' Booking ikut dibatalkan dan kamar kembali tersedia.' : '');
     }
 }; ?>
 
@@ -135,11 +168,17 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             <div class="text-end shrink-0">
                                 <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp{{ number_format($pembayaran->jumlah, 0, ',', '.') }}</p>
-                                <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:confirm="Sudah periksa bukti transfernya? Verifikasi pembayaran ini?" wire:loading.attr="disabled"
-                                    class="mt-1 inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
-                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    Verifikasi
-                                </button>
+                                <div class="mt-1 flex justify-end gap-1.5">
+                                    <button wire:click="verifikasiPembayaran({{ $pembayaran->id }})" wire:confirm="Sudah periksa bukti transfernya? Verifikasi pembayaran ini?" wire:loading.attr="disabled"
+                                        class="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                        Verifikasi
+                                    </button>
+                                    <button wire:click="tolakPembayaran({{ $pembayaran->id }})" wire:confirm="Tolak pembayaran ini? Bila ini bukti DP booking, booking ikut dibatalkan dan kamar kembali tersedia." wire:loading.attr="disabled"
+                                        class="inline-flex items-center gap-1 rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                        Tolak
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     @endforeach

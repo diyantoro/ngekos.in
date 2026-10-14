@@ -10,7 +10,9 @@ use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -27,6 +29,8 @@ class KatalogDetailSewaTest extends TestCase
 
     public function test_anak_kos_bisa_sewa_kamar_langsung_dari_detail(): void
     {
+        Storage::fake('private');
+
         $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
@@ -41,11 +45,18 @@ class KatalogDetailSewaTest extends TestCase
         $component->call('pesanKamar', $kamar->id)
             ->assertSet('modalKamarId', $kamar->id);
 
-        // Tanpa KTP: langsung berhasil (KTP tidak lagi diminta — privasi).
+        // Tanpa bukti DP: booking bulanan ditolak.
         $component->set('tanggalMasuk', today()->toDateString())
             ->call('konfirmasiSewa')
+            ->assertHasErrors(['buktiDp']);
+
+        $this->assertSame('tersedia', $kamar->refresh()->status->value);
+
+        // Dengan bukti DP: pengajuan terkirim, kamar ditahan tapi BELUM tersewa.
+        $component->set('buktiDp', UploadedFile::fake()->image('dp.jpg'))
+            ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
-            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil dipesan'));
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'BELUM otomatis tersewa'));
 
         $kamar->refresh();
         $this->assertSame('terisi', $kamar->status->value);
@@ -53,12 +64,19 @@ class KatalogDetailSewaTest extends TestCase
         $penyewaan = Penyewaan::where('anak_kos_id', $user->id)
             ->where('kamar_id', $kamar->id)
             ->firstOrFail();
-        $this->assertSame('aktif', $penyewaan->status);
+        $this->assertSame('menunggu_verifikasi', $penyewaan->status);
         $this->assertNull($penyewaan->ktp_path);
-        $this->assertSame(1, $penyewaan->tagihans()->count());
-        $tagihan = $penyewaan->tagihans()->first();
-        $this->assertSame('belum_bayar', $tagihan->status);
-        $this->assertEquals((float) $kamar->harga_sewa_bulanan, (float) $tagihan->jumlah);
+        // Sewa bulanan: DP Rp100.000 + sisa bulan pertama.
+        $this->assertSame(2, $penyewaan->tagihans()->count());
+        $dp = $penyewaan->tagihans()->where('jenis', 'dp')->firstOrFail();
+        $sisa = $penyewaan->tagihans()->where('jenis', 'sewa')->firstOrFail();
+        $this->assertEquals(100000, (float) $dp->jumlah);
+        $this->assertEquals((float) $kamar->harga_sewa_bulanan, (float) $dp->jumlah + (float) $sisa->jumlah);
+
+        $this->assertDatabaseHas('pembayarans', [
+            'tagihan_id' => $dp->id,
+            'status' => 'menunggu_verifikasi',
+        ]);
 
         $this->assertDatabaseHas('chat_pesans', [
             'properti_id' => $properti->id,
@@ -74,14 +92,21 @@ class KatalogDetailSewaTest extends TestCase
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
         $service = app(PenyewaanService::class);
-        $penyewaan = $service->sewaKamar($user, $kamar, today()->toDateString(), 3);
+        $penyewaan = $this->sewaBulananAktif($user, $kamar, 3);
 
-        $this->assertSame(3, $penyewaan->tagihans()->count());
+        // Durasi 3 bulan: 1 DP + 3 tagihan sewa (bulan pertama = sisa setelah DP).
+        // Setelah approval, DP lunas, 3 sewa belum bayar.
+        $this->assertSame(4, $penyewaan->tagihans()->count());
+        $this->assertSame(1, $penyewaan->tagihans()->where('jenis', 'dp')->count());
+        $this->assertSame(3, $penyewaan->tagihans()->where('jenis', 'sewa')->count());
         $this->assertSame(3, $penyewaan->tagihans()->where('status', 'belum_bayar')->count());
-        $periodes = $penyewaan->tagihans()->pluck('periode')->all();
+        $this->assertSame(1, $penyewaan->tagihans()->where('status', 'lunas')->count());
+        $periodes = $penyewaan->tagihans()->orderBy('id')->pluck('periode')->all();
+        $bulan0 = today()->startOfMonth()->locale('id')->translatedFormat('F Y');
         $this->assertSame(
             [
-                today()->startOfMonth()->locale('id')->translatedFormat('F Y'),
+                'DP - '.$bulan0,
+                'Sisa '.$bulan0,
                 today()->startOfMonth()->addMonthsNoOverflow(1)->locale('id')->translatedFormat('F Y'),
                 today()->startOfMonth()->addMonthsNoOverflow(2)->locale('id')->translatedFormat('F Y'),
             ],
@@ -135,11 +160,15 @@ class KatalogDetailSewaTest extends TestCase
         $kamar->refresh();
         $this->assertSame('tersedia', $kamar->status->value);
 
-        // Tepat 10 hari ke depan: lolos validasi tanggal dan langsung berhasil (tanpa KTP).
+        // Tepat 10 hari ke depan: lolos validasi tanggal, tapi masih wajib bukti DP.
         $component->set('tanggalMasuk', today()->addDays(10)->toDateString())
             ->call('konfirmasiSewa')
+            ->assertHasErrors(['buktiDp']);
+
+        $component->set('buktiDp', UploadedFile::fake()->image('dp.jpg'))
+            ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
-            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil dipesan'));
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'Pengajuan booking'));
     }
 
     public function test_service_menolak_tanggal_masuk_lebih_dari_10_hari(): void
@@ -169,13 +198,13 @@ class KatalogDetailSewaTest extends TestCase
 
         $service = app(PenyewaanService::class);
 
-        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString(), 1);
+        $sewaanPertama = $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null, 'bukti-dp-test.jpg');
         $this->assertNotNull($sewaanPertama);
 
         $this->expectException(\DomainException::class);
 
         try {
-            $service->sewaKamar($user, $kamar, today()->toDateString(), 1);
+            $service->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null, 'bukti-dp-test.jpg');
         } finally {
             $this->assertSame(1, Penyewaan::where('kamar_id', $kamar->id)->count());
         }
@@ -265,16 +294,52 @@ class KatalogDetailSewaTest extends TestCase
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
 
-        $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, today()->toDateString(), 1);
-        $tagihan = $penyewaan->tagihans()->firstOrFail();
+        $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null, 'bukti-dp-test.jpg');
+        $tagihan = $penyewaan->tagihans()->where('jenis', 'dp')->firstOrFail();
 
-        // Tanpa KTP: ktp_path null, tagihan DP menunggu dibayar.
+        // Tanpa KTP: ktp_path null; booking masih pending sehingga belum bisa dibayar.
         $this->assertNull($penyewaan->ktp_path);
-        $this->assertSame('belum_bayar', $tagihan->status);
+        $this->assertSame('menunggu_verifikasi', $penyewaan->status);
 
         Volt::actingAs($user)->test('pages.anak-kos.tagihan')
             ->call('bayarTagihan', $tagihan->id)
-            ->assertSee('Uang Muka (DP)')
-            ->assertSee('Menunggu DP');
+            ->assertSet('galat', fn ($galat) => str_contains($galat, 'belum diverifikasi'));
+
+        // Setelah booking disetujui, sewa aktif dan DP lunas.
+        app(PenyewaanService::class)->setujuiBooking($penyewaan->refresh(), $properti->pemilik_id);
+        $this->assertSame('aktif', $penyewaan->refresh()->status);
+        $this->assertSame('lunas', $tagihan->refresh()->status);
+
+        // Simulasi data lama (sewa aktif dengan DP belum dibayar):
+        // modal bayar tagihan DP tetap berlabel Uang Muka (DP).
+        $tagihan->pembayarans()->delete();
+        $tagihan->update(['status' => 'belum_bayar']);
+
+        Volt::actingAs($user)->test('pages.anak-kos.tagihan')
+            ->call('bayarTagihan', $tagihan->id)
+            ->assertSee('Bayar Uang Muka (DP)');
+    }
+
+    public function test_klik_kamar_membuka_modal_detail_dengan_fasilitas(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+        $kamar->update(['fasilitas' => 'AC, Kasur, Kamar Mandi Dalam']);
+
+        $component = Volt::actingAs($user)->test('pages.katalog.detail', ['properti' => $properti]);
+
+        // Fasilitas ikut ter-query sehingga tampil di card kamar.
+        $component->assertSee('Kasur');
+
+        // Klik card (foto/nama/tombol Detail) membuka modal rincian.
+        $component->call('bukaDetailKamar', $kamar->id)
+            ->assertSet('detailKamarId', $kamar->id)
+            ->assertSee('Fasilitas Kamar Ini')
+            ->assertSee('Kasur')
+            ->assertSee('Harga Sewa');
+
+        $component->call('tutupDetailKamar')
+            ->assertSet('detailKamarId', null);
     }
 }

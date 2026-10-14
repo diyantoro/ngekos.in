@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\KamarStatus;
 use App\Enums\PropertiStatus;
+use App\Enums\TipeHunian;
 use App\Http\Controllers\Controller;
 use App\Models\Kamar;
 use App\Models\Properti;
@@ -225,7 +226,15 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'fasilitas' => 'nullable|string',
+            'fasilitas' => [
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_string($value) && ($pesan = FacilityHelper::konflikEksklusif(FacilityHelper::fromString($value)))) {
+                        $fail($pesan);
+                    }
+                },
+            ],
             'status' => ['required', Rule::enum(KamarStatus::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
@@ -293,7 +302,15 @@ class PropertiManageController extends Controller
             'harga_sewa_mingguan' => 'nullable|numeric|gt:0',
             'harga_sewa_harian' => 'nullable|numeric|gt:0',
             'harga_asli' => 'nullable|numeric|min:0',
-            'fasilitas' => 'nullable|string',
+            'fasilitas' => [
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (is_string($value) && ($pesan = FacilityHelper::konflikEksklusif(FacilityHelper::fromString($value)))) {
+                        $fail($pesan);
+                    }
+                },
+            ],
             'status' => ['required', Rule::enum(KamarStatus::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
@@ -410,12 +427,11 @@ class PropertiManageController extends Controller
             ],
             'aturan' => 'nullable|string',
             'denda_per_hari' => 'nullable|numeric|min:0',
-            // Harga resmi diatur per kamar; harga kos opsional (legasi, fallback tampilan).
-            'harga' => 'nullable|numeric|gt:0',
-            'harga_mingguan' => 'nullable|numeric|gt:0',
-            'harga_harian' => 'nullable|numeric|gt:0',
-            'harga_asli' => 'nullable|numeric|min:0',
+            'bank_nama' => 'nullable|string|max:50',
+            'no_rekening' => 'nullable|string|max:50',
+            'rekening_nama' => 'nullable|string|max:100',
             'status' => ['required', Rule::enum(PropertiStatus::class)],
+            'tipe_hunian' => ['nullable', Rule::enum(TipeHunian::class)],
             'foto' => 'nullable|image|max:2048',
             'fotos' => 'nullable|array|max:10',
             'fotos.*' => 'image|max:4096',
@@ -423,8 +439,6 @@ class PropertiManageController extends Controller
             'hapus_foto_ids.*' => 'integer',
             'pemilik_id' => $properti === null ? ['nullable', 'integer', Rule::exists('users', 'id')] : ['nullable'],
         ], [
-            'harga.numeric' => 'Harga per bulan harus berupa angka.',
-            'harga.gt' => 'Harga per bulan harus lebih dari Rp0 atau dikosongkan (harga resmi diatur per kamar).',
             'fasilitas.required' => 'Pilih minimal 1 fasilitas.',
         ]);
     }
@@ -440,10 +454,9 @@ class PropertiManageController extends Controller
             'deskripsi' => $validated['deskripsi'] ?? null,
             'aturan' => AturanKos::normalizeString($validated['aturan'] ?? null),
             'denda_per_hari' => $validated['denda_per_hari'] ?? null,
-            'harga' => $validated['harga'] ?? null,
-            'harga_mingguan' => $validated['harga_mingguan'] ?? null,
-            'harga_harian' => $validated['harga_harian'] ?? null,
-            'harga_asli' => $validated['harga_asli'] ?? null,
+            'bank_nama' => $validated['bank_nama'] ?? null,
+            'no_rekening' => $validated['no_rekening'] ?? null,
+            'rekening_nama' => $validated['rekening_nama'] ?? null,
         ];
 
         if (! blank($validated['fasilitas'] ?? null)) {
@@ -456,12 +469,20 @@ class PropertiManageController extends Controller
             $data['status'] = $validated['status'];
         }
 
+        if (array_key_exists('tipe_hunian', $validated)) {
+            $data['tipe_hunian'] = $validated['tipe_hunian'] ?? null;
+        }
+
         return $data;
     }
 
     private function formatProperti(Properti $p): array
     {
         $p->loadMissing(['fotos', 'kamars.fotos']);
+
+        $tersedia = $p->kamars->where('status', KamarStatus::Tersedia);
+        $termurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->min('harga_sewa_bulanan');
+        $asliTermurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->sortBy('harga_sewa_bulanan')->first()?->harga_asli;
 
         return [
             'id' => $p->id,
@@ -474,11 +495,14 @@ class PropertiManageController extends Controller
             'fasilitas' => $p->fasilitas ? array_values(array_filter(array_map('trim', explode(',', $p->fasilitas)))) : [],
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
-            'harga' => $p->harga !== null ? (float) $p->harga : null,
-            'harga_mingguan' => $p->harga_mingguan !== null ? (float) $p->harga_mingguan : null,
-            'harga_harian' => $p->harga_harian !== null ? (float) $p->harga_harian : null,
-            'harga_asli' => $p->harga_asli !== null ? (float) $p->harga_asli : null,
+            'bank_nama' => $p->bank_nama,
+            'no_rekening' => $p->no_rekening,
+            'rekening_nama' => $p->rekening_nama,
+            'harga' => $termurah !== null ? (float) $termurah : null,
+            'harga_termurah' => $termurah !== null ? (float) $termurah : null,
+            'harga_asli' => $asliTermurah && $termurah && $asliTermurah > $termurah ? (float) $asliTermurah : null,
             'status' => $p->status?->value,
+            'tipe_hunian' => $p->tipe_hunian?->value,
             'foto' => $p->fotoCover(),
             'fotos' => $p->galeriUrls(),
             'total_kamar' => (int) ($p->total_kamar ?? 0),

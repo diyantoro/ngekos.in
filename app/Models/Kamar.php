@@ -33,7 +33,9 @@ class Kamar extends Model
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', (string) $this->fasilitas))));
+        return \App\Support\FacilityHelper::normalizeList(
+            array_filter(array_map('trim', explode(',', (string) $this->fasilitas)))
+        );
     }
 
     public function properti(): BelongsTo

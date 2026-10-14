@@ -23,6 +23,8 @@ new #[Layout('layouts.publik')] class extends Component
 
     public ?int $modalKamarId = null;
 
+    public ?int $detailKamarId = null;
+
     public string $tanggalMasuk = '';
 
     public int $durasiBulan = 1;
@@ -34,6 +36,8 @@ new #[Layout('layouts.publik')] class extends Component
     public string $periodeSewa = 'bulanan';
 
     public int $langkahSewa = 1;
+
+    public $buktiDp = null;
 
     public bool $favorit = false;
 
@@ -86,7 +90,7 @@ new #[Layout('layouts.publik')] class extends Component
             ]);
         }
 
-        $kamars = Kamar::select(['id', 'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'status', 'foto'])
+        $kamars = Kamar::select(['id', 'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'fasilitas', 'status', 'foto'])
             ->with('fotos:id,kamar_id,path,urutan')
             ->where('properti_id', $this->properti->id)
             ->orderBy('nama')
@@ -156,7 +160,28 @@ new #[Layout('layouts.publik')] class extends Component
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
+        $this->buktiDp = null;
         $this->resetValidation();
+    }
+
+    public function bukaDetailKamar(int $kamarId): void
+    {
+        $ada = Kamar::where('id', $kamarId)->where('properti_id', $this->properti->id)->exists();
+
+        if ($ada) {
+            $this->detailKamarId = $kamarId;
+        }
+    }
+
+    public function tutupDetailKamar(): void
+    {
+        $this->detailKamarId = null;
+    }
+
+    public function sewaDariDetail(int $kamarId): void
+    {
+        $this->tutupDetailKamar();
+        $this->pesanKamar($kamarId);
     }
 
     /**
@@ -258,6 +283,21 @@ new #[Layout('layouts.publik')] class extends Component
             return;
         }
 
+        // Booking bulanan wajib bukti transfer DP (tanpa bukti + verifikasi
+        // pemilik/admin, kamar belum otomatis tersewa).
+        $buktiDpPath = null;
+        if ($this->periodeSewa === 'bulanan') {
+            $this->validate([
+                'buktiDp' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:2048'],
+            ], [
+                'buktiDp.required' => 'Lampirkan bukti transfer DP Rp100.000 terlebih dahulu sebelum menekan Sewa.',
+                'buktiDp.mimes' => 'Bukti transfer harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
+                'buktiDp.max' => 'Ukuran bukti transfer maksimal 2MB.',
+            ]);
+
+            $buktiDpPath = \App\Services\BuktiStorage::simpan($this->buktiDp, 'bukti-pembayaran');
+        }
+
         try {
             app(PenyewaanService::class)->sewaKamar(
                 auth()->user(),
@@ -266,6 +306,7 @@ new #[Layout('layouts.publik')] class extends Component
                 $this->durasiBulan,
                 $this->periodeSewa === 'harian' ? $this->durasiHari : null,
                 $this->periodeSewa === 'mingguan' ? $this->durasiMinggu : null,
+                $buktiDpPath,
             );
         } catch (DomainException $e) {
             $this->resetForm();
@@ -286,9 +327,20 @@ new #[Layout('layouts.publik')] class extends Component
             default => 'bulan',
         };
         $totalTagihan = round((float) $harga * $durasi);
-        $pesanBaru = 'Kamar '.$kamar->nama.' berhasil dipesan selama '.$durasi.' '.$satuan.'. '
-            .'Rencana masuk: '.Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
-            .' — tagihan Rp'.number_format($totalTagihan, 0, ',', '.').' menunggu pembayaran. Segera bayar Uang Muka (DP) agar booking fiks.';
+        if ($this->periodeSewa === 'bulanan') {
+            $dp = min(100000, (float) $harga);
+            $sisa = round((float) $harga - $dp);
+            $berakhir = Carbon::parse($this->tanggalMasuk)->addMonthsNoOverflow($durasi)->subDay()->locale('id')->translatedFormat('d F Y');
+            $pesanBaru = 'Pengajuan booking kamar '.$kamar->nama.' terkirim ('.$durasi.' '.$satuan.', masuk '
+                .Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
+                .' sampai '.$berakhir
+                .'). Bukti DP Rp'.number_format($dp, 0, ',', '.')
+                .' sudah dilampirkan — kamar BELUM otomatis tersewa. Sewa aktif setelah pemilik/admin memverifikasi. Pantau di menu Kos Saya.';
+        } else {
+            $pesanBaru = 'Kamar '.$kamar->nama.' berhasil dipesan selama '.$durasi.' '.$satuan.'. '
+                .'Rencana masuk: '.Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
+                .' — tagihan Rp'.number_format($totalTagihan, 0, ',', '.').' menunggu pembayaran. Segera bayar Uang Muka (DP) agar booking fiks.';
+        }
         $this->pesan = $pesanBaru;
         $this->resetForm();
         $this->dispatch('booking-sukses', pesan: $pesanBaru);
@@ -349,6 +401,7 @@ new #[Layout('layouts.publik')] class extends Component
         $this->durasiHari = 1;
         $this->periodeSewa = 'bulanan';
         $this->langkahSewa = 1;
+        $this->buktiDp = null;
         $this->resetValidation();
     }
 }; ?>
@@ -369,7 +422,7 @@ new #[Layout('layouts.publik')] class extends Component
              class="pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-xl shadow-emerald-900/30 ring-1 ring-white/20">
             <svg class="h-5 w-5 shrink-0 mt-0.5 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <div class="min-w-0">
-                <p class="font-extrabold">Kamar Berhasil Dipesan</p>
+                <p class="font-extrabold">Berhasil!</p>
                 <p class="mt-0.5 text-emerald-50 text-xs leading-relaxed" x-text="isi"></p>
             </div>
             <button type="button" @click="buka = false" class="shrink-0 -m-1 rounded-lg p-1 text-emerald-100 hover:bg-emerald-500 transition" aria-label="Tutup">&times;</button>
@@ -471,10 +524,13 @@ new #[Layout('layouts.publik')] class extends Component
                             $termurahBulan = $termurah['bulan'] ?? null;
                             $termurahMinggu = $termurah['minggu'] ?? null;
                             $termurahHari = $termurah['hari'] ?? null;
-                            $adaDiskonDetail = $properti->harga_asli && (float) $termurahBulan > 0 && $properti->harga_asli > $termurahBulan;
+                            // Diskon milik kamar termurah (bukan harga kos).
+                            $kamarTermurah = $kamars->where('status', \App\Enums\KamarStatus::Tersedia)->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->sortBy('harga_sewa_bulanan')->first();
+                            $asliDetail = $kamarTermurah?->harga_asli;
+                            $adaDiskonDetail = $asliDetail && (float) $termurahBulan > 0 && $asliDetail > $termurahBulan;
                         @endphp
                         @if ((float) $termurahBulan > 0)
-                            <x-harga-tiga-periode :bulanan="$termurahBulan" :mingguan="$termurahMinggu" :harian="$termurahHari" :asli="$adaDiskonDetail ? $properti->harga_asli : null" varian="baris" />
+                            <x-harga-tiga-periode :bulanan="$termurahBulan" :mingguan="$termurahMinggu" :harian="$termurahHari" :asli="$adaDiskonDetail ? $asliDetail : null" varian="baris" />
                         @else
                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Penuh</span>
                         @endif
@@ -584,27 +640,26 @@ new #[Layout('layouts.publik')] class extends Component
         <!-- Daftar Kamar -->
         <div class="mt-6">
             <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">Daftar Kamar</h2>
-            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pilih kamar yang tersedia dan tanya pemiliknya lewat chat.</p>
+            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Ketuk foto atau nama kamar untuk melihat foto &amp; fasilitas lengkapnya.</p>
 
             <div class="mt-3 space-y-3">
                 @forelse ($kamars as $kamar)
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                         <div class="flex">
-                            <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-28 sm:h-36 w-24 sm:w-36 shrink-0" ringkas />
+                            <div wire:click="bukaDetailKamar({{ $kamar->id }})" role="button" tabindex="0" wire:keydown.enter="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
+                                class="shrink-0 cursor-pointer">
+                                <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-28 sm:h-36 w-24 sm:w-36 shrink-0" ringkas />
+                            </div>
 
                             <div class="flex-1 p-3 sm:p-4 flex flex-col justify-between">
                                 <div class="flex items-start justify-between gap-2">
                                     <div>
-                                        <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">{{ $kamar->nama }}</h3>
+                                        <button type="button" wire:click="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
+                                            class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left">{{ $kamar->nama }}</button>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang</p>
                                         @if ($kamar->fasilitas)
-                                            <div class="mt-1.5 flex flex-wrap gap-1">
-                                                @foreach (array_slice($kamar->daftarFasilitas(), 0, 4) as $f)
-                                                    <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300">{{ $f }}</span>
-                                                @endforeach
-                                                @if (count($kamar->daftarFasilitas()) > 4)
-                                                    <span class="inline-flex items-center rounded bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">+{{ count($kamar->daftarFasilitas()) - 4 }}</span>
-                                                @endif
+                                            <div class="mt-1.5">
+                                                <x-facility-icons :fasilitas="$kamar->fasilitas" />
                                             </div>
                                         @endif
                                     </div>
@@ -620,6 +675,10 @@ new #[Layout('layouts.publik')] class extends Component
                                         @auth
                                             @if (auth()->user()->hasRole('anak_kos'))
                                                 <div class="flex items-center gap-2">
+                                                    <button wire:click="bukaDetailKamar({{ $kamar->id }})"
+                                                        class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                        Detail
+                                                    </button>
                                                     <button wire:click="pesanKamar({{ $kamar->id }})" wire:loading.attr="disabled"
                                                         class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
                                                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
@@ -638,10 +697,16 @@ new #[Layout('layouts.publik')] class extends Component
                                                 </a>
                                             @endif
                                         @else
-                                            <a href="{{ route('login') }}" wire:navigate
-                                                class="shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
-                                                Masuk
-                                            </a>
+                                            <div class="flex items-center gap-2">
+                                                <button wire:click="bukaDetailKamar({{ $kamar->id }})"
+                                                    class="shrink-0 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                    Detail
+                                                </button>
+                                                <a href="{{ route('login') }}" wire:navigate
+                                                    class="shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                                    Masuk
+                                                </a>
+                                            </div>
                                         @endauth
                                     @else
                                         <span class="text-xs font-medium text-gray-400 dark:text-gray-500">Terisi</span>
@@ -660,6 +725,75 @@ new #[Layout('layouts.publik')] class extends Component
                 @endforelse
             </div>
         </div>
+
+        {{-- Modal Detail Kamar: galeri foto + fasilitas lengkap --}}
+        @if ($detailKamarId)
+        @php $kamarDetail = $kamars->firstWhere('id', $detailKamarId); @endphp
+        @if ($kamarDetail)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+            <button type="button" wire:click="tutupDetailKamar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
+            <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
+                <div class="w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Kamar {{ $kamarDetail->nama }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $properti->nama }} &middot; {{ $kamarDetail->kapasitas }} orang</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <x-status-badge :status="$kamarDetail->status" />
+                            <button type="button" wire:click="tutupDetailKamar"
+                                class="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400 flex items-center justify-center transition">&times;</button>
+                        </div>
+                    </div>
+
+                    <x-galeri-kos :fotos="$kamarDetail->galeriUrls()" :nama="'Kamar ' . $kamarDetail->nama" kelas="h-56 sm:h-72 w-full" />
+
+                    <div class="p-5 space-y-4">
+                        @if ($kamarDetail->fasilitas)
+                            <div>
+                                <p class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas Kamar Ini</p>
+                                <div class="mt-2">
+                                    <x-facility-icons :fasilitas="$kamarDetail->fasilitas" />
+                                </div>
+                            </div>
+                        @endif
+
+                        <div>
+                            <p class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Harga Sewa</p>
+                            <div class="mt-1.5">
+                                <x-harga-tiga-periode :bulanan="$kamarDetail->harga_sewa_bulanan" :mingguan="$kamarDetail->harga_sewa_mingguan" :harian="$kamarDetail->harga_sewa_harian" :asli="($kamarDetail->harga_asli && $kamarDetail->harga_asli > $kamarDetail->harga_sewa_bulanan) ? $kamarDetail->harga_asli : null" varian="rincian" />
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            @if ($kamarDetail->status === \App\Enums\KamarStatus::Tersedia)
+                                @auth
+                                    @if (auth()->user()->hasRole('anak_kos'))
+                                        <button wire:click="sewaDariDetail({{ $kamarDetail->id }})" wire:loading.attr="disabled"
+                                            class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                            Sewa Kamar Ini
+                                        </button>
+                                    @endif
+                                @else
+                                    <a href="{{ route('login') }}" wire:navigate
+                                        class="flex-1 inline-flex items-center justify-center rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition">
+                                        Masuk untuk Sewa
+                                    </a>
+                                @endauth
+                                <a href="{{ route('chat.room', ['properti' => $properti->id]) }}" wire:navigate
+                                    class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-4 py-2.5 text-sm font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                    Chat Pemilik
+                                </a>
+                            @else
+                                <span class="text-sm font-medium text-gray-400 dark:text-gray-500">Kamar ini sedang terisi.</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+        @endif
 
         <!-- Ulasan & Rating -->
         <div class="mt-6">
@@ -856,7 +990,15 @@ new #[Layout('layouts.publik')] class extends Component
                             @endif
                         </div>
                         <div class="rounded-xl bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-4 py-3 text-xs text-teal-800 dark:text-teal-200">
-                            Tanpa KTP — privasimu aman. Cukup bayar <span class="font-bold">Uang Muka (DP) Rp{{ number_format($kamarModal?->hargaUntuk($periodeSewa) ?? 0, 0, ',', '.') }}</span> (tagihan pertama) setelah booking agar kamar fiks untukmu.
+                            @if ($periodeSewa === 'bulanan')
+                                Tanpa KTP — privasimu aman. Sewa bulanan berlaku 1 bulan: transfer <span class="font-bold">DP Rp100.000</span> ke rekening pemilik lalu <span class="font-bold">lampirkan bukti transfer</span> di langkah Review.
+                                Sisa bulan pertama <span class="font-bold">Rp{{ number_format(max(0, (float) ($kamarModal?->harga_sewa_bulanan ?? 0) - 100000), 0, ',', '.') }}</span>
+                                (total bulan pertama tetap Rp{{ number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.') }}).
+                                Kamar <span class="font-bold">belum otomatis tersewa</span> sebelum pemilik/admin memverifikasi bukti DP-mu.
+                                H-3 sebelum berakhir kamu ditanya mau lanjut atau tidak — kalau tidak, kamar otomatis kosong lagi.
+                            @else
+                                Tanpa KTP — privasimu aman. Cukup bayar <span class="font-bold">Uang Muka (DP) Rp{{ number_format($kamarModal?->hargaUntuk($periodeSewa) ?? 0, 0, ',', '.') }}</span> (tagihan pertama) setelah booking agar kamar fiks untukmu.
+                            @endif
                         </div>
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="tutupModalSewa" wire:loading.attr="disabled"
@@ -903,13 +1045,60 @@ new #[Layout('layouts.publik')] class extends Component
                                 <span class="text-gray-500 dark:text-gray-400">Estimasi Total Tagihan</span>
                                 <span class="font-semibold text-emerald-600 dark:text-emerald-400 text-end">Rp{{ number_format($harga * $durasi, 0, ',', '.') }}</span>
                             </div>
+                            @if ($periodeSewa === 'bulanan')
+                                @php
+                                    $dpReview = min(100000, (float) $harga);
+                                    $sisaReview = max(0, (float) $harga - $dpReview);
+                                    $berakhirReview = $tanggalMasuk ? Carbon::parse($tanggalMasuk)->addMonthsNoOverflow($durasi)->subDay()->locale('id')->translatedFormat('d F Y') : '-';
+                                @endphp
+                                <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">DP (bayar dulu)</span>
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">Rp{{ number_format($dpReview, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">Sisa bulan pertama</span>
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">Rp{{ number_format($sisaReview, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
+                                    <span class="text-gray-500 dark:text-gray-400">Masa sewa sampai</span>
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">{{ $berakhirReview }} (H-3 ditanya lanjut/tidak)</span>
+                                </div>
+                            @endif
                             <div class="flex justify-between gap-2 px-4 py-2.5 text-xs">
                                 <span class="text-gray-500 dark:text-gray-400">Sistem Pembayaran</span>
                                 <span class="font-semibold text-gray-900 dark:text-gray-100 text-end">Transfer</span>
                             </div>
                         </div>
 
-                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Dengan menekan tombol di bawah, kamar langsung terkunci untukmu — tanpa upload KTP. Kamu akan melihat tagihan sewa di dashboard; bayar Uang Muka (DP) agar booking fiks.</p>
+                        @if ($periodeSewa === 'bulanan')
+                            @php $rekeningKos = $this->properti->labelRekening(); @endphp
+                            <div class="mt-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3">
+                                <p class="text-xs font-bold text-amber-800 dark:text-amber-200">Transfer DP Rp{{ number_format($dpReview ?? 100000, 0, ',', '.') }} ke:</p>
+                                @if ($rekeningKos)
+                                    <p class="mt-1 text-sm font-extrabold text-gray-900 dark:text-gray-100">{{ $rekeningKos }}</p>
+                                @else
+                                    <p class="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">Pemilik belum mencantumkan nomor rekening — booking bulanan belum bisa dilanjutkan. Hubungi pemilik lewat chat.</p>
+                                @endif
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Bukti Transfer DP (JPG/PNG/WEBP/PDF, maks 2MB) <span class="text-rose-500">*</span></label>
+                                <input type="file" wire:model="buktiDp" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                    class="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 dark:file:bg-brand-500/10 file:px-4 file:py-2 file:text-brand-700 dark:file:text-brand-300 file:font-semibold hover:file:bg-brand-100 dark:hover:file:bg-brand-500/20">
+                                @error('buktiDp') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
+                                <div wire:loading wire:target="buktiDp" class="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Mengunggah... tunggu sampai selesai sebelum tekan Sewa.</div>
+                                @if ($buktiDp)
+                                    <p class="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">File terlampir: {{ $buktiDp->getClientOriginalName() }}</p>
+                                @endif
+                            </div>
+                        @endif
+
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            @if ($periodeSewa === 'bulanan')
+                                Dengan menekan tombol di bawah, pengajuan booking terkirim — kamar <span class="font-bold">belum otomatis tersewa</span>. Sewa aktif setelah pemilik/admin memverifikasi bukti DP-mu. Pantau status di menu Kos Saya.
+                            @else
+                                Dengan menekan tombol di bawah, kamar langsung terkunci untukmu — tanpa upload KTP. Kamu akan melihat tagihan sewa di dashboard; bayar Uang Muka (DP) agar booking fiks.
+                            @endif
+                        </p>
 
                         <div class="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                             <button type="button" wire:click="kembaliKeTanggal" wire:loading.attr="disabled"
@@ -918,7 +1107,7 @@ new #[Layout('layouts.publik')] class extends Component
                             </button>
                             <button type="submit" wire:loading.attr="disabled" wire:target="konfirmasiSewa"
                                 class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
-                                <span wire:loading.remove wire:target="konfirmasiSewa">Booking Sekarang</span>
+                                <span wire:loading.remove wire:target="konfirmasiSewa">{{ $periodeSewa === 'bulanan' ? 'Kirim Booking + Bukti DP' : 'Booking Sekarang' }}</span>
                                 <span wire:loading wire:target="konfirmasiSewa" class="inline-flex items-center gap-1.5">
                                     <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                                     Memproses...

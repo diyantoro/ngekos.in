@@ -31,7 +31,9 @@ class TambahPropertiTest extends TestCase
 
         $component->set('nama', 'Kos Mawar')
             ->set('kota', 'Bandung')
-            ->set('harga', '750000')
+            ->set('alamat', 'Jl. Mawar No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->set('fasilitasTerpilih', ['WiFi'])
             ->set('fotoBaru', UploadedFile::fake()->image('kos.jpg', 800, 600))
             ->call('simpan');
@@ -57,8 +59,11 @@ class TambahPropertiTest extends TestCase
 
         Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
             ->set('nama', 'Kos Pertama')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Pertama No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->set('status', 'aktif')
-            ->set('harga', '750000')
             ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasNoErrors();
@@ -82,7 +87,10 @@ class TambahPropertiTest extends TestCase
 
         $component->set('fasilitasTerpilih', ['WiFi', 'AC'])
             ->set('nama', 'Kos Fasilitas')
-            ->set('harga', '750000')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Fasilitas No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->call('simpan')
             ->assertHasNoErrors();
 
@@ -105,8 +113,10 @@ class TambahPropertiTest extends TestCase
         Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
             ->set('nama', 'Kos Repro Penuh')
             ->set('kota', 'Jakarta')
+            ->set('alamat', 'Jl. Repro No. 1, Jakarta')
+            ->set('latitude', '-6.2088')
+            ->set('longitude', '106.8456')
             ->set('status', 'aktif')
-            ->set('harga', '750000')
             ->set('fotoBaru', UploadedFile::fake()->image('cover.jpg', 800, 600))
             ->set('galeriBaru', [
                 UploadedFile::fake()->image('g1.jpg', 800, 600),
@@ -131,7 +141,10 @@ class TambahPropertiTest extends TestCase
 
         $component->assertViewHas('pilihPemilik', false)
             ->set('nama', 'Kos Mawar')
-            ->set('harga', '750000')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Mawar No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->set('fasilitasTerpilih', ['WiFi', 'AC', 'Kamar Mandi Dalam'])
             ->call('simpan');
 
@@ -179,5 +192,45 @@ class TambahPropertiTest extends TestCase
         $this->assertStringContainsString('Fasilitas Kamar', $view);
         $this->assertStringContainsString('Fasilitas Kamar Mandi', $view);
         $this->assertStringNotContainsString('Fasilitas Umum Kos', $view);
+    }
+
+    public function test_form_kos_ada_pilihan_tipe_hunian(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+
+        $view = Livewire::actingAs($pemilik)
+            ->test('pages.pemilik.properti-form')
+            ->html();
+
+        $this->assertStringContainsString('Tipe Kos', $view);
+        $this->assertStringContainsString('Kos Putra', $view);
+        $this->assertStringContainsString('Kos Putri', $view);
+        $this->assertStringContainsString('Kos Campur', $view);
+        $this->assertStringContainsString('Kos Bebas', $view);
+    }
+
+    public function test_tipe_hunian_tersimpan_dari_form_kos(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+
+        Livewire::actingAs($pemilik)->test('pages.pemilik.properti-form')
+            ->set('nama', 'Kos Tipe Putri')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Tipe No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
+            ->set('status', 'aktif')
+            ->set('tipe_hunian', 'putri')
+            ->set('fasilitasTerpilih', ['WiFi'])
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('propertis', [
+            'pemilik_id' => $pemilik->id,
+            'nama' => 'Kos Tipe Putri',
+            'tipe_hunian' => 'putri',
+        ]);
     }
 }

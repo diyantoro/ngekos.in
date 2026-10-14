@@ -340,8 +340,6 @@ class KatalogMamikosSeeder extends Seeder
                 'fasilitas' => $row['fasilitas'],
                 'aturan' => 'Tamu dilarang menginap tanpa izin pemilik.',
                 'denda_per_hari' => 5000,
-                'harga' => $row['harga'],
-                'harga_asli' => $row['asli'] && $row['asli'] > $row['harga'] ? $row['asli'] : null,
                 'tipe_hunian' => $row['tipe'],
                 'status' => 'aktif',
             ]);

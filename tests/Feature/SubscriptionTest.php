@@ -248,8 +248,11 @@ class SubscriptionTest extends TestCase
         // Pemilik: kos kedua ditolak via form.
         Volt::actingAs($user)->test('pages.pemilik.properti-form')
             ->set('nama', 'Kos Kedua')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Kedua No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->set('status', 'aktif')
-            ->set('harga', '750000')
             ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasErrors(['nama']);
@@ -263,8 +266,11 @@ class SubscriptionTest extends TestCase
         Volt::actingAs($admin->refresh())->test('pages.pemilik.properti-form')
             ->set('pemilikId', $user->id)
             ->set('nama', 'Kos Titipan Admin')
+            ->set('kota', 'Bandung')
+            ->set('alamat', 'Jl. Titipan No. 1, Bandung')
+            ->set('latitude', '-6.9175')
+            ->set('longitude', '107.6191')
             ->set('status', 'aktif')
-            ->set('harga', '750000')
             ->set('fasilitasTerpilih', ['WiFi'])
             ->call('simpan')
             ->assertHasErrors(['nama']);

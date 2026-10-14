@@ -7,6 +7,7 @@ enum TipeHunian: string
     case Putra = 'putra';
     case Putri = 'putri';
     case Campur = 'campur';
+    case Bebas = 'bebas';
 
     /** @return array<int,string> */
     public static function values(): array
@@ -20,6 +21,7 @@ enum TipeHunian: string
             self::Putra => 'Putra',
             self::Putri => 'Putri',
             self::Campur => 'Campur',
+            self::Bebas => 'Bebas',
         };
     }
 }
