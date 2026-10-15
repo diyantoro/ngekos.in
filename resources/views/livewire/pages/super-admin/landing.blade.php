@@ -12,7 +12,9 @@ new #[Layout('layouts.app')] class extends Component
 {
     use WithFileUploads;
 
-    public string $cari = '';
+    public string $cariHero = '';
+
+    public string $cariPromo = '';
 
     public ?string $pesan = null;
 
@@ -61,9 +63,15 @@ new #[Layout('layouts.app')] class extends Component
     public function with(): array
     {
         return [
-            'landingPropertis' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
+            'landingPropertisHero' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
-                ->when($this->cari, fn ($q) => $q->where(fn ($w) => $w->where('nama', 'like', "%{$this->cari}%")->orWhere('kota', 'like', "%{$this->cari}%")))
+                ->when($this->cariHero, fn ($q) => $q->where(fn ($w) => $w->where('nama', 'like', "%{$this->cariHero}%")->orWhere('kota', 'like', "%{$this->cariHero}%")))
+                ->orderBy('nama')
+                ->limit(30)
+                ->get(),
+            'landingPropertisPromo' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
+                ->with('pemilik:id,nama')
+                ->when($this->cariPromo, fn ($q) => $q->where(fn ($w) => $w->where('nama', 'like', "%{$this->cariPromo}%")->orWhere('kota', 'like', "%{$this->cariPromo}%")))
                 ->orderBy('nama')
                 ->limit(30)
                 ->get(),
@@ -419,23 +427,20 @@ new #[Layout('layouts.app')] class extends Component
             </div>
         @endif
 
-        <div class="flex flex-col sm:flex-row gap-2">
-            <input type="text" wire:model.live.debounce.300ms="cari" placeholder="Cari kos berdasarkan nama atau kota..."
-                class="w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-        </div>
-
         <div class="space-y-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5">
                 <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100">Gambar kos mengambang (Hero)</h4>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Pin 1 kos agar foto hero di landing tidak ikut berubah saat ada kos baru. Kosongkan untuk kembali otomatis (kos terbaru).</p>
+                <input type="text" wire:model.live.debounce.300ms="cariHero" placeholder="Cari kos hero berdasarkan nama atau kota..."
+                    class="mt-3 w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
                 <div class="mt-3 flex flex-col sm:flex-row gap-2">
                     <select wire:model="heroPropertiId"
                         class="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
                         <option value="">Otomatis (kos terbaru)</option>
-                        @if ($heroProperti && ! $landingPropertis->contains('id', $heroProperti->id))
+                        @if ($heroProperti && ! $landingPropertisHero->contains('id', $heroProperti->id))
                             <option value="{{ $heroProperti->id }}">{{ $heroProperti->nama }} — terpin saat ini</option>
                         @endif
-                        @foreach ($landingPropertis as $lp)
+                        @foreach ($landingPropertisHero as $lp)
                             <option value="{{ $lp->id }}">{{ $lp->nama }} — {{ $lp->kota ?? '-' }} ({{ $lp->status?->value ?? '-' }})</option>
                         @endforeach
                     </select>
@@ -467,7 +472,7 @@ new #[Layout('layouts.app')] class extends Component
                         <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">Kos ini tidak aktif — landing otomatis memakai kos terbaru sampai Anda ganti pin.</p>
                     @endif
                 @else
-                    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Mode otomatis aktif. Cari kos lewat kolom “Cari data...” di atas untuk mempersempit daftar.</p>
+                    <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Mode otomatis aktif. Ketik di kolom cari di atas untuk mempersempit daftar ({{ $landingPropertisHero->count() }} ditampilkan).</p>
                 @endif
             </div>
 
@@ -512,7 +517,11 @@ new #[Layout('layouts.app')] class extends Component
                     </div>
                 @endif
                 <div class="mt-3 divide-y divide-gray-100 dark:divide-gray-700 rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                    @forelse ($landingPropertis as $lp)
+                    <div class="px-3 py-2 bg-white dark:bg-gray-800">
+                        <input type="text" wire:model.live.debounce.300ms="cariPromo" placeholder="Cari kos promo berdasarkan nama atau kota..."
+                            class="w-full rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                    </div>
+                    @forelse ($landingPropertisPromo as $lp)
                         @php $terpilih = in_array((int) $lp->id, array_map('intval', (array) $promoIds), true); @endphp
                         <div class="flex items-center gap-3 px-3 py-2.5 {{ $terpilih ? 'bg-teal-50/60 dark:bg-teal-500/5' : '' }}">
                             <button wire:click="togglePromo({{ $lp->id }})" wire:loading.attr="disabled"
