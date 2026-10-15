@@ -77,6 +77,7 @@
                 @endif
 
                     @if (auth()->user()->hasAnyRole(['pemilik', 'admin', 'super_admin']))
+                    @php $tagihanMenunggu = auth()->user()->pembayaranMenungguCount(); @endphp
                     {{-- Kelola --}}
                     <div x-data="{ buka: false }" class="relative">
                         <button @click="buka = !buka" type="button" aria-label="Menu kelola"
@@ -84,6 +85,9 @@
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .414.336.75.75.75z" />
                             </svg>
+                            @if ($tagihanMenunggu > 0)
+                                <span class="{{ $badge }}">{{ $tagihanMenunggu > 9 ? '9+' : $tagihanMenunggu }}</span>
+                            @endif
                             <span class="text-[10px] font-medium">{{ __('Kelola') }}</span>
                         </button>
                         <div x-show="buka" x-cloak @click.outside="buka = false"
@@ -107,7 +111,10 @@
                             <a href="{{ route('pemilik.tagihan') }}" wire:navigate.hover @click="buka = false"
                                 class="flex items-center gap-3 px-4 py-3 text-sm font-medium {{ request()->routeIs('pemilik.tagihan') ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10' : 'text-slate-700 dark:text-gray-200' }} hover:bg-stone-100 dark:hover:bg-gray-700 transition">
                                 <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                {{ __('Tagihan') }}
+                                <span class="flex-1">{{ __('Tagihan') }}</span>
+                                @if (($tagihanMenunggu ?? 0) > 0)
+                                    <span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{{ $tagihanMenunggu > 9 ? '9+' : $tagihanMenunggu }}</span>
+                                @endif
                             </a>
                             <a href="{{ route('pemilik.penyewa') }}" wire:navigate.hover @click="buka = false"
                                 class="flex items-center gap-3 px-4 py-3 text-sm font-medium {{ request()->routeIs('pemilik.penyewa') ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10' : 'text-slate-700 dark:text-gray-200' }} hover:bg-stone-100 dark:hover:bg-gray-700 transition">

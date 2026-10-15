@@ -173,6 +173,8 @@ new class extends Component
             return;
         }
 
+        auth()->user()?->forgetPembayaranMenungguCache();
+
         $nama = $pembayaran->anakKos?->nama ?? 'Penyewa';
 
         $this->pesan = "Pembayaran {$nama} sebesar Rp".number_format((float) $pembayaran->jumlah, 0, ',', '.')

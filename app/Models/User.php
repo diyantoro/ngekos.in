@@ -241,6 +241,8 @@ class User extends Authenticatable
 
     protected static array $memoBantuan = [];
 
+    protected static array $memoTagihan = [];
+
     public function pesanBelumDibaca(): int
     {
         if (! $this->hasAnyRole(['anak_kos', 'pemilik'])) {
@@ -302,6 +304,56 @@ class User extends Authenticatable
         }
 
         return self::$memoBantuan[$id] = cache()->remember('bantuan_masuk_count', 60, fn () => PesanBantuan::jumlahBaru());
+    }
+
+    /**
+     * Jumlah pembayaran tagihan menunggu verifikasi.
+     * Pemilik: hanya properti miliknya. Admin/super_admin: semua.
+     * Dipakai untuk badge mengambang di menu Tagihan (seperti badge Pesan).
+     */
+    public function pembayaranMenungguCount(): int
+    {
+        if (! $this->hasAnyRole(['pemilik', 'admin', 'super_admin'])) {
+            return 0;
+        }
+
+        $id = $this->getKey();
+
+        if (array_key_exists($id, self::$memoTagihan)) {
+            return self::$memoTagihan[$id];
+        }
+
+        return self::$memoTagihan[$id] = (int) cache()->remember(
+            "tagihan.menunggu.{$id}",
+            30,
+            fn () => $this->hitungPembayaranMenunggu()
+        );
+    }
+
+    public function forgetPembayaranMenungguCache(): void
+    {
+        unset(self::$memoTagihan[$this->getKey()]);
+        cache()->forget("tagihan.menunggu.{$this->getKey()}");
+    }
+
+    public static function forgetPembayaranMenungguUntukPemilik(int $pemilikId): void
+    {
+        unset(self::$memoTagihan[$pemilikId]);
+        cache()->forget("tagihan.menunggu.{$pemilikId}");
+    }
+
+    private function hitungPembayaranMenunggu(): int
+    {
+        if ($this->hasAnyRole(['admin', 'super_admin'])) {
+            return Pembayaran::query()
+                ->where('status', 'menunggu_verifikasi')
+                ->count();
+        }
+
+        return Pembayaran::query()
+            ->where('status', 'menunggu_verifikasi')
+            ->whereHas('tagihan.penyewaan.properti', fn ($q) => $q->where('pemilik_id', $this->id))
+            ->count();
     }
 
     /**

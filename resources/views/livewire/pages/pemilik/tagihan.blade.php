@@ -78,6 +78,8 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
+        auth()->user()?->forgetPembayaranMenungguCache();
+
         $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
             . number_format($pembayaran->jumlah, 0, ',', '.') . ' diverifikasi.'
             . ($hasil['kwitansi_url'] ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis terkirim." : '')
@@ -111,13 +113,16 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
+        auth()->user()?->forgetPembayaranMenungguCache();
+
         $this->pesan = 'Pembayaran ' . ($pembayaran->anakKos?->nama ?? '-') . ' sebesar Rp'
             . number_format($pembayaran->jumlah, 0, ',', '.') . ' ditolak.'
             . (! empty($hasil['booking_dibatalkan']) ? ' Booking ikut dibatalkan dan kamar kembali tersedia.' : '');
     }
 }; ?>
 
-<div class="py-10">
+{{-- Poll ringan agar daftar pembayaran masuk ter-update otomatis seperti chat --}}
+<div class="py-10" wire:poll.15s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">
