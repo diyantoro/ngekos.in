@@ -56,12 +56,12 @@ new class extends Component
                     ->sum('jumlah'),
                 'penyewaanAktif' => Penyewaan::where('status', 'aktif')
                     ->whereHas('properti', $scope)->count(),
-                'tagihanBelumCount' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
+                'tagihanBelumCount' => Tagihan::belumLunas()
                     ->whereHas('penyewaan.properti', $scope)->count(),
-                'nilaiTagihanBelum' => (int) Tagihan::whereNotIn('status', ['lunas', 'batal'])
+                'nilaiTagihanBelum' => (int) Tagihan::belumLunas()
                     ->whereHas('penyewaan.properti', $scope)
                     ->selectRaw('COALESCE(SUM(jumlah + denda), 0) as total')->value('total'),
-                'tagihanTelat' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
+                'tagihanTelat' => Tagihan::belumLunas()
                     ->where('jatuh_tempo', '<', today()->toDateString())
                     ->whereHas('penyewaan.properti', $scope)->count(),
             ];
@@ -82,7 +82,7 @@ new class extends Component
         $labaBersihBulanIni = $pendapatanBulanIni - $pengeluaranBulanIni;
         $labaBersihBulanLalu = $pendapatanBulanLalu - $pengeluaranBulanLalu;
 
-        $tagihanBelumQuery = fn () => Tagihan::whereNotIn('status', ['lunas', 'batal'])
+        $tagihanBelumQuery = fn () => Tagihan::belumLunas()
             ->whereHas('penyewaan.properti', $scope);
 
         $tagihanBelumCount = $ringkas['tagihanBelumCount'];
@@ -132,22 +132,24 @@ new class extends Component
             'pembayaranTerbaru' => $pembayaranTerbaru,
             'pembayaranMenunggu' => $pembayaranMenunggu,
             'pembayaranMenungguCount' => $pembayaranMenunggu->count(),
-            'langganan' => (function () {
+            'langganan' => cache()->remember("pemilik.langganan.{$id}", 300, function () {
                 $user = auth()->user();
                 $plan = SubscriptionService::getPlan($user);
+                $aktif = SubscriptionService::getSubscriptionAktif($user)
+                    ?? SubscriptionService::getSubscription($user);
 
                 return [
                     'plan' => $plan,
                     'roomUsed' => SubscriptionService::usage($user, 'room'),
                     'roomLimit' => SubscriptionService::limitFor($plan, 'room'),
-                    'expiresAt' => (SubscriptionService::getSubscriptionAktif($user) ?? SubscriptionService::getSubscription($user))?->expires_at?->translatedFormat('d F Y'),
-                    'status' => (SubscriptionService::getSubscriptionAktif($user) ?? SubscriptionService::getSubscription($user))?->status,
+                    'expiresAt' => $aktif?->expires_at?->translatedFormat('d F Y'),
+                    'status' => $aktif?->status,
                     'sisaTrial' => SubscriptionService::sisaTrialHari($user),
                     'trialHabis' => SubscriptionService::trialExpired($user),
                     'bisaKlaim' => SubscriptionService::bisaKlaimTrial($user),
                     'sisaLangganan' => SubscriptionService::sisaLanggananHari($user),
                 ];
-            })(),
+            }),
         ];
     }
 

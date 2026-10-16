@@ -1071,11 +1071,20 @@ new #[Layout('layouts.publik')] class extends Component
                         </div>
 
                         @if ($periodeSewa === 'bulanan')
-                            @php $rekeningKos = $this->properti->labelRekening(); @endphp
+                            @php
+                                // Nomor utuh hanya untuk user login (anti-scraping);
+                                // tamu melihat versi tersamar + ajakan masuk.
+                                $rekeningKos = auth()->check()
+                                    ? $this->properti->labelRekening()
+                                    : $this->properti->labelRekeningTersamar();
+                            @endphp
                             <div class="mt-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/30 px-4 py-3">
                                 <p class="text-xs font-bold text-amber-800 dark:text-amber-200">Transfer DP Rp{{ number_format($dpReview ?? 100000, 0, ',', '.') }} ke:</p>
                                 @if ($rekeningKos)
                                     <p class="mt-1 text-sm font-extrabold text-gray-900 dark:text-gray-100">{{ $rekeningKos }}</p>
+                                    @guest
+                                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-300"><a href="{{ route('login') }}" wire:navigate class="font-bold underline hover:no-underline">Masuk</a> untuk melihat nomor rekening lengkap sebelum transfer.</p>
+                                    @endguest
                                 @else
                                     <p class="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">Pemilik belum mencantumkan nomor rekening — booking bulanan belum bisa dilanjutkan. Hubungi pemilik lewat chat.</p>
                                 @endif

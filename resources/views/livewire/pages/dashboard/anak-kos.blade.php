@@ -45,7 +45,7 @@ new class extends Component
 
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
 
-        $kandidatBerikutnya = Tagihan::whereNotIn('status', ['lunas', 'batal'])
+        $kandidatBerikutnya = Tagihan::belumLunas()
             ->whereHas('penyewaan', $scopeSewa)
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
             ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])

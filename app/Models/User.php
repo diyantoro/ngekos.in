@@ -255,17 +255,21 @@ class User extends Authenticatable
             return self::$memoPesan[$id];
         }
 
-        return self::$memoPesan[$id] = cache()->remember(
-            "chat.belum-dibaca.{$id}",
-            30,
-            fn () => $this->hitungPesanBelumDibaca()
-        );
+        $lencana = $this->lencanaNavigasi();
+
+        self::$memoPesan[$id] = $lencana['pesan'];
+        self::$memoTagihan[$id] ??= $lencana['tagihan'];
+        self::$memoBantuan[$id] ??= $lencana['bantuan'];
+
+        return self::$memoPesan[$id];
     }
 
     public function forgetPesanBelumDibacaCache(): void
     {
         unset(self::$memoPesan[$this->getKey()]);
+        unset(self::$memoLencana[$this->getKey()]);
         cache()->forget("chat.belum-dibaca.{$this->getKey()}");
+        cache()->forget("navigasi.lencana.{$this->getKey()}");
     }
 
     private function hitungPesanBelumDibaca(): int
@@ -303,7 +307,13 @@ class User extends Authenticatable
             return self::$memoBantuan[$id];
         }
 
-        return self::$memoBantuan[$id] = cache()->remember('bantuan_masuk_count', 60, fn () => PesanBantuan::jumlahBaru());
+        $lencana = $this->lencanaNavigasi();
+
+        self::$memoBantuan[$id] = $lencana['bantuan'];
+        self::$memoPesan[$id] ??= $lencana['pesan'];
+        self::$memoTagihan[$id] ??= $lencana['tagihan'];
+
+        return self::$memoBantuan[$id];
     }
 
     /**
@@ -323,23 +333,69 @@ class User extends Authenticatable
             return self::$memoTagihan[$id];
         }
 
-        return self::$memoTagihan[$id] = (int) cache()->remember(
-            "tagihan.menunggu.{$id}",
-            30,
-            fn () => $this->hitungPembayaranMenunggu()
-        );
+        $lencana = $this->lencanaNavigasi();
+
+        self::$memoTagihan[$id] = (int) $lencana['tagihan'];
+        self::$memoPesan[$id] ??= $lencana['pesan'];
+        self::$memoBantuan[$id] ??= $lencana['bantuan'];
+
+        return self::$memoTagihan[$id];
     }
 
     public function forgetPembayaranMenungguCache(): void
     {
         unset(self::$memoTagihan[$this->getKey()]);
+        unset(self::$memoLencana[$this->getKey()]);
         cache()->forget("tagihan.menunggu.{$this->getKey()}");
+        cache()->forget("navigasi.lencana.{$this->getKey()}");
     }
 
     public static function forgetPembayaranMenungguUntukPemilik(int $pemilikId): void
     {
         unset(self::$memoTagihan[$pemilikId]);
+        unset(self::$memoLencana[$pemilikId]);
         cache()->forget("tagihan.menunggu.{$pemilikId}");
+        cache()->forget("navigasi.lencana.{$pemilikId}");
+    }
+
+    protected static array $memoLencana = [];
+
+    /**
+     * Gabungan badge navigasi dalam 1x baca cache (quick-win).
+     * Dipakai navigation + bottom-nav agar pindah menu tidak
+     * menembak 3x cache/file + 3x query saat cache dingin.
+     *
+     * @return array{pesan:int,tagihan:int,bantuan:int}
+     */
+    public function lencanaNavigasi(): array
+    {
+        $id = $this->getKey();
+
+        if (array_key_exists($id, self::$memoLencana)) {
+            return self::$memoLencana[$id];
+        }
+
+        return self::$memoLencana[$id] = cache()->remember(
+            "navigasi.lencana.{$id}",
+            180,
+            fn () => [
+                'pesan' => $this->hasAnyRole(['anak_kos', 'pemilik'])
+                    ? $this->hitungPesanBelumDibaca()
+                    : 0,
+                'tagihan' => $this->hasAnyRole(['pemilik', 'admin', 'super_admin'])
+                    ? $this->hitungPembayaranMenunggu()
+                    : 0,
+                'bantuan' => $this->hasAnyRole(['super_admin', 'admin'])
+                    ? (int) PesanBantuan::jumlahBaru()
+                    : 0,
+            ]
+        );
+    }
+
+    public static function lupakanLencanaNavigasi(int $userId): void
+    {
+        unset(self::$memoLencana[$userId]);
+        cache()->forget("navigasi.lencana.{$userId}");
     }
 
     private function hitungPembayaranMenunggu(): int

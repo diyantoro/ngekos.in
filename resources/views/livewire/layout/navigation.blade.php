@@ -16,6 +16,8 @@ new class extends Component
     {
         $user = auth()->user();
         $dashboardRoute = $user->dashboardRoute();
+        // 1x baca cache gabungan untuk semua badge (pesan/tagihan/bantuan).
+        $lencana = $user->lencanaNavigasi();
 
         $links = [];
 
@@ -41,7 +43,7 @@ new class extends Component
         }
 
         if ($user->hasAnyRole(['anak_kos', 'pemilik'])) {
-            $belumDibaca = $user->pesanBelumDibaca();
+            $belumDibaca = $lencana['pesan'];
             $links[] = [
                 'label' => 'Pesan', 'route' => 'chat.index', 'active' => 'chat.*',
                 'routeName' => route('chat.index', absolute: false),
@@ -82,7 +84,7 @@ new class extends Component
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v1.5A2.25 2.25 0 006 21zm12-8.25v-6.5A2.25 2.25 0 0015.75 4H8.25A2.25 2.25 0 006 6.25v6.5m18 0h-18" />',
                 'group' => 'KELOLA',
             ];
-            $tagihanMenunggu = $user->pembayaranMenungguCount();
+            $tagihanMenunggu = $lencana['tagihan'];
             $links[] = [
                 'label' => 'Tagihan', 'route' => 'pemilik.tagihan', 'active' => 'pemilik.tagihan',
                 'routeName' => route('pemilik.tagihan', absolute: false),
@@ -118,7 +120,7 @@ new class extends Component
                 'label' => 'Pesan Masuk', 'route' => 'bantuan.masuk', 'active' => 'bantuan.masuk',
                 'routeName' => route('bantuan.masuk', absolute: false),
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" />',
-                'belum_dibaca' => $user->bantuanMasukBelumDibaca(),
+                'belum_dibaca' => $lencana['bantuan'],
                 'group' => 'KELOLA',
             ];
         }
@@ -173,10 +175,10 @@ new class extends Component
 
         // Ringkasan paket untuk kartu "Paket Anda" (khusus pemilik, cache singkat).
         // Catatan: tanggal disimpan sebagai string ISO (bukan objek Carbon) agar
-        // aman di-serialize ke file cache.
+        // aman di-serialize ke file cache. TTL 300 dtk agar pindah menu ringan.
         $paket = null;
         if ($user->hasRole('pemilik')) {
-            $paket = cache()->remember("navigasi.paket.v2.{$user->id}", 120, function () use ($user) {
+            $paket = cache()->remember("navigasi.paket.v2.{$user->id}", 300, function () use ($user) {
                 $plan = strtolower(SubscriptionService::getPlan($user) ?: 'free');
                 if (! in_array($plan, ['free', 'pro', 'business'], true)) {
                     $plan = 'free';
@@ -197,8 +199,8 @@ new class extends Component
 }; ?>
 
 {{-- Sidebar navy modern: desktop fixed + rail collapsed, mobile drawer off-canvas --}}
-{{-- Poll ringan agar badge Pesan & Tagihan (pembayaran masuk) ter-update seperti notif pesan --}}
-<nav wire:poll.15s x-data="{ open: false }" x-on:livewire:navigated.window="open = false" x-effect="document.body.classList.toggle('overflow-hidden', open)">
+{{-- Poll dijinakkan: hanya saat tab terlihat + 60 dtk agar pindah menu ringan --}}
+<nav wire:poll.visible.60s x-data="{ open: false }" x-on:livewire:navigated.window="open = false" x-effect="document.body.classList.toggle('overflow-hidden', open)">
 
     {{-- ===== Desktop sidebar (navy) ===== --}}
     <aside class="app-sidebar hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-64 lg:flex-col bg-brand-900 dark:bg-brand-950 text-slate-300">

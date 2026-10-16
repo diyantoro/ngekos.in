@@ -26,6 +26,14 @@ class Properti extends Model
             'longitude' => 'decimal:7',
             'status' => \App\Enums\PropertiStatus::class,
             'tipe_hunian' => \App\Enums\TipeHunian::class,
+            // Rekening terenkripsi at-rest (AES via APP_KEY): di database
+            // hanya tersimpan ciphertext. Baca/tulis via attribute tetap
+            // transparan (otomatis dekrip/enkrip). JANGAN query where()
+            // ke kolom ini (ciphertext acak tiap simpan). Kunci: APP_KEY
+            // wajib dibackup — ganti key = data lama tidak terbaca.
+            'bank_nama' => 'encrypted',
+            'no_rekening' => 'encrypted',
+            'rekening_nama' => 'encrypted',
         ];
     }
 
@@ -70,6 +78,54 @@ class Properti extends Model
 
         if (filled($this->rekening_nama)) {
             $label .= ' a.n. '.$this->rekening_nama;
+        }
+
+        return $label;
+    }
+
+    /**
+     * Nomor rekening tersamar untuk katalog publik ("****7890").
+     * Hanya 4 digit terakhir yang dibuka, sama perlakuannya
+     * seperti nomor HP yang disamarkan di katalog.
+     */
+    public function noRekeningTersamar(): ?string
+    {
+        if (! $this->punyaRekening()) {
+            return null;
+        }
+
+        $digit = preg_replace('/\D+/', '', (string) $this->no_rekening) ?? '';
+
+        return strlen($digit) >= 4 ? '****'.substr($digit, -4) : '****';
+    }
+
+    /**
+     * Nama pemilik rekening tersamar ("B***").
+     */
+    public function namaRekeningTersamar(): ?string
+    {
+        if (! $this->punyaRekening() || blank($this->rekening_nama)) {
+            return null;
+        }
+
+        return mb_substr(trim((string) $this->rekening_nama), 0, 1).'***';
+    }
+
+    /**
+     * Ringkasan rekening tersamar untuk ditampilkan ke publik
+     * ("BCA ****7890 a.n. B***"). Nomor lengkap hanya dibuka
+     * di langkah booking oleh user yang sudah login.
+     */
+    public function labelRekeningTersamar(): ?string
+    {
+        if (! $this->punyaRekening()) {
+            return null;
+        }
+
+        $label = trim((string) $this->bank_nama.' '.(string) $this->noRekeningTersamar());
+
+        if ($this->namaRekeningTersamar() !== null) {
+            $label .= ' a.n. '.$this->namaRekeningTersamar();
         }
 
         return $label;

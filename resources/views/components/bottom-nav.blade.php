@@ -8,6 +8,10 @@
     $itemBiasa = 'text-slate-400 dark:text-gray-500';
 
     $badge = 'absolute top-0.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white z-10';
+
+    // Quick-win: 1x baca cache gabungan (memo per-request membuat
+    // pemanggilan ke-2 dst gratis bila navigation sudah menghitung).
+    $lencanaBawah = auth()->check() ? auth()->user()->lencanaNavigasi() : ['pesan' => 0, 'tagihan' => 0, 'bantuan' => 0];
 @endphp
 <div class="fixed bottom-0 left-0 right-0 z-50 sm:hidden safe-bottom">
     <div class="border-t border-stone-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -49,7 +53,7 @@
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
                     </svg>
-                    @php $unread = auth()->user()->pesanBelumDibaca(); @endphp
+                    @php $unread = $lencanaBawah['pesan'] ?? 0; @endphp
                     @if ($unread > 0)
                         <span class="{{ $badge }}">{{ $unread > 9 ? '9+' : $unread }}</span>
                     @endif
@@ -68,7 +72,7 @@
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" />
                         </svg>
-                        @php $bantuanBaru = auth()->user()->bantuanMasukBelumDibaca(); @endphp
+                        @php $bantuanBaru = $lencanaBawah['bantuan'] ?? 0; @endphp
                         @if ($bantuanBaru > 0)
                             <span class="{{ $badge }}">{{ $bantuanBaru > 9 ? '9+' : $bantuanBaru }}</span>
                         @endif
@@ -77,7 +81,7 @@
                 @endif
 
                     @if (auth()->user()->hasAnyRole(['pemilik', 'admin', 'super_admin']))
-                    @php $tagihanMenunggu = auth()->user()->pembayaranMenungguCount(); @endphp
+                    @php $tagihanMenunggu = $lencanaBawah['tagihan'] ?? 0; @endphp
                     {{-- Kelola --}}
                     <div x-data="{ buka: false }" class="relative">
                         <button @click="buka = !buka" type="button" aria-label="Menu kelola"

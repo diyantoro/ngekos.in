@@ -6,7 +6,7 @@ use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Services\SubscriptionService;
-use Illuminate\Support\Facades\DB;
+use App\Support\GrafikBulan;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -96,40 +96,60 @@ new #[Layout('layouts.app')] class extends Component
 
         $mulai = now()->startOfMonth()->subMonths($bulanCount - 1);
 
-        $pendapatanPerBulan = Pembayaran::where('status', 'diverifikasi')
-            ->whereHas('tagihan.penyewaan.properti', $scopeId)
-            ->where('verified_at', '>=', $mulai)
-            ->get(['verified_at', 'jumlah'])
-            ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
-            ->map(fn ($rows) => (int) $rows->sum('jumlah'));
+        // Agregasi di SQL (GROUP BY), bukan get()+groupBy di PHP.
 
-        $pengeluaranPerBulan = Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $id)
-                ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId)))
-            ->where('tanggal', '>=', $mulai->toDateString())
-            ->get(['tanggal', 'jumlah'])
-            ->groupBy(fn ($p) => $p->tanggal->format('m/Y'))
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+        // Join 1:1 (pembayaran->tagihan->penyewaan->properti) + hormati SoftDeletes properti.
+        $bayarMilik = fn ($q) => $q->join('tagihans', 'tagihans.id', '=', 'pembayarans.tagihan_id')
+            ->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
+            ->join('propertis', 'propertis.id', '=', 'penyewaans.properti_id')
+            ->whereNull('propertis.deleted_at')
+            ->where('propertis.pemilik_id', $id)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
-        $transaksiPerBulan = Pembayaran::where('status', 'diverifikasi')
-            ->whereHas('tagihan.penyewaan.properti', $scopeId)
-            ->where('verified_at', '>=', $mulai)
-            ->get(['verified_at'])
-            ->groupBy(fn ($p) => $p->verified_at->format('m/Y'))
-            ->map(fn ($rows) => $rows->count());
+        $tagihanMilik = fn ($q) => $q->join('penyewaans', 'penyewaans.id', '=', 'tagihans.penyewaan_id')
+            ->join('propertis', 'propertis.id', '=', 'penyewaans.properti_id')
+            ->whereNull('propertis.deleted_at')
+            ->where('propertis.pemilik_id', $id)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
-        $lunasPerBulan = Tagihan::where('status', 'lunas')
-            ->whereHas('penyewaan.properti', $scopeId)
-            ->where('updated_at', '>=', $mulai)
-            ->get(['updated_at', 'jumlah', 'denda'])
-            ->groupBy(fn ($t) => $t->updated_at->format('m/Y'))
-            ->map(fn ($rows) => (int) $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda));
+        $keluarMilik = fn ($q) => $q->join('propertis', 'propertis.id', '=', 'pengeluarans.properti_id')
+            ->whereNull('propertis.deleted_at')
+            ->where('propertis.pemilik_id', $id)
+            ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));
 
-        $belumPerBulan = Tagihan::whereNotIn('status', ['lunas', 'batal'])
-            ->whereHas('penyewaan.properti', $scopeId)
-            ->where('created_at', '>=', $mulai)
-            ->get(['created_at', 'jumlah', 'denda'])
-            ->groupBy(fn ($t) => $t->created_at->format('m/Y'))
-            ->map(fn ($rows) => (int) $rows->sum(fn ($t) => (float) $t->jumlah + (float) $t->denda));
+        $pendapatanPerBulan = $bayarMilik(Pembayaran::where('pembayarans.status', 'diverifikasi')
+                ->where('pembayarans.verified_at', '>=', $mulai))
+            ->selectRaw(GrafikBulan::kolomBulan('pembayarans.verified_at').', SUM(pembayarans.jumlah) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->map(fn ($v) => (int) $v);
+
+        $pengeluaranPerBulan = $keluarMilik(Pengeluaran::where('pengeluarans.tanggal', '>=', $mulai->toDateString()))
+            ->selectRaw(GrafikBulan::kolomBulan('pengeluarans.tanggal').', SUM(pengeluarans.jumlah) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->map(fn ($v) => (int) round($v));
+
+        $transaksiPerBulan = $bayarMilik(Pembayaran::where('pembayarans.status', 'diverifikasi')
+                ->where('pembayarans.verified_at', '>=', $mulai))
+            ->selectRaw(GrafikBulan::kolomBulan('pembayarans.verified_at').', COUNT(*) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->map(fn ($v) => (int) $v);
+
+        $lunasPerBulan = $tagihanMilik(Tagihan::where('tagihans.status', 'lunas')
+                ->where('tagihans.updated_at', '>=', $mulai))
+            ->selectRaw(GrafikBulan::kolomBulan('tagihans.updated_at').', SUM(tagihans.jumlah + tagihans.denda) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->map(fn ($v) => (int) $v);
+
+        $belumPerBulan = $tagihanMilik(Tagihan::belumLunas()
+                ->where('tagihans.created_at', '>=', $mulai))
+            ->selectRaw(GrafikBulan::kolomBulan('tagihans.created_at').', SUM(tagihans.jumlah + tagihans.denda) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->map(fn ($v) => (int) $v);
 
         $bulanLabels = [];
         $chartPendapatan = [];
@@ -169,20 +189,18 @@ new #[Layout('layouts.app')] class extends Component
             $chartOkupansi[] = $totalKamar > 0 ? (int) round($terisi / $totalKamar * 100) : 0;
         }
 
-        $chartKategori = Pengeluaran::whereHas('properti', fn ($q) => $q->where('pemilik_id', $id)
-                ->when($propertiId, fn ($w) => $w->where($w->getModel()->getTable().'.id', $propertiId)))
-            ->where('tanggal', '>=', $mulai->toDateString())
-            ->get(['kategori', 'jumlah'])
-            ->groupBy('kategori')
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')))
-            ->sortDesc()
-            ->take(7)
-            ->map(fn ($nilai, $kategori) => ['label' => str($kategori)->title(), 'value' => $nilai])
+        $chartKategori = $keluarMilik(Pengeluaran::where('pengeluarans.tanggal', '>=', $mulai->toDateString()))
+            ->selectRaw('pengeluarans.kategori as kategori, SUM(pengeluarans.jumlah) as total')
+            ->groupBy('pengeluarans.kategori')
+            ->orderByDesc('total')
+            ->limit(7)
+            ->pluck('total', 'kategori')
+            ->map(fn ($nilai, $kategori) => ['label' => str($kategori)->title(), 'value' => (int) round($nilai)])
             ->values()
             ->all();
 
         // Aging piutang.
-        $belum = Tagihan::whereNotIn('status', ['lunas', 'batal'])
+        $belum = Tagihan::belumLunas()
             ->whereHas('penyewaan.properti', $scopeId)
             ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama'])
             ->orderBy('jatuh_tempo')
@@ -206,14 +224,13 @@ new #[Layout('layouts.app')] class extends Component
             }
         }
 
-        // Top properti periode ini.
-        $pendapatanProperti = Pembayaran::where('status', 'diverifikasi')
-            ->where('verified_at', '>=', $mulai)
-            ->whereHas('tagihan.penyewaan.properti', $scopeId)
-            ->with('tagihan.penyewaan')
-            ->get()
-            ->groupBy(fn ($p) => $p->tagihan?->penyewaan?->properti_id)
-            ->map(fn ($rows) => (int) round($rows->sum('jumlah')));
+        // Top properti periode ini (agregasi SQL per properti).
+        $pendapatanProperti = $bayarMilik(Pembayaran::where('pembayarans.status', 'diverifikasi')
+                ->where('pembayarans.verified_at', '>=', $mulai))
+            ->selectRaw('penyewaans.properti_id as pid, SUM(pembayarans.jumlah) as total')
+            ->groupBy('penyewaans.properti_id')
+            ->pluck('total', 'pid')
+            ->map(fn ($v) => (int) round($v));
 
         $topProperti = $daftarProperti->map(fn ($p) => [
             'id' => $p->id,

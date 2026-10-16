@@ -25,8 +25,8 @@ new #[Layout('layouts.app')] class extends Component
             ->when(! $lihatSemua, fn ($q) => $q->whereHas('penyewaan.properti', fn ($w) => $w->where('pemilik_id', $id)))
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
             ->with(['penyewaan.anakKos:id,nama', 'penyewaan.kamar:id,nama', 'penyewaan.properti:id,nama'])
-            ->when($this->filter === 'belum', fn ($q) => $q->whereNotIn('status', ['lunas', 'batal']))
-            ->when($this->filter === 'telat', fn ($q) => $q->whereNotIn('status', ['lunas', 'batal'])->where('jatuh_tempo', '<', today()->toDateString()))
+            ->when($this->filter === 'belum', fn ($q) => $q->belumLunas())
+            ->when($this->filter === 'telat', fn ($q) => $q->belumLunas()->where('jatuh_tempo', '<', today()->toDateString()))
             ->when($this->filter === 'lunas', fn ($q) => $q->where('status', 'lunas'))
             ->when($this->filter === 'batal', fn ($q) => $q->where('status', 'batal'))
             ->when($this->cari, fn ($q) => $q->where(function ($w) {
@@ -121,8 +121,8 @@ new #[Layout('layouts.app')] class extends Component
     }
 }; ?>
 
-{{-- Poll ringan agar daftar pembayaran masuk ter-update otomatis seperti chat --}}
-<div class="py-10" wire:poll.15s>
+{{-- Poll dijinakkan: hanya saat terlihat + 60 dtk agar tidak membebani navigasi --}}
+<div class="py-10" wire:poll.visible.60s>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div>
             <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300 inline-flex items-center gap-1">

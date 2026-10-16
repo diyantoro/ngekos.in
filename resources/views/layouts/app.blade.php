@@ -103,6 +103,7 @@
         </div>
 
         @stack('scripts')
-        <livewire:chatbot />
+        {{-- Lazy: chatbot keluar dari critical path render awal tiap halaman --}}
+        <livewire:chatbot lazy />
     </body>
 </html>

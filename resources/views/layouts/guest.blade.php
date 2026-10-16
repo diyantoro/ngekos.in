@@ -87,7 +87,7 @@
         </div>
 
         @auth
-            <livewire:chatbot />
+            <livewire:chatbot lazy />
         @endauth
     </body>
 </html>

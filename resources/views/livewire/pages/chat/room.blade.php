@@ -48,7 +48,8 @@ new #[Layout('layouts.publik')] class extends Component
         auth()->user()->forgetPesanBelumDibacaCache();
 
         return [
-            'pesans' => ChatPesan::antara($this->properti->id, $this->anakKos->id)->with('pengirim')->get(),
+            // Quick-win: batasi 100 pesan terakhir agar poll tidak memuat seluruh riwayat.
+            'pesans' => ChatPesan::antara($this->properti->id, $this->anakKos->id)->with('pengirim')->reorder()->orderByDesc('id')->limit(100)->get()->sortBy('id')->values(),
             'lawan' => auth()->user()->hasRole('anak_kos')
                 ? $this->properti->pemilik
                 : $this->anakKos,
@@ -69,6 +70,12 @@ new #[Layout('layouts.publik')] class extends Component
             'pengirim_id' => auth()->id(),
             'isi' => trim($valid['isiPesan']),
         ]);
+
+        // Badge penerima langsung di-refresh (lencana gabungan 180 dtk).
+        $penerimaId = auth()->user()->hasRole('anak_kos')
+            ? (int) $this->properti->pemilik_id
+            : (int) $this->anakKos->id;
+        \App\Models\User::lupakanLencanaNavigasi($penerimaId);
 
         $this->reset('isiPesan');
     }
@@ -98,7 +105,7 @@ new #[Layout('layouts.publik')] class extends Component
     }
 }; ?>
 
-<div class="py-8" wire:poll.3s>
+<div class="py-8" wire:poll.visible.10s>
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 flex items-center justify-between gap-3">

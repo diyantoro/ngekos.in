@@ -184,6 +184,11 @@ class KatalogController extends Controller
     {
         $p->loadMissing(['fotos', 'kamars.fotos']);
 
+        // Rekening utuh hanya untuk user login (butuh transfer saat booking);
+        // pengunjung anonim hanya dapat versi tersamar (anti-scraping,
+        // sama perlakuannya seperti nomor HP pemilik di bawah).
+        $bolehLihatPenuh = auth('sanctum')->check();
+
         $tersedia = $p->kamars->where('status', \App\Enums\KamarStatus::Tersedia);
         $termurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->min('harga_sewa_bulanan');
         $kamarTermurah = $tersedia->filter(fn ($k) => (float) $k->harga_sewa_bulanan > 0)->sortBy('harga_sewa_bulanan')->first();
@@ -202,9 +207,12 @@ class KatalogController extends Controller
             'aturan' => $p->aturan,
             'denda_per_hari' => $p->denda_per_hari !== null ? (float) $p->denda_per_hari : null,
             // Rekening tujuan transfer DP (wajib diisi pemilik agar booking bulanan bisa jalan).
+            // Anonim: tersamar; login: utuh (dibutuhkan saat transfer DP).
             'bank_nama' => $p->bank_nama,
-            'no_rekening' => $p->no_rekening,
-            'rekening_nama' => $p->rekening_nama,
+            'no_rekening' => $bolehLihatPenuh ? $p->no_rekening : $p->noRekeningTersamar(),
+            'rekening_nama' => $bolehLihatPenuh ? $p->rekening_nama : $p->namaRekeningTersamar(),
+            'rekening_tersamar' => $p->labelRekeningTersamar(),
+            'punya_rekening' => $p->punyaRekening(),
             'dp_nominal' => \App\Services\PenyewaanService::DP_NOMINAL,
             'harga' => $termurah !== null ? (float) $termurah : null,
             'harga_termurah' => $termurah !== null ? (float) $termurah : null,

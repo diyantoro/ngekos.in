@@ -1,8 +1,6 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -49,11 +47,8 @@ new #[Layout('layouts.guest')] class extends Component
     /**
      * Tujuan redirect setelah login yang aman dari 403.
      *
-     * `url.intended` bisa menunjuk ke halaman milik peran lain
-     * (mis. sesi/bookmark lama) sehingga user langsung menabrak
-     * "User does not have the right roles." tepat setelah login.
-     * Hormati intended hanya bila user boleh mengaksesnya dan
-     * URL-nya internal; selain itu ke dashboard sesuai role.
+     * Quick-win: tanpa Route::getRoutes()->match() tiap login.
+     * Cukup pastikan path internal + prefix sesuai peran (lihat routes/web.php).
      */
     protected function tujuanAman(): string
     {
@@ -70,33 +65,44 @@ new #[Layout('layouts.guest')] class extends Component
             return $default;
         }
 
-        try {
-            $route = Route::getRoutes()->match(
-                Request::create(parse_url($intended, PHP_URL_PATH) ?: '/', 'GET')
-            );
-        } catch (\Throwable) {
+        $path = (string) parse_url($intended, PHP_URL_PATH);
+        if ($path === '') {
             return $default;
         }
 
-        $user = auth()->user();
+        // Hanya path internal absolut; tolak //evil dan backslash.
+        if (! str_starts_with($path, '/') || str_starts_with($path, '//') || str_contains($path, '\\')) {
+            return $default;
+        }
 
-        foreach ((array) $route->gatherMiddleware() as $middleware) {
-            if (! is_string($middleware)) {
-                continue;
-            }
+        // Tolak halaman auth agar tidak loop setelah login.
+        if (preg_match('#^/(login|register|password|email)(/|$)#', $path)) {
+            return $default;
+        }
 
-            [$nama, $parameter] = array_pad(explode(':', $middleware, 2), 2, null);
+        $role = auth()->user()->getRoleNames()->first();
 
-            if ($nama === 'role' && is_string($parameter) && $parameter !== '') {
-                $butuh = preg_split('/[|,]/', $parameter, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $umum = ['/dashboard', '/bantuan', '/pengaturan', '/profil', '/chat', '/kos', '/favorit'];
+        $perPeran = [
+            'pemilik' => ['/pemilik', '/langganan', '/dashboard/pemilik'],
+            'anak_kos' => ['/anak-kos', '/dashboard/anak-kos'],
+            'admin' => ['/pemilik', '/langganan', '/dashboard/admin'],
+            'super_admin' => ['/pemilik', '/pengguna', '/landing', '/langganan', '/dashboard/super-admin', '/dashboard/admin'],
+        ];
 
-                if ($butuh !== [] && ! $user->hasAnyRole($butuh)) {
-                    return $default;
-                }
+        $diizinkan = array_merge($umum, $perPeran[$role] ?? []);
+        $defaultPath = (string) parse_url($default, PHP_URL_PATH);
+        if ($defaultPath !== '') {
+            $diizinkan[] = $defaultPath;
+        }
+
+        foreach ($diizinkan as $awalan) {
+            if ($path === $awalan || str_starts_with($path, rtrim($awalan, '/').'/')) {
+                return $path;
             }
         }
 
-        return $intended;
+        return $default;
     }
 }; ?>
 

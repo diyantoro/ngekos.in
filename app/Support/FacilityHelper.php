@@ -34,7 +34,6 @@ class FacilityHelper
         'Ember',
         'Air',
         'WiFi',
-        'Dapur',
         'Dapur Bersama',
         'Ruang Tamu',
         'Penjaga Kos',
@@ -45,10 +44,8 @@ class FacilityHelper
         'Jam Malam 22.00',
         'Dilarang Bawa Hewan',
         'Dilarang Miras & Narkoba',
-        'Parkir',
-        'Parkir Mobil',
         'Parkir Motor',
-        'Parkir Motor & Sepeda',
+        'Parkir Mobil',
         'Lawan Jenis',
         'Akses 24 Jam',
         'Tamu',
@@ -62,15 +59,13 @@ class FacilityHelper
      */
     public const FASILITAS_KOS = [
         'WiFi',
-        'Dapur',
         'Dapur Bersama',
         'Ruang Tamu',
         'Penjaga Kos',
         'Tempat Jemuran',
         'Laundry',
-        'Parkir',
+        'Parkir Motor',
         'Parkir Mobil',
-        'Parkir Motor & Sepeda',
     ];
 
     /**
@@ -172,8 +167,11 @@ class FacilityHelper
         'showerpanas' => 'Air',
         'waterheater' => 'Air',
         'pemanasair' => 'Air',
-        'dapur' => 'Dapur',
+        // Dapur di kos selalu berarti dapur bersama (dipakai bareng),
+        // jadi varian lama 'Dapur' / 'Dapur Umum' digabung ke satu label.
+        'dapur' => 'Dapur Bersama',
         'dapurbersama' => 'Dapur Bersama',
+        'dapurumum' => 'Dapur Bersama',
         'ruangtamu' => 'Ruang Tamu',
         'rtamu' => 'Ruang Tamu',
         'penjagakos' => 'Penjaga Kos',
@@ -192,11 +190,18 @@ class FacilityHelper
         'dilarangbawamirasnarkoba' => 'Dilarang Miras & Narkoba',
         'dilarangmiras' => 'Dilarang Miras & Narkoba',
         'dilarangnarkoba' => 'Dilarang Miras & Narkoba',
-        'parkir' => 'Parkir',
+        // Parkir generik dipecah agar logis: motor (sepeda ikut area motor)
+        // dan mobil dipilih terpisah. Data lama 'Parkir' dianggap parkir
+        // motor (paling umum di kos); pemilik bisa centang Mobil bila ada.
+        // Label lama 'Parkir Motor & Sepeda' disingkat jadi 'Parkir Motor'.
+        'parkir' => 'Parkir Motor',
+        'parkiran' => 'Parkir Motor',
+        'parkirumum' => 'Parkir Motor',
         'parkirmobil' => 'Parkir Mobil',
-        'parkirmotor' => 'Parkir Motor & Sepeda',
-        'parkirmotorsepeda' => 'Parkir Motor & Sepeda',
-        'parkirmotordansepeda' => 'Parkir Motor & Sepeda',
+        'parkirmotor' => 'Parkir Motor',
+        'parkirmotorsepeda' => 'Parkir Motor',
+        'parkirmotordansepeda' => 'Parkir Motor',
+        'parkirsepeda' => 'Parkir Motor',
         'lawanjenis' => 'Lawan Jenis',
         'lawanjenisdilarangkekamar' => 'Lawan Jenis',
         'dilarangtamuwalawanjenis' => 'Lawan Jenis',

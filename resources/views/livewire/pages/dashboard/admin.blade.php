@@ -90,7 +90,7 @@ new class extends Component
             'pendapatanPerBulan' => $pendapatanPerBulan,
             'needAttention' => [
                 'pembayaranMenunggu' => $pembayaranMenungguCount,
-                'tagihanTelat' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
+                'tagihanTelat' => Tagihan::belumLunas()
                     ->where('denda', '>', 0)
                     ->whereHas('penyewaan.properti', $this->kelolaan())->count(),
                 'propertiTanpaKamar' => Properti::where($this->kelolaan())
@@ -100,7 +100,7 @@ new class extends Component
             'tagihanStatusPerBulan' => $tagihanStatusPerBulan,
             'totalKamar' => Kamar::whereHas('properti', $this->kelolaan())->count(),
             'kamarTerisi' => Kamar::where('status', 'terisi')->whereHas('properti', $this->kelolaan())->count(),
-            'tagihanBelum' => Tagihan::whereNotIn('status', ['lunas', 'batal'])
+            'tagihanBelum' => Tagihan::belumLunas()
                 ->whereHas('penyewaan.properti', $this->kelolaan())
                 ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo'])
                 ->with(['penyewaan.anakKos:id,nama', 'penyewaan.properti:id,nama'])
@@ -155,50 +155,32 @@ new class extends Component
     }
 
     /**
-     * Total nilai (SUM) per bulan selama $bulanCount bulan terakhir.
-     * $rows menerima koleksi Pembayaran berisi atribut jumlah + kolom waktu.
-     */
-    private function nilaiSeries($rows, int $bulanCount, string $column = 'created_at'): array
-    {
-        $bulanCount = max(1, min(24, $bulanCount));
-        $grouped = collect($rows)->groupBy(fn ($r) => $r->{$column}?->format('m/Y'));
-
-        return collect(range($bulanCount - 1, 0))
-            ->map(fn ($i) => (int) round(($grouped[now()->startOfMonth()->subMonths($i)->format('m/Y')] ?? collect())->sum('jumlah')))
-            ->all();
-    }
-
-    /**
      * Registrasi pengguna per bulan untuk periode, dipilah Anak Kos & Pemilik.
+     * Satu query GROUP BY (bulan, role) — tanpa memuat semua user ke memori.
      */
     private function userRoleSeries(int $bulanCount): array
     {
         $monthStart = now()->startOfMonth()->subMonths($bulanCount - 1);
 
-        $users = User::query()
+        $peta = User::query()
             ->where('created_at', '>=', $monthStart)
-            ->get(['id', 'created_at', 'role'])
-            ->groupBy(fn ($u) => $u->created_at->format('m/Y'));
+            ->whereIn('role', ['anak_kos', 'pemilik'])
+            ->selectRaw(GrafikBulan::kolomBulan('created_at').', role, COUNT(*) as total')
+            ->groupBy('bulan')
+            ->groupBy('role')
+            ->get()
+            ->groupBy('bulan');
 
         $out = ['anak_kos' => [], 'pemilik' => []];
 
         foreach (range($bulanCount - 1, 0) as $i) {
             $key = now()->startOfMonth()->subMonths($i)->format('m/Y');
-            $rows = $users[$key] ?? collect();
-            $out['anak_kos'][] = $rows->filter(fn ($u) => $u->roleValue() === 'anak_kos')->count();
-            $out['pemilik'][] = $rows->filter(fn ($u) => $u->roleValue() === 'pemilik')->count();
+            $rows = $peta[$key] ?? collect();
+            $out['anak_kos'][] = (int) ($rows->first(fn ($r) => $r->roleValue() === 'anak_kos')->total ?? 0);
+            $out['pemilik'][] = (int) ($rows->first(fn ($r) => $r->roleValue() === 'pemilik')->total ?? 0);
         }
 
         return $out;
-    }
-
-    private function growthSeries($rows, int $bulanCount, string $column = 'created_at'): array
-    {
-        $grouped = collect($rows)->groupBy(fn ($r) => $r->{$column}?->format('m/Y'));
-
-        return collect(range(max(1, min(24, $bulanCount)) - 1, 0))
-            ->map(fn ($i) => ($grouped[now()->startOfMonth()->subMonths($i)->format('m/Y')] ?? collect())->count())
-            ->all();
     }
 }; ?>
 

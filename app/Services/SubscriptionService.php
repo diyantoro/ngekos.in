@@ -57,14 +57,16 @@ class SubscriptionService
     }
 
     /**
-     * Buang cache sidebar paket ("navigasi.paket.v2.{id}") + memo request.
+     * Buang cache sidebar paket ("navigasi.paket.v2.{id}") + kartu langganan
+     * dashboard ("pemilik.langganan.{id}") + memo request.
      * Wajib dipanggil setiap ada perubahan langganan agar UI tidak
-     * menampilkan FREE basi sampai 2 menit setelah upgrade.
+     * menampilkan FREE basi sampai cache kedaluwarsa setelah upgrade.
      */
     public static function lupakanCachePaket(int $userId): void
     {
         Subscription::flushMemo();
         Cache::forget("navigasi.paket.v2.{$userId}");
+        Cache::forget("pemilik.langganan.{$userId}");
     }
 
     /**
@@ -259,21 +261,21 @@ class SubscriptionService
      */
     public static function konversiPremium(): array
     {
-        $pemilikIds = User::role('pemilik')->pluck('id');
-        $total = $pemilikIds->count();
+        $total = User::role('pemilik')->count();
 
         if ($total === 0) {
             return ['total_pemilik' => 0, 'premium_aktif' => 0, 'persen' => 0.0];
         }
 
-        $premium = Subscription::whereIn('user_id', $pemilikIds)
-            ->whereIn('plan', ['pro', 'business'])
+        // Murni SQL: tanpa pluck semua id + get semua subscription ke PHP.
+        $sekarang = now();
+        $premium = Subscription::whereIn('plan', ['pro', 'business'])
             ->where('status', 'active')
-            ->get()
-            ->filter(fn (Subscription $s) => $s->isActive())
-            ->pluck('user_id')
-            ->unique()
-            ->count();
+            ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $sekarang))
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>=', $sekarang))
+            ->whereIn('user_id', User::role('pemilik')->select('id'))
+            ->distinct()
+            ->count('user_id');
 
         return [
             'total_pemilik' => $total,
