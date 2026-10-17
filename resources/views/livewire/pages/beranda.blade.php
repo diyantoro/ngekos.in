@@ -80,7 +80,7 @@ new #[Layout('layouts.publik')] class extends Component
             ->find($heroId) : null;
 
         if (! $heroKos) {
-            $heroKos = $propertiList->first();
+            $heroKos = $propertiList->first(fn ($p) => (float) ($p->harga_termurah ?? 0) > 0) ?? $propertiList->first();
         }
 
         $bannerKustom = Pengaturan::landingBanners(true);
@@ -225,7 +225,12 @@ new #[Layout('layouts.publik')] class extends Component
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5 pt-14">
                                 <p class="text-white font-bold truncate">{{ $heroKos->nama }}</p>
                                 <p class="text-white/70 text-xs truncate">{{ $heroKos->kota ?? $heroKos->alamat }}</p>
-                                <p class="mt-1 text-amber-300 font-extrabold">Rp{{ number_format($heroKos->harga_termurah ?? 0, 0, ',', '.') }}<span class="text-xs font-medium text-white/70">/bln</span></p>
+                                @php $hargaHero = (float) ($heroKos->harga_termurah ?? 0); @endphp
+                                @if ($hargaHero > 0)
+                                    <p class="mt-1 text-amber-300 font-extrabold">Rp{{ number_format($hargaHero, 0, ',', '.') }}<span class="text-xs font-medium text-white/70">/bln</span></p>
+                                @else
+                                    <p class="mt-1 text-amber-300 font-bold text-xs">Lihat detail<span class="text-white/70"> →</span></p>
+                                @endif
                             </div>
                         @else
                             <div class="h-80 w-full bg-white/10 backdrop-blur flex items-center justify-center">

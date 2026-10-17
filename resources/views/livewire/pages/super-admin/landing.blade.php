@@ -525,7 +525,8 @@ new #[Layout('layouts.app')] class extends Component
                         @php $terpilih = in_array((int) $lp->id, array_map('intval', (array) $promoIds), true); @endphp
                         <div class="flex items-center gap-3 px-3 py-2.5 {{ $terpilih ? 'bg-teal-50/60 dark:bg-teal-500/5' : '' }}">
                             <button wire:click="togglePromo({{ $lp->id }})" wire:loading.attr="disabled"
-                                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border {{ $terpilih ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent' }}">
+                                aria-pressed="{{ $terpilih ? 'true' : 'false' }}" title="{{ $terpilih ? 'Lepas dari Promo Ngebut' : 'Tambahkan ke Promo Ngebut' }}"
+                                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 shadow-sm transition {{ $terpilih ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-400 bg-white text-transparent hover:border-teal-500 hover:bg-teal-50 dark:border-gray-500 dark:bg-gray-800 dark:hover:bg-gray-700' }}">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </button>
                             <div class="min-w-0 flex-1">
