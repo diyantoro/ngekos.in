@@ -192,7 +192,8 @@ new #[Layout('layouts.publik')] class extends Component
         return match ($this->periodeSewa) {
             'mingguan' => ['durasiMinggu' => ['required', 'integer', 'min:1', 'max:12']],
             'harian' => ['durasiHari' => ['required', 'integer', 'min:1', 'max:90']],
-            default => ['durasiBulan' => ['required', 'integer', 'min:1', 'max:12']],
+            // Bulanan difix 1 bulan — pilihan durasi sudah dihapus dari form.
+            default => ['durasiBulan' => ['required', 'integer', 'min:1', 'max:1']],
         };
     }
 
@@ -201,7 +202,7 @@ new #[Layout('layouts.publik')] class extends Component
         return [
             'durasiBulan.required' => 'Pilih lama sewa terlebih dahulu.',
             'durasiBulan.min' => 'Lama sewa minimal 1 bulan.',
-            'durasiBulan.max' => 'Lama sewa maksimal 12 bulan.',
+            'durasiBulan.max' => 'Sewa bulanan hanya 1 bulan.',
             'durasiMinggu.required' => 'Pilih lama sewa mingguan terlebih dahulu.',
             'durasiMinggu.min' => 'Lama sewa mingguan minimal 1 minggu.',
             'durasiMinggu.max' => 'Lama sewa mingguan maksimal 12 minggu.',
@@ -980,12 +981,11 @@ new #[Layout('layouts.publik')] class extends Component
                                 </select>
                                 @error('durasiMinggu') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             @else
-                                <select wire:model="durasiBulan"
-                                    class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm text-gray-700">
-                                    @foreach (range(1, 12) as $bulan)
-                                        <option value="{{ $bulan }}">{{ $bulan }} bulan</option>
-                                    @endforeach
-                                </select>
+                                {{-- Durasi bulanan difix 1 bulan (tanpa pilihan) — perpanjangan
+                                     berikutnya ditawarkan otomatis H-3 lewat PerpanjanganService. --}}
+                                <div class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                                    1 bulan
+                                </div>
                                 @error('durasiBulan') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
                             @endif
                         </div>

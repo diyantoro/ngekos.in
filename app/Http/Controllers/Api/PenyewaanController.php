@@ -31,7 +31,8 @@ class PenyewaanController extends Controller
                 'before_or_equal:'.today()->addDays(10)->toDateString(),
             ],
             'periode' => ['sometimes', 'in:bulanan,mingguan,harian'],
-            'durasi_bulan' => ['required_if:periode,bulanan', 'integer', 'min:1', 'max:12'],
+            // Sewa bulanan difix 1 bulan — perpanjangan berikutnya ditawarkan otomatis H-3.
+            'durasi_bulan' => ['required_if:periode,bulanan', 'integer', 'min:1', 'max:1'],
             'durasi_minggu' => ['required_if:periode,mingguan', 'integer', 'min:1', 'max:12'],
             'durasi_hari' => ['required_if:periode,harian', 'integer', 'min:1', 'max:90'],
             // Booking bulanan wajib melampirkan bukti transfer DP.
@@ -44,7 +45,7 @@ class PenyewaanController extends Controller
             'periode.in' => 'Periode sewa harus bulanan, mingguan, atau harian.',
             'durasi_bulan.required_if' => 'Lama sewa bulanan wajib diisi.',
             'durasi_bulan.min' => 'Lama sewa minimal 1 bulan.',
-            'durasi_bulan.max' => 'Lama sewa maksimal 12 bulan.',
+            'durasi_bulan.max' => 'Sewa bulanan hanya 1 bulan.',
             'durasi_minggu.required_if' => 'Lama sewa mingguan wajib diisi.',
             'durasi_minggu.min' => 'Lama sewa mingguan minimal 1 minggu.',
             'durasi_minggu.max' => 'Lama sewa mingguan maksimal 12 minggu.',
