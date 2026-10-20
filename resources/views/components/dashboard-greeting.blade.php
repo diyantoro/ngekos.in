@@ -13,7 +13,7 @@
                 <span class="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-brand-950">{{ $roleLabel }}</span>
             </p>
             <h3 class="mt-1 text-lg sm:text-2xl font-extrabold tracking-tight text-white truncate drop-shadow">Halo, {{ auth()->user()->nama }}!</h3>
-            <p class="mt-0.5 text-xs sm:text-sm text-brand-100 max-w-2xl line-clamp-2">{{ $description }}</p>
+            <p class="mt-0.5 text-xs sm:text-sm text-brand-100 max-w-2xl line-clamp-3 sm:line-clamp-2">{{ $description }}</p>
         </div>
 
         <span class="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 border border-white/20 text-amber-300 backdrop-blur-sm">

@@ -9,21 +9,28 @@ new class extends Component
 
     public array $percakapan = [];
 
+    public bool $tampil = true;
+
     public function mount(): void
     {
         $this->percakapan = session('chatbot.percakapan', [
             [
                 'dari' => 'bot',
-                'teks' => 'Halo! Saya asisten virtual Ngekos.in. Ada yang bisa saya bantu? Coba tanya seputar daftar akun, cari kos, peta kos, atau pembayaran.',
+                'teks' => 'Halo! Saya asisten virtual Ngekos.in. Ada yang bisa saya bantu? Tanya seputar daftar akun, cari kos, pembayaran, atau ketik budget-mu — misalnya "kos di bawah 1 juta di Bandung".',
             ],
         ]);
+
+        // Sembunyikan widget pada halaman form yang padat (fasilitas & kamar)
+        // agar tombol mengambang tidak menutupi pilihan checkbox.
+        $this->tampil = ! auth()->user()?->hasAnyRole(['super_admin', 'admin'])
+            && ! request()->routeIs('pemilik.properti.buat', 'pemilik.properti.ubah', 'pemilik.kamar');
     }
 
     public function with(): array
     {
         return [
-            'tampil' => ! auth()->user()?->hasAnyRole(['super_admin', 'admin']),
-            'saranCepat' => ['Cara daftar akun', 'Cara cari kos', 'Peta kos', 'Cara pembayaran', 'Hubungi admin'],
+            'tampil' => $this->tampil,
+            'saranCepat' => ['Cari kos', 'Kos di bawah 1 juta', 'Kos putri 1,5 juta', 'Cara pembayaran', 'Hubungi admin'],
         ];
     }
 
@@ -59,6 +66,16 @@ new class extends Component
             return;
         }
 
+        // 2. Rekomendasi kos dari database (budget, kota, tipe).
+        $rekomendasi = app(\App\Services\RekomendasiKosService::class);
+
+        if ($rekomendasi->cocok($pertanyaan)) {
+            $hasil = $rekomendasi->cari($pertanyaan);
+            $this->balasBot($hasil['teks'], $hasil['tautan']);
+
+            return;
+        }
+
         $jawaban = $this->cariJawaban($pertanyaan);
 
         if ($jawaban === null) {
@@ -75,16 +92,25 @@ new class extends Component
         $this->percakapan = [
             [
                 'dari' => 'bot',
-                'teks' => 'Percakapan direset. Ada yang bisa saya bantu? Coba tanya seputar daftar akun, cari kos, peta kos, atau pembayaran.',
+                'teks' => 'Percakapan direset. Ada yang bisa saya bantu? Kamu bisa tanya rekomendasi kos sesuai budget, cara sewa, atau pembayaran.',
             ],
         ];
         $this->input = '';
         $this->simpan();
     }
 
-    protected function balasBot(string $teks): void
+    /**
+     * @param  array<int, array{label: string, url: string}>  $tautan
+     */
+    protected function balasBot(string $teks, array $tautan = []): void
     {
-        $this->percakapan[] = ['dari' => 'bot', 'teks' => $teks];
+        $pesan = ['dari' => 'bot', 'teks' => $teks];
+
+        if ($tautan !== []) {
+            $pesan['tautan'] = $tautan;
+        }
+
+        $this->percakapan[] = $pesan;
         $this->simpan();
     }
 
@@ -292,7 +318,7 @@ new class extends Component
 }; ?>
 
 <div x-data="{ terbuka: false, tetapBawah: true, scroll(paksa = false) { $nextTick(() => { const el = document.getElementById('chat-riwayat'); if (!el) return; if (paksa || this.tetapBawah) el.scrollTo({ top: el.scrollHeight, behavior: 'auto' }); }); } }"
-     x-init="(() => { const pasang = () => { try { if ($wire && $wire.$watch && !window.__chatbotWatch) { window.__chatbotWatch = true; $wire.$watch('percakapan', () => scroll()); } } catch (e) {} }; pasang(); $watch('terbuka', (v) => { if (v) { tetapBawah = true; scroll(true); } }); if (window.Livewire) { document.addEventListener('livewire:initialized', pasang); } })()" @keydown.escape.window="terbuka = false" @click.away="terbuka = false" wire:ignore.self class="fixed right-4 sm:right-5 z-[60] bottom-24 sm:bottom-6 {{ $tampil ? '' : 'hidden' }}">
+     x-init="(() => { const pasang = () => { try { if ($wire && $wire.$watch && !window.__chatbotWatch) { window.__chatbotWatch = true; $wire.$watch('percakapan', () => scroll()); } } catch (e) {} }; pasang(); $watch('terbuka', (v) => { if (v) { tetapBawah = true; scroll(true); } }); if (window.Livewire) { document.addEventListener('livewire:initialized', pasang); } })()" @keydown.escape.window="terbuka = false" @click.away="terbuka = false" wire:ignore.self class="fixed right-4 z-[60] bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:bottom-6 sm:right-5 {{ $tampil ? '' : 'hidden' }}">
     <button type="button" @click="terbuka = !terbuka"
             class="relative flex h-14 w-14 items-center justify-center rounded-full bg-brand-800 text-white border border-brand-900 hover:bg-brand-900 transition"
             :aria-label="terbuka ? 'Tutup chatbot bantuan' : 'Buka chatbot bantuan'"
@@ -354,7 +380,18 @@ new class extends Component
                         {{ $pesan['dari'] === 'user'
                             ? 'bg-teal-600 text-white rounded-br-sm'
                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 ring-1 ring-gray-100 dark:ring-gray-600 rounded-bl-sm' }}">
-                        {{ $pesan['teks'] }}
+                        <p class="whitespace-pre-line">{{ $pesan['teks'] }}</p>
+                        @if (! empty($pesan['tautan']))
+                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                @foreach ($pesan['tautan'] as $tautan)
+                                    <a href="{{ $tautan['url'] }}" wire:navigate
+                                       class="inline-flex max-w-full items-center gap-1 rounded-full bg-brand-700 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-brand-800">
+                                        <span class="truncate">{{ \Illuminate\Support\Str::limit($tautan['label'], 32) }}</span>
+                                        <svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endforeach

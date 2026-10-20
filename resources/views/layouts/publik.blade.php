@@ -286,7 +286,7 @@
         </div>
         @endif
 
-        <livewire:chatbot lazy />
+        <livewire:chatbot />
 
         @stack('scripts')
     </body>

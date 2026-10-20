@@ -70,11 +70,11 @@
     ];
 @endphp
 
-<div class="relative group/promo" data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
-    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-black/5 shadow-lg">
+<div class="relative group/promo touch-pan-y select-none cursor-grab active:cursor-grabbing" data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
+    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-black/5 shadow-lg" data-promo-viewport>
         <div class="promo-track w-full" data-promo-track>
             @foreach ($ads as $ad)
-                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-5 py-4 sm:px-8 sm:py-8 min-h-[176px] sm:min-h-[250px] lg:min-h-[290px] w-full flex items-center pb-10' : 'px-6 py-6 sm:px-9 sm:py-7 w-full' }}"
+                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-5 py-4 sm:px-8 sm:py-8 min-h-[176px] sm:min-h-[250px] lg:min-h-[290px] w-full flex items-center pb-10' : 'px-6 pt-6 pb-12 sm:px-9 sm:pt-7 sm:pb-12 w-full' }}"
                     data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
@@ -121,6 +121,11 @@
         </button>
 
         <div class="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5" data-promo-dots></div>
+
+        <span class="pointer-events-none absolute bottom-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur sm:hidden">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5L3.75 9m0 0l4.5 4.5M3.75 9h16.5m0 0l-4.5-4.5m4.5 4.5l-4.5 4.5" /></svg>
+            Geser
+        </span>
 
         <span class="absolute top-3 right-3 sm:right-4 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur" data-promo-count>1 / {{ $total }}</span>
     @endif

@@ -285,6 +285,58 @@ class FacilityHelper
     }
 
     /**
+     * Kelompokkan fasilitas kamar agar halaman detail bisa menampilkan
+     * daftar bertingkat (spesifikasi, fasilitas kamar, kamar mandi,
+     * peraturan, status listrik) tanpa mengubah data lama.
+     *
+     * @param  array<int,string>  $labels
+     * @return array{kamar: array<int,string>, kamar_mandi: array<int,string>, peraturan: array<int,string>, listrik: string|null}
+     */
+    public static function kelompokkan(array $labels): array
+    {
+        $kamarMandiLabels = [
+            'Kamar Mandi Dalam',
+            'Kamar Mandi Luar',
+            'Kloset Duduk',
+            'Kloset Jongkok',
+            'Shower',
+            'Ember',
+            'Air',
+        ];
+
+        $hasil = [
+            'kamar' => [],
+            'kamar_mandi' => [],
+            'peraturan' => [],
+            'listrik' => null,
+        ];
+
+        foreach (self::normalizeList($labels) as $label) {
+            if (in_array($label, ['Termasuk Listrik', 'Tidak Termasuk Listrik'], true)) {
+                $hasil['listrik'] = $label;
+
+                continue;
+            }
+
+            if (in_array($label, self::PERATURAN_KOS, true)) {
+                $hasil['peraturan'][] = $label;
+
+                continue;
+            }
+
+            if (in_array($label, $kamarMandiLabels, true)) {
+                $hasil['kamar_mandi'][] = $label;
+
+                continue;
+            }
+
+            $hasil['kamar'][] = $label;
+        }
+
+        return $hasil;
+    }
+
+    /**
      * Kunci normalisasi: huruf kecil + buang non-alfanumerik.
      */
     private static function normKey(string $value): string

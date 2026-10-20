@@ -645,7 +645,7 @@ new #[Layout('layouts.app')] class extends Component
         </div>
 
         @if ($modalKtpUrl)
-            <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+            <div class="fixed inset-0 z-[70] overflow-y-auto" aria-modal="true" role="dialog">
                 <button type="button" wire:click="tutupModalKtp" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
                 <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
                     <div class="w-full sm:max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">

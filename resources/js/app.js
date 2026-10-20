@@ -785,18 +785,197 @@ const initPromoRoot = (root) => {
     root.addEventListener('mouseleave', start, { signal });
     root.addEventListener('focusin', stop, { signal });
     root.addEventListener('focusout', start, { signal });
-    let sx = null;
-    root.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; stop(); }, { signal, passive: true });
-    root.addEventListener('touchend', (e) => {
-        if (sx !== null) {
-            const d = e.changedTouches[0].clientX - sx;
-            if (Math.abs(d) > 40) {
-                if (d < 0) next(); else prev();
-            }
-            sx = null;
+
+    // Drag / swipe: mouse/pen lewat pointer events, sentuhan lewat touch events.
+    // Tanpa ini, di mobile banner hanya berpindah saat jari dilepas sehingga
+    // terasa "tidak bisa digeser".
+    const viewport = track.parentElement || root;
+    const ukuranViewport = () => viewport.clientWidth || root.clientWidth || 1;
+    let dragging = false;
+    let pointerId = null;
+    let mulaiX = 0;
+    let deltaX = 0;
+    let mulaiWaktu = 0;
+    let sempatGeser = false;
+    let sentuhAktif = false;
+    let sentuhSumbu = null;
+    let sentuhMulaiX = 0;
+    let sentuhMulaiY = 0;
+
+    const terapkanGeser = (dx) => {
+        track.style.transition = 'none';
+        track.style.transform = 'translateX(calc(-' + index * 100 + '% + ' + dx + 'px))';
+    };
+
+    const akhiriGeser = (batalkan = false) => {
+        if (!dragging) return;
+
+        dragging = false;
+        const dx = deltaX;
+        const durasi = Math.max(1, performance.now() - mulaiWaktu);
+        const kecepatan = dx / durasi;
+        const ambang = Math.min(60, ukuranViewport() * 0.14);
+
+        track.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)';
+
+        if (!batalkan && (dx < -ambang || (kecepatan < -0.45 && dx < -12))) {
+            next();
+        } else if (!batalkan && (dx > ambang || (kecepatan > 0.45 && dx > 12))) {
+            prev();
+        } else {
+            render();
         }
+
+        window.setTimeout(() => {
+            track.style.transition = '';
+            root.dataset.dragging = '0';
+        }, 300);
+
+        deltaX = 0;
+        pointerId = null;
         start();
+    };
+
+    // Mouse/pen: drag lewat pointer events. Sentuhan memakai touch events
+    // di bawah agar gesture horizontal tidak direbut scroll vertikal.
+    root.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
+        if (e.button !== 0) return;
+
+        dragging = true;
+        pointerId = e.pointerId;
+        mulaiX = e.clientX;
+        deltaX = 0;
+        mulaiWaktu = performance.now();
+        sempatGeser = false;
+        stop();
+    }, { signal });
+
+    // Listener level window agar geseran tetap terlacak walau jari/pointer
+    // keluar dari area banner. Hanya aktif saat `dragging` (tanpa
+    // setPointerCapture supaya klik tombol dot/panah tetap bekerja).
+    window.addEventListener('pointermove', (e) => {
+        if (!dragging || e.pointerId !== pointerId) return;
+
+        deltaX = e.clientX - mulaiX;
+
+        if (Math.abs(deltaX) > 6) {
+            sempatGeser = true;
+            root.dataset.dragging = '1';
+        }
+
+        if (Math.abs(deltaX) > 2 && e.cancelable) {
+            e.preventDefault();
+        }
+
+        terapkanGeser(deltaX);
+    }, { signal, passive: false });
+
+    window.addEventListener('pointerup', (e) => {
+        if (e.pointerId === pointerId) akhiriGeser();
+    }, { signal });
+    window.addEventListener('pointercancel', (e) => {
+        if (e.pointerId === pointerId) akhiriGeser(true);
+    }, { signal });
+
+    // Sentuhan: kunci arah lebih dulu. Jika jari bergerak horizontal, ambil
+    // alih gesture (preventDefault) lalu geser slide; jika vertikal, biarkan
+    // halaman scroll seperti biasa. Ini membuat swipe tetap responsif di
+    // Chrome Android maupun Safari iOS.
+    root.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) {
+            if (sentuhAktif) {
+                sentuhAktif = false;
+                sentuhSumbu = null;
+                dragging = false;
+                start();
+            }
+            return;
+        }
+
+        const t = e.touches[0];
+        sentuhAktif = true;
+        sentuhSumbu = null;
+        sentuhMulaiX = t.clientX;
+        sentuhMulaiY = t.clientY;
+        mulaiX = t.clientX;
+        mulaiWaktu = performance.now();
+        deltaX = 0;
+        sempatGeser = false;
+        dragging = true;
+        pointerId = null;
+        stop();
     }, { signal, passive: true });
+
+    root.addEventListener('touchmove', (e) => {
+        if (!sentuhAktif || e.touches.length !== 1) return;
+
+        const t = e.touches[0];
+        const dx = t.clientX - sentuhMulaiX;
+        const dy = t.clientY - sentuhMulaiY;
+
+        if (sentuhSumbu === null) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+
+            // Dominasi horizontal -> swipe carousel; vertikal -> scroll halaman.
+            sentuhSumbu = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            if (sentuhSumbu === 'y') {
+                sentuhAktif = false;
+                dragging = false;
+                start();
+                return;
+            }
+        }
+
+        if (sentuhSumbu !== 'x') return;
+
+        if (e.cancelable) e.preventDefault();
+
+        deltaX = dx;
+        if (Math.abs(deltaX) > 6) {
+            sempatGeser = true;
+            root.dataset.dragging = '1';
+        }
+        terapkanGeser(deltaX);
+    }, { signal, passive: false });
+
+    const selesaiSentuh = () => {
+        if (!sentuhAktif) return;
+
+        sentuhAktif = false;
+        if (sentuhSumbu === 'x') {
+            akhiriGeser(false);
+        } else {
+            dragging = false;
+            start();
+        }
+        sentuhSumbu = null;
+    };
+    root.addEventListener('touchend', selesaiSentuh, { signal, passive: true });
+    root.addEventListener('touchcancel', () => {
+        if (!sentuhAktif) return;
+
+        sentuhAktif = false;
+        if (sentuhSumbu === 'x') {
+            akhiriGeser(true);
+        } else {
+            dragging = false;
+            start();
+        }
+        sentuhSumbu = null;
+    }, { signal, passive: true });
+
+    // Cegah klik pada tautan/tombol iklan ikut terpicu setelah drag.
+    root.addEventListener('click', (e) => {
+        if (sempatGeser) {
+            e.preventDefault();
+            e.stopPropagation();
+            sempatGeser = false;
+        }
+    }, { signal, capture: true });
+
+    root.querySelectorAll('img').forEach((img) => { img.draggable = false; });
+
     root.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') { next(); restart(); }
         else if (e.key === 'ArrowLeft') { prev(); restart(); }

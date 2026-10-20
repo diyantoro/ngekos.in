@@ -12,7 +12,9 @@ class Kamar extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'properti_id', 'nama', 'kapasitas', 'harga_sewa_bulanan', 'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'fasilitas', 'status', 'foto',
+        'properti_id', 'nama', 'kapasitas', 'ukuran', 'termasuk_listrik', 'harga_sewa_bulanan',
+        'harga_sewa_mingguan', 'harga_sewa_harian', 'harga_asli', 'deposit', 'fasilitas',
+        'peraturan', 'status', 'foto',
     ];
 
     protected function casts(): array
@@ -22,6 +24,8 @@ class Kamar extends Model
             'harga_sewa_mingguan' => 'decimal:2',
             'harga_sewa_harian' => 'decimal:2',
             'harga_asli' => 'decimal:2',
+            'deposit' => 'decimal:2',
+            'termasuk_listrik' => 'boolean',
             'status' => \App\Enums\KamarStatus::class,
         ];
     }

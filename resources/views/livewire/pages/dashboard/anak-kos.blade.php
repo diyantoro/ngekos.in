@@ -298,6 +298,11 @@ new class extends Component
             icon='<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>'
         />
 
+        {{-- Banner iklan partner: samakan dengan halaman katalog/pencarian. --}}
+        <div wire:ignore>
+            <x-promo-ads />
+        </div>
+
         <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-3 sm:p-4 border-t-4 !border-t-brand-700">
             <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Mau cari kos di mana?</p>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Ketik nama lokasi, area, atau alamat — misal "Tembalang" atau "Kukusan".</p>
@@ -540,7 +545,7 @@ new class extends Component
                     ->where('status', 'diverifikasi')->exists();
         }
     @endphp
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+    <div class="fixed inset-0 z-[70] overflow-y-auto" aria-modal="true" role="dialog">
         <button type="button" wire:click="tutupModalBayar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
         <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
             <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">

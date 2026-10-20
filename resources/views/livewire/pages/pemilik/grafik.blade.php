@@ -330,9 +330,14 @@ new #[Layout('layouts.app')] class extends Component
             @endif
         @else
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        @php $totalPendapatanBersih = (float) $totalPendapatan - (float) $totalPengeluaran; @endphp
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <x-stat-card label="Pendapatan Periode" :value="'Rp' . number_format($totalPendapatan, 0, ',', '.')" tone="emerald"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>' />
+            <x-stat-card label="Pendapatan Bersih" :value="'Rp' . number_format($totalPendapatanBersih, 0, ',', '.')" tone="teal"
+                hint="Pendapatan − pengeluaran periode"
+                icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>' />
             <x-stat-card label="Pengeluaran Periode" :value="'Rp' . number_format($totalPengeluaran, 0, ',', '.')" tone="rose"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' />
             <x-stat-card label="Transaksi Terverifikasi" :value="$totalTransaksi" tone="cyan"
@@ -371,52 +376,30 @@ new #[Layout('layouts.app')] class extends Component
             data-belum='@json($chartBelum)'
             data-kategori='@json($chartKategori)'
             class="space-y-6">
-            <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
-                <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Uang Masuk vs Uang Keluar</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ $propertiId ? ($daftarProperti->firstWhere('id', $propertiId)?->nama ?? '') : 'Semua properti' }} · {{ count($bulanLabels) }} bulan terakhir
-                </p>
-                <div class="relative mt-4 w-full" style="height: 17rem;">
-                        <canvas id="grafik-keuangan" class="absolute inset-0 h-full w-full"></canvas>
-                    </div>
+            <x-chart-card
+                title="Uang Masuk vs Uang Keluar"
+                :subtitle="($propertiId ? ($daftarProperti->firstWhere('id', $propertiId)?->nama ?? '') : 'Semua properti').' · '.count($bulanLabels).' bulan terakhir'"
+                tinggi="17rem">
+                <canvas id="grafik-keuangan" class="absolute inset-0 h-full w-full"></canvas>
+            </x-chart-card>
+
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <x-chart-card title="Tren Transaksi" subtitle="Jumlah pembayaran terverifikasi per bulan">
+                    <canvas id="grafik-transaksi" class="absolute inset-0 h-full w-full"></canvas>
+                </x-chart-card>
+                <x-chart-card title="Tagihan Lunas vs Belum" subtitle="Nilai tagihan terbit per bulan (Rp)">
+                    <canvas id="grafik-lunas" class="absolute inset-0 h-full w-full"></canvas>
+                </x-chart-card>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Transaksi</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Jumlah pembayaran terverifikasi per bulan</p>
-                    <div class="relative mt-4 w-full" style="height: 15rem;">
-                        <canvas id="grafik-transaksi" class="absolute inset-0 h-full w-full"></canvas>
-                    </div>
-                </div>
-                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tagihan Lunas vs Belum</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Nilai tagihan terbit per bulan (Rp)</p>
-                                        <div class="relative mt-4 w-full" style="height: 15rem;">
-                        <canvas id="grafik-lunas" class="absolute inset-0 h-full w-full"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Tren Kamar Terisi</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Kamar terisi (%) per bulan</p>
-                                        <div class="relative mt-4 w-full" style="height: 15rem;">
-                        <canvas id="grafik-okupansi" class="absolute inset-0 h-full w-full"></canvas>
-                    </div>
-                </div>
-                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden p-4 sm:p-6">
-                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Pengeluaran per Kategori</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Komposisi biaya operasional periode ini</p>
-                    @if (count($chartKategori) > 0)
-                                            <div class="relative mt-4 w-full" style="height: 15rem;">
-                        <canvas id="grafik-kategori" class="absolute inset-0 h-full w-full"></canvas>
-                    </div>
-                    @else
-                        <p class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">Belum ada pengeluaran pada periode ini.</p>
-                    @endif
-                </div>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <x-chart-card title="Tren Kamar Terisi" subtitle="Kamar terisi (%) per bulan">
+                    <canvas id="grafik-okupansi" class="absolute inset-0 h-full w-full"></canvas>
+                </x-chart-card>
+                <x-chart-card title="Pengeluaran per Kategori" subtitle="Komposisi biaya operasional periode ini"
+                    :kosong="count($chartKategori) === 0" pesanKosong="Belum ada pengeluaran pada periode ini.">
+                    <canvas id="grafik-kategori" class="absolute inset-0 h-full w-full"></canvas>
+                </x-chart-card>
             </div>
         </div>
 

@@ -287,7 +287,7 @@ new class extends Component
                     </x-slot>
                 @endif
             </x-stat-card>
-            <x-stat-card label="Laba Bersih Bulan Ini" :value="'Rp' . number_format($labaBersihBulanIni, 0, ',', '.')" tone="teal"
+            <x-stat-card label="Pendapatan Bersih" :value="'Rp' . number_format($labaBersihBulanIni, 0, ',', '.')" tone="teal"
                 icon='<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181m8.818 3.181l-3.182-5.511m0 0l-5.511 3.181M4.5 3.75v15m6.75 0v-4.5m3-7.5h.008v.008H14.25V5.25z" /></svg>'>
                 @if ($labaBersihBulanLalu != 0)
                     @php $deltaL = $labaBersihBulanLalu > 0 ? round(($labaBersihBulanIni - $labaBersihBulanLalu) / $labaBersihBulanLalu * 100) : 0; @endphp
@@ -297,7 +297,7 @@ new class extends Component
                     </x-slot>
                 @else
                     <x-slot name="hint">
-                        <span class="text-gray-400 dark:text-gray-500">Pendapatan - Pengeluaran</span>
+                        <span class="text-gray-400 dark:text-gray-500">Rp{{ number_format($pendapatanBulanIni, 0, ',', '.') }} − Rp{{ number_format($pengeluaranBulanIni, 0, ',', '.') }}</span>
                     </x-slot>
                 @endif
             </x-stat-card>

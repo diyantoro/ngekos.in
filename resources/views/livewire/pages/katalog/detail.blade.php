@@ -499,10 +499,10 @@ new #[Layout('layouts.publik')] class extends Component
             @endif
 
             @if ($titik)
-                <div class="mt-4 overflow-hidden rounded-xl ring-1 ring-gray-100 dark:ring-gray-700">
+                <div class="mt-4 -mx-4 overflow-hidden rounded-xl ring-1 ring-gray-100 dark:ring-gray-700 sm:mx-0">
                     <div id="peta-properti-detail"
                         wire:ignore
-                        class="h-72 sm:h-96 w-full z-0"
+                        class="h-80 sm:h-96 w-full z-0"
                         role="region"
                         aria-label="Peta lokasi {{ $properti->nama }}"
                         data-lat="{{ $titik[0] }}"
@@ -517,10 +517,10 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
             @endif
 
-            <div class="mt-4 grid grid-cols-3 gap-3">
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">
+            <div class="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+                <div class="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5 text-left dark:bg-gray-700/50 sm:block sm:p-3 sm:text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Harga Mulai</p>
-                    <p class="mt-1">
+                    <p class="sm:mt-1">
                         @php
                             $termurahBulan = $termurah['bulan'] ?? null;
                             $termurahMinggu = $termurah['minggu'] ?? null;
@@ -537,9 +537,9 @@ new #[Layout('layouts.publik')] class extends Component
                         @endif
                     </p>
                 </div>
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">
+                <div class="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5 text-left dark:bg-gray-700/50 sm:block sm:p-3 sm:text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Denda</p>
-                    <p class="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">
+                    <p class="text-sm font-bold text-gray-900 dark:text-gray-100 sm:mt-1">
                         @if ($properti->denda_per_hari)
                             Rp{{ number_format($properti->denda_per_hari, 0, ',', '.') }}<span class="text-[10px] text-gray-400 dark:text-gray-500">/hr</span>
                         @else
@@ -547,9 +547,9 @@ new #[Layout('layouts.publik')] class extends Component
                         @endif
                     </p>
                 </div>
-                <div class="rounded-xl bg-gray-50 dark:bg-gray-700/50 p-3 text-center">
+                <div class="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5 text-left dark:bg-gray-700/50 sm:block sm:p-3 sm:text-center">
                     <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Kontak</p>
-                    <p class="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $this->noHpTampil() ?? '-' }}</p>
+                    <p class="truncate text-sm font-bold text-gray-900 dark:text-gray-100 sm:mt-1">{{ $this->noHpTampil() ?? '-' }}</p>
                 </div>
             </div>
 
@@ -582,13 +582,29 @@ new #[Layout('layouts.publik')] class extends Component
             @endif
 
             @if ($properti->fasilitas)
-                <div class="mt-4">
-                    <h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas Kos (Umum / Bersama)</h2>
-                    <div class="mt-2">
-                        <x-facility-icons :fasilitas="$properti->fasilitas" />
+                @php
+                    $fasilitasUmum = \App\Support\FacilityHelper::normalizeList(
+                        \App\Support\FacilityHelper::fromString($properti->fasilitas)
+                    );
+                @endphp
+                @if ($fasilitasUmum !== [])
+                    <div class="mt-4">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                            <h2 class="text-xs font-bold uppercase tracking-wide text-gray-900 dark:text-gray-100">Fasilitas Kos (Umum / Bersama)</h2>
+                            <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($fasilitasUmum) }}</span>
+                        </div>
+                        <ul class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800" role="list">
+                            @foreach ($fasilitasUmum as $item)
+                                <li class="flex min-w-0 items-start gap-2 text-[13px] text-slate-700 dark:text-gray-200 sm:text-sm">
+                                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    <span class="min-w-0 break-words">{{ $item }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                        <p class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Fasilitas privat tiap kamar (AC, kasur, kamar mandi dalam, dll) tercantum di masing-masing kamar di bawah.</p>
                     </div>
-                    <p class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Fasilitas privat tiap kamar (AC, kasur, kamar mandi dalam, dll) tercantum di masing-masing kamar di bawah.</p>
-                </div>
+                @endif
             @endif
 
             @if ($properti->aturan)
@@ -648,63 +664,64 @@ new #[Layout('layouts.publik')] class extends Component
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
                         <div class="flex">
                             <div wire:click="bukaDetailKamar({{ $kamar->id }})" role="button" tabindex="0" wire:keydown.enter="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
-                                class="shrink-0 cursor-pointer">
-                                <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-28 sm:h-36 w-24 sm:w-36 shrink-0" ringkas />
+                                class="shrink-0 cursor-pointer self-stretch">
+                                <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-full min-h-28 sm:min-h-36 w-20 sm:w-36 shrink-0" ringkas />
                             </div>
 
-                            <div class="flex-1 p-3 sm:p-4 flex flex-col justify-between">
+                            <div class="min-w-0 flex-1 p-3 sm:p-4 flex flex-col justify-between">
                                 <div class="flex items-start justify-between gap-2">
-                                    <div>
+                                    <div class="min-w-0">
                                         <button type="button" wire:click="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
-                                            class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 hover:text-teal-600 dark:hover:text-teal-400 transition text-left">{{ $kamar->nama }}</button>
+                                            class="text-left text-sm font-bold text-gray-900 hover:text-teal-600 dark:text-gray-100 dark:hover:text-teal-400 transition sm:text-base">{{ $kamar->nama }}</button>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang</p>
                                         @if ($kamar->fasilitas)
                                             <div class="mt-1.5">
-                                                <x-facility-icons :fasilitas="$kamar->fasilitas" />
+                                                <x-facility-icons :fasilitas="$kamar->fasilitas" :maks="3" kompak />
                                             </div>
                                         @endif
                                     </div>
                                     <x-status-badge :status="$kamar->status" />
                                 </div>
 
-                                <div class="mt-2 flex items-end justify-between">
-                                    <div>
+                                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                                    <div class="min-w-0">
                                         <x-harga-tiga-periode :bulanan="$kamar->harga_sewa_bulanan" :mingguan="$kamar->harga_sewa_mingguan" :harian="$kamar->harga_sewa_harian" :asli="($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan) ? $kamar->harga_asli : null" varian="rincian" />
                                     </div>
 
                                     @if ($kamar->status === \App\Enums\KamarStatus::Tersedia)
                                         @auth
                                             @if (auth()->user()->hasRole('anak_kos'))
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+
                                                     <button wire:click="bukaDetailKamar({{ $kamar->id }})"
-                                                        class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                        class="flex-1 shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition sm:flex-none">
                                                         Detail
                                                     </button>
                                                     <button wire:click="pesanKamar({{ $kamar->id }})" wire:loading.attr="disabled"
-                                                        class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50">
+                                                        class="flex-1 shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500 transition disabled:opacity-50 sm:flex-none">
                                                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
                                                         Sewa
                                                     </button>
                                                     <a href="{{ route('chat.room', ['properti' => $properti->id]) }}" wire:navigate
-                                                        class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                                        class="flex-1 shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition sm:flex-none">
                                                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>
                                                         Chat
                                                     </a>
                                                 </div>
                                             @else
                                                 <a href="{{ route('dashboard') }}" wire:navigate
-                                                    class="shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                                    class="w-full shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition sm:w-auto">
                                                     Kelola
                                                 </a>
                                             @endif
                                         @else
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                                                 <button wire:click="bukaDetailKamar({{ $kamar->id }})"
-                                                    class="shrink-0 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                                    class="flex-1 shrink-0 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition sm:flex-none">
                                                     Detail
                                                 </button>
                                                 <a href="{{ route('login') }}" wire:navigate
-                                                    class="shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
+                                                    class="flex-1 shrink-0 inline-flex items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-600 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-500/20 transition sm:flex-none">
                                                     Masuk
                                                 </a>
                                             </div>
@@ -731,11 +748,12 @@ new #[Layout('layouts.publik')] class extends Component
         @if ($detailKamarId)
         @php $kamarDetail = $kamars->firstWhere('id', $detailKamarId); @endphp
         @if ($kamarDetail)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+        <div class="fixed inset-0 z-[70] overflow-y-auto" aria-modal="true" role="dialog">
             <button type="button" wire:click="tutupDetailKamar" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
-            <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
-                <div class="w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                    <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div class="relative flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
+                <div class="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl ring-1 ring-gray-100 safe-bottom dark:bg-gray-800 dark:ring-gray-700 sm:max-w-2xl sm:rounded-2xl">
+                    <div class="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600 sm:hidden"></div>
+                    <div class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-gray-700">
                         <div class="min-w-0">
                             <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">Kamar {{ $kamarDetail->nama }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $properti->nama }} &middot; {{ $kamarDetail->kapasitas }} orang</p>
@@ -747,26 +765,12 @@ new #[Layout('layouts.publik')] class extends Component
                         </div>
                     </div>
 
-                    <x-galeri-kos :fotos="$kamarDetail->galeriUrls()" :nama="'Kamar ' . $kamarDetail->nama" kelas="h-56 sm:h-72 w-full" />
+                    <x-galeri-kos :fotos="$kamarDetail->galeriUrls()" :nama="'Kamar ' . $kamarDetail->nama" kelas="h-44 sm:h-64 w-full shrink-0" />
 
-                    <div class="p-5 space-y-4">
-                        @if ($kamarDetail->fasilitas)
-                            <div>
-                                <p class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Fasilitas Kamar Ini</p>
-                                <div class="mt-2">
-                                    <x-facility-icons :fasilitas="$kamarDetail->fasilitas" />
-                                </div>
-                            </div>
-                        @endif
+                    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+                        <x-spesifikasi-kamar :kamar="$kamarDetail" :properti="$properti" />
 
-                        <div>
-                            <p class="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Harga Sewa</p>
-                            <div class="mt-1.5">
-                                <x-harga-tiga-periode :bulanan="$kamarDetail->harga_sewa_bulanan" :mingguan="$kamarDetail->harga_sewa_mingguan" :harian="$kamarDetail->harga_sewa_harian" :asli="($kamarDetail->harga_asli && $kamarDetail->harga_asli > $kamarDetail->harga_sewa_bulanan) ? $kamarDetail->harga_asli : null" varian="rincian" />
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-2 pt-1">
+                        <div class="flex flex-wrap items-center gap-2 pt-1">
                             @if ($kamarDetail->status === \App\Enums\KamarStatus::Tersedia)
                                 @auth
                                     @if (auth()->user()->hasRole('anak_kos'))
@@ -903,7 +907,7 @@ new #[Layout('layouts.publik')] class extends Component
     @php
         $kamarModal = $kamars->firstWhere('id', $modalKamarId);
     @endphp
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+    <div class="fixed inset-0 z-[70] overflow-y-auto" aria-modal="true" role="dialog">
         <button type="button" wire:click="tutupModalSewa" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
         <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
             <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
@@ -1203,7 +1207,27 @@ new #[Layout('layouts.publik')] class extends Component
                 if (wadah && typeof window.bersihkanWadahLeaflet === 'function') window.bersihkanWadahLeaflet(wadah);
             } catch (e) {}
         };
-        const init = () => setTimeout(window.initPetaDetail, 0);
+        const segarkan = () => {
+            const wadah = document.getElementById('peta-properti-detail');
+            if (wadah && wadah._petaLeaflet) {
+                try { wadah._petaLeaflet.invalidateSize(); } catch (e) {}
+            }
+        };
+        const pantauUkuran = () => {
+            const wadah = document.getElementById('peta-properti-detail');
+            if (!wadah || !window.ResizeObserver || wadah._petaObserver) return;
+            wadah._petaObserver = new ResizeObserver(() => segarkan());
+            wadah._petaObserver.observe(wadah);
+        };
+        const init = () => {
+            setTimeout(window.initPetaDetail, 0);
+            // Peta kadang dihitung sebelum layout mobile selesai (lebar/tinggi
+            // berubah karena galeri & safe-area), sehingga tile tampak terpotong.
+            // Segarkan ukuran setelah layout stabil dan saat wadah berubah ukuran.
+            setTimeout(segarkan, 350);
+            setTimeout(segarkan, 1200);
+            setTimeout(pantauUkuran, 0);
+        };
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
@@ -1215,6 +1239,12 @@ new #[Layout('layouts.publik')] class extends Component
             document.addEventListener('livewire:navigated', init);
         } else {
             document.addEventListener('livewire:navigated', init);
+        }
+        if (!window.__detailPetaResizeOn) {
+            window.__detailPetaResizeOn = true;
+            window.addEventListener('resize', segarkan);
+            window.addEventListener('orientationchange', () => setTimeout(segarkan, 300));
+            window.addEventListener('load', segarkan);
         }
         window.loadNgekosMaps(window.initPetaDetail);
     })();

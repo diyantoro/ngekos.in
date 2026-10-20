@@ -335,9 +335,10 @@ class KatalogDetailSewaTest extends TestCase
         // Klik card (foto/nama/tombol Detail) membuka modal rincian.
         $component->call('bukaDetailKamar', $kamar->id)
             ->assertSet('detailKamarId', $kamar->id)
-            ->assertSee('Fasilitas Kamar Ini')
+            ->assertSee('Spesifikasi tipe kamar')
+            ->assertSee('Fasilitas kamar')
             ->assertSee('Kasur')
-            ->assertSee('Harga Sewa');
+            ->assertSee('Harga sewa');
 
         $component->call('tutupDetailKamar')
             ->assertSet('detailKamarId', null);

@@ -1,4 +1,4 @@
-@props(['fasilitas' => [], 'editable' => false, 'selected' => [], 'field' => 'fasilitasTerpilih', 'scope' => 'semua'])
+@props(['fasilitas' => [], 'editable' => false, 'selected' => [], 'field' => 'fasilitasTerpilih', 'scope' => 'semua', 'maks' => null, 'kompak' => false])
 
 @php
     // Ikon SVG fallback untuk fasilitas tanpa file PNG.
@@ -146,23 +146,23 @@
                             $png = $assetFasilitas($nama);
                             $svg = $ikonSvg[$nama] ?? null;
                         @endphp
-                        <label data-fasilitas-label="{{ $nama }}" class="relative cursor-pointer select-none rounded-xl border-2 p-3 transition-all duration-200 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 has-[:checked]:ring-2 has-[:checked]:ring-teal-200 dark:has-[:checked]:border-teal-500 dark:has-[:checked]:bg-teal-500/10 dark:has-[:checked]:ring-teal-500/30">
+                        <label data-fasilitas-label="{{ $nama }}" class="relative cursor-pointer select-none rounded-xl border-2 p-2.5 transition-all duration-200 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 has-[:checked]:ring-2 has-[:checked]:ring-teal-200 dark:has-[:checked]:border-teal-500 dark:has-[:checked]:bg-teal-500/10 dark:has-[:checked]:ring-teal-500/30 sm:p-3">
                             <input type="checkbox" value="{{ $nama }}" wire:model.live="{{ $field }}" @checked(in_array($nama, $selected)) data-fasilitas-input="{{ $nama }}" class="peer sr-only">
                             <span class="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white peer-checked:flex">
                                 <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                             </span>
-                            <span class="flex items-center gap-2.5">
-                                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-500/10">
+                            <span class="flex min-w-0 items-center gap-2 sm:gap-2.5">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-500/10 sm:h-9 sm:w-9 sm:rounded-xl">
                                     @if ($png)
                                         <img src="{{ asset('images/fasilitas/' . $png) }}" alt="{{ $nama }}"
-                                            class="h-6 w-6 object-contain">
+                                            class="h-5 w-5 object-contain sm:h-6 sm:w-6">
                                     @elseif ($svg)
-                                        <svg class="h-5 w-5 text-teal-600 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $svg !!}</svg>
+                                        <svg class="h-4 w-4 text-teal-600 dark:text-teal-300 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $svg !!}</svg>
                                     @else
-                                        <svg class="h-5 w-5 text-teal-600 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg class="h-4 w-4 text-teal-600 dark:text-teal-300 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     @endif
                                 </span>
-                                <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">{{ $nama }}</span>
+                                <span class="min-w-0 break-words text-[11px] font-semibold leading-snug text-gray-700 dark:text-gray-200 sm:text-xs">{{ $nama }}</span>
                             </span>
                         </label>
                     @endforeach
@@ -211,25 +211,38 @@
     </script>
     @endonce
 @else
-    <div class="flex flex-wrap gap-2">
-        @foreach (array_filter(array_map('trim', explode(',', $fasilitas))) as $f)
+    @php
+        $daftarFasilitas = array_values(array_filter(array_map('trim', explode(',', (string) $fasilitas))));
+        $totalFasilitas = count($daftarFasilitas);
+        $batasFasilitas = $maks !== null ? max(0, (int) $maks) : $totalFasilitas;
+        $daftarTampil = $batasFasilitas > 0 ? array_slice($daftarFasilitas, 0, $batasFasilitas) : [];
+        $kelasChip = $kompak
+            ? 'gap-1 rounded-lg px-2 py-1 text-[10px]'
+            : 'gap-1.5 rounded-xl px-3 py-2 text-xs';
+        $kelasIkon = $kompak ? 'h-3.5 w-3.5' : 'h-4 w-4';
+    @endphp
+    <div class="flex flex-wrap gap-1.5 sm:gap-2">
+        @foreach ($daftarTampil as $f)
             @php $tampil = \App\Support\FacilityHelper::normalize($f); @endphp
             @if (isset($ikonPng[$tampil]))
-                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
-                    <img src="{{ asset('images/fasilitas/' . $ikonPng[$tampil]) }}" class="h-4 w-4 object-contain" alt="">
+                <span class="inline-flex items-center {{ $kelasChip }} font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                    <img src="{{ asset('images/fasilitas/' . $ikonPng[$tampil]) }}" class="{{ $kelasIkon }} object-contain" alt="">
                     {{ $tampil }}
                 </span>
             @elseif (isset($ikonSvg[$tampil]))
-                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$tampil] !!}</svg>
+                <span class="inline-flex items-center {{ $kelasChip }} font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                    <svg class="{{ $kelasIkon }} shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">{!! $ikonSvg[$tampil] !!}</svg>
                     {{ $tampil }}
                 </span>
             @else
-                <span class="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 dark:bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
-                    <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span class="inline-flex items-center {{ $kelasChip }} font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/10 ring-1 ring-inset ring-teal-200 dark:ring-teal-500/30">
+                    <svg class="{{ $kelasIkon }} shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     {{ $tampil }}
                 </span>
             @endif
         @endforeach
+        @if ($totalFasilitas > count($daftarTampil))
+            <span class="inline-flex items-center rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-slate-500 ring-1 ring-inset ring-stone-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600">+{{ $totalFasilitas - count($daftarTampil) }}</span>
+        @endif
     </div>
 @endif

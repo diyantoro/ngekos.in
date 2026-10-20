@@ -88,9 +88,9 @@
     $roomText = $roomLimit === null ? $roomUsed.' / Unlimited' : $roomUsed.' / '.$roomLimit;
 
     $topBar = match ($plan) {
-        'pro' => 'from-teal-400 via-emerald-500 to-cyan-500',
-        'business' => 'from-amber-300 via-amber-400 to-orange-400',
-        default => 'from-slate-300 via-slate-400 to-slate-500',
+        'pro' => 'from-brand-500 via-brand-600 to-brand-700',
+        'business' => 'from-amber-300 via-amber-400 to-amber-500',
+        default => 'from-stone-300 via-stone-400 to-stone-500',
     };
     $roomPct = $roomLimit ? min(100, (int) round($roomUsed / max(1, $roomLimit) * 100)) : 0;
 @endphp
@@ -98,9 +98,9 @@
 <div class="group relative overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_10px_40px_rgba(13,148,136,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_56px_rgba(13,148,136,0.18)] dark:border-slate-700/60 dark:bg-slate-900">
     <div class="h-1.5 w-full bg-gradient-to-r {{ $topBar }}"></div>
     {{-- soft decoration --}}
-    <div class="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-teal-100/50 blur-3xl dark:bg-teal-500/10" aria-hidden="true"></div>
-    <div class="pointer-events-none absolute -bottom-28 right-1/3 h-56 w-56 rounded-full bg-cyan-100/50 blur-3xl dark:bg-cyan-500/10" aria-hidden="true"></div>
-    <div class="pointer-events-none absolute -left-20 top-1/3 h-48 w-48 rounded-full bg-sky-100/40 blur-3xl dark:bg-sky-500/10" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-brand-100/60 blur-3xl dark:bg-brand-500/10" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -bottom-28 right-1/3 h-56 w-56 rounded-full bg-brand-100/40 blur-3xl dark:bg-brand-500/10" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -left-20 top-1/3 h-48 w-48 rounded-full bg-amber-100/40 blur-3xl dark:bg-amber-500/10" aria-hidden="true"></div>
 
     {{-- status badge pojok kanan atas --}}
     <span class="absolute right-5 top-5 z-10 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold
@@ -161,7 +161,7 @@
             <div class="mt-5 grid grid-cols-1 gap-3">
                 <div class="rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 p-3">
                     <div class="flex items-center gap-2">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-md shadow-brand-900/20">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
                         </span>
                         <span>
@@ -171,7 +171,7 @@
                     </div>
                     @if ($roomLimit !== null)
                         <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all" style="width: {{ $roomPct }}%"></div>
+                            <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-700 transition-all" style="width: {{ $roomPct }}%"></div>
                         </div>
                     @else
                         <p class="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -190,7 +190,7 @@
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </a>
                 <a href="{{ $ctaPrimerRoute }}" wire:navigate
-                    class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105">
+                    class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-amber-900/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.25l3.5 7 3.5-4.5L13.5 15l2-3.5L21 18M4 4h16a1 1 0 011 1v4H3V5a1 1 0 011-1zm-1 6h18v3a4 4 0 01-4 4H6a4 4 0 01-4-4v-3z" /></svg>
                     {{ $ctaPrimerLabel }}
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
@@ -200,7 +200,7 @@
 
         {{-- TENGAH: panel fitur --}}
         <div class="min-w-0 md:col-span-6 lg:col-span-4">
-            <div class="h-full rounded-2xl border border-teal-100/70 bg-cyan-50/60 p-5 transition-colors duration-200 hover:bg-cyan-50 dark:border-teal-500/20 dark:bg-teal-500/5">
+            <div class="h-full rounded-2xl border border-brand-100/70 bg-brand-50/60 p-5 transition-colors duration-200 hover:bg-brand-50 dark:border-brand-500/20 dark:bg-brand-500/5">
                 <span class="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-teal-700 ring-1 ring-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-500/30">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
                     Fitur Paket {{ $planName }}
@@ -225,8 +225,8 @@
         {{-- KANAN: widget performa + ilustrasi --}}
         <div class="relative flex items-center justify-center md:col-span-6 lg:col-span-3">
             <div class="relative flex w-full max-w-[250px] items-center justify-center">
-                <div class="absolute h-44 w-44 rounded-full bg-sky-100/70 blur-2xl dark:bg-sky-500/10" aria-hidden="true"></div>
-                <div class="absolute -right-2 top-0 h-16 w-16 rounded-full bg-cyan-100/70 blur-xl dark:bg-cyan-500/10" aria-hidden="true"></div>
+                <div class="absolute h-44 w-44 rounded-full bg-brand-100/70 blur-2xl dark:bg-brand-500/10" aria-hidden="true"></div>
+                <div class="absolute -right-2 top-0 h-16 w-16 rounded-full bg-amber-100/70 blur-xl dark:bg-amber-500/10" aria-hidden="true"></div>
                 <img src="{{ asset('images/login-owner.svg') }}" alt="Ilustrasi properti kos" width="220" height="165"
                     class="relative h-auto w-full opacity-95 drop-shadow-[0_10px_24px_rgba(13,148,136,0.15)] transition-transform duration-300 group-hover:scale-[1.02]">
                 {{-- kartu growth overlay --}}

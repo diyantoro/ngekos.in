@@ -198,7 +198,8 @@ class DashboardRenderCheckTest extends TestCase
             ->assertDontSee('Sewa & tagihanku')
             ->assertDontSee('Sewa Saya')
             ->assertDontSee('Pembayaran Saya')
-            ->assertSee('Mau cari kos di mana?');
+            ->assertSee('Mau cari kos di mana?')
+            ->assertSee('Iklan Partner');
     }
 
     public function test_anak_kos_bisa_bayar_tunai_tanpa_bukti(): void
@@ -299,7 +300,7 @@ class DashboardRenderCheckTest extends TestCase
             ->get(route('dashboard.pemilik'))
             ->assertOk()
             ->assertSee('Tingkat Okupansi')
-            ->assertSee('Laba Bersih Bulan Ini')
+            ->assertSee('Pendapatan Bersih')
             ->assertSee('Buka Grafik')
             ->assertDontSee('Pengeluaran per Kategori')
             ->assertDontSee('Grafik Pipeline');

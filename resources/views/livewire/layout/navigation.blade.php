@@ -357,13 +357,13 @@ new class extends Component
     <div x-show="open" x-cloak @click="open = false" aria-hidden="true"
          x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-40 bg-black/50 lg:hidden"></div>
+         class="fixed inset-0 z-[65] bg-black/50 lg:hidden"></div>
 
     {{-- Drawer navigasi --}}
     <aside x-show="open" x-cloak role="dialog" aria-modal="true" aria-label="Menu navigasi"
            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
-           class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col bg-brand-900 dark:bg-brand-950 text-slate-300 lg:hidden">
+           class="fixed inset-y-0 left-0 z-[66] flex w-72 max-w-[85vw] flex-col bg-brand-900 dark:bg-brand-950 text-slate-300 lg:hidden">
         <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
             <a href="{{ route('dashboard') }}" wire:navigate @click="open = false" class="flex min-w-0 items-center gap-2.5" aria-label="Dashboard">
                 <x-application-logo class="h-9 w-9 shrink-0" />

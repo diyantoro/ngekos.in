@@ -28,6 +28,18 @@ new #[Layout('layouts.app')] class extends Component
     #[Validate('required|integer|min:1|max:10')]
     public int $kapasitas = 1;
 
+    #[Validate('nullable|string|max:50')]
+    public ?string $ukuran = null;
+
+    #[Validate('nullable|in:,0,1')]
+    public string $termasuk_listrik = '';
+
+    #[Validate('nullable|numeric|min:0')]
+    public ?string $deposit = null;
+
+    #[Validate('nullable|string|max:2000')]
+    public ?string $peraturan = null;
+
     #[Validate('required|numeric|gt:0')]
     public string $harga = '';
 
@@ -164,6 +176,10 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'nama' => 'required|string|max:50',
             'kapasitas' => 'required|integer|min:1|max:10',
+            'ukuran' => 'nullable|string|max:50',
+            'termasuk_listrik' => ['nullable', 'in:,0,1'],
+            'deposit' => 'nullable|numeric|min:0',
+            'peraturan' => 'nullable|string|max:2000',
             'harga' => 'required|numeric|gt:0',
             'harga_mingguan' => 'nullable|numeric|gt:0',
             'harga_harian' => 'nullable|numeric|gt:0',
@@ -184,14 +200,31 @@ new #[Layout('layouts.app')] class extends Component
 
     private function dataForm(): array
     {
+        // Status listrik disimpan di kolom sendiri; label lama tetap
+        // dipertahankan di daftar fasilitas agar tampilan lama kompatibel.
+        $fasilitas = collect($this->fasilitasKamarTerpilih)
+            ->reject(fn ($f) => in_array($f, ['Termasuk Listrik', 'Tidak Termasuk Listrik'], true))
+            ->values()
+            ->all();
+
+        if ($this->termasuk_listrik === '1') {
+            $fasilitas[] = 'Termasuk Listrik';
+        } elseif ($this->termasuk_listrik === '0') {
+            $fasilitas[] = 'Tidak Termasuk Listrik';
+        }
+
         $data = [
             'nama' => $this->nama,
             'kapasitas' => $this->kapasitas,
+            'ukuran' => filled($this->ukuran) ? $this->ukuran : null,
+            'termasuk_listrik' => $this->termasuk_listrik === '' ? null : $this->termasuk_listrik === '1',
+            'deposit' => filled($this->deposit) ? $this->deposit : null,
+            'peraturan' => filled($this->peraturan) ? $this->peraturan : null,
             'harga_sewa_bulanan' => $this->harga,
             'harga_sewa_mingguan' => $this->harga_mingguan === '' || $this->harga_mingguan === null ? null : $this->harga_mingguan,
             'harga_sewa_harian' => $this->harga_harian === '' || $this->harga_harian === null ? null : $this->harga_harian,
             'harga_asli' => $this->harga_asli === '' || $this->harga_asli === null ? null : $this->harga_asli,
-            'fasilitas' => FacilityHelper::normalizeString(implode(', ', $this->fasilitasKamarTerpilih)),
+            'fasilitas' => FacilityHelper::normalizeString(implode(', ', $fasilitas)),
             'status' => $this->status,
         ];
 
@@ -258,6 +291,9 @@ new #[Layout('layouts.app')] class extends Component
         $this->kamarId = $kamar->id;
         $this->nama = $kamar->nama;
         $this->kapasitas = (int) $kamar->kapasitas;
+        $this->ukuran = $kamar->ukuran;
+        $this->deposit = $kamar->deposit !== null ? (string) $kamar->deposit : null;
+        $this->peraturan = $kamar->peraturan;
         $this->harga = $kamar->harga_sewa_bulanan;
         $this->harga_mingguan = $kamar->harga_sewa_mingguan ?? null;
         $this->harga_harian = $kamar->harga_sewa_harian ?? null;
@@ -265,6 +301,13 @@ new #[Layout('layouts.app')] class extends Component
         $this->fasilitasKamarTerpilih = $kamar->fasilitas
             ? FacilityHelper::normalizeList(array_filter(array_map('trim', explode(',', $kamar->fasilitas))))
             : [];
+        $this->termasuk_listrik = match (true) {
+            $kamar->termasuk_listrik === true => '1',
+            $kamar->termasuk_listrik === false => '0',
+            in_array('Termasuk Listrik', $this->fasilitasKamarTerpilih, true) => '1',
+            in_array('Tidak Termasuk Listrik', $this->fasilitasKamarTerpilih, true) => '0',
+            default => '',
+        };
         $this->status = $kamar->status?->value ?? 'tersedia';
         $this->fotoBaru = null;
         $this->galeriBaru = [];
@@ -280,6 +323,10 @@ new #[Layout('layouts.app')] class extends Component
         $this->kamarId = null;
         $this->nama = '';
         $this->kapasitas = 1;
+        $this->ukuran = null;
+        $this->termasuk_listrik = '';
+        $this->deposit = null;
+        $this->peraturan = null;
         $this->harga = '';
         $this->harga_mingguan = null;
         $this->harga_harian = null;
@@ -427,6 +474,27 @@ new #[Layout('layouts.app')] class extends Component
                     <x-input-error :messages="$errors->get('harga_asli')" class="mt-2" />
                 </div>
                 <div>
+                    <x-input-label for="ukuran" value="Ukuran Kamar — opsional" />
+                    <x-text-input wire:model="ukuran" id="ukuran" class="mt-1 block w-full" placeholder="Contoh: 3.1 x 3.4 meter" />
+                    <x-input-error :messages="$errors->get('ukuran')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="termasuk_listrik" value="Listrik" />
+                    <select wire:model="termasuk_listrik" id="termasuk_listrik" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                        <option value="">Belum diisi</option>
+                        <option value="1">Termasuk listrik</option>
+                        <option value="0">Tidak termasuk listrik</option>
+                    </select>
+                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Otomatis disinkronkan dengan pilihan listrik di daftar fasilitas.</p>
+                    <x-input-error :messages="$errors->get('termasuk_listrik')" class="mt-2" />
+                </div>
+                <div>
+                    <x-input-label for="deposit" value="Deposit (Rp) — opsional" />
+                    <x-text-input wire:model="deposit" id="deposit" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 500000" />
+                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Kosongkan bila tidak ada deposit. Halaman detail akan menampilkan DP Rp100.000 untuk sewa bulanan.</p>
+                    <x-input-error :messages="$errors->get('deposit')" class="mt-2" />
+                </div>
+                <div>
                     <x-input-label for="status" value="Status" />
                     <select wire:model="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500">
                         @foreach (\App\Enums\KamarStatus::cases() as $opsiStatus)
@@ -435,6 +503,15 @@ new #[Layout('layouts.app')] class extends Component
                     </select>
                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                 </div>
+            </div>
+
+            <div>
+                <x-input-label for="peraturan" value="Peraturan Khusus Tipe Kamar — opsional" />
+                <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Satu aturan per baris, misalnya "Tamu boleh menginap" atau "Maks. 2 orang/kamar". Aturan kos umum tetap diatur di halaman kos.</p>
+                <textarea wire:model="peraturan" id="peraturan" rows="3"
+                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                    placeholder="Tamu boleh menginap&#10;Maks. 2 orang/kamar"></textarea>
+                <x-input-error :messages="$errors->get('peraturan')" class="mt-2" />
             </div>
 
             <div>
@@ -561,7 +638,7 @@ new #[Layout('layouts.app')] class extends Component
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse ($kamars as $kamar)
-                    <div wire:key="kamar-{{ $kamar->id }}" class="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div wire:key="kamar-{{ $kamar->id }}" class="px-4 py-4 flex flex-wrap items-start gap-3 sm:flex-nowrap sm:items-center sm:gap-4 sm:px-6">
                         <div class="h-14 w-20 shrink-0 rounded-lg bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800 overflow-hidden relative">
                             @php $coverKamar = $kamar->fotoCover(); @endphp
                             @if ($coverKamar)
@@ -587,25 +664,31 @@ new #[Layout('layouts.app')] class extends Component
                                     @endforeach
                                 </div>
                             @endif
-                            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $kamar->kapasitas }} orang
+                            <div class="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{{ $kamar->kapasitas }} orang</span>
+                                @if ($kamar->ukuran)
+                                    <span class="text-gray-300 dark:text-gray-600">&bull;</span>
+                                    <span>{{ $kamar->ukuran }}</span>
+                                @endif
+                            </div>
+                            <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                 @if ($kamar->harga_asli && $kamar->harga_asli > $kamar->harga_sewa_bulanan)
-                                    <span class="line-through text-gray-400 dark:text-gray-500">Rp{{ number_format($kamar->harga_asli, 0, ',', '.') }}</span>
+                                    <span class="text-[11px] line-through text-gray-400 dark:text-gray-500">Rp{{ number_format($kamar->harga_asli, 0, ',', '.') }}</span>
                                 @endif
-                                &middot; Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}/bulan
+                                <span class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/bulan</span></span>
                                 @if ($kamar->harga_sewa_harian)
-                                    <span class="text-teal-600 dark:text-teal-400">| Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</span>
+                                    <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-gray-700 dark:text-gray-300">Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</span>
                                 @endif
-                            </p>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex w-full items-center gap-2 shrink-0 sm:w-auto">
                             <button wire:click="editKamar({{ $kamar->id }})"
-                                class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition sm:flex-none">
                                 Ubah
                             </button>
                             <button wire:click="hapusKamar({{ $kamar->id }})"
                                     wire:confirm="Hapus kamar ini?"
-                                class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition">
+                                class="flex-1 inline-flex items-center justify-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition sm:flex-none">
                                 Hapus
                             </button>
                         </div>

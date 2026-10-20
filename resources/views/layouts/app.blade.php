@@ -92,7 +92,7 @@
                 </header>
             @endif
 
-            <main class="pb-20 lg:pb-0">
+            <main class="pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
                 {{ $slot }}
             </main>
 
@@ -103,7 +103,7 @@
         </div>
 
         @stack('scripts')
-        {{-- Lazy: chatbot keluar dari critical path render awal tiap halaman --}}
-        <livewire:chatbot lazy />
+        {{-- Chatbot selalu dirender langsung agar pasti tampil di semua halaman --}}
+        <livewire:chatbot />
     </body>
 </html>

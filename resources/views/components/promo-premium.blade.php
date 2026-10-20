@@ -19,14 +19,14 @@
 @endphp
 
 @if ($isPremium)
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-700 dark:via-purple-700 dark:to-fuchsia-700 shadow-lg shadow-violet-500/10 ring-1 ring-white/15">
-        <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15 blur-3xl"></div>
-        <div class="absolute -left-12 bottom-0 h-32 w-48 rounded-full bg-white/10 blur-2xl"></div>
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 dark:from-black dark:via-brand-950 dark:to-brand-900 shadow-lg shadow-brand-950/20 ring-1 ring-white/10">
+        <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-300/15 blur-3xl"></div>
+        <div class="absolute -left-12 bottom-0 h-32 w-48 rounded-full bg-brand-400/10 blur-2xl"></div>
 
         <div class="relative px-5 py-5 sm:px-7 sm:py-6">
             <div class="flex flex-col lg:flex-row lg:items-center gap-5">
                 <div class="min-w-0 flex-1">
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-100 ring-1 ring-amber-300/30 backdrop-blur">
                         <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                         Paket {{ strtoupper($plan) }} Aktif
                     </span>
@@ -36,7 +36,7 @@
                     </p>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <a href="{{ route('langganan.subscription') }}" wire:navigate
-                            class="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-violet-700 shadow-sm hover:bg-white/90 transition">
+                            class="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-brand-950 shadow-sm hover:bg-amber-300 transition">
                             Kelola Paket
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3" /></svg>
                         </a>
@@ -46,7 +46,7 @@
                 <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     @foreach ($fitur as $f)
                         <div class="rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur px-3 py-3">
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 text-white">
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200 ring-1 ring-white/10">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $f['ikon'] }}" /></svg>
                             </span>
                             <p class="mt-2 text-xs font-semibold leading-snug text-white/90">{{ $f['label'] }}</p>
@@ -57,14 +57,14 @@
         </div>
     </div>
 @else
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 dark:from-violet-700 dark:via-purple-700 dark:to-fuchsia-700 shadow-lg shadow-violet-500/10 ring-1 ring-white/15">
-        <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15 blur-3xl"></div>
-        <div class="absolute -left-12 bottom-0 h-32 w-48 rounded-full bg-white/10 blur-2xl"></div>
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 dark:from-black dark:via-brand-950 dark:to-brand-900 shadow-lg shadow-brand-950/20 ring-1 ring-white/10">
+        <div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-300/15 blur-3xl"></div>
+        <div class="absolute -left-12 bottom-0 h-32 w-48 rounded-full bg-brand-400/10 blur-2xl"></div>
 
         <div class="relative px-5 py-5 sm:px-7 sm:py-6">
             <div class="flex flex-col lg:flex-row lg:items-center gap-5">
                 <div class="min-w-0 flex-1">
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-100 ring-1 ring-amber-300/30 backdrop-blur">
                         <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                         Paket Premium Kos
                     </span>
@@ -74,7 +74,7 @@
                     </p>
                     <div class="mt-3 flex flex-wrap items-center gap-3">
                         <a href="{{ route('langganan.plans') }}" wire:navigate
-                            class="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-violet-700 shadow-sm hover:bg-white/90 transition">
+                            class="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-brand-950 shadow-sm hover:bg-amber-300 transition">
                             Upgrade ke Pro
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3" /></svg>
                         </a>
@@ -85,7 +85,7 @@
                 <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     @foreach ($fitur as $f)
                         <div class="rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur px-3 py-3">
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 text-white">
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-amber-200 ring-1 ring-white/10">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $f['ikon'] }}" /></svg>
                             </span>
                             <p class="mt-2 text-xs font-semibold leading-snug text-white/90">{{ $f['label'] }}</p>

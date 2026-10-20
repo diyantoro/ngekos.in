@@ -6,7 +6,7 @@
 
 <div x-data="{ aktif: 0, total: {{ count($daftar) }}, ticking: false }" class="relative {{ $kelas }} bg-stone-200 dark:bg-gray-800 overflow-hidden group">
     @if (count($daftar) > 0)
-        <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain scroll-smooth"
+        <div class="flex h-full w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-x-contain"
             x-ref="track"
             @scroll="if (!ticking) { ticking = true; requestAnimationFrame(() => { aktif = Math.round($el.scrollLeft / $el.clientWidth); ticking = false; }); }"
             @scrollend="aktif = Math.round($el.scrollLeft / $el.clientWidth)">
@@ -40,6 +40,13 @@
             <span class="absolute top-2 right-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
                 <span x-text="aktif + 1"></span>/{{ count($daftar) }}
             </span>
+
+            @if (! $ringkas)
+                <span class="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur-sm sm:hidden">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5L3.75 9m0 0l4.5 4.5M3.75 9h16.5m0 0l-4.5-4.5m4.5 4.5l-4.5 4.5" /></svg>
+                    Geser foto
+                </span>
+            @endif
         @endif
     @else
         <div class="h-full w-full flex items-center justify-center">
