@@ -64,12 +64,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/kos/{propertiId}/kamar/{kamarId}/sewa', [PenyewaanController::class, 'sewaKamar'])
         ->middleware(['role:anak_kos', 'throttle:10,1']);
 
-    // Patungan: tambah teman sekamar & keluar partial
-    Route::post('/penyewaan/{sewaanId}/anggota', [DashboardController::class, 'tambahAnggota'])
-        ->middleware(['role:anak_kos|pemilik|admin|super_admin', 'throttle:30,1']);
-    Route::post('/penyewaan/{sewaanId}/anggota/keluar', [DashboardController::class, 'keluarAnggota'])
-        ->middleware(['role:anak_kos', 'throttle:30,1']);
-
     // Dashboard - Anak Kos
     Route::get('/dashboard/anak-kos', [DashboardController::class, 'anakKos'])
         ->middleware('role:anak_kos');
@@ -102,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/pemilik/sewaan/{sewaanId}/ktp', [DashboardController::class, 'ktpPenyewaan'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap'])
+        ->middleware('role:pemilik|admin|super_admin');
+    Route::post('/dashboard/pemilik/sewaan/{sewaanId}/tandai-masuk', [DashboardController::class, 'pemilikTandaiMasuk'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/checkout', [DashboardController::class, 'pemilikCheckOut'])
         ->middleware('role:pemilik|admin|super_admin');

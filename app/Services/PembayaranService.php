@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\DB;
  * Menjamin: update status, pelunasan tagihan, generate kwitansi, chat notifikasi.
  *
  * Hook booking: bila yang diverifikasi/ditolak adalah bukti DP dari booking
- * yang masih menunggu_verifikasi, sewanya otomatis diaktifkan / dibatalkan
- * (kamar dilepas kembali) dalam transaksi yang sama.
+ * yang masih menunggu_verifikasi, sewanya jadi DIBOOKING / dibatalkan
+ * (kamar dilepas kembali) dalam transaksi yang sama. Sewa jadi AKTIF
+ * (dianggap sudah masuk) saat pembayaran sewa pertama terverifikasi.
  */
 class PembayaranService
 {
@@ -65,21 +66,43 @@ class PembayaranService
 
                 ChatPesan::notifikasiPembayaranDiverifikasi($pembayaran, $verifikatorId);
 
-                // Booking disetujui: bukti DP lolos verifikasi => sewa aktif.
+                // Booking disetujui: bukti DP lolos verifikasi => booking FIKS
+                // (dibooking) — tapi masih belum masuk. Jadi 'aktif' setelah
+                // pemilik menandai "sudah masuk" atau sewa pertama dibayar.
                 $sewa = $tagihan?->penyewaan;
                 if ($sewa && $sewa->status === 'menunggu_verifikasi' && PenyewaanService::isDp($tagihan)) {
-                    $sewa->update(['status' => 'aktif']);
+                    $sewa->update(['status' => 'dibooking']);
                     $bookingDisetujui = true;
 
                     ChatPesan::notifikasiTagihan(
                         (int) $sewa->properti_id,
                         (int) $sewa->anak_kos_id,
                         $verifikatorId,
-                        'Kabar baik! Booking kamar '.$sewa->kamar?->nama
-                            .' sudah saya setujui — sewamu resmi AKTIF sampai '
-                            .($sewa->tanggal_berakhir?->locale('id')->translatedFormat('d F Y') ?? '-')
-                            .'. Sisa bulan pertama Rp'.number_format(max(0, (float) $sewa->kamar?->harga_sewa_bulanan - PenyewaanService::DP_NOMINAL), 0, ',', '.')
+                        'Kabar baik! Booking kamar '.$sewa->kamar?->nama.' sudah saya setujui — sekarang booking fiks (Dibooking). '
+                            .'Sewa baru AKTIF saat kamu mulai masuk (pemilik menandai "sudah masuk" atau sewa pertama dibayar). '
+                            .'Sisa bulan pertama Rp'.number_format(max(0, (float) $sewa->kamar?->harga_sewa_bulanan - PenyewaanService::DP_NOMINAL), 0, ',', '.')
                             .' — segera lunasi di menu Kos Saya. Terima kasih.',
+                    );
+                }
+
+                // Penyewa membayar sewa (sisa bulan pertama / bulan berikutnya)
+                // saat masih 'dibooking' => otomatis dianggap SUDAH MASUK.
+                if ($sewa
+                    && $sewa->status === 'dibooking'
+                    && $tagihan
+                    && ! PenyewaanService::isDp($tagihan)
+                    && $tagihanLunas
+                ) {
+                    $sewa->update(['status' => 'aktif']);
+                    $bookingDisetujui = true; // booking dikonfirmasi masuk otomatis
+
+                    ChatPesan::notifikasiTagihan(
+                        (int) $sewa->properti_id,
+                        (int) $sewa->anak_kos_id,
+                        $verifikatorId,
+                        'Pembayaran sewa kamar '.$sewa->kamar?->nama.' sudah saya terima — selamat datang! Sewa resmi AKTIF '
+                            .'sampai '.($sewa->tanggal_berakhir?->locale('id')->translatedFormat('d F Y') ?? '-')
+                            .'. Semua tagihan bisa dipantau di menu Kos Saya. Terima kasih.',
                     );
                 }
             }
@@ -103,7 +126,7 @@ class PembayaranService
                         ->update(['status' => 'batal']);
 
                     $masihDipesan = \App\Models\Penyewaan::where('kamar_id', $sewa->kamar_id)
-                        ->whereIn('status', ['aktif', 'menunggu_verifikasi'])
+                        ->whereIn('status', CheckoutService::STATUS_MEMEGANG_KAMAR)
                         ->where('id', '!=', $sewa->id)
                         ->exists();
 

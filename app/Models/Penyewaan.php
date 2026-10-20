@@ -11,8 +11,8 @@ class Penyewaan extends Model
     protected $fillable = [
         'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir',
         'perpanjangan_status', 'perpanjangan_ditawarkan_pada',
-        'status', 'permintaan_keluar_pada',
-        'ktp_path', 'mode_hunian',
+        'status', 'permintaan_keluar_pada', 'peringatan_batal_pada',
+        'ktp_path',
     ];
 
     protected function casts(): array
@@ -23,6 +23,7 @@ class Penyewaan extends Model
             'tanggal_berakhir' => 'date',
             'perpanjangan_ditawarkan_pada' => 'date',
             'permintaan_keluar_pada' => 'datetime',
+            'peringatan_batal_pada' => 'datetime',
         ];
     }
 
@@ -44,37 +45,5 @@ class Penyewaan extends Model
     public function tagihans(): HasMany
     {
         return $this->hasMany(Tagihan::class);
-    }
-
-    public function anggotas(): HasMany
-    {
-        return $this->hasMany(PenyewaanAnggota::class);
-    }
-
-    public function anggotaAktif(): HasMany
-    {
-        return $this->hasMany(PenyewaanAnggota::class)->where('status', 'aktif');
-    }
-
-    /**
-     * Seluruh penghuni aktif: penyewa utama + anggota patungan yang masih aktif.
-     * Dipakai untuk otorisasi bayar & hitung porsi patungan.
-     *
-     * @return array<int>
-     */
-    public function idPenghuniAktif(): array
-    {
-        $ids = [$this->anak_kos_id];
-
-        $tambahan = $this->relationLoaded('anggotas')
-            ? $this->anggotas->where('status', 'aktif')->pluck('user_id')->all()
-            : $this->anggotas()->where('status', 'aktif')->pluck('user_id')->all();
-
-        return array_values(array_unique(array_merge($ids, $tambahan)));
-    }
-
-    public function isPatungan(): bool
-    {
-        return $this->mode_hunian === 'patungan';
     }
 }

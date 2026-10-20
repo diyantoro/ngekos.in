@@ -80,24 +80,16 @@ class TagihanService
     }
 
     /**
-     * Rincian siap tampil / validasi bayar (termasuk patungan).
+     * Rincian siap tampil / validasi bayar.
      * Read-only: denda berjalan dihitung in-memory tanpa tulis DB
      * agar endpoint read tidak memicu N write per baris.
      *
-     * @return array{sewa: float, denda: float, hari_telat: int, denda_per_hari: float, total: float, porsi: float|null}
+     * @return array{sewa: float, denda: float, hari_telat: int, denda_per_hari: float, total: float}
      */
     public static function rincian(Tagihan $tagihan, ?Carbon $pada = null): array
     {
-        $tagihan->loadMissing(['penyewaan.anggotas']);
-
         if (! in_array($tagihan->status, ['lunas', 'batal'], true)) {
             $tagihan->setAttribute('denda', self::dendaBerjalan($tagihan, $pada));
-        }
-
-        $porsi = null;
-
-        if ($tagihan->penyewaan) {
-            $porsi = PatunganService::porsiTagihan($tagihan->penyewaan, $tagihan);
         }
 
         return [
@@ -106,40 +98,20 @@ class TagihanService
             'hari_telat' => self::hariTelat($tagihan, $pada),
             'denda_per_hari' => self::dendaPerHari($tagihan),
             'total' => (float) $tagihan->jumlah + (float) $tagihan->denda,
-            'porsi' => $porsi,
         ];
     }
 
     /**
-     * Nominal yang wajib dibayar satu user: total penuh untuk tunggal,
-     * sisa porsi (porsi - sudah diverifikasi uid) untuk patungan.
+     * Nominal yang wajib dibayar: total penuh tagihan.
+     * Tagihan batal tidak wajib dibayar.
      */
-    public static function wajibBayar(Tagihan $tagihan, int $userId, ?Carbon $pada = null): float
+    public static function wajibBayar(Tagihan $tagihan, ?Carbon $pada = null): float
     {
         if ($tagihan->status === 'batal') {
             return 0.0;
         }
 
-        $rincian = self::rincian($tagihan, $pada);
-
-        if ($tagihan->penyewaan?->isPatungan() && $rincian['porsi'] !== null) {
-            // Kalau relasi pembayarans sudah di-eager-load (dashboard anak kos
-            // memuat 200 tagihan sekaligus), jumlahkan dari koleksi yang sudah
-            // ada. Kalau belum, baru query seperti biasa.
-            $sudah = $tagihan->relationLoaded('pembayarans')
-                ? (float) $tagihan->pembayarans
-                    ->where('anak_kos_id', $userId)
-                    ->where('status', 'diverifikasi')
-                    ->sum('jumlah')
-                : (float) $tagihan->pembayarans()
-                    ->where('anak_kos_id', $userId)
-                    ->where('status', 'diverifikasi')
-                    ->sum('jumlah');
-
-            return round(max(0, $rincian['porsi'] - $sudah), 2);
-        }
-
-        return $rincian['total'];
+        return self::rincian($tagihan, $pada)['total'];
     }
 
     public static function rupiah(float $nilai): string

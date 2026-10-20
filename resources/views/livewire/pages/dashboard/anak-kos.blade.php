@@ -23,16 +23,11 @@ new class extends Component
 
     public $bukti = null;
 
-    public string $emailTeman = '';
-
-    public ?int $modalTemanId = null;
-
     public function with(): array
     {
         $id = auth()->id();
 
-        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id)
-            ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif'));
+        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id);
 
         $kotaAktif = Penyewaan::where('anak_kos_id', $id)
             ->where('status', 'aktif')
@@ -40,7 +35,7 @@ new class extends Component
             ->first()?->properti?->kota;
 
         $propertiTerpakai = Penyewaan::where('anak_kos_id', $id)
-            ->where('status', 'aktif')
+            ->whereIn('status', ['aktif', 'dibooking'])
             ->pluck('properti_id');
 
         $idFavorit = auth()->user()->favorits()->pluck('propertis.id');
@@ -48,7 +43,7 @@ new class extends Component
         $kandidatBerikutnya = Tagihan::belumLunas()
             ->whereHas('penyewaan', $scopeSewa)
             ->select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
-            ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
+            ->with(['penyewaan.kamar.properti:id,nama', 'penyewaan.kamar:id,nama,properti_id', 'penyewaan.properti:id,denda_per_hari', 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status'])
             ->orderBy('jatuh_tempo')
             ->limit(10)
             ->get();
@@ -64,12 +59,7 @@ new class extends Component
 
         $kandidatBerikutnya->each($olesDenda);
 
-        // Banner harus menunjuk ke tagihan yang porsi user-nya masih > 0.
-        // Kalau porsi user sudah lunas tapi teman belum bayar, tagihan itu dilewati
-        // agar tidak dikira "masih ada tagihan" / nominal dobel.
-        $tagihanBerikutnya = $kandidatBerikutnya->first(fn ($t) => \App\Services\TagihanService::wajibBayar($t, $id) > 0)
-            ?? $kandidatBerikutnya->first();
-        $wajibBerikutnya = $tagihanBerikutnya ? \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, $id) : 0;
+        $tagihanBerikutnya = $kandidatBerikutnya->first();
 
         // Blok tab "Sewa & tagihanku" dihapus dari dashboard (semua pindah ke menu
         // Tagihan). Koleksi dikembalikan kosong agar variabel blade tetap terdefinisi;
@@ -81,7 +71,6 @@ new class extends Component
             'pembayarans' => collect(),
             'sewaans' => collect(),
             'tagihanBerikutnya' => $tagihanBerikutnya,
-            'wajibBerikutnya' => $wajibBerikutnya,
             'rekomendasi' => (function () use ($id, $propertiTerpakai, $idFavorit, $kotaAktif) {
                 $ids = cache()->remember("anak-kos.rekomendasi.{$id}", 600, fn () => Properti::query()
                     ->where('status', 'aktif')
@@ -150,9 +139,8 @@ new class extends Component
         $uid = auth()->id();
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
-            ->with(['kamar', 'tagihans.pembayarans', 'anggotas'])
+            ->where('anak_kos_id', $uid)
+            ->with(['kamar', 'tagihans.pembayarans'])
             ->first();
 
         if (! $sewaan) {
@@ -169,86 +157,13 @@ new class extends Component
             return;
         }
 
-        if ($hasil['jenis'] === 'partial') {
-            $this->pesan = 'Kamu sudah keluar dari kamar patungan. Porsi berikutnya menjadi tanggung jawab penghuni yang stay.';
-
-            return;
-        }
-
         if ($hasil['jenis'] === 'pengajuan') {
             $catatan = $hasil['tagihan_belum_lunas'] > 0
                 ? " Pastikan {$hasil['tagihan_belum_lunas']} tagihan yang belum lunas tetap diselesaikan ya."
                 : '';
 
             $this->pesan = "Pengajuan check-out dari kamar {$sewaan->kamar?->nama} terkirim dan menunggu verifikasi pemilik kos.{$catatan}";
-
-            return;
         }
-
-        $catatan = $hasil['tagihan_belum_lunas'] > 0
-            ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas."
-            : '';
-
-        $this->pesan = "Check-out dari kamar {$sewaan->kamar?->nama} berhasil. Kamar kembali tersedia.{$catatan}";
-    }
-
-    public function bukaModalTeman(int $sewaanId): void
-    {
-        $this->modalTemanId = $sewaanId;
-        $this->emailTeman = '';
-        $this->resetValidation();
-    }
-
-    public function tutupModalTeman(): void
-    {
-        $this->modalTemanId = null;
-        $this->emailTeman = '';
-        $this->resetValidation();
-    }
-
-    public function simpanTeman(): void
-    {
-        $this->pesan = null;
-        $this->galat = null;
-        $sewaan = Penyewaan::where('id', $this->modalTemanId)
-            ->where('status', 'aktif')
-            ->where('anak_kos_id', auth()->id())
-            ->with(['kamar', 'anggotas'])
-            ->first();
-
-        if (! $sewaan) {
-            $this->tutupModalTeman();
-            $this->galat = 'Penyewaan tidak ditemukan.';
-
-            return;
-        }
-
-        $this->validate([
-            'emailTeman' => ['required', 'email', 'exists:users,email'],
-        ], [
-            'emailTeman.required' => 'Email teman wajib diisi.',
-            'emailTeman.email' => 'Format email tidak valid.',
-            'emailTeman.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
-        ]);
-
-        $teman = \App\Models\User::where('email', $this->emailTeman)->first();
-
-        if (! $teman?->hasRole('anak_kos')) {
-            $this->addError('emailTeman', 'Hanya akun anak kos yang bisa jadi teman sekamar.');
-
-            return;
-        }
-
-        try {
-            \App\Services\PatunganService::tambahAnggota($sewaan, $teman);
-        } catch (DomainException $e) {
-            $this->addError('emailTeman', $e->getMessage());
-
-            return;
-        }
-
-        $this->tutupModalTeman();
-        $this->pesan = "Teman sekamar {$teman->nama} berhasil ditambahkan (patungan 50/50).";
     }
 
     public function bayarTagihan(int $tagihanId): void
@@ -260,9 +175,8 @@ new class extends Component
         $this->bukti = null;
 
         $tagihan = Tagihan::where('id', $tagihanId)
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id())
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', auth()->id())->where('status', 'aktif')))
-            ->with(['penyewaan.anggotas', 'penyewaan.properti'])
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id()))
+            ->with(['penyewaan.properti'])
             ->first();
 
         if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
@@ -273,8 +187,8 @@ new class extends Component
 
         \App\Services\TagihanService::sinkronDenda($tagihan);
 
-        if (\App\Services\TagihanService::wajibBayar($tagihan, auth()->id()) <= 0) {
-            $this->galat = 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.';
+        if (\App\Services\TagihanService::wajibBayar($tagihan) <= 0) {
+            $this->galat = 'Tagihan ini sudah lunas.';
 
             return;
         }
@@ -308,9 +222,8 @@ new class extends Component
     public function konfirmasiBayar(): void
     {
         $tagihan = Tagihan::where('id', $this->modalBayarId)
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id())
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', auth()->id())->where('status', 'aktif')))
-            ->with(['penyewaan.anggotas', 'penyewaan.properti'])
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', auth()->id()))
+            ->with(['penyewaan.properti'])
             ->first();
 
         if (! $tagihan || $tagihan->status === 'lunas' || $tagihan->status === 'batal') {
@@ -321,11 +234,11 @@ new class extends Component
         }
 
         $rincian = \App\Services\TagihanService::rincian($tagihan);
-        $wajib = \App\Services\TagihanService::wajibBayar($tagihan, auth()->id());
+        $wajib = \App\Services\TagihanService::wajibBayar($tagihan);
 
         if ($wajib <= 0) {
             $this->tutupModalBayar();
-            $this->galat = 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.';
+            $this->galat = 'Tagihan ini sudah lunas.';
 
             return;
         }
@@ -430,13 +343,7 @@ new class extends Component
                 $sisaBanner = \App\Services\TagihanService::selisihHari($tagihanBerikutnya);
                 $telatBanner = \App\Services\TagihanService::hariTelat($tagihanBerikutnya);
                 $dendaHarianBanner = \App\Services\TagihanService::dendaPerHari($tagihanBerikutnya);
-                $isPatunganBanner = (bool) $tagihanBerikutnya->penyewaan?->isPatungan();
-                $nominalBanner = ($wajibBerikutnya ?? 0) > 0 ? ($wajibBerikutnya ?? 0) : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
-                // Fallback bila variable lama tidak terisi (mis. cache view): hitung ulang.
-                if (! isset($wajibBerikutnya)) {
-                    $wajibBerikutnya = \App\Services\TagihanService::wajibBayar($tagihanBerikutnya, auth()->id());
-                    $nominalBanner = $wajibBerikutnya > 0 ? $wajibBerikutnya : ($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda);
-                }
+                $nominalBanner = $tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda;
             @endphp
             <div class="rounded-xl p-5 text-white {{ $telatBanner > 0 || $sisaBanner <= 3 ? 'bg-red-800 dark:bg-red-900' : ($sisaBanner <= 7 ? 'bg-amber-800 dark:bg-amber-900' : 'bg-brand-900 dark:bg-brand-950') }}">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -466,17 +373,10 @@ new class extends Component
                     </div>
                     <div class="shrink-0 text-end">
                         <p class="text-2xl font-bold tracking-tight text-white">Rp{{ number_format($nominalBanner, 0, ',', '.') }}</p>
-                        @if ($isPatunganBanner)
-                            <p class="text-[11px] text-white/80">Porsimu (50%) · total penuh Rp{{ number_format($tagihanBerikutnya->jumlah + $tagihanBerikutnya->denda, 0, ',', '.') }}</p>
-                        @endif
-                        @if (($wajibBerikutnya ?? 0) > 0)
-                            <button wire:click="bayarTagihan({{ $tagihanBerikutnya->id }})" wire:loading.attr="disabled"
-                                class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
-                                Bayar Sekarang
-                            </button>
-                        @else
-                            <p class="mt-1.5 inline-flex items-center rounded-full bg-emerald-400/20 px-2.5 py-1 text-[11px] font-bold">Porsimu lunas · menunggu teman sekamar</p>
-                        @endif
+                        <button wire:click="bayarTagihan({{ $tagihanBerikutnya->id }})" wire:loading.attr="disabled"
+                            class="mt-1.5 inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-stone-100 transition">
+                            Bayar Sekarang
+                        </button>
                     </div>
                 </div>
             </div>
@@ -618,7 +518,7 @@ new class extends Component
             ?? ($tagihanBerikutnya?->id === $modalBayarId ? $tagihanBerikutnya : null);
         if (! $tagihanModal) {
             $tagihanModal = \App\Models\Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'denda', 'jatuh_tempo', 'status'])
-                ->with(['penyewaan.anggotas', 'penyewaan.properti:id,denda_per_hari'])
+                ->with(['penyewaan.properti:id,denda_per_hari'])
                 ->find($modalBayarId);
             if ($tagihanModal) {
                 $tagihanModal->setAttribute('denda', \App\Services\TagihanService::dendaBerjalan($tagihanModal));
@@ -629,11 +529,7 @@ new class extends Component
         $totalTagihan = $sewaModal + $dendaModal;
         $hariTelatModal = $tagihanModal ? \App\Services\TagihanService::hariTelat($tagihanModal) : 0;
         $dendaHarianModal = $tagihanModal ? \App\Services\TagihanService::dendaPerHari($tagihanModal) : 0;
-        $porsiModal = $tagihanModal?->penyewaan ? \App\Services\PatunganService::porsiTagihan($tagihanModal->penyewaan, $tagihanModal) : $totalTagihan;
-        $isPatunganModal = (bool) $tagihanModal?->penyewaan?->isPatungan();
-        $wajibModal = $isPatunganModal && $tagihanModal
-            ? round(max(0, $porsiModal - (float) $tagihanModal->pembayarans()->where('anak_kos_id', auth()->id())->where('status', 'diverifikasi')->sum('jumlah')), 2)
-            : $totalTagihan;
+        $wajibModal = $totalTagihan;
         $jatuhModal = $tagihanModal?->jatuh_tempo?->translatedFormat('d M Y') ?? '-';
         // Uang Muka (DP) = tagihan pertama penyewaan yang belum ada pembayaran terverifikasi.
         $adalahDpModal = false;
@@ -653,9 +549,6 @@ new class extends Component
                         <p class="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{{ $adalahDpModal ? 'Bayar Uang Muka (DP)' : 'Bayar Tagihan' }} {{ $tagihanModal?->periode }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Jatuh tempo {{ $tagihanModal?->jatuh_tempo?->translatedFormat('d F Y') ?? '-' }}
-                            @if ($isPatunganModal)
-                                · Porsimu: <span class="font-bold text-sky-600 dark:text-sky-400">Rp{{ number_format($porsiModal, 0, ',', '.') }}</span>
-                            @endif
                         </p>
                         @if ($adalahDpModal)
                             <p class="mt-1.5 rounded-lg bg-teal-50 dark:bg-teal-500/10 ring-1 ring-teal-200 dark:ring-teal-500/30 px-2.5 py-1.5 text-[11px] font-semibold text-teal-700 dark:text-teal-300">Uang Muka (DP) — bayar tagihan pertama ini agar booking kamarmu fiks. Tanpa perlu KTP.</p>
@@ -689,10 +582,7 @@ new class extends Component
                     <div class="rounded-xl bg-gray-50 dark:bg-gray-700/40 ring-1 ring-gray-100 dark:ring-gray-700 px-4 py-3 text-xs space-y-1">
                         <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Sewa</span><span class="font-semibold text-gray-800 dark:text-gray-100">Rp{{ number_format($sewaModal, 0, ',', '.') }}</span></div>
                         <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Denda{{ $hariTelatModal > 0 ? " ({$hariTelatModal} hari × Rp".number_format($dendaHarianModal, 0, ',', '.').'/hari)' : '' }}</span><span class="font-semibold {{ $dendaModal > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-800 dark:text-gray-100' }}">Rp{{ number_format($dendaModal, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-1.5"><span class="font-bold text-gray-700 dark:text-gray-200">{{ $isPatunganModal ? 'Porsimu (harus pas)' : 'Total (harus pas)' }}</span><span class="font-extrabold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($wajibModal, 0, ',', '.') }}</span></div>
-                        @if ($isPatunganModal)
-                            <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Total tagihan penuh</span><span class="text-gray-500 dark:text-gray-400">Rp{{ number_format($totalTagihan, 0, ',', '.') }}</span></div>
-                        @endif
+                        <div class="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-1.5"><span class="font-bold text-gray-700 dark:text-gray-200">Total (harus pas)</span><span class="font-extrabold text-emerald-600 dark:text-emerald-400">Rp{{ number_format($wajibModal, 0, ',', '.') }}</span></div>
                     </div>
 
                     <div>
@@ -749,39 +639,6 @@ new class extends Component
                             <span wire:loading.remove wire:target="bukti,konfirmasiBayar">Kirim Pembayaran</span>
                             <span wire:loading wire:target="bukti">Mengunggah bukti...</span>
                             <span wire:loading wire:target="konfirmasiBayar">Mengirim...</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    @if ($modalTemanId)
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
-        <button type="button" wire:click="tutupModalTeman" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
-        <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
-            <div class="w-full sm:max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Tambah Teman Sekamar</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Patungan 50/50. Teman harus sudah punya akun anak kos.</p>
-                </div>
-                <form wire:submit="simpanTeman" class="p-5 space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Email Teman</label>
-                        <input type="email" wire:model="emailTeman" placeholder="teman@email.com"
-                            class="w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm">
-                        @error('emailTeman') <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">Tanpa perlu KTP — cukup akun anak kos yang sudah terdaftar.</p>
-                    </div>
-                    <div class="flex flex-col-reverse sm:flex-row gap-2 pt-1">
-                        <button type="button" wire:click="tutupModalTeman"
-                            class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            Batal
-                        </button>
-                        <button type="submit" wire:loading.attr="disabled" wire:target="simpanTeman"
-                            class="flex-1 inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-500 transition disabled:opacity-50">
-                            Tambah
                         </button>
                     </div>
                 </form>

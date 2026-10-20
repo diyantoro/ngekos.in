@@ -1,8 +1,6 @@
 <?php
 
-use App\Enums\AnggotaStatus;
 use App\Enums\KamarStatus;
-use App\Enums\ModeHunian;
 use App\Enums\PembayaranMetode;
 use App\Enums\PembayaranStatus;
 use App\Enums\PenyewaanStatus;
@@ -91,7 +89,6 @@ return new class extends Migration
             $table->enum('status', PenyewaanStatus::values())->default(PenyewaanStatus::Aktif->value);
             $table->timestamp('permintaan_keluar_pada')->nullable();
             $table->string('ktp_path')->nullable();
-            $table->enum('mode_hunian', ModeHunian::values())->default(ModeHunian::Tunggal->value);
             $table->timestamps();
             $table->index('status');
         });

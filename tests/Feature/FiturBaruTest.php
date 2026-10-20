@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Models\Kamar;
+use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\User;
 use App\Services\BuktiStorage;
-use App\Services\PatunganService;
+use App\Services\KwitansiService;
 use App\Services\PembayaranService;
-use App\Services\PenyewaanService;
+use App\Services\SubscriptionService;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\UserSeeder;
@@ -98,7 +98,7 @@ class FiturBaruTest extends TestCase
 
         $this->assertDatabaseHas('chat_pesans', ['anak_kos_id' => $pembayaran->anak_kos_id]);
 
-        $chat = \App\Models\ChatPesan::where('anak_kos_id', $pembayaran->anak_kos_id)
+        $chat = ChatPesan::where('anak_kos_id', $pembayaran->anak_kos_id)
             ->latest('id')->firstOrFail();
         $this->assertStringContainsString('Kwitansi', $chat->isi);
         $this->assertStringContainsString($hasil['pembayaran']->nomor_kwitansi, $chat->isi);
@@ -113,7 +113,7 @@ class FiturBaruTest extends TestCase
         $pembayaran = Pembayaran::where('status', 'menunggu_verifikasi')->firstOrFail();
 
         $pertama = PembayaranService::verifikasi($pembayaran, $pemilik->id)['pembayaran'];
-        $kedua = \App\Services\KwitansiService::untuk($pertama->refresh());
+        $kedua = KwitansiService::untuk($pertama->refresh());
 
         $this->assertSame($pertama->nomor_kwitansi, $kedua->nomor_kwitansi);
         $this->assertSame($pertama->file_kwitansi, $kedua->file_kwitansi);
@@ -134,294 +134,12 @@ class FiturBaruTest extends TestCase
             ->assertHeader('content-type', 'application/pdf');
     }
 
-    // ---------- 3. Patungan 50/50 ----------
-
-    private function sewaPatunganA3(): Penyewaan
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
-
-        // Kamar fresh kapasitas 2 agar tidak konflik dengan seed demo.
-        $kamar = Kamar::create([
-            'properti_id' => $properti->id,
-            'nama' => 'PAT-'.uniqid(),
-            'kapasitas' => 2,
-            'harga_sewa_bulanan' => 1200000,
-            'harga_sewa_harian' => 60000,
-            'status' => 'tersedia',
-        ]);
-
-        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
-
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
-
-        return $sewa->refresh();
-    }
-
-    public function test_tambah_anggota_mengubah_mode_patungan_dan_porsi_50(): void
-    {
-        $sewa = $this->sewaPatunganA3();
-
-        $this->assertSame('patungan', $sewa->mode_hunian);
-
-        $penghuni = collect($sewa->idPenghuniAktif())->sort()->values()->all();
-        $ekspektasi = collect([$sewa->anak_kos_id, $this->user('anak2@ngekos.test')->id])->sort()->values()->all();
-        $this->assertSame($ekspektasi, $penghuni);
-
-        $tagihan = $sewa->tagihans()->firstOrFail();
-        $porsi = PatunganService::porsiTagihan($sewa, $tagihan);
-        $this->assertEquals(((float) $tagihan->jumlah + (float) $tagihan->denda) / 2, $porsi);
-    }
-
-    public function test_tambah_anggota_mengirim_chat_ke_teman_dan_utama(): void
-    {
-        $sewa = $this->sewaPatunganA3();
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-
-        $this->assertDatabaseHas('chat_pesans', [
-            'properti_id' => $sewa->properti_id,
-            'anak_kos_id' => $yoga->id,
-            'pengirim_id' => $rina->id,
-        ]);
-        $this->assertDatabaseHas('chat_pesans', [
-            'properti_id' => $sewa->properti_id,
-            'anak_kos_id' => $rina->id,
-            'pengirim_id' => $yoga->id,
-        ]);
-
-        $chatTeman = \App\Models\ChatPesan::where('anak_kos_id', $yoga->id)
-            ->where('properti_id', $sewa->properti_id)
-            ->latest('id')->firstOrFail();
-        $this->assertStringContainsString('patungan 50/50', $chatTeman->isi);
-        $this->assertNull($chatTeman->dibaca_pada);
-
-        // Notifikasi patungan tercatat di chat; banner dashboard untuk anggota
-        // sudah dihapus (diganti menu Kos Saya), jadi cukup pastikan dashboard OK.
-        $this->actingAs($yoga)->get(route('dashboard.anak-kos'))->assertOk();
-    }
-
-    public function test_bayar_masing_masing_melunasi_tagihan(): void
-    {
-        $sewa = $this->sewaPatunganA3();
-        $pemilik = $this->user('pemilik1@ngekos.test');
-        $tagihan = $sewa->tagihans()->firstOrFail();
-        $porsi = PatunganService::porsiTagihan($sewa, $tagihan);
-
-        foreach ($sewa->idPenghuniAktif() as $uid) {
-            $bayar = Pembayaran::create([
-                'tagihan_id' => $tagihan->id,
-                'anak_kos_id' => $uid,
-                'metode' => 'transfer',
-                'jumlah' => $porsi,
-                'status' => 'menunggu_verifikasi',
-            ]);
-            PembayaranService::verifikasi($bayar, $pemilik->id);
-        }
-
-        $this->assertSame('lunas', $tagihan->refresh()->status);
-    }
-
-    public function test_keluar_ditolak_bila_porsi_belum_lunas(): void
-    {
-        $sewa = $this->sewaPatunganA3();
-        $yoga = $this->user('anak2@ngekos.test');
-
-        // Tagihan bawaan service sudah ada dan belum dibayar siapa pun.
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessageMatches('/Lunasi dulu porsi/');
-
-        PatunganService::keluarkan($sewa, $yoga->id);
-    }
-
-    public function test_keluar_berhasil_setelah_porsi_lunas_kamar_tetap_terisi(): void
-    {
-        $sewa = $this->sewaPatunganA3();
-        $pemilik = $this->user('pemilik1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-
-        // Lunasi SEMUA tagihan belum lunas porsi yoga.
-        foreach (PatunganService::sisaPorsi($sewa, $yoga->id) as $sisa) {
-            $bayar = Pembayaran::create([
-                'tagihan_id' => $sisa['tagihan_id'],
-                'anak_kos_id' => $yoga->id,
-                'metode' => 'transfer',
-                'jumlah' => $sisa['sisa'],
-                'status' => 'menunggu_verifikasi',
-            ]);
-            PembayaranService::verifikasi($bayar, $pemilik->id);
-        }
-
-        $this->assertSame([], PatunganService::sisaPorsi($sewa->refresh(), $yoga->id));
-
-        PatunganService::keluarkan($sewa->refresh(), $yoga->id);
-
-        $sewa->refresh();
-        $this->assertSame('aktif', $sewa->status);
-        $this->assertSame('tunggal', $sewa->mode_hunian);
-        $this->assertSame('terisi', $sewa->kamar->refresh()->status->value);
-        $this->assertSame(
-            'keluar',
-            $sewa->anggotas()->where('user_id', $yoga->id)->firstOrFail()->status
-        );
-
-        // Stayer (rina) dapat chat porsi 100%, leaver (yoga) dapat chat pamit.
-        $rina = $this->user('anak1@ngekos.test');
-        $chatStay = \App\Models\ChatPesan::where('anak_kos_id', $rina->id)
-            ->where('properti_id', $sewa->properti_id)
-            ->latest('id')->firstOrFail();
-        $this->assertStringContainsString('porsimu 100%', $chatStay->isi);
-        $chatLeaver = \App\Models\ChatPesan::where('anak_kos_id', $yoga->id)
-            ->where('properti_id', $sewa->properti_id)
-            ->latest('id')->firstOrFail();
-        $this->assertStringContainsString('sudah keluar', $chatLeaver->isi);
-
-        // Info stay tercatat di chat stayer; banner dashboard sudah dihapus
-        // (diganti menu Kos Saya), jadi cukup pastikan dashboard OK.
-        $this->actingAs($rina)->get(route('dashboard.anak-kos'))->assertOk();
-    }
-
-    public function test_utama_keluar_mempromosikan_anggota_yang_stay(): void
-    {
-        $maya = $this->user('anak3@ngekos.test');
-        $rina = $this->user('anak1@ngekos.test');
-        $pemilik = $this->user('pemilik1@ngekos.test');
-
-        $b2 = Kamar::where('nama', 'B2')->firstOrFail();
-        $b2->update(['kapasitas' => 2]);
-
-        $sewa = $this->sewaBulananAktif($maya, $b2, 1);
-        PatunganService::tambahAnggota($sewa->refresh(), $rina);
-        $sewa->refresh();
-
-        // Keduanya lunasi porsi agar boleh keluar.
-        foreach ([$maya->id, $rina->id] as $uid) {
-            foreach (PatunganService::sisaPorsi($sewa, $uid) as $sisa) {
-                $bayar = Pembayaran::create([
-                    'tagihan_id' => $sisa['tagihan_id'],
-                    'anak_kos_id' => $uid,
-                    'metode' => 'transfer',
-                    'jumlah' => $sisa['sisa'],
-                    'status' => 'menunggu_verifikasi',
-                ]);
-                PembayaranService::verifikasi($bayar, $pemilik->id);
-            }
-        }
-
-        PatunganService::keluarkan($sewa->refresh(), $maya->id);
-
-        $sewa->refresh();
-        $this->assertSame('aktif', $sewa->status);
-        $this->assertSame($rina->id, $sewa->anak_kos_id);
-        $this->assertSame('terisi', $sewa->kamar->refresh()->status->value);
-    }
-
-    public function test_tambah_anggota_ditolak_untuk_kamar_kapasitas_1(): void
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-        $a1 = Kamar::where('nama', 'A1')->firstOrFail();
-
-        $sewa = $this->sewaBulananAktif($rina, $a1, 1);
-
-        $this->expectException(\DomainException::class);
-        PatunganService::tambahAnggota($sewa, $yoga);
-    }
-
-    public function test_tambah_anggota_berhasil_tanpa_ktp(): void
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
-        $kamar = Kamar::create([
-            'properti_id' => $properti->id,
-            'nama' => 'DP-'.uniqid(),
-            'kapasitas' => 2,
-            'harga_sewa_bulanan' => 1200000,
-            'harga_sewa_harian' => 60000,
-            'status' => 'tersedia',
-        ]);
-        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
-
-        // Tanpa KTP: tambah teman langsung berhasil.
-        $anggota = PatunganService::tambahAnggota($sewa->refresh(), $yoga);
-
-        $this->assertSame('aktif', $anggota->status);
-        $this->assertNull($anggota->ktp_path);
-        $this->assertSame('patungan', $sewa->refresh()->mode_hunian);
-    }
-
-    public function test_volt_tambah_teman_berhasil_tanpa_ktp(): void
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
-        $kamar = Kamar::create([
-            'properti_id' => $properti->id,
-            'nama' => 'VT-'.uniqid(),
-            'kapasitas' => 2,
-            'harga_sewa_bulanan' => 1200000,
-            'harga_sewa_harian' => 60000,
-            'status' => 'tersedia',
-        ]);
-        $sewa = $this->sewaBulananAktif($rina, $kamar, 1);
-
-        Volt::actingAs($rina)->test('pages.dashboard.anak-kos')
-            ->call('bukaModalTeman', $sewa->id)
-            ->set('emailTeman', 'anak2@ngekos.test')
-            ->call('simpanTeman')
-            ->assertHasNoErrors()
-            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'berhasil ditambahkan'));
-
-        $this->assertSame('patungan', $sewa->refresh()->mode_hunian);
-    }
-
-    public function test_api_tambah_anggota_dan_keluar_partial(): void
-    {
-        Storage::fake('public');
-        Storage::fake('private');
-
-        $sewa = $this->sewaPatunganA3();
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-
-        // Tanpa KTP: tambah teman langsung berhasil (KTP tidak lagi diminta).
-        Sanctum::actingAs($rina, ['*']);
-
-        $kamarBaru = Kamar::create([
-            'properti_id' => $sewa->properti_id,
-            'nama' => 'PT-'.uniqid(),
-            'kapasitas' => 2,
-            'harga_sewa_bulanan' => 1200000,
-            'status' => 'tersedia',
-        ]);
-        $sewaBaru = $this->sewaBulananAktif($rina, $kamarBaru, 1);
-
-        $this->postJson("/api/penyewaan/{$sewaBaru->id}/anggota", [
-            'email' => 'anak3@ngekos.test',
-        ])->assertCreated();
-
-        // Kamar penuh (2/2): tambah orang yang sama lagi tetap ditolak.
-        $this->postJson("/api/penyewaan/{$sewaBaru->id}/anggota", [
-            'email' => 'anak3@ngekos.test',
-        ])->assertStatus(422);
-
-        // Yoga keluar partial via API (porsinya belum lunas -> 422).
-        Sanctum::actingAs($yoga, ['*']);
-
-        $res = $this->postJson("/api/penyewaan/{$sewa->id}/anggota/keluar")
-            ->assertStatus(422)
-            ->json();
-
-        $this->assertStringContainsString('Lunasi dulu porsi', $res['message']);
-    }
-
     // ---------- 4. Grafik API ----------
 
     public function test_api_grafik_mendukung_filter_periode_dan_properti(): void
     {
         $pemilik = $this->user('pemilik1@ngekos.test');
-        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+        SubscriptionService::mulaiTrialFree($pemilik);
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
 
         Sanctum::actingAs($pemilik, ['*']);
@@ -472,7 +190,7 @@ class FiturBaruTest extends TestCase
     public function test_halaman_grafik_web_bisa_diakses_pemilik_dan_ada_di_sidebar(): void
     {
         $pemilik = $this->user('pemilik1@ngekos.test');
-        \App\Services\SubscriptionService::mulaiTrialFree($pemilik);
+        SubscriptionService::mulaiTrialFree($pemilik);
 
         $this->actingAs($pemilik)
             ->get(route('pemilik.grafik'))
@@ -501,7 +219,7 @@ class FiturBaruTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_volt_tambah_teman_tanpa_ktp_dan_dp_terdeteksi(): void
+    public function test_dashboard_anak_kos_tanpa_ktp_tetap_terbuka(): void
     {
         $anak = $this->user('anak1@ngekos.test');
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('status', 'aktif')->firstOrFail();

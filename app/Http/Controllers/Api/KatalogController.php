@@ -33,7 +33,14 @@ class KatalogController extends Controller
             ->where('status', 'aktif');
 
         if ($request->filled('kota')) {
-            $query->where('kota', 'like', "%{$request->kota}%");
+            // Cocokkan baik bentuk kanonik maupun teks mentah (mobile bisa
+            // mengirim varian bebas: "Kab. Bandung", "kota bandung", ...).
+            $kota = trim((string) $request->kota);
+            $kanonik = \App\Support\DaftarKota::kanonik($kota) ?? $kota;
+            $query->where(function ($q) use ($kota, $kanonik) {
+                $q->where('kota_kanonik', $kanonik)
+                    ->orWhere('kota', 'like', "%{$kota}%");
+            });
         }
 
         if ($request->filled('search')) {
@@ -41,7 +48,7 @@ class KatalogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('alamat', 'like', "%{$search}%")
-                    ->orWhere('kota', 'like', "%{$search}%");
+                    ->orWhere('kota_kanonik', 'like', "%{$search}%");
             });
         }
 

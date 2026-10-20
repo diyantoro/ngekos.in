@@ -89,9 +89,13 @@ class BookingDpVerifikasiTest extends TestCase
         $hasil = app(PenyewaanService::class)->setujuiBooking($sewa->refresh(), $pemilik->id);
 
         $this->assertTrue($hasil['tagihan_lunas']);
-        $this->assertSame('aktif', $sewa->refresh()->status);
+        $this->assertSame('dibooking', $sewa->refresh()->status);
         $this->assertSame('lunas', $sewa->tagihans()->where('jenis', 'dp')->firstOrFail()->status);
         $this->assertSame('terisi', $kamar->refresh()->status->value);
+
+        // Pemilik menandai sudah masuk -> sewa aktif, checkout ketat berlaku.
+        \App\Services\CheckoutService::tandaiMasuk($sewa->refresh(), $pemilik->id);
+        $this->assertSame('aktif', $sewa->refresh()->status);
     }
 
     public function test_tolak_booking_membatalkan_dan_melepas_kamar(): void
@@ -131,7 +135,7 @@ class BookingDpVerifikasiTest extends TestCase
         $hasil = PembayaranService::verifikasi($bayar, $pemilik->id, 'diverifikasi');
 
         $this->assertTrue($hasil['booking_disetujui']);
-        $this->assertSame('aktif', $sewa->refresh()->status);
+        $this->assertSame('dibooking', $sewa->refresh()->status);
     }
 
     public function test_bayar_tagihan_pending_ditolak_api(): void
@@ -171,6 +175,25 @@ class BookingDpVerifikasiTest extends TestCase
             'status' => 'diverifikasi',
         ])->assertOk()
             ->assertJsonPath('booking_disetujui', true);
+
+        $this->assertSame('dibooking', $sewa->refresh()->status);
+
+        // Sewa baru 'aktif' setelah sewa pertama dibayar & terverifikasi.
+        $sisa = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
+        $buktiSisa = \App\Services\BuktiStorage::simpan(
+            \Illuminate\Http\Testing\File::fake()->image('bukti-sisa.png'),
+            'bukti-pembayaran'
+        );
+        $bayarSisa = Pembayaran::create([
+            'tagihan_id' => $sisa->id,
+            'anak_kos_id' => $anak->id,
+            'metode' => 'transfer',
+            'jumlah' => $sisa->jumlah,
+            'bukti' => $buktiSisa,
+            'status' => 'menunggu_verifikasi',
+        ]);
+
+        PembayaranService::verifikasi($bayarSisa, $pemilik->id, 'diverifikasi');
 
         $this->assertSame('aktif', $sewa->refresh()->status);
     }

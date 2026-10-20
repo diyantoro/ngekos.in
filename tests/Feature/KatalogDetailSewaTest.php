@@ -56,7 +56,7 @@ class KatalogDetailSewaTest extends TestCase
         $component->set('buktiDp', UploadedFile::fake()->image('dp.jpg'))
             ->call('konfirmasiSewa')
             ->assertSet('modalKamarId', null)
-            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'BELUM otomatis tersewa'));
+            ->assertSet('pesan', fn ($pesan) => str_contains($pesan, 'belum otomatis tersewa'));
 
         $kamar->refresh();
         $this->assertSame('terisi', $kamar->status->value);
@@ -305,9 +305,9 @@ class KatalogDetailSewaTest extends TestCase
             ->call('bayarTagihan', $tagihan->id)
             ->assertSet('galat', fn ($galat) => str_contains($galat, 'belum diverifikasi'));
 
-        // Setelah booking disetujui, sewa aktif dan DP lunas.
+        // Setelah booking disetujui: booking fiks (dibooking) dan DP lunas.
         app(PenyewaanService::class)->setujuiBooking($penyewaan->refresh(), $properti->pemilik_id);
-        $this->assertSame('aktif', $penyewaan->refresh()->status);
+        $this->assertSame('dibooking', $penyewaan->refresh()->status);
         $this->assertSame('lunas', $tagihan->refresh()->status);
 
         // Simulasi data lama (sewa aktif dengan DP belum dibayar):

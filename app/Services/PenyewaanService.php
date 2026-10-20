@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\KamarStatus;
 use App\Models\ChatPesan;
 use App\Models\Kamar;
+use App\Models\Pembayaran;
 use App\Models\Pengaturan;
 use App\Models\Penyewaan;
+use App\Models\Tagihan;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Carbon;
@@ -18,8 +20,12 @@ use Illuminate\Support\Facades\DB;
  * Sewa BULANAN memakai booking terverifikasi: anak kos wajib transfer DP
  * Rp100.000 ke rekening pemilik dan melampirkan bukti transfer. Kamar
  * ditahan (terisi) tapi penyewaan berstatus menunggu_verifikasi — BELUM
- * otomatis tersewa. Sewa baru aktif setelah pemilik/admin memverifikasi
- * bukti DP. Bila ditolak, booking dibatalkan dan kamar dilepas lagi.
+ * otomatis tersewa. Bukti DP diverifikasi => status 'dibooking' (booking
+ * fiks, belum masuk). Sewa jadi 'aktif' saat sewa pertama dibayar
+ * (PembayaranService) atau pemilik menandai "sudah masuk". Di fase
+ * 'dibooking' sewa bisa dibatalkan: DP hangus, tagihan lain batal, kamar
+ * langsung tersedia (lihat CheckoutService). Bila bukti DP ditolak,
+ * booking dibatalkan dan kamar dilepas lagi.
  *
  * Privasi: booking TIDAK meminta foto KTP (dokumen identitas terlalu sensitif
  * untuk dibagikan ke pemilik). Pengaman booking adalah Uang Muka (DP),
@@ -55,7 +61,7 @@ class PenyewaanService
     /**
      * True bila tagihan adalah tagihan DP (kolom jenis, fallback periode lama).
      */
-    public static function isDp(\App\Models\Tagihan $tagihan): bool
+    public static function isDp(Tagihan $tagihan): bool
     {
         if (($tagihan->getAttribute('jenis') ?? 'sewa') === 'dp') {
             return true;
@@ -63,6 +69,7 @@ class PenyewaanService
 
         return str_starts_with((string) $tagihan->periode, 'DP - ');
     }
+
     /**
      * @param  string|null  $buktiDpPath  Path bukti transfer DP (wajib untuk bulanan).
      */
@@ -110,6 +117,16 @@ class PenyewaanService
                 throw new DomainException('Kamar ini sudah terisi dan tidak dapat dipesan.');
             }
 
+            // Satu kamar hanya boleh punya satu penyewaan berjalan. Data lama
+            // hasil pemecahan patungan bisa menyisakan >1 penyewaan aktif.
+            $sudahAdaPenyewa = Penyewaan::where('kamar_id', $kamarTerkunci->id)
+                ->whereIn('status', CheckoutService::STATUS_MEMEGANG_KAMAR)
+                ->exists();
+
+            if ($sudahAdaPenyewa) {
+                throw new DomainException('Kamar ini masih dihuni penyewa lain dan belum bisa dipesan.');
+            }
+
             if ($isHarian && (! $kamarTerkunci->harga_sewa_harian || (float) $kamarTerkunci->harga_sewa_harian <= 0)) {
                 throw new DomainException('Kamar ini belum menetapkan harga sewa harian.');
             }
@@ -154,7 +171,6 @@ class PenyewaanService
                 // Bulanan = menunggu verifikasi bukti DP (belum otomatis tersewa).
                 'status' => (! $isHarian && ! $isMingguan) ? 'menunggu_verifikasi' : 'aktif',
                 'ktp_path' => null,
-                'mode_hunian' => 'tunggal',
             ]);
 
             $tanggalLabel = $tanggalMasukCarbon->locale('id')->translatedFormat('d F Y');
@@ -253,7 +269,7 @@ class PenyewaanService
             // Bukti DP langsung tercatat sebagai pembayaran menunggu verifikasi.
             // Sewa BELUM aktif sampai pemilik/admin memverifikasinya.
             if ($tagihanDp) {
-                \App\Models\Pembayaran::create([
+                Pembayaran::create([
                     'tagihan_id' => $tagihanDp->id,
                     'anak_kos_id' => $user->id,
                     'metode' => 'transfer',
@@ -286,7 +302,7 @@ class PenyewaanService
      * Pemilik/admin MENYETUJUI booking: verifikasi pembayaran DP lewat pintu
      * resmi (PembayaranService) — hook di sana yang mengaktifkan sewanya.
      *
-     * @return array{pembayaran: \App\Models\Pembayaran, tagihan_lunas: bool, kwitansi_url: ?string}
+     * @return array{pembayaran: Pembayaran, tagihan_lunas: bool, kwitansi_url: ?string}
      */
     public function setujuiBooking(Penyewaan $penyewaan, int $verifikatorId, bool $verifikatorAdalahPengelola = false): array
     {
@@ -307,7 +323,7 @@ class PenyewaanService
         }
 
         $bayar = $dp->pembayarans->firstWhere('status', 'menunggu_verifikasi')
-            ?? \App\Models\Pembayaran::where('tagihan_id', $dp->id)
+            ?? Pembayaran::where('tagihan_id', $dp->id)
                 ->where('status', 'menunggu_verifikasi')
                 ->first();
 
@@ -339,7 +355,7 @@ class PenyewaanService
 
         $bayar = $dp
             ? ($dp->pembayarans->firstWhere('status', 'menunggu_verifikasi')
-                ?? \App\Models\Pembayaran::where('tagihan_id', $dp->id)
+                ?? Pembayaran::where('tagihan_id', $dp->id)
                     ->where('status', 'menunggu_verifikasi')
                     ->first())
             : null;

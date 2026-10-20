@@ -55,9 +55,35 @@ new #[Layout('layouts.publik')] class extends Component
     public function with(): array
     {
         $kotaFilter = \App\Support\DaftarKota::kanonik(trim((string) $this->kota)) ?? trim((string) $this->kota);
+
+        // Filter bersama (dipakai query utama & query marker ringan agar
+        // tidak dua query berat menjalankan subquery yang sama).
+        $terapkanFilter = function ($query) use ($kotaFilter): void {
+            if ($this->cari) {
+                $query->where(fn ($q) => $q
+                    ->where('nama', 'like', "%{$this->cari}%")
+                    ->orWhere('kota_kanonik', 'like', "%{$this->cari}%")
+                    ->orWhere('alamat', 'like', "%{$this->cari}%"));
+            }
+
+            // Kota kanonik: satu kolom yang sudah dinormalisasi — varian
+            // "Kota X"/"Kab. X"/salah ketik tidak lagi bocor dari filter.
+            if ($kotaFilter) {
+                $query->where('kota_kanonik', $kotaFilter);
+            }
+
+            if ($this->hargaMax) {
+                $query->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '<=', $this->hargaMax));
+            }
+
+            if ($this->kapasitas > 1) {
+                $query->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->where('kapasitas', '>=', $this->kapasitas));
+            }
+        };
+
         $query = Properti::query()
             ->where('status', 'aktif')
-            ->select(['id', 'nama', 'kota', 'alamat', 'fasilitas', 'foto', 'tipe_hunian'])
+            ->select(['id', 'nama', 'kota', 'kota_kanonik', 'alamat', 'fasilitas', 'foto', 'tipe_hunian'])
             ->with(['fotos:id,properti_id,path,urutan'])
             ->withCount(['kamars as total_kamar', 'kamars as kamar_tersedia' => fn ($q) => $q->where('status', 'tersedia'), 'ulasans as total_ulasan'])
             ->withAvg('ulasans as rating_ulasan', 'rating')
@@ -66,30 +92,20 @@ new #[Layout('layouts.publik')] class extends Component
             ->withMin(['kamars as harian_termurah' => fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_harian', '>', 0)], 'harga_sewa_harian')
             ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)]);
 
-        if ($this->cari) {
-            $query->where(fn ($q) => $q
-                ->where('nama', 'like', "%{$this->cari}%")
-                ->orWhere('kota', 'like', "%{$this->cari}%")
-                ->orWhere('alamat', 'like', "%{$this->cari}%"));
-        }
+        $terapkanFilter($query);
 
-        if ($this->kota) {
-            $varian = array_unique([$kotaFilter, 'Kota '.$kotaFilter, 'Kabupaten '.$kotaFilter, 'Kab. '.$kotaFilter]);
-            $query->whereIn('kota', $varian);
-        }
-
-        if ($this->hargaMax) {
-            $query->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->where('harga_sewa_bulanan', '<=', $this->hargaMax));
-        }
-
-        if ($this->kapasitas > 1) {
-            $query->whereHas('kamars', fn ($q) => $q->where('status', 'tersedia')->where('kapasitas', '>=', $this->kapasitas));
-        }
-
+        // Marker peta: query RINGAN (tanpa subquery harga/ulasan) dengan filter
+        // yang sama — bukan clone query utama yang ~2x lebih berat.
         $kunciMarker = 'katalog.markers.'.md5(json_encode([$this->cari, $kotaFilter, $this->hargaMax, $this->kapasitas]));
-        $markers = cache()->remember($kunciMarker, 300, function () use ($query) {
-            return (clone $query)->reorder()->limit(300)
-                ->get(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude'])
+        $markers = cache()->remember($kunciMarker, 300, function () use ($terapkanFilter) {
+            $ringan = Properti::query()
+                ->where('status', 'aktif')
+                ->select(['id', 'nama', 'kota', 'alamat', 'latitude', 'longitude']);
+
+            $terapkanFilter($ringan);
+
+            return $ringan->limit(300)
+                ->get()
                 ->map(function ($p) {
                     $titik = Koordinat::titik($p->kota, $p->latitude, $p->longitude);
 
@@ -110,12 +126,12 @@ new #[Layout('layouts.publik')] class extends Component
         return [
             'propertis' => $query->orderBy('nama')->paginate(12),
             'daftarKota' => cache()->remember('katalog.daftarKota', 3600, fn () => Properti::where('status', 'aktif')
-                    ->whereNotNull('kota')
-                    ->where('kota', '!=', '')
+                    ->whereNotNull('kota_kanonik')
+                    ->where('kota_kanonik', '!=', '')
                     ->distinct()
-                    ->orderBy('kota')
-                    ->pluck('kota')
-                    ->map(fn ($k) => \App\Support\DaftarKota::kanonik(trim((string) $k)) ?? trim((string) $k))
+                    ->orderBy('kota_kanonik')
+                    ->pluck('kota_kanonik')
+                    ->map(fn ($k) => trim((string) $k))
                     ->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all()),
             'markers' => $markers,
             'kotaFilter' => $kotaFilter,
@@ -125,8 +141,10 @@ new #[Layout('layouts.publik')] class extends Component
 }; ?>
 
 <div x-data="{ tampilkanPeta: false }">
-    <!-- Search + Filter: satu baris kompak -->
-    <section class="bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800 sticky top-14 z-30">
+    <!-- Search + Filter: bagian dari halaman (BUKAN sticky/mengambang).
+         Ikut menggulir bersama konten supaya tidak pernah menutupi
+         daftar kos di bawahnya. -->
+    <section class="bg-white dark:bg-gray-900 border-b border-stone-200 dark:border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-[1fr_170px_150px_140px_auto] gap-2 items-center">
                 <div class="col-span-2 sm:col-span-3 lg:col-span-1 flex items-center gap-2 bg-stone-100 dark:bg-gray-800 rounded-lg px-3 py-2 transition focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-brand-500/30">

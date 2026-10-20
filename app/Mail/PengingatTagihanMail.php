@@ -24,8 +24,6 @@ class PengingatTagihanMail extends Mailable implements ShouldQueue
         public array $ringkasan,
         public string $namaKos,
         public string $namaKamar,
-        public bool $isPatungan,
-        public ?float $porsiSaya = null,
     ) {}
 
     public function envelope(): Envelope
@@ -45,8 +43,6 @@ class PengingatTagihanMail extends Mailable implements ShouldQueue
                 'ringkasan' => $this->ringkasan,
                 'namaKos' => $this->namaKos,
                 'namaKamar' => $this->namaKamar,
-                'isPatungan' => $this->isPatungan,
-                'porsiSaya' => $this->porsiSaya,
             ],
         );
     }

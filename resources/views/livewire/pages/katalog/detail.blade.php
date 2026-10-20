@@ -336,7 +336,7 @@ new #[Layout('layouts.publik')] class extends Component
                 .Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
                 .' sampai '.$berakhir
                 .'). Bukti DP Rp'.number_format($dp, 0, ',', '.')
-                .' sudah dilampirkan — kamar BELUM otomatis tersewa. Sewa aktif setelah pemilik/admin memverifikasi. Pantau di menu Kos Saya.';
+                .' sudah dilampirkan — kamar belum otomatis tersewa. Setelah bukti DP diverifikasi, booking jadi fiks (Dibooking) dan sewa aktif saat kamu masuk. Selama belum masuk, batal sewa bisa diajukan (DP hangus). Pantau di menu Kos Saya.';
         } else {
             $pesanBaru = 'Kamar '.$kamar->nama.' berhasil dipesan selama '.$durasi.' '.$satuan.'. '
                 .'Rencana masuk: '.Carbon::parse($this->tanggalMasuk)->locale('id')->translatedFormat('d F Y')
@@ -994,7 +994,7 @@ new #[Layout('layouts.publik')] class extends Component
                                 Tanpa KTP — privasimu aman. Sewa bulanan berlaku 1 bulan: transfer <span class="font-bold">DP Rp100.000</span> ke rekening pemilik lalu <span class="font-bold">lampirkan bukti transfer</span> di langkah Review.
                                 Sisa bulan pertama <span class="font-bold">Rp{{ number_format(max(0, (float) ($kamarModal?->harga_sewa_bulanan ?? 0) - 100000), 0, ',', '.') }}</span>
                                 (total bulan pertama tetap Rp{{ number_format($kamarModal?->harga_sewa_bulanan ?? 0, 0, ',', '.') }}).
-                                Kamar <span class="font-bold">belum otomatis tersewa</span> sebelum pemilik/admin memverifikasi bukti DP-mu.
+                                Kamar <span class="font-bold">belum otomatis tersewa</span> sebelum pemilik/admin memverifikasi bukti DP-mu. Setelah terverifikasi, booking fiks (Dibooking) dan sewa aktif saat kamu masuk.
                                 H-3 sebelum berakhir kamu ditanya mau lanjut atau tidak — kalau tidak, kamar otomatis kosong lagi.
                             @else
                                 Tanpa KTP — privasimu aman. Cukup bayar <span class="font-bold">Uang Muka (DP) Rp{{ number_format($kamarModal?->hargaUntuk($periodeSewa) ?? 0, 0, ',', '.') }}</span> (tagihan pertama) setelah booking agar kamar fiks untukmu.
@@ -1103,7 +1103,7 @@ new #[Layout('layouts.publik')] class extends Component
 
                         <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                             @if ($periodeSewa === 'bulanan')
-                                Dengan menekan tombol di bawah, pengajuan booking terkirim — kamar <span class="font-bold">belum otomatis tersewa</span>. Sewa aktif setelah pemilik/admin memverifikasi bukti DP-mu. Pantau status di menu Kos Saya.
+                                Dengan menekan tombol di bawah, pengajuan booking terkirim — kamar <span class="font-bold">belum otomatis tersewa</span>. Setelah bukti DP diverifikasi booking jadi fiks (Dibooking); sewa aktif saat kamu masuk. Selama belum masuk, sewa bisa diajukan batal (DP hangus). Pantau status di menu Kos Saya.
                             @else
                                 Dengan menekan tombol di bawah, kamar langsung terkunci untukmu — tanpa upload KTP. Kamu akan melihat tagihan sewa di dashboard; bayar Uang Muka (DP) agar booking fiks.
                             @endif

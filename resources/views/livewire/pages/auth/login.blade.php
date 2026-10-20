@@ -86,7 +86,7 @@ new #[Layout('layouts.guest')] class extends Component
         $perPeran = [
             'pemilik' => ['/pemilik', '/langganan', '/dashboard/pemilik'],
             'anak_kos' => ['/anak-kos', '/dashboard/anak-kos'],
-            'admin' => ['/pemilik', '/langganan', '/dashboard/admin'],
+            'admin' => ['/pemilik', '/dashboard/admin'],
             'super_admin' => ['/pemilik', '/pengguna', '/landing', '/langganan', '/dashboard/super-admin', '/dashboard/admin'],
         ];
 

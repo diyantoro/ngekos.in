@@ -14,9 +14,7 @@ use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\TagihanPengingat;
 use App\Models\User;
-use App\Services\PatunganService;
 use App\Services\PembayaranService;
-use App\Services\PenyewaanService;
 use App\Services\TagihanReminderService;
 use App\Services\TagihanService;
 use Database\Seeders\DomainDataSeeder;
@@ -152,33 +150,6 @@ class TagihanDendaReminderTest extends TestCase
             'tagihan_id' => $tagihan->id,
             'jumlah' => 915000,
         ]);
-    }
-
-    public function test_api_bayar_patungan_mengacu_sisa_porsi(): void
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-        $sewa = $this->sewaAktif($rina);
-        $sewa->kamar->update(['kapasitas' => 2]);
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
-
-        $tagihan = $sewa->tagihans()->where('jenis', 'sewa')->firstOrFail();
-        $tagihan->update(['jatuh_tempo' => today()->subDays(2)->toDateString(), 'denda' => 0]);
-
-        Sanctum::actingAs($yoga, ['*']);
-
-        // Porsi patungan dari sisa 900.000 + denda 2 hari (10.000) = 455.000.
-        $this->postJson('/api/dashboard/anak-kos/bayar', [
-            'tagihan_id' => $tagihan->id,
-            'metode' => 'cash',
-            'jumlah' => 450000,
-        ])->assertStatus(422);
-
-        $this->postJson('/api/dashboard/anak-kos/bayar', [
-            'tagihan_id' => $tagihan->id,
-            'metode' => 'cash',
-            'jumlah' => 455000,
-        ])->assertCreated();
     }
 
     public function test_verifikasi_melunasi_dengan_total_berjalan(): void

@@ -4,14 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Kamar;
 use App\Models\Pembayaran;
-use App\Models\Pengaturan;
 use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
 use App\Services\CheckoutService;
-use App\Services\PatunganService;
-use App\Services\PenyewaanService;
 use App\Services\TagihanService;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -199,7 +196,7 @@ class CheckoutBatalTagihanTest extends TestCase
         CheckoutService::setujuiCheckout($sewa->refresh(), $this->user('pemilik1@ngekos.test')->id);
 
         $batal = $sewa->tagihans()->where('status', 'batal')->firstOrFail();
-        $this->assertSame(0.0, TagihanService::wajibBayar($batal, $anak->id));
+        $this->assertSame(0.0, TagihanService::wajibBayar($batal));
         $this->assertSame(0.0, TagihanService::sinkronDenda($batal->refresh()));
     }
 
@@ -237,33 +234,5 @@ class CheckoutBatalTagihanTest extends TestCase
             ->assertSee('Penjelasan tagihan check-out')
             ->assertSee('dibatalkan')
             ->assertSee('Tagihan sampai bulan ini sudah lunas');
-    }
-
-    public function test_patungan_partial_tidak_membatalkan_masa_depan(): void
-    {
-        $rina = $this->user('anak1@ngekos.test');
-        $yoga = $this->user('anak2@ngekos.test');
-        $sewa = $this->sewaBulan($rina, 3);
-        PatunganService::tambahAnggota($sewa->refresh(), $yoga);
-
-        // Lunasi porsi yoga sampai bulan berjalan agar boleh keluar partial.
-        foreach ($sewa->refresh()->tagihans()->whereNotIn('status', ['lunas', 'batal'])->get() as $t) {
-            if ($t->jatuh_tempo && $t->jatuh_tempo->gt(today()->copy()->endOfMonth())) {
-                continue;
-            }
-            $porsi = PatunganService::porsiTagihan($sewa->refresh(), $t);
-            Pembayaran::create([
-                'tagihan_id' => $t->id,
-                'anak_kos_id' => $yoga->id,
-                'metode' => 'cash',
-                'jumlah' => $porsi,
-                'status' => 'diverifikasi',
-            ]);
-        }
-
-        PatunganService::keluarkan($sewa->refresh(), $yoga->id);
-
-        $this->assertSame('aktif', $sewa->refresh()->status);
-        $this->assertSame(0, $sewa->tagihans()->where('status', 'batal')->count());
     }
 }

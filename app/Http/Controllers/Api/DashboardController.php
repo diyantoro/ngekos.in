@@ -16,7 +16,6 @@ use App\Models\User;
 use App\Services\KtpStorage;
 use App\Services\KwitansiService;
 use App\Services\CheckoutService;
-use App\Services\PatunganService;
 use App\Services\PembayaranService;
 use App\Services\PemilikRekapService;
 use App\Services\PerpanjanganService;
@@ -35,15 +34,13 @@ class DashboardController extends Controller
     {
         $id = $request->user()->id;
 
-        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id)
-            ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $id)->where('status', 'aktif'));
+        $scopeSewa = fn ($q) => $q->where('anak_kos_id', $id);
 
         $penyewaanAktif = Penyewaan::where($scopeSewa)->where('status', 'aktif')->count();
 
         $kandidatBelum = Tagihan::whereHas('penyewaan', $scopeSewa)
             ->whereNotIn('status', ['lunas', 'batal'])
             ->with([
-                'penyewaan.anggotas',
                 // TagihanService::dendaBerjalan() memanggil loadMissing
                 // 'penyewaan.properti' untuk setiap baris. Tanpa eager load ini
                 // setiap tagihan menembak 1 query SELECT propertis (sampai 200).
@@ -55,8 +52,7 @@ class DashboardController extends Controller
             ->get()
             ->each(fn ($t) => ! in_array($t->status, ['lunas', 'batal'], true) ? $t->setAttribute('denda', TagihanService::dendaBerjalan($t)) : null);
 
-        // Hitung hanya yang porsi user-nya masih > 0 (patungan yang sudah lunas porsi tidak dihitung).
-        $tagihanBelumBayar = $kandidatBelum->filter(fn ($t) => TagihanService::wajibBayar($t, $id) > 0)->count();
+        $tagihanBelumBayar = $kandidatBelum->count();
 
         $totalDibayar = (int) Pembayaran::where('anak_kos_id', $id)
             ->where('status', 'diverifikasi')
@@ -72,14 +68,15 @@ class DashboardController extends Controller
             ->select(['id', 'properti_id'])
             ->first()?->properti?->kota;
 
+        // Booking fiks (dibooking, belum masuk) juga memakai properti:
+        // jangan direkomendasikan lagi ke penyewa yang sama.
         $propertiTerpakai = Penyewaan::where($scopeSewa)
-            ->where('status', 'aktif')
+            ->whereIn('status', ['aktif', 'dibooking'])
             ->pluck('properti_id');
 
         $idFavorit = $request->user()->favorits()->pluck('propertis.id');
 
-        $tagihanBerikutnya = $kandidatBelum->first(fn ($t) => TagihanService::wajibBayar($t, $id) > 0)
-            ?? $kandidatBelum->first();
+        $tagihanBerikutnya = $kandidatBelum->first();
         if ($tagihanBerikutnya) {
             $tagihanBerikutnya->loadMissing('penyewaan.kamar.properti');
         }
@@ -107,7 +104,6 @@ class DashboardController extends Controller
             'pesan_belum_dibaca' => $pesanBelumDibaca,
             'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya, $id) {
                 TagihanService::sinkronDenda($tagihanBerikutnya);
-                $rincian = TagihanService::rincian($tagihanBerikutnya);
 
                 return [
                     'id' => $tagihanBerikutnya->id,
@@ -120,9 +116,7 @@ class DashboardController extends Controller
                     'jatuh_tempo' => $tagihanBerikutnya->jatuh_tempo?->toDateString(),
                     'properti' => $tagihanBerikutnya->penyewaan?->kamar?->properti?->nama,
                     'kamar' => $tagihanBerikutnya->penyewaan?->kamar?->nama,
-                    'mode_hunian' => $tagihanBerikutnya->penyewaan?->mode_hunian ?? 'tunggal',
-                    'porsi_saya' => $rincian['porsi'],
-                    'wajib_bayar_saya' => TagihanService::wajibBayar($tagihanBerikutnya, $id),
+                    'wajib_bayar_saya' => TagihanService::wajibBayar($tagihanBerikutnya),
                 ];
             })() : null,
             'rekomendasi' => $rekomendasi->values()->map(fn (Properti $p) => [
@@ -142,9 +136,8 @@ class DashboardController extends Controller
     public function anakKosPenyewaan(Request $request): JsonResponse
     {
         $uid = $request->user()->id;
-        $sewaans = Penyewaan::with(['kamar:id,nama,harga_sewa_bulanan', 'properti:id,nama,foto', 'anggotas.user:id,nama'])
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+        $sewaans = Penyewaan::with(['kamar:id,nama,harga_sewa_bulanan', 'properti:id,nama,foto'])
+            ->where('anak_kos_id', $uid)
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn ($s) => [
@@ -160,17 +153,9 @@ class DashboardController extends Controller
                 'dp_nominal' => \App\Services\PenyewaanService::DP_NOMINAL,
                 'status' => $s->status,
                 'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
-                'mode_hunian' => $s->mode_hunian ?? 'tunggal',
-                'is_utama' => $s->anak_kos_id === $uid,
                 'ktp_path' => null,
                 // KTP tidak lagi diminta saat booking (privasi) — pengaman booking adalah DP.
                 'butuh_ktp' => false,
-                'anggotas' => $s->anggotas->map(fn ($a) => [
-                    'user_id' => $a->user_id,
-                    'nama' => $a->user?->nama,
-                    'porsi_persen' => (int) $a->porsi_persen,
-                    'status' => $a->status,
-                ])->values(),
             ]);
 
         return response()->json($sewaans);
@@ -181,30 +166,20 @@ class DashboardController extends Controller
         $uid = $request->user()->id;
         $tagihans = Tagihan::select(['id', 'penyewaan_id', 'periode', 'jumlah', 'jenis', 'denda', 'jatuh_tempo', 'status', 'created_at'])
             ->with([
-                'penyewaan:id,properti_id,kamar_id,mode_hunian',
+                'penyewaan:id,properti_id,kamar_id',
                 'penyewaan.kamar:id,nama',
                 'penyewaan.properti:id,nama,denda_per_hari',
-                'penyewaan.anggotas:id,penyewaan_id,user_id,status',
                 'pembayarans:id,tagihan_id,anak_kos_id,jumlah,status',
             ])
-            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
+            ->whereHas('penyewaan', fn ($q) => $q->where('anak_kos_id', $uid))
             ->where('status', '!=', 'batal')
             ->orderBy('created_at', 'desc')
             ->limit(200)
             ->get()
             ->map(function ($t) use ($uid) {
-                $porsi = null;
-                if ($t->penyewaan) {
+                if (! in_array($t->status, ['lunas', 'batal'], true)) {
                     // Read-only: hitung denda berjalan in-memory tanpa UPDATE per baris.
-                    if (! in_array($t->status, ['lunas', 'batal'], true)) {
-                        $t->setAttribute('denda', TagihanService::dendaBerjalan($t));
-                    }
-                    $porsi = PatunganService::porsiTagihan($t->penyewaan, $t);
-                    $sudah = (float) $t->pembayarans
-                        ->where('status', 'diverifikasi')
-                        ->where('anak_kos_id', $uid)
-                        ->sum('jumlah');
+                    $t->setAttribute('denda', TagihanService::dendaBerjalan($t));
                 }
 
                 return [
@@ -220,10 +195,7 @@ class DashboardController extends Controller
                     'total' => (float) $t->jumlah + (float) $t->denda,
                     'jatuh_tempo' => $t->jatuh_tempo,
                     'status' => $t->status,
-                    'mode_hunian' => $t->penyewaan?->mode_hunian ?? 'tunggal',
-                    'porsi_saya' => $porsi,
-                    'sudah_bayar_saya' => $sudah ?? 0,
-                    'sisa_porsi_saya' => isset($porsi) ? max(0, $porsi - ($sudah ?? 0)) : null,
+                    'wajib_bayar_saya' => TagihanService::wajibBayar($t),
                 ];
             });
 
@@ -280,7 +252,7 @@ class DashboardController extends Controller
 
     public function anakKosBayar(Request $request): JsonResponse
     {
-        $tagihanAwal = Tagihan::with(['penyewaan.anggotas'])->find($request->input('tagihan_id'));
+        $tagihanAwal = Tagihan::with(['penyewaan'])->find($request->input('tagihan_id'));
 
         if (! $tagihanAwal || ! $tagihanAwal->penyewaan) {
             return response()->json(['message' => 'Tagihan tidak ditemukan.'], 404);
@@ -294,10 +266,10 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Booking kamar ini belum diverifikasi pemilik/admin, jadi belum bisa dibayar.'], 422);
         }
 
-        $wajibAwal = TagihanService::wajibBayar($tagihanAwal, $request->user()->id);
+        $wajibAwal = TagihanService::wajibBayar($tagihanAwal);
 
         if ($wajibAwal <= 0) {
-            return response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422);
+            return response()->json(['message' => 'Tagihan ini sudah lunas.'], 422);
         }
 
         $validated = $request->validate([
@@ -317,11 +289,9 @@ class DashboardController extends Controller
         }
 
         $pembayaran = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
-            $tagihan = Tagihan::with(['penyewaan.anggotas'])->lockForUpdate()->findOrFail($validated['tagihan_id']);
+            $tagihan = Tagihan::with(['penyewaan'])->lockForUpdate()->findOrFail($validated['tagihan_id']);
 
-            $penghuni = $tagihan->penyewaan ? $tagihan->penyewaan->idPenghuniAktif() : [];
-
-            if (! in_array($request->user()->id, $penghuni, true)) {
+            if ((int) $tagihan->penyewaan?->anak_kos_id !== (int) $request->user()->id) {
                 abort(response()->json(['message' => 'Akses ditolak.'], 403));
             }
 
@@ -333,7 +303,7 @@ class DashboardController extends Controller
                 abort(response()->json(['message' => 'Tagihan sudah dibatalkan karena check-out.'], 422));
             }
 
-            if (($tagihan->penyewaan?->status ?? 'aktif') !== 'aktif') {
+            if (($tagihan->penyewaan?->status ?? 'aktif') === 'menunggu_verifikasi') {
                 abort(response()->json(['message' => 'Booking kamar ini belum diverifikasi pemilik/admin, jadi belum bisa dibayar.'], 422));
             }
 
@@ -342,11 +312,10 @@ class DashboardController extends Controller
             }
 
             $rincian = TagihanService::rincian($tagihan);
-            $isPatungan = (bool) $tagihan->penyewaan?->isPatungan();
-            $wajib = TagihanService::wajibBayar($tagihan, $request->user()->id);
+            $wajib = TagihanService::wajibBayar($tagihan);
 
             if ($wajib <= 0) {
-                abort(response()->json(['message' => 'Porsimu untuk tagihan ini sudah lunas. Tinggal menunggu teman sekamarmu bayar porsinya.'], 422));
+                abort(response()->json(['message' => 'Tagihan ini sudah lunas.'], 422));
             }
 
             if ((float) $validated['jumlah'] < $wajib) {
@@ -355,7 +324,7 @@ class DashboardController extends Controller
                 abort(response()->json(['message' => 'Nominal kurang '.$kurang.'. Total saat ini '.TagihanService::rupiah($wajib)
                     .' (sewa '.TagihanService::rupiah($rincian['sewa'])
                     .($rincian['denda'] > 0 ? ' + denda '.$rincian['hari_telat'].' hari '.TagihanService::rupiah($rincian['denda']) : '')
-                    .($isPatungan ? ' — porsi patunganmu' : '').'). Bayar harus pas, tidak boleh kurang.'], 422));
+                    .'). Bayar harus pas, tidak boleh kurang.'], 422));
             }
 
             $buktiPath = null;
@@ -383,10 +352,9 @@ class DashboardController extends Controller
         $uid = $request->user()->id;
 
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
-            ->with(['kamar', 'anggotas', 'tagihans.pembayarans'])
+            ->whereIn('status', ['aktif', 'dibooking'])
+            ->where('anak_kos_id', $uid)
+            ->with(['kamar', 'tagihans.pembayarans', 'properti'])
             ->first();
 
         if (! $sewaan) {
@@ -394,13 +362,15 @@ class DashboardController extends Controller
         }
 
         try {
-            $hasil = CheckoutService::keluarPenghuni($sewaan, $uid);
+            if ($sewaan->status === 'dibooking') {
+                CheckoutService::ajukanBatalSewa($sewaan, $uid);
+
+                return response()->json(['message' => 'Pengajuan BATAL sewa terkirim & menunggu verifikasi pemilik. Kalau disetujui, DP hangus dan kamar langsung tersedia.']);
+            }
+
+            CheckoutService::keluarPenghuni($sewaan, $uid);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        if ($hasil['jenis'] === 'partial') {
-            return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Porsi tagihan berikutnya menjadi tanggung jawab penghuni yang stay.']);
         }
 
         return response()->json(['message' => 'Pengajuan check-out terkirim dan menunggu verifikasi pemilik kos.']);
@@ -411,10 +381,9 @@ class DashboardController extends Controller
         $uid = $request->user()->id;
 
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
-            ->with(['kamar', 'anggotas'])
+            ->whereIn('status', ['aktif', 'dibooking'])
+            ->where('anak_kos_id', $uid)
+            ->with(['kamar'])
             ->first();
 
         if (! $sewaan) {
@@ -422,6 +391,12 @@ class DashboardController extends Controller
         }
 
         try {
+            if ($sewaan->status === 'dibooking') {
+                CheckoutService::batalkanAjukanBatal($sewaan, $uid);
+
+                return response()->json(['message' => 'Pengajuan batal sewa dibatalkan. Bookingmu tetap fiks.']);
+            }
+
             CheckoutService::batalkanPengajuan($sewaan, $uid);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -440,9 +415,8 @@ class DashboardController extends Controller
 
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
-            ->with(['kamar', 'anggotas', 'tagihans', 'properti'])
+            ->where('anak_kos_id', $uid)
+            ->with(['kamar', 'tagihans', 'properti'])
             ->first();
 
         if (! $sewaan) {
@@ -470,9 +444,9 @@ class DashboardController extends Controller
         $pengelola = $user->hasAnyRole(['admin', 'super_admin']);
 
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
+            ->whereIn('status', ['aktif', 'dibooking'])
             ->when(! $pengelola, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
-            ->with(['kamar', 'anakKos', 'tagihans', 'anggotas', 'properti'])
+            ->with(['kamar', 'anakKos', 'tagihans', 'properti'])
             ->first();
 
         if (! $sewaan) {
@@ -483,12 +457,19 @@ class DashboardController extends Controller
         $kamarNama = $sewaan->kamar?->nama;
 
         try {
+            if ($sewaan->status === 'dibooking') {
+                // Pembatalan sewa awal (belum masuk): DP hangus, kamar langsung tersedia.
+                CheckoutService::setujuiBatalSewa($sewaan, $user->id, $pengelola);
+
+                return response()->json(['message' => "Pembatalan sewa $nama di kamar $kamarNama disetujui. DP hangus, kamar kembali tersedia."]);
+            }
+
             $hasil = CheckoutService::setujuiCheckout($sewaan, $user->id, $pengelola);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : '';
         $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
         $batal = ($hasil['dibatalkan'] ?? 0) > 0 ? " {$hasil['dibatalkan']} tagihan bulan depan dibatalkan." : '';
 
@@ -501,7 +482,7 @@ class DashboardController extends Controller
         $pengelola = $user->hasAnyRole(['admin', 'super_admin']);
 
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
+            ->whereIn('status', ['aktif', 'dibooking'])
             ->when(! $pengelola, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
             ->with(['kamar', 'anakKos', 'properti'])
             ->first();
@@ -514,6 +495,12 @@ class DashboardController extends Controller
         $kamarNama = $sewaan->kamar?->nama;
 
         try {
+            if ($sewaan->status === 'dibooking') {
+                CheckoutService::tolakBatalSewa($sewaan, $user->id, $pengelola);
+
+                return response()->json(['message' => "Pengajuan batal sewa $nama ditolak. Booking tetap fiks, tunggu dia masuk."]);
+            }
+
             CheckoutService::tolakCheckout($sewaan, $user->id, $pengelola);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -906,7 +893,7 @@ class DashboardController extends Controller
     public function pemilikSewaans(Request $request): JsonResponse
     {
         $sewaans = Penyewaan::whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
-            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama', 'tagihans', 'anggotas.user:id,nama'])
+            ->with(['anakKos:id,nama', 'kamar:id,nama', 'kamar.properti:id,nama', 'tagihans'])
             ->latest()
             ->limit(50)
             ->get()
@@ -929,14 +916,6 @@ class DashboardController extends Controller
                     'ktp_url' => $s->ktp_path ? route('penyewaan.ktp', $s->id) : null,
                     // KTP tidak lagi diminta untuk booking baru; URL hanya untuk data lama.
                     'butuh_ktp' => false,
-                    'mode_hunian' => $s->mode_hunian ?? 'tunggal',
-                    'anggotas' => $s->anggotas->map(fn ($a) => [
-                        'user_id' => $a->user_id,
-                        'nama' => $a->user?->nama,
-                        'porsi_persen' => (int) $a->porsi_persen,
-                        'status' => $a->status,
-                        'ktp_url' => $a->ktp_path ? route('penyewaan.ktp', ['sewaan' => $s->id, 'user_id' => $a->user_id]) : null,
-                    ])->values(),
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),
                     'telat' => $telat,
@@ -963,18 +942,13 @@ class DashboardController extends Controller
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
             ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
-            ->with('anggotas')
             ->first();
 
         if (! $sewaan) {
             return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
         }
 
-        $userId = $request->input('user_id') ? (int) $request->input('user_id') : $sewaan->anak_kos_id;
-
-        $path = $userId === $sewaan->anak_kos_id
-            ? $sewaan->ktp_path
-            : $sewaan->anggotas->firstWhere('user_id', $userId)?->ktp_path;
+        $path = $sewaan->ktp_path;
 
         if (! $path || ! KtpStorage::ada($path)) {
             return response()->json(['message' => 'File KTP belum tersedia.'], 404);
@@ -982,89 +956,39 @@ class DashboardController extends Controller
 
         return response()->download(
             KtpStorage::pathAbsolut($path),
-            'ktp-sewaan-'.$sewaan->id.'-'.$userId.'.'.pathinfo($path, PATHINFO_EXTENSION)
+            'ktp-sewaan-'.$sewaan->id.'.'.pathinfo($path, PATHINFO_EXTENSION)
         );
     }
-
-    public function tambahAnggota(Request $request, int $sewaanId): JsonResponse
+    public function pemilikTandaiMasuk(Request $request, int $sewaanId): JsonResponse
     {
+        $user = $request->user();
+        $pengelola = $user->hasAnyRole(['admin', 'super_admin']);
+
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $request->user()->id)
-                ->orWhereHas('properti', fn ($w) => $w->where('pemilik_id', $request->user()->id)))
-            ->with(['kamar', 'anggotas'])
+            ->where('status', 'dibooking')
+            ->when(! $pengelola, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['kamar', 'anakKos', 'properti'])
             ->first();
 
         if (! $sewaan) {
-            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
-        }
-
-        if (! $request->user()->hasRole('anak_kos') && ! $request->user()->hasAnyRole(['pemilik', 'admin', 'super_admin'])) {
-            return response()->json(['message' => 'Akses ditolak.'], 403);
-        }
-
-        $validated = $request->validate([
-            'email' => 'required|email|exists:users,email',
-        ], [
-            'email.exists' => 'Akun teman tidak ditemukan. Minta temanmu daftar dulu.',
-        ]);
-
-        $teman = User::where('email', $validated['email'])->first();
-
-        if (! $teman->hasRole('anak_kos')) {
-            return response()->json(['message' => 'Hanya akun anak kos yang bisa jadi teman sekamar.'], 422);
+            return response()->json(['message' => 'Sewaan tidak ditemukan atau tidak berstatus Dibooking.'], 404);
         }
 
         try {
-            $anggota = PatunganService::tambahAnggota($sewaan, $teman);
+            CheckoutService::tandaiMasuk($sewaan, $user->id, $pengelola);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json([
-            'message' => "Teman sekamar {$teman->nama} berhasil ditambahkan (patungan 50/50).",
-            'anggota' => ['user_id' => $anggota->user_id, 'porsi_persen' => (int) $anggota->porsi_persen],
-        ], 201);
-    }
-
-    public function keluarAnggota(Request $request, int $sewaanId): JsonResponse
-    {
-        $uid = $request->user()->id;
-
-        $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
-            ->where(fn ($q) => $q->where('anak_kos_id', $uid)
-                ->orWhereHas('anggotas', fn ($w) => $w->where('user_id', $uid)->where('status', 'aktif')))
-            ->with(['kamar', 'anggotas', 'tagihans.pembayarans'])
-            ->first();
-
-        if (! $sewaan) {
-            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
-        }
-
-        // Hanya untuk patungan (ada yang stay). Sewa tunggal pakai endpoint keluar biasa.
-        $adaYangStay = $sewaan->anggotas->where('status', 'aktif')->where('user_id', '!=', $uid)->isNotEmpty()
-            || ($sewaan->anak_kos_id !== $uid);
-
-        if (! $adaYangStay) {
-            return response()->json(['message' => 'Gunakan menu check-out biasa untuk sewa tunggal.'], 422);
-        }
-
-        try {
-            PatunganService::keluarkan($sewaan, $uid);
-        } catch (\DomainException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return response()->json(['message' => 'Kamu sudah keluar dari kamar patungan. Pastikan porsimu sudah lunas.']);
+        return response()->json(['message' => $sewaan->anakKos?->nama.' ditandai SUDAH MASUK. Sewa kini aktif, checkout ketat berlaku.']);
     }
 
     public function pemilikCheckOut(Request $request, int $sewaanId): JsonResponse
     {
         $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
+            ->whereIn('status', ['aktif', 'dibooking'])
             ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
-            ->with(['kamar', 'anakKos'])
+            ->with(['kamar', 'anakKos', 'tagihans', 'properti'])
             ->first();
 
         if (! $sewaan) {
@@ -1075,12 +999,19 @@ class DashboardController extends Controller
         $kamarNama = $sewaan->kamar?->nama;
 
         try {
+            if ($sewaan->status === 'dibooking') {
+                // Batal sewa awal (belum masuk): DP hangus, kamar langsung tersedia.
+                CheckoutService::batalOtomatis($sewaan, $request->user()->id);
+
+                return response()->json(['message' => "Booking $nama di kamar $kamarNama dibatalkan. DP hangus, kamar kembali tersedia."]);
+            }
+
             $hasil = CheckoutService::checkoutPemilik($sewaan, $request->user()->id);
         } catch (\DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : '';
         $catatan = $hasil['tagihan_belum_lunas'] > 0 ? " Perhatian: masih ada {$hasil['tagihan_belum_lunas']} tagihan belum lunas." : '';
         $batal = ($hasil['dibatalkan'] ?? 0) > 0 ? " {$hasil['dibatalkan']} tagihan bulan depan dibatalkan." : '';
 

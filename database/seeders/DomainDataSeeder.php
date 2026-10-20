@@ -157,33 +157,27 @@ class DomainDataSeeder extends Seeder
             'status' => 'menunggu_verifikasi',
         ]);
 
-        // Demo patungan 50/50: Rina (utama) + Maya (anggota) di kamar A3 kapasitas 2.
+        // Kamar A3 kapasitas 2 diisi 2 penyewa mandiri (fitur patungan sudah dihapus).
         if ($a3->kapasitas >= 2) {
-            $sewaPatungan = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a3->id], [
-                'properti_id' => $melati->id,
-                'tanggal_masuk' => now()->startOfMonth()->toDateString(),
-                'status' => 'aktif',
-                'ktp_path' => 'ktp/demo-rina.jpg',
-                'mode_hunian' => 'patungan',
-            ]);
+            $a3->update(['status' => 'terisi']);
 
-            if ($sewaPatungan->wasRecentlyCreated) {
-                $a3->update(['status' => 'terisi']);
-                $sewaPatungan->tagihans()->create([
-                    'periode' => now()->translatedFormat('F Y'),
-                    'jumlah' => $a3->harga_sewa_bulanan,
-                    'denda' => 0,
-                    'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(),
-                    'status' => 'belum_bayar',
+            foreach ([[$rina, 600000], [$maya, 600000]] as [$penyewa, $nominal]) {
+                $sewaA3 = Penyewaan::firstOrCreate(['anak_kos_id' => $penyewa->id, 'kamar_id' => $a3->id], [
+                    'properti_id' => $melati->id,
+                    'tanggal_masuk' => now()->startOfMonth()->toDateString(),
+                    'status' => 'aktif',
                 ]);
-            } else {
-                $sewaPatungan->update(['mode_hunian' => 'patungan']);
-            }
 
-            \App\Models\PenyewaanAnggota::firstOrCreate(
-                ['penyewaan_id' => $sewaPatungan->id, 'user_id' => $maya->id],
-                ['porsi_persen' => 50, 'status' => 'aktif', 'ktp_path' => 'ktp/demo-maya.jpg'],
-            );
+                Tagihan::firstOrCreate(
+                    ['penyewaan_id' => $sewaA3->id, 'periode' => now()->translatedFormat('F Y')],
+                    [
+                        'jumlah' => $nominal,
+                        'denda' => 0,
+                        'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(),
+                        'status' => 'belum_bayar',
+                    ]
+                );
+            }
         }
 
         $budgetBulananMelati = [

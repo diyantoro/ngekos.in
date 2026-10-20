@@ -97,10 +97,8 @@ class DashboardRenderCheckTest extends TestCase
             ->assertSeeVolt('pages.dashboard.anak-kos')
             ->assertSee('Mau cari kos di mana?');
 
-        // Sewa tunggal tanpa anggota patungan: check-out menjadi pengajuan dulu.
-        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')
-            ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
-            ->firstOrFail();
+        // Check-out menjadi pengajuan dulu, menunggu verifikasi pemilik.
+        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
 
         // Aturan Opsi A: bulan berjalan wajib lunas dulu sebelum checkout.
         $sewaan->tagihans()
@@ -136,9 +134,7 @@ class DashboardRenderCheckTest extends TestCase
     {
         $user = User::where('email', 'anak1@ngekos.test')->first();
 
-        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')
-            ->whereDoesntHave('anggotas', fn ($q) => $q->where('status', 'aktif'))
-            ->firstOrFail();
+        $sewaan = Penyewaan::where('anak_kos_id', $user->id)->where('status', 'aktif')->firstOrFail();
 
         // Aturan Opsi A: bulan berjalan wajib lunas dulu sebelum checkout.
         $sewaan->tagihans()

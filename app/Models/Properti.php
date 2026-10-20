@@ -15,7 +15,7 @@ class Properti extends Model
     protected $fillable = [
         'pemilik_id', 'nama', 'kota', 'alamat', 'latitude', 'longitude', 'deskripsi', 'fasilitas', 'aturan', 'denda_per_hari',
         'bank_nama', 'no_rekening', 'rekening_nama',
-        'status', 'tipe_hunian', 'foto',
+        'status', 'tipe_hunian', 'foto', 'kota_kanonik',
     ];
 
     protected function casts(): array
@@ -47,6 +47,20 @@ class Properti extends Model
                 }
             }
         };
+
+        // Kota kanonik dihitung otomatis saat simpan supaya filter katalog
+        // memakai satu bentuk (mis. "Bandung", bukan "Kota Bandung"/"Kab. Bandung").
+        static::saving(function (Properti $properti): void {
+            $kota = trim((string) $properti->kota);
+
+            if ($kota === '') {
+                $properti->kota_kanonik = null;
+
+                return;
+            }
+
+            $properti->kota_kanonik = \App\Support\DaftarKota::kanonik($kota) ?? $kota;
+        });
 
         static::saved($lupakanCache);
         static::deleted($lupakanCache);

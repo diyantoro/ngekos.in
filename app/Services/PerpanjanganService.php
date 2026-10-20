@@ -90,13 +90,13 @@ class PerpanjanganService
      */
     public static function lanjutkan(Penyewaan $penyewaan, int $userId): Penyewaan
     {
-        $penyewaan->loadMissing(['kamar', 'anggotas', 'tagihans', 'properti']);
+        $penyewaan->loadMissing(['kamar', 'tagihans', 'properti']);
 
         if ($penyewaan->status !== 'aktif') {
             throw new DomainException('Penyewaan tidak aktif.');
         }
 
-        if (! in_array($userId, $penyewaan->idPenghuniAktif(), true)) {
+        if ($penyewaan->anak_kos_id !== $userId) {
             throw new DomainException('Kamu bukan penghuni aktif sewa ini.');
         }
 
@@ -172,7 +172,7 @@ class PerpanjanganService
             throw new DomainException('Penyewaan tidak aktif.');
         }
 
-        if (! in_array($userId, $penyewaan->idPenghuniAktif(), true)) {
+        if ($penyewaan->anak_kos_id !== $userId) {
             throw new DomainException('Kamu bukan penghuni aktif sewa ini.');
         }
 
@@ -230,15 +230,13 @@ class PerpanjanganService
      */
     public static function tutupBerakhir(Penyewaan $penyewaan): void
     {
-        $penyewaan->loadMissing(['kamar', 'anggotas', 'tagihans', 'properti', 'anakKos']);
+        $penyewaan->loadMissing(['kamar', 'tagihans', 'properti', 'anakKos']);
 
         if ($penyewaan->status !== 'aktif' || ! self::perluDitutup($penyewaan)) {
             return;
         }
 
-        $adaPenghuniLain = $penyewaan->anggotas->where('status', 'aktif')->isNotEmpty();
-
-        DB::transaction(function () use ($penyewaan, $adaPenghuniLain) {
+        DB::transaction(function () use ($penyewaan) {
             $penyewaan->update([
                 'tanggal_keluar' => $penyewaan->tanggal_berakhir->toDateString(),
                 'status' => 'selesai',
@@ -246,7 +244,7 @@ class PerpanjanganService
 
             CheckoutService::batalkanTagihanMasaDepan($penyewaan, $penyewaan->tanggal_berakhir);
 
-            if (! $adaPenghuniLain) {
+            if (! CheckoutService::kamarMasihDihuniLain($penyewaan)) {
                 optional($penyewaan->kamar)->update(['status' => 'tersedia']);
             }
         });

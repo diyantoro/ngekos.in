@@ -27,16 +27,15 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'status', 'ktp_path', 'mode_hunian', 'permintaan_keluar_pada'])
-                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,bukti,status', 'anggotas.user:id,nama'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'status', 'ktp_path', 'permintaan_keluar_pada'])
+                ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,bukti,status'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
-                ->limit(30)
-                ->get(),
+                ->paginate(20),
         ];
     }
 
-    public function lihatKtp(int $sewaanId, ?int $userId = null): void
+    public function lihatKtp(int $sewaanId): void
     {
         $this->galat = null;
         $user = auth()->user();
@@ -44,7 +43,7 @@ new #[Layout('layouts.app')] class extends Component
 
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
-            ->with(['anakKos:id,nama', 'anggotas.user:id,nama'])
+            ->with(['anakKos:id,nama'])
             ->first();
 
         if (! $sewaan) {
@@ -53,11 +52,7 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        $targetUserId = $userId ?? $sewaan->anak_kos_id;
-
-        $path = $targetUserId === $sewaan->anak_kos_id
-            ? $sewaan->ktp_path
-            : $sewaan->anggotas->firstWhere('user_id', $targetUserId)?->ktp_path;
+        $path = $sewaan->ktp_path;
 
         if (! $path || ! \App\Services\KtpStorage::ada($path)) {
             $this->galat = 'File KTP belum tersedia.';
@@ -67,17 +62,8 @@ new #[Layout('layouts.app')] class extends Component
             return;
         }
 
-        $nama = $targetUserId === $sewaan->anak_kos_id
-            ? ($sewaan->anakKos?->nama ?? 'Penyewa')
-            : ($sewaan->anggotas->firstWhere('user_id', $targetUserId)?->user?->nama ?? 'Anggota');
-
-        $params = ['sewaan' => $sewaan->id];
-        if ($targetUserId !== $sewaan->anak_kos_id) {
-            $params['user_id'] = $targetUserId;
-        }
-
-        $this->modalKtpUrl = route('penyewaan.ktp', $params);
-        $this->modalKtpNama = $nama;
+        $this->modalKtpUrl = route('penyewaan.ktp', ['sewaan' => $sewaan->id]);
+        $this->modalKtpNama = $sewaan->anakKos?->nama ?? 'Penyewa';
         $this->modalKtpIsPdf = strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'pdf';
     }
 
@@ -96,7 +82,7 @@ new #[Layout('layouts.app')] class extends Component
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
             ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
-            ->with(['anakKos', 'kamar', 'tagihans', 'anggotas'])
+            ->with(['anakKos', 'kamar', 'tagihans'])
             ->first();
 
         if (! $sewaan) {
@@ -121,7 +107,7 @@ new #[Layout('layouts.app')] class extends Component
             ? ' '.($hasil['dibatalkan']).' tagihan bulan depan dibatalkan.'
             : '';
 
-        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : '';
 
         $this->pesan = "Check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} berhasil.{$tambahan}{$catatan}{$batal}";
     }
@@ -136,7 +122,7 @@ new #[Layout('layouts.app')] class extends Component
         $sewaan = Penyewaan::where('id', $sewaanId)
             ->where('status', 'aktif')
             ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
-            ->with(['anakKos', 'kamar', 'tagihans', 'anggotas', 'properti'])
+            ->with(['anakKos', 'kamar', 'tagihans', 'properti'])
             ->first();
 
         if (! $sewaan) {
@@ -161,7 +147,7 @@ new #[Layout('layouts.app')] class extends Component
             ? ' '.($hasil['dibatalkan']).' tagihan bulan depan dibatalkan.'
             : '';
 
-        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : ' Kamar tetap terisi karena masih ada anggota patungan yang stay.';
+        $tambahan = $hasil['kamar_tersedia'] ? ' Kamar kembali tersedia.' : '';
 
         $this->pesan = "Pengajuan check-out {$sewaan->anakKos?->nama} dari kamar {$sewaan->kamar?->nama} disetujui.{$tambahan}{$catatan}{$batal}";
     }
@@ -224,7 +210,7 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $kwi = $hasil['pembayaran']->nomor_kwitansi ? " Kwitansi {$hasil['pembayaran']->nomor_kwitansi} otomatis dibuat." : '';
-        $this->pesan = "Booking {$sewaan->anakKos?->nama} (kamar {$sewaan->kamar?->nama}) disetujui — sewa resmi AKTIF.{$kwi}";
+        $this->pesan = "Booking {$sewaan->anakKos?->nama} (kamar {$sewaan->kamar?->nama}) disetujui — booking fiks (Dibooking). Tandai SUDAH MASUK saat dia datang; pembayaran sewa pertama juga otomatis mengaktifkan sewa.{$kwi}";
     }
 
     public function tolakBooking(int $sewaanId): void
@@ -255,6 +241,146 @@ new #[Layout('layouts.app')] class extends Component
         }
 
         $this->pesan = "Booking {$sewaan->anakKos?->nama} (kamar {$sewaan->kamar?->nama}) ditolak — booking dibatalkan dan kamar kembali tersedia.";
+    }
+
+    /**
+     * Pemilik menandai penyewa SUDAH MASUK (dibooking -> aktif).
+     */
+    public function tandaiMasuk(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'dibooking')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Sewaan tidak ditemukan atau tidak berstatus Dibooking.';
+
+            return;
+        }
+
+        try {
+            \App\Services\CheckoutService::tandaiMasuk($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = "{$sewaan->anakKos?->nama} ditandai SUDAH MASUK kamar {$sewaan->kamar?->nama}. Sewa kini aktif — checkout wajib lunas bulan berjalan.";
+    }
+
+    /**
+     * Pemilik menyetujui AJUKAN BATAL sewa (dibooking, belum masuk).
+     */
+    public function setujuiBatal(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'dibooking')
+            ->whereNotNull('permintaan_keluar_pada')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'tagihans', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Pengajuan tidak ditemukan.';
+
+            return;
+        }
+
+        $dp = $sewaan->tagihans->first(fn ($t) => \App\Services\PenyewaanService::isDp($t));
+
+        try {
+            \App\Services\CheckoutService::setujuiBatalSewa($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = 'Pembatalan sewa '.$sewaan->anakKos?->nama.' di kamar '.$sewaan->kamar?->nama.' disetujui. '
+            .'DP Rp'.number_format((float) ($dp?->jumlah ?? 0), 0, ',', '.').' hangus untukmu (tidak dikembalikan). Kamar kembali tersedia.';
+    }
+
+    /**
+     * Pemilik menolak AJUKAN BATAL sewa.
+     */
+    public function tolakBatal(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'dibooking')
+            ->whereNotNull('permintaan_keluar_pada')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Pengajuan tidak ditemukan.';
+
+            return;
+        }
+
+        try {
+            \App\Services\CheckoutService::tolakBatalSewa($sewaan, $user->id, $lihatSemua);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = 'Pengajuan batal sewa '.$sewaan->anakKos?->nama.' ditolak. Booking tetap fiks — tunggu dia masuk.';
+    }
+
+    /**
+     * Pemilik membatalkan sendiri: toleransi telat masuk sudah lewat.
+     */
+    public function batalOtomatis(int $sewaanId): void
+    {
+        $this->pesan = null;
+        $this->galat = null;
+        $user = auth()->user();
+        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
+
+        $sewaan = Penyewaan::where('id', $sewaanId)
+            ->where('status', 'dibooking')
+            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
+            ->with(['anakKos', 'kamar', 'tagihans', 'properti'])
+            ->first();
+
+        if (! $sewaan) {
+            $this->galat = 'Sewaan tidak ditemukan atau tidak berstatus Dibooking.';
+
+            return;
+        }
+
+        $dp = $sewaan->tagihans->first(fn ($t) => \App\Services\PenyewaanService::isDp($t));
+
+        try {
+            \App\Services\CheckoutService::batalOtomatis($sewaan, $user->id);
+        } catch (DomainException $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+
+        $this->pesan = 'Booking '.$sewaan->anakKos?->nama.' (kamar '.$sewaan->kamar?->nama.') dibatalkan — telat masuk lewat batas. '
+            .'DP Rp'.number_format((float) ($dp?->jumlah ?? 0), 0, ',', '.').' hangus untukmu. Kamar kembali tersedia.';
     }
 }; ?>
 
@@ -303,8 +429,6 @@ new #[Layout('layouts.app')] class extends Component
                                 $belumLunas = $sewaan->tagihans->whereNotIn('status', ['lunas', 'batal']);
                                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
-                                $anggotaAktifRow = $sewaan->anggotas->where('status', 'aktif');
-                                $isPatunganRow = ($sewaan->mode_hunian ?? 'tunggal') === 'patungan' || $anggotaAktifRow->isNotEmpty();
                                 $kurangBulanIni = \App\Services\CheckoutService::tagihanWajibBelumLunas($sewaan);
                                 $blokirCheckout = $kurangBulanIni->isNotEmpty();
                                 $alasanBlokir = $blokirCheckout ? 'Ada '.$kurangBulanIni->count().' tagihan sampai bulan ini yang belum lunas.' : null;
@@ -326,16 +450,6 @@ new #[Layout('layouts.app')] class extends Component
                                             <button type="button" wire:click="lihatKtp({{ $sewaan->id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama (data lama)</button>
                                         @endif
                                     </span>
-                                    @foreach ($anggotaAktifRow as $ag)
-                                        <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">+ {{ $ag->user?->nama }} ({{ (int) $ag->porsi_persen }}%)
-                                            @if ($ag->ktp_path)
-                                                · <button type="button" wire:click="lihatKtp({{ $sewaan->id }}, {{ $ag->user_id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP (data lama)</button>
-                                            @endif
-                                        </span>
-                                    @endforeach
-                                    @if ($isPatunganRow)
-                                        <span class="mt-1 inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-300">Patungan</span>
-                                    @endif
                                 </td>
                                 <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
                                     {{ $sewaan->kamar?->nama ?? '-' }}
@@ -371,7 +485,7 @@ new #[Layout('layouts.app')] class extends Component
                                             @endif
                                             <div class="flex justify-end gap-1.5">
                                                 <button wire:click="setujuiBooking({{ $sewaan->id }})" wire:loading.attr="disabled"
-                                                    wire:confirm="Setujui booking {{ $sewaan->anakKos?->nama }} (kamar {{ $sewaan->kamar?->nama }})? Sewa langsung AKTIF."
+                                                    wire:confirm="Setujui booking {{ $sewaan->anakKos?->nama }} (kamar {{ $sewaan->kamar?->nama }})? Booking jadi fiks (Dibooking); tandai SUDAH MASUK saat dia datang."
                                                     class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
                                                     Setujui
                                                 </button>
@@ -381,6 +495,64 @@ new #[Layout('layouts.app')] class extends Component
                                                     Tolak
                                                 </button>
                                             </div>
+                                        </div>
+                                    @elseif ($sewaan->status === 'dibooking')
+                                        @php
+                                            $hariTelat = \App\Services\CheckoutService::hariTelatMasuk($sewaan);
+                                            $toleransi = \App\Services\CheckoutService::TOLERANSI_BATAL_HARI;
+                                            $batas = $sewaan->tanggal_masuk?->copy()->addDays($toleransi);
+                                        @endphp
+                                        <div class="flex flex-col items-end gap-1.5">
+                                            @if ($sewaan->permintaan_keluar_pada)
+                                                <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/30">
+                                                    Minta BATAL sewa — {{ $sewaan->permintaan_keluar_pada->translatedFormat('d M Y') }}
+                                                </span>
+                                                <div class="max-w-[16rem] rounded-lg bg-rose-50 dark:bg-rose-500/10 ring-1 ring-rose-200 dark:ring-rose-500/30 px-2.5 py-1.5 text-left">
+                                                    <p class="text-[11px] font-bold text-rose-700 dark:text-rose-300">Konsekuensi batal sewa awal</p>
+                                                    <p class="mt-0.5 text-[11px] text-rose-700 dark:text-rose-300">DP Rp{{ number_format((float) ($dpTagihanRow?->jumlah ?? 0), 0, ',', '.') }} HANGUS (tidak dikembalikan). Semua tagihan lain dibatalkan, kamar langsung tersedia.</p>
+                                                </div>
+                                                <div class="flex justify-end gap-1.5">
+                                                    <button wire:click="setujuiBatal({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Setujui BATAL sewa {{ $sewaan->anakKos?->nama }} (kamar {{ $sewaan->kamar?->nama }})? DP hangus untukmu, kamar langsung tersedia."
+                                                        class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                        Setujui Batal
+                                                    </button>
+                                                    <button wire:click="tolakBatal({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Tolak pengajuan batal {{ $sewaan->anakKos?->nama }}? Booking tetap fiks, tunggu dia masuk."
+                                                        class="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                                        Tolak
+                                                    </button>
+                                                </div>
+                                            @else
+                                                @if ($hariTelat > 0)
+                                                    <span class="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">
+                                                        Telat masuk {{ $hariTelat }} hari
+                                                    </span>
+                                                    @if ($hariTelat > $toleransi)
+                                                        <span class="inline-flex items-center rounded-full bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-500/30">
+                                                            Lewat batas ({{ $toleransi }} hari) — bisa batal
+                                                        </span>
+                                                    @else
+                                                        <span class="block text-right text-[11px] text-amber-600 dark:text-amber-400">Bisa batal otomatis mulai {{ $batas?->translatedFormat('d M Y') }} (telat &gt; {{ $toleransi }} hari).</span>
+                                                    @endif
+                                                @else
+                                                    <span class="block text-right text-[11px] text-gray-500 dark:text-gray-400">Belum masuk. Batas batal otomatis: {{ $batas?->translatedFormat('d M Y') }}.</span>
+                                                @endif
+                                                <div class="flex justify-end gap-1.5">
+                                                    <button wire:click="tandaiMasuk({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                        wire:confirm="Tandai {{ $sewaan->anakKos?->nama }} SUDAH MASUK kamar {{ $sewaan->kamar?->nama }}? Sewa langsung aktif dan checkout ketat berlaku."
+                                                        class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50">
+                                                        Sudah Masuk
+                                                    </button>
+                                                    @if ($hariTelat > $toleransi)
+                                                        <button wire:click="batalOtomatis({{ $sewaan->id }})" wire:loading.attr="disabled"
+                                                            wire:confirm="BATALKAN booking {{ $sewaan->anakKos?->nama }} (kamar {{ $sewaan->kamar?->nama }})? Telat masuk lewat {{ $toleransi }} hari. DP hangus untukmu, kamar langsung tersedia."
+                                                            class="inline-flex items-center rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition disabled:opacity-50">
+                                                            Batal Sewa
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         </div>
                                     @elseif ($sewaan->status === 'aktif')
                                         @if ($sewaan->permintaan_keluar_pada)
@@ -465,6 +637,11 @@ new #[Layout('layouts.app')] class extends Component
                     </tbody>
                 </table>
             </div>
+            @if ($sewaans->hasPages())
+                <div class="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+                    {{ $sewaans->links() }}
+                </div>
+            @endif
         </div>
 
         @if ($modalKtpUrl)

@@ -11,5 +11,8 @@ Schedule::command('app:kirim-pengingat-tagihan')->dailyAt('07:00');
 // Tawaran perpanjangan H-3 sewa bulanan + auto-kosong saat masa sewa berakhir.
 Schedule::command('app:proses-perpanjangan')->dailyAt('08:00');
 
+// Peringatan sebelum batas batal-otomatis booking (DP terverifikasi, belum masuk).
+Schedule::command('app:proses-booking-batal')->dailyAt('08:30');
+
 // Langganan kedaluwarsa -> status expired + semua kamar pemilik dihapus (soft-delete).
 Schedule::command('app:proses-langganan-expired')->dailyAt('00:10');
