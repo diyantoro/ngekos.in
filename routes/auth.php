@@ -12,7 +12,10 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function () {
         ->name('login');
 
 Volt::route('login/{peran}', 'pages.auth.login')
-      ->where('peran', 'anak_kos|pemilik')
+      // Terima variasi tautan lama (anak-kos, pencari, pemilik-kos, dll).
+      // Normalisasi peran dilakukan di mount(); tautan tak dikenal tetap
+      // menampilkan form login, bukan 404.
+      ->where('peran', '[A-Za-z_-]+')
       ->name('login.form');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')

@@ -221,7 +221,7 @@ new #[Layout('layouts.publik')] class extends Component
                     <div class="beranda-float relative rounded-3xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-white/20 rotate-2">
                         @if ($heroKos ?? $propertiList->first())
                             @php $heroKos = $heroKos ?? $propertiList->first(); @endphp
-                            <img src="{{ $heroKos->fotoCover() ?? asset('favicon.svg') }}" alt="{{ $heroKos->nama }}" class="h-80 w-full object-cover">
+                            <img src="{{ $heroKos->fotoCover() ?? asset('favicon.svg') }}" alt="{{ $heroKos->nama }}" loading="eager" fetchpriority="high" decoding="async" class="h-80 w-full object-cover">
                             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-5 pt-14">
                                 <p class="text-white font-bold truncate">{{ $heroKos->nama }}</p>
                                 <p class="text-white/70 text-xs truncate">{{ $heroKos->kota ?? $heroKos->alamat }}</p>
@@ -281,8 +281,8 @@ new #[Layout('layouts.publik')] class extends Component
                 ['Chat Langsung', 'Tanya pemilik, gratis & cepat', 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z'],
                 ['Pembayaran Aman', 'Bukti sewa & kwitansi resmi', 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'],
             ] as [$judulFitur, $descFitur, $iconFitur])
-                <div class="flex items-center gap-2.5 sm:gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 px-3 sm:px-4 py-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition">
-                    <span class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
+                <div class="flex items-start gap-2 sm:gap-3 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200/80 dark:border-gray-700 px-3 sm:px-4 py-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition">
+                    <span class="mt-0.5 flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             @foreach (explode('|', $iconFitur) as $pathFitur)
                                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ $pathFitur }}" />
@@ -290,8 +290,8 @@ new #[Layout('layouts.publik')] class extends Component
                         </svg>
                     </span>
                     <div class="min-w-0">
-                        <p class="text-xs sm:text-sm font-bold text-slate-900 dark:text-gray-100 truncate">{{ $judulFitur }}</p>
-                        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-gray-400 truncate">{{ $descFitur }}</p>
+                        <p class="text-[11px] sm:text-sm font-bold leading-snug text-slate-900 dark:text-gray-100">{{ $judulFitur }}</p>
+                        <p class="mt-0.5 text-[10px] sm:text-xs leading-snug text-slate-500 dark:text-gray-400">{{ $descFitur }}</p>
                     </div>
                 </div>
             @endforeach

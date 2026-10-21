@@ -29,23 +29,27 @@ new #[Layout('layouts.guest')] class extends Component
 
     <div class="space-y-3">
         <a href="{{ route('login.form', ['peran' => 'anak_kos']) }}" wire:navigate
-           class="group flex items-center gap-4 rounded-2xl border-2 border-teal-200 bg-white dark:border-teal-500/30 dark:bg-gray-800 p-4 transition-all duration-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md hover:shadow-teal-100 dark:hover:border-teal-400 dark:hover:bg-teal-500/10 dark:hover:shadow-none">
-            <img src="{{ asset('images/login-tenant.svg') }}" alt="Pencari Kos" class="h-20 w-auto shrink-0">
-            <div class="min-w-0">
-                <span class="block text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">Pencari Kos</span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cari & tanya kamar kos</span>
+           class="group flex items-center gap-3 sm:gap-4 rounded-2xl border-2 border-teal-200 bg-white dark:border-teal-500/30 dark:bg-gray-800 p-3 sm:p-4 transition-all duration-200 hover:border-teal-500 hover:bg-teal-50 hover:shadow-md hover:shadow-teal-100 dark:hover:border-teal-400 dark:hover:bg-teal-500/10 dark:hover:shadow-none">
+            <span class="flex h-16 w-20 sm:h-20 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-500/10 p-1">
+                <img src="{{ asset('images/login-tenant.svg') }}" alt="Pencari Kos" class="h-full w-full object-contain" draggable="false">
+            </span>
+            <div class="min-w-0 flex-1">
+                <span class="block text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">Pencari Kos</span>
+                <span class="mt-0.5 block text-[11px] sm:text-xs leading-snug text-gray-500 dark:text-gray-400">Cari & tanya kamar kos</span>
             </div>
-            <svg class="ml-auto h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 dark:group-hover:text-teal-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            <svg class="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 dark:group-hover:text-teal-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </a>
 
         <a href="{{ route('login.form', ['peran' => 'pemilik']) }}" wire:navigate
-           class="group flex items-center gap-4 rounded-2xl border-2 border-emerald-200 bg-white dark:border-emerald-500/30 dark:bg-gray-800 p-4 transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-md hover:shadow-emerald-100 dark:hover:border-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:shadow-none">
-            <img src="{{ asset('images/login-owner.svg') }}" alt="Pemilik Kos" class="h-20 w-auto shrink-0">
-            <div class="min-w-0">
-                <span class="block text-sm font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Pemilik Kos</span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola & promosikan kos</span>
+           class="group flex items-center gap-3 sm:gap-4 rounded-2xl border-2 border-emerald-200 bg-white dark:border-emerald-500/30 dark:bg-gray-800 p-3 sm:p-4 transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-md hover:shadow-emerald-100 dark:hover:border-emerald-400 dark:hover:bg-emerald-500/10 dark:hover:shadow-none">
+            <span class="flex h-16 w-20 sm:h-20 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10 p-1">
+                <img src="{{ asset('images/login-owner.svg') }}" alt="Pemilik Kos" class="h-full w-full object-contain" draggable="false">
+            </span>
+            <div class="min-w-0 flex-1">
+                <span class="block text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Pemilik Kos</span>
+                <span class="mt-0.5 block text-[11px] sm:text-xs leading-snug text-gray-500 dark:text-gray-400">Kelola & promosikan kos</span>
             </div>
-            <svg class="ml-auto h-5 w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            <svg class="h-4 w-4 sm:h-5 sm:w-5 shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 dark:group-hover:text-emerald-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </a>
     </div>
 

@@ -12,7 +12,6 @@ class Penyewaan extends Model
         'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir',
         'perpanjangan_status', 'perpanjangan_ditawarkan_pada',
         'status', 'permintaan_keluar_pada', 'peringatan_batal_pada',
-        'ktp_path',
     ];
 
     protected function casts(): array

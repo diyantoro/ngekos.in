@@ -13,7 +13,17 @@ new #[Layout('layouts.guest')] class extends Component
 
     public function mount(string $peran = 'anak_kos'): void
     {
-        abort_unless(in_array($peran, ['anak_kos', 'pemilik']), 404);
+        // Normalisasi tautan lama: /login/anak-kos, /login/pencari, dsb.
+        $peran = strtolower(trim($peran));
+        $peran = str_replace(['-', ' '], '_', $peran);
+
+        $peran = match ($peran) {
+            'pencari', 'pencari_kos', 'anak_kos', 'anakkos', 'tenant', 'penyewa' => 'anak_kos',
+            'pemilik', 'pemilik_kos', 'pemilik_kost', 'pemilikkos', 'owner', 'landlord' => 'pemilik',
+            // Tautan tak dikenal tetap diarahkan ke form login, bukan 404.
+            default => 'anak_kos',
+        };
+
         $this->peran = $peran;
     }
 
@@ -80,6 +90,27 @@ new #[Layout('layouts.guest')] class extends Component
             return $default;
         }
 
+        // Jangan lempar user ke detail kos/chat yang sudah dihapus/nonaktif:
+        // itu sumber 404 setelah login dari halaman lama.
+        if (preg_match('#^/kos/([^/]+)/?$#', $path, $cocok)) {
+            $idKos = $cocok[1];
+            $ada = ctype_digit($idKos)
+                && \App\Models\Properti::whereKey((int) $idKos)
+                    ->where('status', \App\Enums\PropertiStatus::Aktif->value)
+                    ->exists();
+
+            if (! $ada) {
+                return $default;
+            }
+        }
+
+        if (preg_match('#^/chat/([^/]+)#', $path, $cocok)) {
+            $idKos = $cocok[1];
+            if (! ctype_digit($idKos) || ! \App\Models\Properti::whereKey((int) $idKos)->exists()) {
+                return $default;
+            }
+        }
+
         $role = auth()->user()->getRoleNames()->first();
 
         $umum = ['/dashboard', '/bantuan', '/pengaturan', '/profil', '/chat', '/kos', '/favorit'];
@@ -116,8 +147,12 @@ new #[Layout('layouts.guest')] class extends Component
     </div>
 
     <div class="text-center mb-6">
-        <div class="mx-auto mb-3 h-16 w-16 overflow-hidden rounded-full {{ $peran === 'pemilik' ? 'bg-emerald-100 dark:bg-emerald-500/10' : 'bg-teal-100 dark:bg-teal-500/10' }}">
-            <img src="{{ asset($peran === 'pemilik' ? 'images/login-owner.svg' : 'images/login-tenant.svg') }}" alt="" class="h-full w-full object-cover">
+        <div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl {{ $peran === 'pemilik' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300' }}">
+            @if ($peran === 'pemilik')
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+            @else
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+            @endif
         </div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Masuk</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">

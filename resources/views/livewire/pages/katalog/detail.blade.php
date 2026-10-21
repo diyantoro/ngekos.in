@@ -583,26 +583,37 @@ new #[Layout('layouts.publik')] class extends Component
 
             @if ($properti->fasilitas)
                 @php
-                    $fasilitasUmum = \App\Support\FacilityHelper::normalizeList(
-                        \App\Support\FacilityHelper::fromString($properti->fasilitas)
-                    );
+                    $pecahFasilitas = \App\Support\FacilityHelper::pecahKosKamar($properti->fasilitas);
+                    // "Akses 24 Jam" adalah fasilitas umum, bukan larangan;
+                    // tetap tampilkan sebagai kartu berikon di bagian fasilitas.
+                    $peraturanTampil = array_values(array_diff(
+                        \App\Support\FacilityHelper::PERATURAN_KOS,
+                        ['Akses 24 Jam']
+                    ));
+                    $fasilitasUmum = array_values(array_diff(
+                        $pecahFasilitas['kos'],
+                        $peraturanTampil
+                    ));
                 @endphp
                 @if ($fasilitasUmum !== [])
-                    <div class="mt-4">
-                        <div class="flex items-center gap-2">
-                            <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
-                            <h2 class="text-xs font-bold uppercase tracking-wide text-gray-900 dark:text-gray-100">Fasilitas Kos (Umum / Bersama)</h2>
-                            <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($fasilitasUmum) }}</span>
+                    <div class="mt-5 overflow-hidden rounded-2xl border border-teal-200/70 bg-white shadow-sm dark:border-teal-500/20 dark:bg-gray-800">
+                        <div class="flex items-center gap-3 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500 px-3.5 py-3.5 dark:from-teal-700 dark:via-teal-600 dark:to-emerald-700 sm:px-4">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-inset ring-white/20">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h2 class="text-sm font-bold text-white">Fasilitas Umum</h2>
+                                <p class="text-[11px] font-medium text-teal-50/90">Untuk semua penghuni</p>
+                            </div>
+                            <span class="shrink-0 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold text-white ring-1 ring-inset ring-white/25">{{ count($fasilitasUmum) }}<span class="hidden min-[380px]:inline"> fasilitas</span></span>
                         </div>
-                        <ul class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border border-stone-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800" role="list">
-                            @foreach ($fasilitasUmum as $item)
-                                <li class="flex min-w-0 items-start gap-2 text-[13px] text-slate-700 dark:text-gray-200 sm:text-sm">
-                                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                                    <span class="min-w-0 break-words">{{ $item }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                        <p class="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Fasilitas privat tiap kamar (AC, kasur, kamar mandi dalam, dll) tercantum di masing-masing kamar di bawah.</p>
+                        <div class="bg-gradient-to-br from-teal-50/70 via-white to-emerald-50/40 px-3 pb-3 pt-3 dark:from-teal-500/10 dark:via-gray-800 dark:to-emerald-500/5 sm:px-4 sm:pb-4">
+                            <x-facility-icons :fasilitas="$fasilitasUmum" tampilan="kartu" />
+                        </div>
+                        <div class="flex items-start gap-2 border-t border-teal-100/70 bg-teal-50/40 px-3.5 py-2.5 dark:border-teal-500/10 dark:bg-gray-900/20">
+                            <svg class="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600/70 dark:text-teal-300/70" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                            <p class="text-[10.5px] leading-relaxed text-slate-500 dark:text-gray-400">Fasilitas kamar seperti AC, kasur, dan kamar mandi ada di detail tiap kamar.</p>
+                        </div>
                     </div>
                 @endif
             @endif
@@ -662,10 +673,11 @@ new #[Layout('layouts.publik')] class extends Component
             <div class="mt-3 space-y-3">
                 @forelse ($kamars as $kamar)
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                        <div class="flex">
+                        <div class="flex flex-col sm:flex-row">
+                            @php $adaFotoKamar = count($kamar->galeriUrls()) > 0; @endphp
                             <div wire:click="bukaDetailKamar({{ $kamar->id }})" role="button" tabindex="0" wire:keydown.enter="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
-                                class="shrink-0 cursor-pointer self-stretch">
-                                <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="h-full min-h-28 sm:min-h-36 w-20 sm:w-36 shrink-0" ringkas />
+                                class="w-full shrink-0 cursor-pointer self-stretch sm:w-auto">
+                                <x-galeri-kos :fotos="$kamar->galeriUrls()" :nama="'Kamar ' . $kamar->nama" kelas="{{ $adaFotoKamar ? 'h-36' : 'h-24' }} w-full sm:h-full sm:min-h-36 sm:w-36 shrink-0" ringkas />
                             </div>
 
                             <div class="min-w-0 flex-1 p-3 sm:p-4 flex flex-col justify-between">
@@ -674,14 +686,31 @@ new #[Layout('layouts.publik')] class extends Component
                                         <button type="button" wire:click="bukaDetailKamar({{ $kamar->id }})" title="Lihat detail Kamar {{ $kamar->nama }}"
                                             class="text-left text-sm font-bold text-gray-900 hover:text-teal-600 dark:text-gray-100 dark:hover:text-teal-400 transition sm:text-base">{{ $kamar->nama }}</button>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">{{ $kamar->kapasitas }} orang</p>
-                                        @if ($kamar->fasilitas)
-                                            <div class="mt-1.5">
-                                                <x-facility-icons :fasilitas="$kamar->fasilitas" :maks="3" kompak />
-                                            </div>
-                                        @endif
                                     </div>
                                     <x-status-badge :status="$kamar->status" />
                                 </div>
+
+                                @if ($kamar->fasilitas)
+                                    <div class="mt-3 overflow-hidden rounded-2xl border border-teal-200/70 bg-white dark:border-teal-500/20 dark:bg-gray-800">
+                                        <div class="flex items-center gap-2.5 bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-500 px-3 py-2.5 dark:from-teal-700 dark:via-teal-600 dark:to-emerald-700">
+                                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-inset ring-white/20">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                                            </span>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-[11px] font-bold leading-tight text-white">Fasilitas Kamar</p>
+                                                <p class="text-[10px] font-medium leading-tight text-teal-50/90">{{ count($kamar->daftarFasilitas()) }} fasilitas</p>
+                                            </div>
+                                            <button type="button" wire:click="bukaDetailKamar({{ $kamar->id }})"
+                                                class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/20 px-2.5 py-1.5 text-[10px] font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/30">
+                                                Lihat semua
+                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                                            </button>
+                                        </div>
+                                        <div class="bg-gradient-to-br from-teal-50/60 via-white to-emerald-50/40 px-3 pb-3 pt-3 dark:from-teal-500/10 dark:via-gray-800 dark:to-emerald-500/5">
+                                            <x-facility-icons :fasilitas="$kamar->fasilitas" :maks="4" tampilan="kartu" :kolom="2" />
+                                        </div>
+                                    </div>
+                                @endif
 
                                 <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                                     <div class="min-w-0">

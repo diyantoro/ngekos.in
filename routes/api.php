@@ -93,8 +93,6 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/sewaan', [DashboardController::class, 'pemilikSewaans'])
         ->middleware('role:pemilik|admin|super_admin');
-    Route::get('/dashboard/pemilik/sewaan/{sewaanId}/ktp', [DashboardController::class, 'ktpPenyewaan'])
-        ->middleware('role:pemilik|admin|super_admin');
     Route::get('/dashboard/pemilik/rekap', [DashboardController::class, 'rekap'])
         ->middleware('role:pemilik|admin|super_admin');
     Route::post('/dashboard/pemilik/sewaan/{sewaanId}/tandai-masuk', [DashboardController::class, 'pemilikTandaiMasuk'])

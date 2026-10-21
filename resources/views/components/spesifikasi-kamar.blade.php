@@ -92,14 +92,9 @@
                     </span>
                     <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                 </summary>
-                <ul class="space-y-2 px-4 pb-4 pt-1" role="list">
-                    @foreach ($kelompok['kamar'] as $item)
-                        <li class="flex items-start gap-2.5 text-sm text-slate-700 dark:text-gray-200">
-                            <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            <span>{{ $item }}</span>
-                        </li>
-                    @endforeach
-                </ul>
+                <div class="px-4 pb-4 pt-1">
+                    <x-facility-icons :fasilitas="implode(', ', $kelompok['kamar'])" tampilan="kartu" />
+                </div>
             </details>
         @endif
 
@@ -114,14 +109,9 @@
                     </span>
                     <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                 </summary>
-                <ul class="space-y-2 px-4 pb-4 pt-1" role="list">
-                    @foreach ($kelompok['kamar_mandi'] as $item)
-                        <li class="flex items-start gap-2.5 text-sm text-slate-700 dark:text-gray-200">
-                            <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            <span>{{ $item }}</span>
-                        </li>
-                    @endforeach
-                </ul>
+                <div class="px-4 pb-4 pt-1">
+                    <x-facility-icons :fasilitas="implode(', ', $kelompok['kamar_mandi'])" tampilan="kartu" />
+                </div>
             </details>
         @endif
 

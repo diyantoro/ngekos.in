@@ -70,7 +70,7 @@
     ];
 @endphp
 
-<div class="relative group/promo touch-pan-y select-none cursor-grab active:cursor-grabbing" data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
+<div class="relative group/promo select-none" data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
     <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-black/5 shadow-lg" data-promo-viewport>
         <div class="promo-track w-full" data-promo-track>
             @foreach ($ads as $ad)
@@ -96,6 +96,7 @@
                         <div class="shrink-0 relative" data-promo-anim>
                             @if (! empty($ad['image']))
                                 <img src="{{ asset('storage/'.$ad['image']) }}" alt="{{ $ad['brand'] ?? 'Banner' }}"
+                                    loading="lazy" decoding="async"
                                     class="h-20 w-28 sm:h-32 sm:w-52 aspect-[4/3] rounded-2xl border border-white/30 object-cover shadow-lg shadow-black/10">
                             @else
                                 <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-16 w-16 sm:h-24 sm:w-24' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">

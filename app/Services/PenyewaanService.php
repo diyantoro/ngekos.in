@@ -170,7 +170,6 @@ class PenyewaanService
                 'perpanjangan_ditawarkan_pada' => null,
                 // Bulanan = menunggu verifikasi bukti DP (belum otomatis tersewa).
                 'status' => (! $isHarian && ! $isMingguan) ? 'menunggu_verifikasi' : 'aktif',
-                'ktp_path' => null,
             ]);
 
             $tanggalLabel = $tanggalMasukCarbon->locale('id')->translatedFormat('d F Y');

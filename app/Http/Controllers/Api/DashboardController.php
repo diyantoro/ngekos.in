@@ -13,11 +13,12 @@ use App\Models\Penyewaan;
 use App\Models\Properti;
 use App\Models\Tagihan;
 use App\Models\User;
-use App\Services\KtpStorage;
-use App\Services\KwitansiService;
+use App\Services\BuktiStorage;
 use App\Services\CheckoutService;
+use App\Services\KwitansiService;
 use App\Services\PembayaranService;
 use App\Services\PemilikRekapService;
+use App\Services\PenyewaanService;
 use App\Services\PerpanjanganService;
 use App\Services\SubscriptionService;
 use App\Services\TagihanService;
@@ -25,7 +26,6 @@ use App\Support\GrafikBulan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
@@ -102,7 +102,7 @@ class DashboardController extends Controller
             'total_dibayar' => $totalDibayar,
             'jumlah_favorit' => $jumlahFavorit,
             'pesan_belum_dibaca' => $pesanBelumDibaca,
-            'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya, $id) {
+            'tagihan_berikutnya' => $tagihanBerikutnya ? (function () use ($tagihanBerikutnya) {
                 TagihanService::sinkronDenda($tagihanBerikutnya);
 
                 return [
@@ -149,13 +149,10 @@ class DashboardController extends Controller
                 'tanggal_keluar' => $s->tanggal_keluar,
                 'tanggal_berakhir' => $s->tanggal_berakhir,
                 'perpanjangan_status' => $s->perpanjangan_status,
-                'sisa_hari' => \App\Services\PerpanjanganService::sisaHari($s),
-                'dp_nominal' => \App\Services\PenyewaanService::DP_NOMINAL,
+                'sisa_hari' => PerpanjanganService::sisaHari($s),
+                'dp_nominal' => PenyewaanService::DP_NOMINAL,
                 'status' => $s->status,
                 'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
-                'ktp_path' => null,
-                // KTP tidak lagi diminta saat booking (privasi) — pengaman booking adalah DP.
-                'butuh_ktp' => false,
             ]);
 
         return response()->json($sewaans);
@@ -176,7 +173,7 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(200)
             ->get()
-            ->map(function ($t) use ($uid) {
+            ->map(function ($t) {
                 if (! in_array($t->status, ['lunas', 'batal'], true)) {
                     // Read-only: hitung denda berjalan in-memory tanpa UPDATE per baris.
                     $t->setAttribute('denda', TagihanService::dendaBerjalan($t));
@@ -240,12 +237,12 @@ class DashboardController extends Controller
 
         $path = $pembayaran->refresh()->file_kwitansi;
 
-        if (! $path || ! \App\Services\BuktiStorage::ada($path)) {
+        if (! $path || ! BuktiStorage::ada($path)) {
             return response()->json(['message' => 'File kwitansi belum tersedia.'], 404);
         }
 
         return response()->download(
-            \App\Services\BuktiStorage::pathAbsolut($path),
+            BuktiStorage::pathAbsolut($path),
             ($pembayaran->nomor_kwitansi ?? 'kwitansi').'.pdf'
         );
     }
@@ -288,7 +285,7 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Lampirkan bukti transfer terlebih dahulu.'], 422);
         }
 
-        $pembayaran = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
+        $pembayaran = DB::transaction(function () use ($validated, $request) {
             $tagihan = Tagihan::with(['penyewaan'])->lockForUpdate()->findOrFail($validated['tagihan_id']);
 
             if ((int) $tagihan->penyewaan?->anak_kos_id !== (int) $request->user()->id) {
@@ -329,7 +326,7 @@ class DashboardController extends Controller
 
             $buktiPath = null;
             if ($request->hasFile('bukti')) {
-                $buktiPath = \App\Services\BuktiStorage::simpan($request->file('bukti'), 'bukti');
+                $buktiPath = BuktiStorage::simpan($request->file('bukti'), 'bukti');
             }
 
             return Pembayaran::create([
@@ -901,8 +898,8 @@ class DashboardController extends Controller
                 $belumLunas = $s->tagihans->whereNotIn('status', ['lunas', 'batal']);
                 $sisa = $belumLunas->sum(fn ($t) => $t->jumlah + $t->denda);
                 $telat = $belumLunas->filter(fn ($t) => $t->denda > 0)->count();
-                $wajib = \App\Services\CheckoutService::tagihanWajibBelumLunas($s);
-                $masaDepan = \App\Services\CheckoutService::tagihanMasaDepan($s);
+                $wajib = CheckoutService::tagihanWajibBelumLunas($s);
+                $masaDepan = CheckoutService::tagihanMasaDepan($s);
 
                 return [
                     'id' => $s->id,
@@ -913,9 +910,6 @@ class DashboardController extends Controller
                     'tanggal_keluar' => $s->tanggal_keluar,
                     'status' => $s->status,
                     'permintaan_keluar_pada' => $s->permintaan_keluar_pada,
-                    'ktp_url' => $s->ktp_path ? route('penyewaan.ktp', $s->id) : null,
-                    // KTP tidak lagi diminta untuk booking baru; URL hanya untuk data lama.
-                    'butuh_ktp' => false,
                     'sisa_tagihan' => $sisa,
                     'tagihan_belum_bayar' => $belumLunas->count(),
                     'telat' => $telat,
@@ -937,28 +931,6 @@ class DashboardController extends Controller
         return response()->json($sewaans);
     }
 
-    public function ktpPenyewaan(Request $request, int $sewaanId)
-    {
-        $sewaan = Penyewaan::where('id', $sewaanId)
-            ->where('status', 'aktif')
-            ->whereHas('properti', fn ($q) => $q->where('pemilik_id', $request->user()->id))
-            ->first();
-
-        if (! $sewaan) {
-            return response()->json(['message' => 'Penyewaan tidak ditemukan.'], 404);
-        }
-
-        $path = $sewaan->ktp_path;
-
-        if (! $path || ! KtpStorage::ada($path)) {
-            return response()->json(['message' => 'File KTP belum tersedia.'], 404);
-        }
-
-        return response()->download(
-            KtpStorage::pathAbsolut($path),
-            'ktp-sewaan-'.$sewaan->id.'.'.pathinfo($path, PATHINFO_EXTENSION)
-        );
-    }
     public function pemilikTandaiMasuk(Request $request, int $sewaanId): JsonResponse
     {
         $user = $request->user();

@@ -12,12 +12,6 @@ new #[Layout('layouts.app')] class extends Component
 
     public ?string $galat = null;
 
-    public ?string $modalKtpUrl = null;
-
-    public ?string $modalKtpNama = null;
-
-    public bool $modalKtpIsPdf = false;
-
     public function with(): array
     {
         $user = auth()->user();
@@ -27,51 +21,12 @@ new #[Layout('layouts.app')] class extends Component
         return [
             'sewaans' => Penyewaan::query()
                 ->whereHas('properti', $scope)
-                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'status', 'ktp_path', 'permintaan_keluar_pada'])
+                ->select(['id', 'anak_kos_id', 'kamar_id', 'properti_id', 'tanggal_masuk', 'tanggal_keluar', 'tanggal_berakhir', 'status', 'permintaan_keluar_pada'])
                 ->with(['anakKos:id,nama', 'kamar:id,nama,properti_id', 'kamar.properti:id,nama', 'tagihans:id,penyewaan_id,periode,jumlah,jenis,denda,status,jatuh_tempo', 'tagihans.pembayarans:id,tagihan_id,anak_kos_id,jumlah,bukti,status'])
                 ->when($this->cari, fn ($q) => $q->whereHas('anakKos', fn ($q) => $q->where('nama', 'like', "%{$this->cari}%")))
                 ->latest()
                 ->paginate(20),
         ];
-    }
-
-    public function lihatKtp(int $sewaanId): void
-    {
-        $this->galat = null;
-        $user = auth()->user();
-        $lihatSemua = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super_admin']);
-
-        $sewaan = Penyewaan::where('id', $sewaanId)
-            ->when(! $lihatSemua, fn ($q) => $q->whereHas('properti', fn ($w) => $w->where('pemilik_id', $user->id)))
-            ->with(['anakKos:id,nama'])
-            ->first();
-
-        if (! $sewaan) {
-            $this->galat = 'Penyewaan tidak ditemukan.';
-
-            return;
-        }
-
-        $path = $sewaan->ktp_path;
-
-        if (! $path || ! \App\Services\KtpStorage::ada($path)) {
-            $this->galat = 'File KTP belum tersedia.';
-            $this->modalKtpUrl = null;
-            $this->modalKtpNama = null;
-
-            return;
-        }
-
-        $this->modalKtpUrl = route('penyewaan.ktp', ['sewaan' => $sewaan->id]);
-        $this->modalKtpNama = $sewaan->anakKos?->nama ?? 'Penyewa';
-        $this->modalKtpIsPdf = strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'pdf';
-    }
-
-    public function tutupModalKtp(): void
-    {
-        $this->modalKtpUrl = null;
-        $this->modalKtpNama = null;
-        $this->modalKtpIsPdf = false;
     }
 
     public function checkOut(int $sewaanId): void
@@ -445,11 +400,6 @@ new #[Layout('layouts.app')] class extends Component
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                                 <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {{ $sewaan->anakKos?->nama ?? '-' }}
-                                    <span class="block text-[11px] font-normal text-gray-400 dark:text-gray-500">
-                                        @if ($sewaan->ktp_path)
-                                            <button type="button" wire:click="lihatKtp({{ $sewaan->id }})" class="font-semibold text-brand-700 dark:text-brand-300 hover:underline">Lihat KTP utama (data lama)</button>
-                                        @endif
-                                    </span>
                                 </td>
                                 <td class="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
                                     {{ $sewaan->kamar?->nama ?? '-' }}
@@ -644,38 +594,5 @@ new #[Layout('layouts.app')] class extends Component
             @endif
         </div>
 
-        @if ($modalKtpUrl)
-            <div class="fixed inset-0 z-[70] overflow-y-auto" aria-modal="true" role="dialog">
-                <button type="button" wire:click="tutupModalKtp" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm cursor-default" tabindex="-1" aria-label="Tutup"></button>
-                <div class="relative min-h-full flex items-end sm:items-center justify-center p-4">
-                    <div class="w-full sm:max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl ring-1 ring-gray-100 dark:ring-gray-700 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">KTP — {{ $modalKtpNama }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Data sensitif. Jangan disebarluaskan.</p>
-                            </div>
-                            <button type="button" wire:click="tutupModalKtp" class="rounded-lg px-2 py-1 text-lg font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Tutup">&times;</button>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-900/40">
-                            @if ($modalKtpIsPdf)
-                                <iframe src="{{ $modalKtpUrl }}" class="h-[60vh] w-full rounded-xl bg-white" title="Pratinjau KTP"></iframe>
-                            @else
-                                <img src="{{ $modalKtpUrl }}" alt="Foto KTP {{ $modalKtpNama }}" class="mx-auto max-h-[60vh] w-auto rounded-xl object-contain bg-white" />
-                            @endif
-                        </div>
-                        <div class="flex flex-col-reverse sm:flex-row gap-2 p-4 border-t border-gray-100 dark:border-gray-700">
-                            <button type="button" wire:click="tutupModalKtp"
-                                class="flex-1 inline-flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                Tutup
-                            </button>
-                            <a href="{{ $modalKtpUrl }}" target="_blank" rel="noopener"
-                                class="flex-1 inline-flex items-center justify-center rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition">
-                                Buka di tab baru
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
     </div>
 </div>

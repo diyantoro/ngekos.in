@@ -150,12 +150,12 @@ new #[Layout('layouts.guest')] class extends Component
                     <span :class="peran === 'anak_kos'
                             ? 'border-teal-600 bg-teal-50 shadow-md shadow-teal-100 dark:border-teal-500 dark:bg-teal-500/10 dark:shadow-none'
                             : 'border-gray-200 bg-white group-hover:border-teal-300 group-hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:group-hover:border-teal-500 dark:group-hover:shadow-none'"
-                          class="relative block rounded-2xl border-2 p-4 text-center transition-all duration-200">
+                          class="relative block rounded-2xl border-2 p-3 text-center transition-all duration-200 sm:p-4">
                         <span x-show="peran === 'anak_kos'" x-cloak
                               class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-white ring-2 ring-white dark:ring-gray-800">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         </span>
-                        <img src="{{ asset('images/login-tenant.svg') }}" alt="Pencari Kos" class="mx-auto h-24 w-auto">
+                        <img src="{{ asset('images/login-tenant.svg') }}" alt="Pencari Kos" class="mx-auto h-20 w-full max-w-[112px] object-contain sm:h-24 sm:max-w-[132px]" decoding="async">
 <span :class="peran === 'anak_kos' ? 'text-teal-700 dark:text-teal-300' : 'text-gray-900 dark:text-gray-100'"
                           class="mt-2 block text-sm font-bold transition-colors duration-200">Pencari Kos</span>
                         <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cari &amp; tanya kamar</span>
@@ -167,12 +167,12 @@ new #[Layout('layouts.guest')] class extends Component
                     <span :class="peran === 'pemilik'
                             ? 'border-emerald-600 bg-emerald-50 shadow-md shadow-emerald-100 dark:border-emerald-500 dark:bg-emerald-500/10 dark:shadow-none'
                             : 'border-gray-200 bg-white group-hover:border-emerald-300 group-hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:group-hover:border-emerald-500 dark:group-hover:shadow-none'"
-                          class="relative block rounded-2xl border-2 p-4 text-center transition-all duration-200">
+                          class="relative block rounded-2xl border-2 p-3 text-center transition-all duration-200 sm:p-4">
                         <span x-show="peran === 'pemilik'" x-cloak
                               class="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white ring-2 ring-white dark:ring-gray-800">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         </span>
-                        <img src="{{ asset('images/login-owner.svg') }}" alt="Pemilik Kos" class="mx-auto h-24 w-auto">
+                        <img src="{{ asset('images/login-owner.svg') }}" alt="Pemilik Kos" class="mx-auto h-20 w-full max-w-[112px] object-contain sm:h-24 sm:max-w-[132px]" decoding="async">
 <span :class="peran === 'pemilik' ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-900 dark:text-gray-100'"
                           class="mt-2 block text-sm font-bold transition-colors duration-200">Pemilik Kos</span>
                         <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Promosikan kos Anda</span>

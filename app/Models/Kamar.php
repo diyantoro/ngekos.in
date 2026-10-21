@@ -38,7 +38,7 @@ class Kamar extends Model
         }
 
         return \App\Support\FacilityHelper::normalizeList(
-            array_filter(array_map('trim', explode(',', (string) $this->fasilitas)))
+            \App\Support\FacilityHelper::fromString((string) $this->fasilitas)
         );
     }
 

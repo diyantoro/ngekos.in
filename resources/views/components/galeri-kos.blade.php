@@ -49,8 +49,13 @@
             @endif
         @endif
     @else
-        <div class="h-full w-full flex items-center justify-center">
-            <svg class="h-20 w-20 text-teal-300 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+        <div class="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-teal-50 via-stone-50 to-stone-100 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900">
+            <span class="flex {{ $ringkas ? 'h-9 w-9 rounded-xl' : 'h-16 w-16 rounded-2xl' }} items-center justify-center bg-white/80 text-teal-500 shadow-sm ring-1 ring-teal-100 dark:bg-gray-700/70 dark:text-teal-300 dark:ring-teal-500/20">
+                <svg class="{{ $ringkas ? 'h-5 w-5' : 'h-9 w-9' }}" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" /></svg>
+            </span>
+            @if ($ringkas)
+                <span class="text-[10px] font-medium text-slate-400 dark:text-gray-500">Foto belum tersedia</span>
+            @endif
         </div>
     @endif
 

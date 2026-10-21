@@ -7,6 +7,7 @@ use App\Models\Pengeluaran;
 use App\Models\Penyewaan;
 use App\Models\Tagihan;
 use App\Services\SubscriptionService;
+use App\Support\GrafikBulan;
 use Illuminate\Support\Facades\DB;
 use Livewire\Volt\Component;
 
@@ -34,12 +35,41 @@ new class extends Component
             $sekarang = now();
             $lalu = now()->subMonth();
 
+            // Tren pendapatan bersih 6 bulan untuk grafik ringan di dashboard.
+            $mulaiEnam = now()->startOfMonth()->subMonths(5);
+
+            $pendapatanEnam = Pembayaran::where('status', 'diverifikasi')
+                ->where('verified_at', '>=', $mulaiEnam)
+                ->whereHas('tagihan.penyewaan.properti', $scope)
+                ->selectRaw(GrafikBulan::kolomBulan('pembayarans.verified_at').', SUM(pembayarans.jumlah) as total')
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan');
+
+            $pengeluaranEnam = Pengeluaran::whereHas('properti', $scope)
+                ->where('tanggal', '>=', $mulaiEnam->toDateString())
+                ->selectRaw(GrafikBulan::kolomBulan('pengeluarans.tanggal').', SUM(pengeluarans.jumlah) as total')
+                ->groupBy('bulan')
+                ->pluck('total', 'bulan');
+
+            $bulanLaba = [];
+            $chartLaba = [];
+
+            foreach (range(5, 0) as $i) {
+                $awal = now()->startOfMonth()->subMonths($i);
+                $kunci = $awal->format('m/Y');
+
+                $bulanLaba[] = $awal->translatedFormat('M');
+                $chartLaba[] = (int) ($pendapatanEnam[$kunci] ?? 0) - (int) ($pengeluaranEnam[$kunci] ?? 0);
+            }
+
             return [
 
                 'totalKamar' => $totalKamar,
                 'kamarTerisi' => (int) ($statusKamar['terisi'] ?? 0),
                 'kamarTersedia' => (int) ($statusKamar['tersedia'] ?? 0),
                 'kamarPerbaikan' => (int) ($statusKamar['perbaikan'] ?? 0),
+                'bulanLaba' => $bulanLaba,
+                'chartLaba' => $chartLaba,
                 'pendapatanBulanIni' => (int) Pembayaran::where('status', 'diverifikasi')
                     ->whereBetween('verified_at', [$sekarang->copy()->startOfMonth(), $sekarang->copy()->endOfMonth()])
                     ->whereHas('tagihan.penyewaan.properti', $scope)
@@ -125,6 +155,8 @@ new class extends Component
             'pengeluaranBulanLalu' => $pengeluaranBulanLalu,
             'labaBersihBulanIni' => $labaBersihBulanIni,
             'labaBersihBulanLalu' => $labaBersihBulanLalu,
+            'bulanLaba' => $ringkas['bulanLaba'],
+            'chartLaba' => $ringkas['chartLaba'],
             'tagihanBelumCount' => $tagihanBelumCount,
             'nilaiTagihanBelum' => $nilaiTagihanBelum,
             'tagihanTelat' => $tagihanTelat,
@@ -302,6 +334,70 @@ new class extends Component
                 @endif
             </x-stat-card>
         </div>
+
+        @php
+            $nilaiLaba = $chartLaba;
+            $maksLaba = max(array_merge([0], $nilaiLaba));
+            $minLaba = min(array_merge([0], $nilaiLaba));
+            $spanLaba = max(1, $maksLaba - $minLaba);
+            $jumlahLaba = count($nilaiLaba);
+            $titikLaba = [];
+
+            foreach ($nilaiLaba as $i => $nilai) {
+                $x = $jumlahLaba > 1 ? 20 + ($i / ($jumlahLaba - 1)) * 560 : 300;
+                $y = 10 + (($maksLaba - $nilai) / $spanLaba) * 100;
+                $titikLaba[] = round($x, 1).','.round($y, 1);
+            }
+
+            $garisNol = round(10 + (($maksLaba - 0) / $spanLaba) * 100, 1);
+            $areaLaba = '20,120 '.implode(' ', $titikLaba).' 580,120';
+            $labaTerakhir = $nilaiLaba[$jumlahLaba - 1] ?? 0;
+        @endphp
+
+        <x-chart-card
+            title="Tren Pendapatan Bersih"
+            subtitle="Pendapatan terverifikasi − pengeluaran · 6 bulan terakhir"
+            tinggi="10.5rem"
+            :kosong="collect($chartLaba)->every(fn ($v) => (int) $v === 0)"
+            pesanKosong="Belum ada pendapatan bersih pada 6 bulan terakhir.">
+            <div class="flex h-full flex-col">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-lg font-extrabold leading-tight {{ $labaTerakhir >= 0 ? 'text-brand-700 dark:text-brand-200' : 'text-rose-600 dark:text-rose-300' }}">
+                            Rp{{ number_format($labaTerakhir, 0, ',', '.') }}
+                        </p>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-gray-400">Bulan ini</p>
+                    </div>
+                    <a href="{{ route('pemilik.grafik') }}" wire:navigate
+                        class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-brand-50 px-2.5 py-1.5 text-[11px] font-bold text-brand-700 hover:bg-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:hover:bg-brand-500/20">
+                        Grafik lengkap
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3" /></svg>
+                    </a>
+                </div>
+
+                <div class="relative mt-1 min-h-[64px] flex-1 text-brand-600 dark:text-brand-300">
+                    <svg viewBox="0 0 600 140" preserveAspectRatio="none" class="h-full w-full overflow-visible" aria-label="Grafik pendapatan bersih 6 bulan" role="img">
+                        <line x1="20" y1="{{ $garisNol }}" x2="580" y2="{{ $garisNol }}" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity=".25" vector-effect="non-scaling-stroke" />
+                        <polygon points="{{ $areaLaba }}" fill="currentColor" opacity=".10" />
+                        <polyline points="{{ implode(' ', $titikLaba) }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+                        @foreach ($nilaiLaba as $i => $nilai)
+                            @php
+                                [$cx, $cy] = explode(',', $titikLaba[$i]);
+                            @endphp
+                            <circle cx="{{ $cx }}" cy="{{ $cy }}" r="3.5" fill="currentColor" stroke="white" stroke-width="1.5" vector-effect="non-scaling-stroke">
+                                <title>{{ $bulanLaba[$i] }}: Rp{{ number_format($nilai, 0, ',', '.') }}</title>
+                            </circle>
+                        @endforeach
+                    </svg>
+                </div>
+
+                <div class="mt-1 flex items-center justify-between px-0.5 text-[9px] font-semibold text-slate-400 dark:text-gray-500">
+                    @foreach ($bulanLaba as $label)
+                        <span>{{ $label }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </x-chart-card>
 
         @if ($tagihanBelumCount > 0)
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 px-5 py-4">

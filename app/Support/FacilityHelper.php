@@ -263,7 +263,11 @@ class FacilityHelper
     }
 
     /**
-     * Parsing string fasilitas (dipisah koma) menjadi array.
+     * Parsing string fasilitas menjadi array.
+     *
+     * Data lama bisa memakai koma, titik tengah (·), bullet, titik koma,
+     * pipa, atau baris baru sebagai pemisah. Semua varian itu harus
+     * dipecah agar fasilitas tidak tampil sebagai satu teks panjang.
      */
     public static function fromString(?string $value): array
     {
@@ -271,7 +275,9 @@ class FacilityHelper
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', $value))));
+        $bagian = preg_split('/[,;·•|\r\n]+/u', $value) ?: [];
+
+        return array_values(array_filter(array_map('trim', $bagian), fn ($item) => $item !== ''));
     }
 
     /**

@@ -82,6 +82,20 @@ class LoginFlowTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_tautan_login_lama_atau_typo_tidak_menghasilkan_404(): void
+    {
+        foreach ([
+            '/login/anak-kos',
+            '/login/pemilik-kos',
+            '/login/pencari',
+            '/login/pencari-kos',
+            '/login/owner',
+            '/login/apa-saja',
+        ] as $tautan) {
+            $this->get($tautan)->assertOk();
+        }
+    }
+
     public function test_intended_milik_peran_lain_tidak_menyebabkan_403(): void
     {
         // Tamu membuka halaman khusus pemilik -> disimpan sebagai intended.

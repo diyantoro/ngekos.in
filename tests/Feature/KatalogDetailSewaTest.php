@@ -65,7 +65,6 @@ class KatalogDetailSewaTest extends TestCase
             ->where('kamar_id', $kamar->id)
             ->firstOrFail();
         $this->assertSame('menunggu_verifikasi', $penyewaan->status);
-        $this->assertNull($penyewaan->ktp_path);
         // Sewa bulanan: DP Rp100.000 + sisa bulan pertama.
         $this->assertSame(2, $penyewaan->tagihans()->count());
         $dp = $penyewaan->tagihans()->where('jenis', 'dp')->firstOrFail();
@@ -297,8 +296,7 @@ class KatalogDetailSewaTest extends TestCase
         $penyewaan = app(PenyewaanService::class)->sewaKamar($user, $kamar, today()->toDateString(), 1, null, null, 'bukti-dp-test.jpg');
         $tagihan = $penyewaan->tagihans()->where('jenis', 'dp')->firstOrFail();
 
-        // Tanpa KTP: ktp_path null; booking masih pending sehingga belum bisa dibayar.
-        $this->assertNull($penyewaan->ktp_path);
+        // Booking masih pending sehingga belum bisa dibayar.
         $this->assertSame('menunggu_verifikasi', $penyewaan->status);
 
         Volt::actingAs($user)->test('pages.anak-kos.tagihan')
@@ -342,5 +340,30 @@ class KatalogDetailSewaTest extends TestCase
 
         $component->call('tutupDetailKamar')
             ->assertSet('detailKamarId', null);
+    }
+
+    public function test_fasilitas_data_lama_dengan_pemisah_titik_tengah_dipecah_per_item(): void
+    {
+        $user = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+        $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
+        $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
+
+        $legacy = 'K. Mandi Dalam·WiFi·AC·Kloset Duduk·Kasur·Akses 24 Jam';
+        $properti->update(['fasilitas' => $legacy]);
+        $kamar->update(['fasilitas' => $legacy]);
+
+        $component = Volt::actingAs($user)->test('pages.katalog.detail', [
+            'properti' => $properti->fresh(),
+        ]);
+
+        $component
+            ->assertSee('Fasilitas Umum')
+            ->assertSee('Kamar Mandi Dalam')
+            ->assertSee('Kloset Duduk')
+            ->assertSee('Kasur')
+            ->assertSee('Akses 24 Jam')
+            ->assertDontSee('K. Mandi Dalam·WiFi', false);
+
+        $this->assertContains('Akses 24 Jam', $kamar->fresh()->daftarFasilitas());
     }
 }

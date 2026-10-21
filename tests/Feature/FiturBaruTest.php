@@ -41,8 +41,6 @@ class FiturBaruTest extends TestCase
 
     public function test_api_sewa_berhasil_tanpa_ktp(): void
     {
-        Storage::fake('private');
-
         $anak = $this->user('anak1@ngekos.test');
         $properti = Properti::where('nama', 'Kos Melati')->firstOrFail();
         $kamar = $properti->kamars()->where('status', 'tersedia')->firstOrFail();
@@ -66,7 +64,6 @@ class FiturBaruTest extends TestCase
         $this->assertSame('terisi', $kamar->refresh()->status->value);
 
         $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('kamar_id', $kamar->id)->firstOrFail();
-        $this->assertNull($sewa->ktp_path);
         $this->assertSame('menunggu_verifikasi', $sewa->status);
         $this->assertSame(2, $sewa->tagihans()->count());
         $this->assertDatabaseHas('pembayarans', [
@@ -205,31 +202,13 @@ class FiturBaruTest extends TestCase
             ->assertSee(route('pemilik.grafik', absolute: false), false);
     }
 
-    public function test_ktp_hanya_bisa_dilihat_pemilik_kelolaan(): void
-    {
-        Storage::fake('private');
-        Storage::disk('private')->put('ktp/test.jpg', 'fake-ktp');
-
-        $sewa = Penyewaan::firstOrFail();
-        $sewa->update(['ktp_path' => 'ktp/test.jpg']);
-
-        // Pemilik lain (Siti) tidak boleh lihat KTP sewa milik Budi.
-        $this->actingAs($this->user('pemilik2@ngekos.test'))
-            ->get(route('penyewaan.ktp', $sewa->id))
-            ->assertForbidden();
-    }
-
     public function test_dashboard_anak_kos_tanpa_ktp_tetap_terbuka(): void
     {
         $anak = $this->user('anak1@ngekos.test');
-        $sewa = Penyewaan::where('anak_kos_id', $anak->id)->where('status', 'aktif')->firstOrFail();
-        $sewa->update(['ktp_path' => null]);
 
-        // Modal KTP susulan sudah dihapus — booking baru tidak butuh KTP sama sekali.
+        // Booking baru tidak memakai KTP sama sekali.
         // Pastikan halaman dashboard anak kos tetap terbuka normal.
         Volt::actingAs($anak)->test('pages.dashboard.anak-kos')
             ->assertHasNoErrors();
-
-        $this->assertNull($sewa->refresh()->ktp_path);
     }
 }

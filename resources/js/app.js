@@ -747,9 +747,13 @@ const initPromoRoot = (root) => {
         d.className = 'h-1.5 rounded-full transition-all duration-300 '
             + (i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80');
     });
-    const render = () => {
+    const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let autoScrolling = false;
+    let scrollTimer = null;
+    let sempatGeser = false;
+
+    const paintAktif = () => {
         root.dataset.promoIndex = String(index);
-        track.style.transform = 'translateX(-' + index * 100 + '%)';
         slides.forEach((s, i) => {
             const on = i === index;
             s.classList.toggle('promo-active', on);
@@ -758,7 +762,28 @@ const initPromoRoot = (root) => {
         paint();
         if (count) count.textContent = (index + 1) + ' / ' + slides.length;
     };
-    const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Track memakai scroll native (scroll-snap), jadi swipe di HP ditangani
+    // browser. Auto-slide hanya menggeser scrollLeft ke slide berikutnya.
+    const scrollKe = (i, smooth = true) => {
+        const target = i * (track.clientWidth || 1);
+        if (Math.abs(track.scrollLeft - target) < 2) return;
+
+        autoScrolling = true;
+        track.scrollTo({
+            left: target,
+            behavior: smooth && !hematGerak ? 'smooth' : 'auto',
+        });
+
+        window.clearTimeout(scrollKe._timer);
+        scrollKe._timer = window.setTimeout(() => { autoScrolling = false; }, 700);
+    };
+
+    const render = (smooth = true) => {
+        paintAktif();
+        scrollKe(index, smooth);
+    };
+
     const next = () => { index = (index + 1) % slides.length; render(); };
     const prev = () => { index = (index - 1 + slides.length) % slides.length; render(); };
     const go = (i) => { index = ((i % slides.length) + slides.length) % slides.length; render(); };
@@ -786,186 +811,78 @@ const initPromoRoot = (root) => {
     root.addEventListener('focusin', stop, { signal });
     root.addEventListener('focusout', start, { signal });
 
-    // Drag / swipe: mouse/pen lewat pointer events, sentuhan lewat touch events.
-    // Tanpa ini, di mobile banner hanya berpindah saat jari dilepas sehingga
-    // terasa "tidak bisa digeser".
-    const viewport = track.parentElement || root;
-    const ukuranViewport = () => viewport.clientWidth || root.clientWidth || 1;
-    let dragging = false;
-    let pointerId = null;
-    let mulaiX = 0;
-    let deltaX = 0;
-    let mulaiWaktu = 0;
-    let sempatGeser = false;
-    let sentuhAktif = false;
-    let sentuhSumbu = null;
-    let sentuhMulaiX = 0;
-    let sentuhMulaiY = 0;
+    // Sinkronkan index setelah user menggeser secara native (touch/trackpad).
+    track.addEventListener('scroll', () => {
+        if (scrollTimer) window.clearTimeout(scrollTimer);
 
-    const terapkanGeser = (dx) => {
-        track.style.transition = 'none';
-        track.style.transform = 'translateX(calc(-' + index * 100 + '% + ' + dx + 'px))';
+        scrollTimer = window.setTimeout(() => {
+            const lebar = track.clientWidth || 1;
+            const baru = Math.max(0, Math.min(slides.length - 1, Math.round(track.scrollLeft / lebar)));
+
+            if (baru !== index) {
+                index = baru;
+                paintAktif();
+            }
+
+            if (!autoScrolling) {
+                stop();
+                start();
+            }
+        }, 90);
+    }, { signal, passive: true });
+
+    // Jeda auto-slide selama banner dipegang; lanjutkan setelah dilepas.
+    root.addEventListener('pointerdown', stop, { signal });
+    root.addEventListener('touchstart', stop, { signal, passive: true });
+
+    const lanjutkanAuto = () => {
+        window.clearTimeout(lanjutkanAuto._timer);
+        lanjutkanAuto._timer = window.setTimeout(start, 600);
     };
+    root.addEventListener('pointerup', lanjutkanAuto, { signal });
+    root.addEventListener('touchend', lanjutkanAuto, { signal, passive: true });
+    root.addEventListener('touchcancel', lanjutkanAuto, { signal, passive: true });
 
-    const akhiriGeser = (batalkan = false) => {
-        if (!dragging) return;
+    // Drag mouse/pen di desktop tetap didukung. Sentuhan memakai scroll native.
+    let mouseDrag = false;
+    let mouseMulaiX = 0;
+    let mouseMulaiScroll = 0;
 
-        dragging = false;
-        const dx = deltaX;
-        const durasi = Math.max(1, performance.now() - mulaiWaktu);
-        const kecepatan = dx / durasi;
-        const ambang = Math.min(60, ukuranViewport() * 0.14);
-
-        track.style.transition = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)';
-
-        if (!batalkan && (dx < -ambang || (kecepatan < -0.45 && dx < -12))) {
-            next();
-        } else if (!batalkan && (dx > ambang || (kecepatan > 0.45 && dx > 12))) {
-            prev();
-        } else {
-            render();
-        }
-
-        window.setTimeout(() => {
-            track.style.transition = '';
-            root.dataset.dragging = '0';
-        }, 300);
-
-        deltaX = 0;
-        pointerId = null;
-        start();
-    };
-
-    // Mouse/pen: drag lewat pointer events. Sentuhan memakai touch events
-    // di bawah agar gesture horizontal tidak direbut scroll vertikal.
     root.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch') return;
-        if (e.button !== 0) return;
+        if (e.pointerType === 'touch' || e.button !== 0) return;
 
-        dragging = true;
-        pointerId = e.pointerId;
-        mulaiX = e.clientX;
-        deltaX = 0;
-        mulaiWaktu = performance.now();
+        mouseDrag = true;
+        mouseMulaiX = e.clientX;
+        mouseMulaiScroll = track.scrollLeft;
         sempatGeser = false;
-        stop();
+        track.style.scrollSnapType = 'none';
     }, { signal });
 
-    // Listener level window agar geseran tetap terlacak walau jari/pointer
-    // keluar dari area banner. Hanya aktif saat `dragging` (tanpa
-    // setPointerCapture supaya klik tombol dot/panah tetap bekerja).
     window.addEventListener('pointermove', (e) => {
-        if (!dragging || e.pointerId !== pointerId) return;
+        if (!mouseDrag) return;
 
-        deltaX = e.clientX - mulaiX;
+        const dx = e.clientX - mouseMulaiX;
+        if (Math.abs(dx) > 6) sempatGeser = true;
+        if (Math.abs(dx) > 2 && e.cancelable) e.preventDefault();
 
-        if (Math.abs(deltaX) > 6) {
-            sempatGeser = true;
-            root.dataset.dragging = '1';
-        }
-
-        if (Math.abs(deltaX) > 2 && e.cancelable) {
-            e.preventDefault();
-        }
-
-        terapkanGeser(deltaX);
+        track.scrollLeft = mouseMulaiScroll - dx;
     }, { signal, passive: false });
 
-    window.addEventListener('pointerup', (e) => {
-        if (e.pointerId === pointerId) akhiriGeser();
-    }, { signal });
-    window.addEventListener('pointercancel', (e) => {
-        if (e.pointerId === pointerId) akhiriGeser(true);
-    }, { signal });
+    const selesaiMouse = () => {
+        if (!mouseDrag) return;
 
-    // Sentuhan: kunci arah lebih dulu. Jika jari bergerak horizontal, ambil
-    // alih gesture (preventDefault) lalu geser slide; jika vertikal, biarkan
-    // halaman scroll seperti biasa. Ini membuat swipe tetap responsif di
-    // Chrome Android maupun Safari iOS.
-    root.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) {
-            if (sentuhAktif) {
-                sentuhAktif = false;
-                sentuhSumbu = null;
-                dragging = false;
-                start();
-            }
-            return;
-        }
+        mouseDrag = false;
+        track.style.scrollSnapType = '';
 
-        const t = e.touches[0];
-        sentuhAktif = true;
-        sentuhSumbu = null;
-        sentuhMulaiX = t.clientX;
-        sentuhMulaiY = t.clientY;
-        mulaiX = t.clientX;
-        mulaiWaktu = performance.now();
-        deltaX = 0;
-        sempatGeser = false;
-        dragging = true;
-        pointerId = null;
-        stop();
-    }, { signal, passive: true });
-
-    root.addEventListener('touchmove', (e) => {
-        if (!sentuhAktif || e.touches.length !== 1) return;
-
-        const t = e.touches[0];
-        const dx = t.clientX - sentuhMulaiX;
-        const dy = t.clientY - sentuhMulaiY;
-
-        if (sentuhSumbu === null) {
-            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-
-            // Dominasi horizontal -> swipe carousel; vertikal -> scroll halaman.
-            sentuhSumbu = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-            if (sentuhSumbu === 'y') {
-                sentuhAktif = false;
-                dragging = false;
-                start();
-                return;
-            }
-        }
-
-        if (sentuhSumbu !== 'x') return;
-
-        if (e.cancelable) e.preventDefault();
-
-        deltaX = dx;
-        if (Math.abs(deltaX) > 6) {
-            sempatGeser = true;
-            root.dataset.dragging = '1';
-        }
-        terapkanGeser(deltaX);
-    }, { signal, passive: false });
-
-    const selesaiSentuh = () => {
-        if (!sentuhAktif) return;
-
-        sentuhAktif = false;
-        if (sentuhSumbu === 'x') {
-            akhiriGeser(false);
-        } else {
-            dragging = false;
-            start();
-        }
-        sentuhSumbu = null;
+        const lebar = track.clientWidth || 1;
+        index = Math.max(0, Math.min(slides.length - 1, Math.round(track.scrollLeft / lebar)));
+        paintAktif();
+        scrollKe(index);
     };
-    root.addEventListener('touchend', selesaiSentuh, { signal, passive: true });
-    root.addEventListener('touchcancel', () => {
-        if (!sentuhAktif) return;
+    window.addEventListener('pointerup', selesaiMouse, { signal });
+    window.addEventListener('pointercancel', selesaiMouse, { signal });
 
-        sentuhAktif = false;
-        if (sentuhSumbu === 'x') {
-            akhiriGeser(true);
-        } else {
-            dragging = false;
-            start();
-        }
-        sentuhSumbu = null;
-    }, { signal, passive: true });
-
-    // Cegah klik pada tautan/tombol iklan ikut terpicu setelah drag.
+    // Cegah klik pada tautan/tombol iklan ikut terpicu setelah drag mouse.
     root.addEventListener('click', (e) => {
         if (sempatGeser) {
             e.preventDefault();
@@ -981,17 +898,23 @@ const initPromoRoot = (root) => {
         else if (e.key === 'ArrowLeft') { prev(); restart(); }
     }, { signal });
 
+    // Jaga posisi saat layar berubah ukuran/rotasi.
+    window.addEventListener('resize', () => scrollKe(index, false), { signal });
+
     root._promo = {
         start,
         stop,
         destroy() {
             stop();
+            window.clearTimeout(scrollTimer);
+            window.clearTimeout(scrollKe._timer);
+            window.clearTimeout(lanjutkanAuto._timer);
             try { observer && observer.disconnect(); } catch (e) {}
             try { ac.abort(); } catch (e) {}
         },
     };
     root.dataset.promoDone = '1';
-    render();
+    render(false);
     start();
 };
 

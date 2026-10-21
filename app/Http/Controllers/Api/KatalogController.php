@@ -273,6 +273,8 @@ class KatalogController extends Controller
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', $fasilitas))));
+        return \App\Support\FacilityHelper::normalizeList(
+            \App\Support\FacilityHelper::fromString($fasilitas)
+        );
     }
 }

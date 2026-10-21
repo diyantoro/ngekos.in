@@ -214,16 +214,25 @@
     display: flex;
     width: 100%;
     flex-wrap: nowrap;
-    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.promo-track::-webkit-scrollbar {
+    display: none;
 }
 
 .promo-slide {
     flex: 0 0 100%;
     min-width: 100%;
     width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
 }
 
 [data-promo-anim] {
@@ -239,10 +248,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .promo-track {
-        transition: none;
-    }
-
     [data-promo-anim] {
         opacity: 1;
         transform: none;
