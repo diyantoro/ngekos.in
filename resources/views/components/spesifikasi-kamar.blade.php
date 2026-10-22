@@ -36,21 +36,18 @@
         </span>
         <div class="min-w-0">
             <p class="text-sm font-bold text-slate-900 dark:text-gray-100">{{ $judul }}</p>
-            <p class="text-[11px] text-slate-500 dark:text-gray-400">Ketuk tiap bagian untuk melihat rinciannya.</p>
+            <p class="text-[11px] text-slate-500 dark:text-gray-400">Rincian lengkap tipe kamar ini.</p>
         </div>
     </div>
 
     <div class="divide-y divide-stone-100 dark:divide-gray-700">
         {{-- Spesifikasi tipe kamar --}}
         @if ($adaSpesifikasi)
-            <details class="group" open>
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-stone-50 dark:hover:bg-gray-700/40 [&::-webkit-details-marker]:hidden">
-                    <span class="flex items-center gap-2.5 text-sm font-bold text-slate-800 dark:text-gray-100">
-                        <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5h16.5M7.5 16.5V9m0 7.5h9V12m-9-3h6v3" /></svg>
-                        Spesifikasi tipe kamar
-                    </span>
-                    <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                </summary>
+            <div>
+                <div class="flex items-center gap-2.5 px-4 pb-1 pt-3 text-sm font-bold text-slate-800 dark:text-gray-100">
+                    <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v16.5h16.5M7.5 16.5V9m0 7.5h9V12m-9-3h6v3" /></svg>
+                    Spesifikasi tipe kamar
+                </div>
                 <div class="space-y-2.5 px-4 pb-4 pt-1">
                     @if (filled($kamar->ukuran))
                         <div class="flex items-start gap-2.5 text-sm text-slate-700 dark:text-gray-200">
@@ -78,55 +75,46 @@
                         </div>
                     </div>
                 </div>
-            </details>
+            </div>
         @endif
 
         {{-- Fasilitas kamar --}}
         @if ($kelompok['kamar'] !== [])
-            <details class="group" open>
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-stone-50 dark:hover:bg-gray-700/40 [&::-webkit-details-marker]:hidden">
-                    <span class="flex items-center gap-2.5 text-sm font-bold text-slate-800 dark:text-gray-100">
-                        <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-                        Fasilitas kamar
-                        <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($kelompok['kamar']) }}</span>
-                    </span>
-                    <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                </summary>
+            <div>
+                <div class="flex flex-wrap items-center gap-2.5 px-4 pb-1 pt-3 text-sm font-bold text-slate-800 dark:text-gray-100">
+                    <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                    Fasilitas kamar
+                    <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($kelompok['kamar']) }}</span>
+                </div>
                 <div class="px-4 pb-4 pt-1">
                     <x-facility-icons :fasilitas="implode(', ', $kelompok['kamar'])" tampilan="kartu" />
                 </div>
-            </details>
+            </div>
         @endif
 
         {{-- Fasilitas kamar mandi --}}
         @if ($kelompok['kamar_mandi'] !== [])
-            <details class="group">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-stone-50 dark:hover:bg-gray-700/40 [&::-webkit-details-marker]:hidden">
-                    <span class="flex items-center gap-2.5 text-sm font-bold text-slate-800 dark:text-gray-100">
-                        <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Fasilitas kamar mandi
-                        <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($kelompok['kamar_mandi']) }}</span>
-                    </span>
-                    <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-                </summary>
+            <div>
+                <div class="flex flex-wrap items-center gap-2.5 px-4 pb-1 pt-3 text-sm font-bold text-slate-800 dark:text-gray-100">
+                    <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Fasilitas kamar mandi
+                    <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($kelompok['kamar_mandi']) }}</span>
+                </div>
                 <div class="px-4 pb-4 pt-1">
                     <x-facility-icons :fasilitas="implode(', ', $kelompok['kamar_mandi'])" tampilan="kartu" />
                 </div>
-            </details>
+            </div>
         @endif
 
         {{-- Peraturan khusus --}}
-        <details class="group">
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-stone-50 dark:hover:bg-gray-700/40 [&::-webkit-details-marker]:hidden">
-                <span class="flex items-center gap-2.5 text-sm font-bold text-slate-800 dark:text-gray-100">
-                    <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
-                    Peraturan khusus tipe kamar ini
-                    @if ($peraturan !== [])
-                        <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($peraturan) }}</span>
-                    @endif
-                </span>
-                <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-            </summary>
+        <div>
+            <div class="flex flex-wrap items-center gap-2.5 px-4 pb-1 pt-3 text-sm font-bold text-slate-800 dark:text-gray-100">
+                <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg>
+                Peraturan khusus tipe kamar ini
+                @if ($peraturan !== [])
+                    <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ count($peraturan) }}</span>
+                @endif
+            </div>
             <div class="px-4 pb-4 pt-1">
                 @if ($peraturan !== [])
                     <ul class="space-y-2" role="list">
@@ -141,17 +129,14 @@
                     <p class="text-sm text-slate-500 dark:text-gray-400">Tidak ada peraturan khusus untuk tipe kamar ini.</p>
                 @endif
             </div>
-        </details>
+        </div>
 
         {{-- Deposit --}}
-        <details class="group">
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-stone-50 dark:hover:bg-gray-700/40 [&::-webkit-details-marker]:hidden">
-                <span class="flex items-center gap-2.5 text-sm font-bold text-slate-800 dark:text-gray-100">
-                    <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" /></svg>
-                    Deposit
-                </span>
-                <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 [details[open]_&]:rotate-180" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-            </summary>
+        <div>
+            <div class="flex flex-wrap items-center gap-2.5 px-4 pb-1 pt-3 text-sm font-bold text-slate-800 dark:text-gray-100">
+                <svg class="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" /></svg>
+                Deposit
+            </div>
             <div class="px-4 pb-4 pt-1">
                 @if ($deposit > 0)
                     <p class="text-sm font-bold text-slate-900 dark:text-gray-100">Rp{{ number_format($deposit, 0, ',', '.') }}</p>
@@ -163,6 +148,6 @@
                     <p class="text-sm text-slate-500 dark:text-gray-400">Tidak ada deposit untuk tipe kamar ini.</p>
                 @endif
             </div>
-        </details>
+        </div>
     </div>
 </div>

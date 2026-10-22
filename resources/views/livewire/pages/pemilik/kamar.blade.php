@@ -659,7 +659,7 @@ new #[Layout('layouts.app')] class extends Component
                             </div>
                             @if ($kamar->fasilitas)
                                 <div class="mt-1 flex flex-wrap gap-1">
-                                    @foreach (array_slice($kamar->daftarFasilitas(), 0, 5) as $f)
+                                    @foreach ($kamar->daftarFasilitas() as $f)
                                         <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 dark:text-teal-300">{{ $f }}</span>
                                     @endforeach
                                 </div>

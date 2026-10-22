@@ -169,8 +169,8 @@ class TambahPropertiTest extends TestCase
         $this->assertStringContainsString('Fasilitas Parkir Kos', $view);
         $this->assertStringContainsString('Peraturan Kos', $view);
         $this->assertStringContainsString('Dilarang Merokok', $view);
-        // Ikon fasilitas kini SVG inline (Material/Tabler), bukan file PNG.
-        $this->assertStringContainsString('m1 9 2 2c4.97-4.97', $view);
+        // Ikon fasilitas berupa SVG inline (bukan file PNG).
+        $this->assertStringContainsString('M5.4 10.4a6.6 6.6', $view);
         $this->assertStringNotContainsString('images/fasilitas/wifi.png', $view);
         $this->assertStringNotContainsString('Fasilitas Kamar Mandi', $view);
     }

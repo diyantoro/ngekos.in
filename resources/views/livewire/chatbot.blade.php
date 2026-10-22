@@ -9,6 +9,9 @@ new class extends Component
 
     public array $percakapan = [];
 
+    /** Kriteria pencarian terakhir agar pertanyaan lanjutan tetap nyambung. */
+    public array $konteks = [];
+
     public bool $tampil = true;
 
     public function mount(): void
@@ -16,9 +19,11 @@ new class extends Component
         $this->percakapan = session('chatbot.percakapan', [
             [
                 'dari' => 'bot',
-                'teks' => 'Halo! Saya asisten virtual Ngekos.in. Ada yang bisa saya bantu? Tanya seputar daftar akun, cari kos, pembayaran, atau ketik budget-mu — misalnya "kos di bawah 1 juta di Bandung".',
+                'teks' => 'Halo! Saya asisten virtual Ngekos.in. Ada yang bisa saya bantu? Tanya seputar cari kos, pembayaran, atau daftar akun. Kamu bisa sebut kota, area/kampus, dan budget — misalnya "kos di Palembang dekat kampus UNSRI budget 700rb".',
             ],
         ]);
+
+        $this->konteks = session('chatbot.konteks', []);
 
         // Sembunyikan widget pada halaman form yang padat (fasilitas & kamar)
         // agar tombol mengambang tidak menutupi pilihan checkbox.
@@ -30,7 +35,16 @@ new class extends Component
     {
         return [
             'tampil' => $this->tampil,
-            'saranCepat' => ['Cari kos', 'Kos di bawah 1 juta', 'Kos putri 1,5 juta', 'Cara pembayaran', 'Hubungi admin'],
+            'saranCepat' => [
+                'Kos di Bandung',
+                'Kos dekat UNSRI',
+                'Kos di bawah 1 juta',
+                'Kos putri 1,5 juta',
+                'Kota mana saja?',
+                'Dekat kampus mana?',
+                'Cara pembayaran',
+                'Hubungi admin',
+            ],
         ];
     }
 
@@ -66,15 +80,23 @@ new class extends Component
             return;
         }
 
-        // 2. Rekomendasi kos dari database (budget, kota, tipe).
+        // 2. Rekomendasi kos dari database (budget, kota, area/kampus, tipe).
+        //    Konteks percakapan dipakai agar "budget 700000" setelah pertanyaan
+        //    sebelumnya tetap mencari di kota/kampus yang sama.
         $rekomendasi = app(\App\Services\RekomendasiKosService::class);
 
-        if ($rekomendasi->cocok($pertanyaan)) {
-            $hasil = $rekomendasi->cari($pertanyaan);
+        if ($rekomendasi->cocok($pertanyaan, $this->konteks)) {
+            $hasil = $rekomendasi->cari($pertanyaan, $this->konteks);
+            $this->konteks = $hasil['konteks'] ?? [];
+            session(['chatbot.konteks' => $this->konteks]);
             $this->balasBot($hasil['teks'], $hasil['tautan']);
 
             return;
         }
+
+        // Pertanyaan non-pencarian (mis. cara bayar) memutus konteks kos
+        // supaya pesan berikutnya tidak tercampur kriteria lama.
+        $this->kosongkanKonteks();
 
         $jawaban = $this->cariJawaban($pertanyaan);
 
@@ -96,7 +118,14 @@ new class extends Component
             ],
         ];
         $this->input = '';
+        $this->kosongkanKonteks();
         $this->simpan();
+    }
+
+    protected function kosongkanKonteks(): void
+    {
+        $this->konteks = [];
+        session()->forget('chatbot.konteks');
     }
 
     /**
@@ -123,79 +152,53 @@ new class extends Component
     protected function jawabanSapaan(string $pertanyaan): ?string
     {
         $teks = $this->normalisasi($pertanyaan);
+        $kata = $teks === '' ? [] : explode(' ', $teks);
+        $pembuka = $kata[0] ?? '';
+        $sisa = array_slice($kata, 1);
+        $filler = ['kak', 'min', 'bang', 'bro', 'pak', 'bu', 'mas', 'mbak', 'admin', 'semua', 'ngekos', 'dong', 'ya', 'nih', 'sih'];
 
-        $sapaan = [
-            'assalamualaikum' => 'Waalaikumsalam! Senang bisa membantu. Mau tanya soal cari kos, pembayaran, atau daftar akun?',
-            'halo' => null,
-            'hallo' => null,
-            'hello' => null,
-            'hi' => null,
-            'hai' => null,
-            'hei' => null,
-            'hey' => null,
-            'pagi' => null,
-            'siang' => null,
-            'sore' => null,
-            'malam' => null,
-            'tes' => null,
-            'test' => null,
-            'coba' => null,
-            'bang' => null,
-            'kak' => null,
-            'min' => null,
-            'bro' => null,
-        ];
+        // Sapaan hanya dijawab sebagai sapaan bila pesannya memang murni sapaan.
+        // "halo, ada kos di Bandung?" tetap diproses sebagai pencarian kos.
+        $sisaTanpaFiller = array_values(array_diff($sisa, $filler));
 
-        foreach ($sapaan as $kunci => $balasanKhusus) {
-            // cocok persis atau diawali kata sapaan ("halo kak", "hai min", "selamat pagi", dst)
-            if ($teks === $kunci || str_starts_with($teks, $kunci.' ') || str_contains($teks, ' '.$kunci.' ') || str_contains($teks, ' '.$kunci)) {
-                if ($balasanKhusus !== null) {
-                    return $balasanKhusus;
-                }
+        $sapaan = ['halo', 'hallo', 'hello', 'hi', 'hai', 'hei', 'hey', 'pagi', 'siang', 'sore', 'malam', 'tes', 'test', 'permisi'];
 
-                $nama = auth()->check() ? ' '.auth()->user()->nama : '';
+        if (in_array($pembuka, $sapaan, true) && $sisaTanpaFiller === []) {
+            $nama = auth()->check() ? ' '.auth()->user()->nama : '';
 
-                $varian = [
-                    "Halo{$nama}! Saya asisten virtual Ngekos.in. Mau cari info kos, cara pembayaran, atau cara chat pemilik kos?",
-                    "Hai{$nama}! Ada yang bisa saya bantu? Coba tanya misalnya: \"cara cari kos\" atau \"cara pembayaran\".",
-                    "Halo{$nama}! Senang bertemu denganmu. Silakan tanya seputar daftar akun, cari kos, peta kos, atau pembayaran ya.",
-                ];
+            $varian = [
+                "Halo{$nama}! Saya asisten virtual Ngekos.in. Mau cari info kos, cara pembayaran, atau cara chat pemilik kos?",
+                "Hai{$nama}! Ada yang bisa saya bantu? Coba tanya misalnya: \"kos di Bandung dekat kampus ITB\" atau \"cara pembayaran\".",
+                "Halo{$nama}! Senang bertemu denganmu. Silakan tanya seputar daftar akun, cari kos, peta kos, atau pembayaran ya.",
+            ];
 
-                return $varian[abs(crc32($teks)) % count($varian)];
-            }
+            return $varian[abs(crc32($teks)) % count($varian)];
         }
 
-        // Selamat pagi/siang/sore/malam
-        if (preg_match('/selamat (pagi|siang|sore|malam)/', $teks, $m)) {
-            return 'Selamat '.$m[1].'! Ada yang bisa saya bantu seputar kos hari ini? Misalnya cara cari kos atau cara pembayaran.';
+        if (preg_match('/^assalamualaikum(\s+(warahmatullahi\s+wabarakatuh|kak|min|bang|bro|semua))*$/u', $teks) === 1) {
+            return 'Waalaikumsalam! Senang bisa membantu. Mau tanya soal cari kos, pembayaran, atau daftar akun?';
         }
 
-        // Apa kabar
-        if (str_contains($teks, 'apa kabar') || str_contains($teks, 'kabar')) {
-            return 'Kabar saya baik dan siap membantu 24 jam! Kamu sendiri gimana? Ada yang mau ditanyakan soal kos?';
+        // "selamat pagi/siang/sore/malam" (boleh diikuti sapaan lain).
+        if (preg_match('/^selamat (pagi|siang|sore|malam)(\s+(kak|min|bang|bro|semua))*$/u', $teks, $m) === 1) {
+            return 'Selamat '.$m[1].'! Ada yang bisa saya bantu seputar kos hari ini? Misalnya cari kos atau cara pembayaran.';
         }
 
-        // Siapa kamu
-        if (str_contains($teks, 'siapa kamu') || str_contains($teks, 'nama kamu') || str_contains($teks, 'bot apa') || $teks === 'kamu siapa') {
-            return 'Saya asisten virtual Ngekos.in, siap membantu jawab pertanyaan seputar akun, cari kos, pembayaran, dan menghubungkanmu ke admin kalau butuh bantuan lebih lanjut.';
+        $polaSapaan = '/^(apa kabar|kabar|siapa kamu|kamu siapa|nama kamu|bot apa|bantuan|help|tolong|butuh bantuan|minta tolong|terima kasih|terimakasih|makasih|thanks|thank you|mantap|oke|dadah|bye|sampai jumpa|dah)(\s+(kak|min|bang|bro|ya|dong|nih|sih|semua))*$/u';
+
+        if (preg_match($polaSapaan, $teks, $m) !== 1) {
+            return null;
         }
 
-        // Terima kasih
-        if (preg_match('/terima ?kasih|makasih|thanks|thank you|mantap|oke (banget|makasih)?/', $teks)) {
-            return 'Sama-sama! Senang bisa membantu. Kalau ada pertanyaan lain soal kos, jangan ragu tanya lagi ya.';
-        }
+        $topik = $m[1];
 
-        // Perpisahan
-        if (preg_match('/^(dadah|bye|sampai jumpa|dah( lah)?)$/', $teks) || str_contains($teks, 'sampai jumpa')) {
-            return 'Sampai jumpa! Semoga dapat kos yang nyaman ya. Saya di sini kalau kamu butuh bantuan lagi.';
-        }
-
-        // Minta bantuan umum
-        if (in_array($teks, ['bantuan', 'help', 'tolong', 'butuh bantuan', 'minta tolong'], true)) {
-            return 'Tentu, saya siap membantu! Kamu bisa tanya soal: daftar akun, cara cari kos, peta kos, chat pemilik, pembayaran & tagihan, atau ketik "hubungi admin" untuk diteruskan ke admin.';
-        }
-
-        return null;
+        return match (true) {
+            in_array($topik, ['apa kabar', 'kabar'], true) => 'Kabar saya baik dan siap membantu 24 jam! Kamu sendiri gimana? Ada yang mau ditanyakan soal kos?',
+            in_array($topik, ['siapa kamu', 'kamu siapa', 'nama kamu', 'bot apa'], true) => 'Saya asisten virtual Ngekos.in, siap membantu jawab pertanyaan seputar akun, cari kos, pembayaran, dan menghubungkanmu ke admin kalau butuh bantuan lebih lanjut.',
+            in_array($topik, ['bantuan', 'help', 'tolong', 'butuh bantuan', 'minta tolong'], true) => 'Tentu, saya siap membantu! Kamu bisa tanya soal: daftar akun, cari kos, peta kos, chat pemilik, pembayaran & tagihan, atau ketik "hubungi admin" untuk diteruskan ke admin.',
+            in_array($topik, ['terima kasih', 'terimakasih', 'makasih', 'thanks', 'thank you', 'mantap', 'oke'], true) => 'Sama-sama! Senang bisa membantu. Kalau ada pertanyaan lain soal kos, jangan ragu tanya lagi ya.',
+            default => 'Sampai jumpa! Semoga dapat kos yang nyaman ya. Saya di sini kalau kamu butuh bantuan lagi.',
+        };
     }
 
     protected function normalisasi(string $teks): string

@@ -267,14 +267,18 @@ new #[Layout('layouts.publik')] class extends Component
                                     {{ $properti->kota ?? $properti->alamat ?? 'Lokasi belum diisi' }}
                                 </p>
                                 @if ($properti->fasilitas)
-                                    <div class="mt-1.5 flex flex-wrap gap-1">
-                                        @foreach (array_slice(array_filter(array_map('trim', explode(',', $properti->fasilitas))), 0, 3) as $f)
-                                            <span class="inline-flex items-center rounded bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-800 dark:text-brand-200">{{ $f }}</span>
-                                        @endforeach
-                                        @if (count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) > 3)
-                                            <span class="inline-flex items-center rounded bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-medium text-teal-700 dark:text-teal-300">+{{ count(array_filter(array_map('trim', explode(',', $properti->fasilitas)))) - 3 }}</span>
-                                        @endif
-                                    </div>
+                                    @php
+                                        $fasilitasKos = \App\Support\FacilityHelper::normalizeList(
+                                            \App\Support\FacilityHelper::fromString($properti->fasilitas)
+                                        );
+                                    @endphp
+                                    @if ($fasilitasKos !== [])
+                                        <div class="mt-1.5 flex flex-wrap gap-1">
+                                            @foreach ($fasilitasKos as $f)
+                                                <span class="inline-flex items-center rounded bg-brand-50 dark:bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-800 dark:text-brand-200">{{ $f }}</span>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 @endif
                             </div>
                             <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-end justify-between gap-2">

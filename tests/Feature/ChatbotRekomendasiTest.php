@@ -31,8 +31,13 @@ class ChatbotRekomendasiTest extends TestCase
 
         $this->assertTrue($service->cocok('ada kos di bawah 1,5 juta di Bandung?'));
         $this->assertTrue($service->cocok('rekomendasi kos putri budget 800rb'));
+        $this->assertTrue($service->cocok('dekat kampus UNSRI'));
+        $this->assertTrue($service->cocok('Kota mana saja?'));
+        $this->assertTrue($service->cocok('Dekat kampus mana?'));
+        $this->assertTrue($service->cocok('di budget 700000', ['kota' => 'Palembang']));
         $this->assertFalse($service->cocok('cara cari kos'));
         $this->assertFalse($service->cocok('cara bayar tagihan kos'));
+        $this->assertFalse($service->cocok('cara cari kos dekat kampus'));
     }
 
     public function test_rekomendasi_hanya_menampilkan_kamar_tersedia_sesuai_budget(): void
@@ -113,6 +118,110 @@ class ChatbotRekomendasiTest extends TestCase
         $this->assertStringContainsString('Maks. 2 orang/kamar', $html);
         $this->assertStringContainsString('Tamu boleh menginap', $html);
         $this->assertStringContainsString('Rp500.000', $html);
+    }
+
+    public function test_chatbot_memahami_kampus_dan_budget_lanjutan(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $anak = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+
+        $this->buatProperti($pemilik, 'Kos Uji Bukit Murah', 'Palembang', 700000, [
+            'alamat' => 'Bukit Besar, Ilir Barat I',
+        ]);
+        $this->buatProperti($pemilik, 'Kos Uji Bukit Mahal', 'Palembang', 2000000, [
+            'alamat' => 'Bukit Besar, Ilir Barat I',
+        ]);
+        $this->buatProperti($pemilik, 'Kos Uji Sako Jauh', 'Palembang', 500000, [
+            'alamat' => 'Sako, Kenten',
+        ]);
+
+        $komponen = Volt::actingAs($anak)
+            ->test('chatbot')
+            ->set('input', 'halo kak, ada kos di kota Palembang yang dekat kampus UNSRI?')
+            ->call('kirim')
+            ->assertHasNoErrors();
+
+        $percakapan = $komponen->get('percakapan');
+        $jawabanPertama = end($percakapan)['teks'];
+
+        $this->assertStringContainsString('Universitas Sriwijaya', $jawabanPertama);
+        $this->assertStringContainsString('Kos Uji Bukit Murah', $jawabanPertama);
+        $this->assertStringContainsString('Kos Uji Bukit Mahal', $jawabanPertama);
+        $this->assertStringNotContainsString('Kos Uji Sako Jauh', $jawabanPertama);
+
+        // Pertanyaan lanjutan hanya menyebut budget — konteks kampus/kota tetap dipakai.
+        $komponen->set('input', 'di budget 700000')->call('kirim')->assertHasNoErrors();
+
+        $percakapan = $komponen->get('percakapan');
+        $jawabanKedua = end($percakapan)['teks'];
+
+        $this->assertStringContainsString('Kos Uji Bukit Murah', $jawabanKedua);
+        $this->assertStringNotContainsString('Kos Uji Bukit Mahal', $jawabanKedua);
+        $this->assertStringNotContainsString('Kos Uji Sako Jauh', $jawabanKedua);
+        $this->assertEquals(700000, $komponen->get('konteks')['budget']);
+    }
+
+    public function test_variasi_budget_dikenali_dan_kota_kosong_tidak_bocor(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $this->buatProperti($pemilik, 'Kos Uji Budget Variasi', 'Palembang', 700000, [
+            'alamat' => 'Bukit Besar, Ilir Barat I',
+        ]);
+
+        $service = app(RekomendasiKosService::class);
+
+        foreach ([
+            'kos di palembang budget 700rb',
+            'kos di palembang budget Rp 700.000',
+            'kos di palembang budget perbulannya 700000',
+            'kos di palembang maks 700 k',
+            'kos di palembang budget 700',
+        ] as $pertanyaan) {
+            $hasil = $service->cari($pertanyaan);
+
+            $this->assertStringContainsString('Kos Uji Budget Variasi', $hasil['teks'], $pertanyaan);
+            $this->assertEquals(700000, $hasil['konteks']['budget'], $pertanyaan);
+        }
+
+        $this->buatProperti($pemilik, 'Kos Uji Bandung Lain', 'Bandung', 750000);
+
+        $kosong = $service->cari('kos di Palembang budget 500rb');
+        $this->assertStringContainsString('Belum ada kos', $kosong['teks']);
+        $this->assertStringNotContainsString('Kos Uji Bandung Lain', $kosong['teks']);
+    }
+
+    public function test_ringkasan_kota_kampus_area_dan_fallback_kampus(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+        $this->buatProperti($pemilik, 'Kos Uji Ringkasan', 'Palembang', 900000, [
+            'alamat' => 'Bukit Besar, Ilir Barat I',
+        ]);
+
+        $service = app(RekomendasiKosService::class);
+
+        $kota = $service->cari('Kota mana saja?');
+        $this->assertStringContainsString('Palembang', $kota['teks']);
+        $this->assertStringContainsString('Bandung', $kota['teks']);
+
+        $kampus = $service->cari('Dekat kampus mana?');
+        $this->assertStringContainsString('Universitas Sriwijaya', $kampus['teks']);
+        $this->assertStringContainsString('Palembang', $kampus['teks']);
+
+        $area = $service->cari('Kos di Bandung dekat mana?');
+        $this->assertStringContainsString('Kos di Bandung', $area['teks']);
+        $this->assertSame('Bandung', $area['konteks']['kota']);
+
+        // Alamat di luar area kampus: jangan mengaku "dekat kampus",
+        // tetap tampilkan kos kota yang sama secara jujur.
+        $this->buatProperti($pemilik, 'Kos Uji Sako Fallback', 'Palembang', 500000, [
+            'alamat' => 'Sako, Kenten',
+        ]);
+
+        $fallback = $service->cari('kos di Palembang dekat kampus UNSRI budget 700rb');
+
+        $this->assertStringContainsString('Belum ada kos yang cocok', $fallback['teks']);
+        $this->assertStringContainsString('Kos Uji Sako Fallback', $fallback['teks']);
+        $this->assertStringNotContainsString('di sekitar Kampus', $fallback['teks']);
     }
 
     /**

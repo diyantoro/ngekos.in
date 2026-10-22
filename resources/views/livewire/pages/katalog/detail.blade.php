@@ -700,14 +700,9 @@ new #[Layout('layouts.publik')] class extends Component
                                                 <p class="text-[11px] font-bold leading-tight text-white">Fasilitas Kamar</p>
                                                 <p class="text-[10px] font-medium leading-tight text-teal-50/90">{{ count($kamar->daftarFasilitas()) }} fasilitas</p>
                                             </div>
-                                            <button type="button" wire:click="bukaDetailKamar({{ $kamar->id }})"
-                                                class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/20 px-2.5 py-1.5 text-[10px] font-bold text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/30">
-                                                Lihat semua
-                                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                                            </button>
                                         </div>
                                         <div class="bg-gradient-to-br from-teal-50/60 via-white to-emerald-50/40 px-3 pb-3 pt-3 dark:from-teal-500/10 dark:via-gray-800 dark:to-emerald-500/5">
-                                            <x-facility-icons :fasilitas="$kamar->fasilitas" :maks="4" tampilan="kartu" :kolom="2" />
+                                            <x-facility-icons :fasilitas="$kamar->fasilitas" tampilan="kartu" :kolom="2" />
                                         </div>
                                     </div>
                                 @endif
