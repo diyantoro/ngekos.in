@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BarangKos extends Model
 {
@@ -56,6 +57,11 @@ class BarangKos extends Model
     public function properti(): BelongsTo
     {
         return $this->belongsTo(Properti::class);
+    }
+
+    public function pesans(): HasMany
+    {
+        return $this->hasMany(BarangPesan::class, 'barang_kos_id');
     }
 
     public function scopeTersedia(Builder $query): Builder
