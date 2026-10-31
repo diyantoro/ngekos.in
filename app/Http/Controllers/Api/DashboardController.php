@@ -531,8 +531,8 @@ class DashboardController extends Controller
 
         $awalBulanIni = now()->startOfMonth();
         $akhirBulanIni = now()->copy()->endOfMonth();
-        $awalBulanLalu = now()->subMonth()->startOfMonth();
-        $akhirBulanLalu = now()->subMonth()->endOfMonth();
+        $awalBulanLalu = now()->startOfMonth()->subMonth();
+        $akhirBulanLalu = now()->startOfMonth()->subMonth()->endOfMonth();
 
         $scopeBayarPemilik = fn ($q) => $q->where('pemilik_id', $userId)
             ->when($propertiId, fn ($w) => $w->where('propertis.id', $propertiId));

@@ -33,7 +33,7 @@ new class extends Component
 
             $totalKamar = (int) $statusKamar->sum();
             $sekarang = now();
-            $lalu = now()->subMonth();
+            $lalu = now()->startOfMonth()->subMonth();
 
             // Tren pendapatan bersih 6 bulan untuk grafik ringan di dashboard.
             $mulaiEnam = now()->startOfMonth()->subMonths(5);

@@ -105,32 +105,32 @@ class DomainDataSeeder extends Seeder
 
         $sewaRina = Penyewaan::firstOrCreate(['anak_kos_id' => $rina->id, 'kamar_id' => $a2->id], [
             'properti_id' => $melati->id,
-            'tanggal_masuk' => now()->subMonths(2)->startOfMonth()->toDateString(),
+            'tanggal_masuk' => now()->startOfMonth()->subMonths(2)->toDateString(),
             'status' => 'aktif',
         ]);
         $sewaYoga = Penyewaan::firstOrCreate(['anak_kos_id' => $yoga->id, 'kamar_id' => $b1->id], [
             'properti_id' => $mawar->id,
-            'tanggal_masuk' => now()->subMonth()->startOfMonth()->toDateString(),
+            'tanggal_masuk' => now()->startOfMonth()->subMonth()->toDateString(),
             'status' => 'aktif',
         ]);
         Penyewaan::firstOrCreate(['anak_kos_id' => $maya->id, 'kamar_id' => $c2->id], [
             'properti_id' => $anggrek->id,
-            'tanggal_masuk' => now()->subMonths(6)->startOfMonth()->toDateString(),
+            'tanggal_masuk' => now()->startOfMonth()->subMonths(6)->toDateString(),
             'tanggal_keluar' => now()->startOfMonth()->subDay()->toDateString(),
             'status' => 'selesai',
         ]);
 
         $tagihanRinaJul = Tagihan::firstOrCreate(
-            ['penyewaan_id' => $sewaRina->id, 'periode' => now()->subMonth()->translatedFormat('F Y')],
-            ['jumlah' => 1000000, 'denda' => 0, 'jatuh_tempo' => now()->subMonth()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
+            ['penyewaan_id' => $sewaRina->id, 'periode' => now()->startOfMonth()->subMonth()->translatedFormat('F Y')],
+            ['jumlah' => 1000000, 'denda' => 0, 'jatuh_tempo' => now()->startOfMonth()->subMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
         );
         $tagihanRinaAgu = Tagihan::firstOrCreate(
             ['penyewaan_id' => $sewaRina->id, 'periode' => now()->translatedFormat('F Y')],
             ['jumlah' => 1000000, 'denda' => 0, 'jatuh_tempo' => now()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'belum_bayar']
         );
         $tagihanYogaJul = Tagihan::firstOrCreate(
-            ['penyewaan_id' => $sewaYoga->id, 'periode' => now()->subMonth()->translatedFormat('F Y')],
-            ['jumlah' => 850000, 'denda' => 0, 'jatuh_tempo' => now()->subMonth()->startOfMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
+            ['penyewaan_id' => $sewaYoga->id, 'periode' => now()->startOfMonth()->subMonth()->translatedFormat('F Y')],
+            ['jumlah' => 850000, 'denda' => 0, 'jatuh_tempo' => now()->startOfMonth()->subMonth()->addDays(5)->toDateString(), 'status' => 'lunas']
         );
         $tagihanYogaAgu = Tagihan::firstOrCreate(
             ['penyewaan_id' => $sewaYoga->id, 'periode' => now()->translatedFormat('F Y')],
@@ -142,14 +142,14 @@ class DomainDataSeeder extends Seeder
             'jumlah' => 1000000,
             'status' => 'diverifikasi',
             'diverifikasi_oleh' => $admin->id,
-            'verified_at' => now()->subMonth()->startOfMonth()->addDays(3),
+            'verified_at' => now()->startOfMonth()->subMonth()->addDays(3),
         ]);
         Pembayaran::firstOrCreate(['tagihan_id' => $tagihanYogaJul->id, 'anak_kos_id' => $yoga->id], [
             'metode' => 'transfer',
             'jumlah' => 850000,
             'status' => 'diverifikasi',
             'diverifikasi_oleh' => $admin->id,
-            'verified_at' => now()->subMonth()->startOfMonth()->addDays(2),
+            'verified_at' => now()->startOfMonth()->subMonth()->addDays(2),
         ]);
         Pembayaran::firstOrCreate(['tagihan_id' => $tagihanYogaAgu->id, 'anak_kos_id' => $yoga->id], [
             'metode' => 'transfer',

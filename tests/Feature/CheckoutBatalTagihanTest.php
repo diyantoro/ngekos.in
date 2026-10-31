@@ -137,8 +137,8 @@ class CheckoutBatalTagihanTest extends TestCase
         // Simulasi tunggakan: tagihan paling lampau digeser ke bulan lalu, belum lunas.
         $tunggakan = $sewa->tagihans()->orderBy('jatuh_tempo')->firstOrFail();
         $tunggakan->update([
-            'periode' => now()->subMonth()->translatedFormat('F Y'),
-            'jatuh_tempo' => now()->subMonth()->endOfMonth()->toDateString(),
+            'periode' => now()->startOfMonth()->subMonth()->translatedFormat('F Y'),
+            'jatuh_tempo' => now()->startOfMonth()->subMonth()->endOfMonth()->toDateString(),
             'status' => 'belum_bayar',
         ]);
 
