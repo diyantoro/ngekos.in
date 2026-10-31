@@ -129,6 +129,11 @@ new class extends Component
                     ->filter(fn ($p) => $p->total_kamar > $p->kamar_terisi)
                     ->values();
             })(),
+            'barangKosTerbaru' => \App\Models\BarangKos::where('status', \App\Enums\BarangStatus::Tersedia->value)
+                ->with(['user'])
+                ->latest()
+                ->limit(4)
+                ->get(),
         ];
     }
 
@@ -514,6 +519,71 @@ new class extends Component
                 </div>
             </div>
         @endif
+
+        {{-- Section: Pasar Barang Kos --}}
+        <div>
+            <div class="flex items-end justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-400 text-brand-950">Hemat & Praktis</span>
+                        <h2 class="text-lg font-extrabold text-gray-900 dark:text-gray-100">Pasar Barang Kos</h2>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Jual beli perlengkapan kamar kos bekas berkualitas langsung antar anak kos & pemilik</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('barang.pasang') }}" wire:navigate
+                       class="hidden sm:inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-400 text-brand-950 hover:bg-amber-300 transition">
+                        + Jual Barang
+                    </a>
+                    <a href="{{ route('barang.index') }}" wire:navigate
+                        class="shrink-0 inline-flex items-center gap-0.5 text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
+                        Lihat Semua
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </a>
+                </div>
+            </div>
+
+            @if ($barangKosTerbaru->isNotEmpty())
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    @foreach ($barangKosTerbaru as $b)
+                        <a href="{{ route('barang.detail', $b) }}" wire:navigate
+                           class="group rounded-xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 overflow-hidden hover:shadow-card-hover transition flex flex-col justify-between">
+                            <div>
+                                <div class="relative h-32 bg-stone-100 dark:bg-gray-800 overflow-hidden">
+                                    <img src="{{ $b->fotoUrl() }}" alt="{{ $b->nama }}" loading="lazy" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
+                                    <span class="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white bg-brand-950/80">
+                                        {{ $b->kondisi?->label() ?? 'Bekas' }}
+                                    </span>
+                                    @if ($b->bisa_nego)
+                                        <span class="absolute top-2 right-2 rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-400 text-brand-950">
+                                            Nego
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="p-3">
+                                    <p class="text-[10px] font-bold uppercase text-brand-700 dark:text-brand-300 tracking-wider">{{ $b->kategori?->label() }}</p>
+                                    <h3 class="mt-0.5 text-sm font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-brand-700 dark:group-hover:text-brand-300 transition">{{ $b->nama }}</h3>
+                                    <p class="mt-1 text-sm font-extrabold text-brand-800 dark:text-emerald-400">{{ $b->formattedHarga() }}</p>
+                                    <p class="mt-1 text-xs text-gray-400 truncate">{{ $b->kota }}</p>
+                                </div>
+                            </div>
+                            <div class="px-3 pb-3 pt-0 flex items-center justify-between text-[11px] text-gray-500 border-t border-stone-100 dark:border-gray-700/60 pt-2">
+                                <span class="truncate">Oleh: {{ $b->user?->nama }}</span>
+                                <span class="text-brand-600 dark:text-brand-400 font-semibold">Lihat →</span>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <div class="mt-4 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 text-center">
+                    <p class="text-sm font-bold text-gray-800 dark:text-gray-200">Belum ada barang di Pasar Kos.</p>
+                    <p class="text-xs text-gray-500 mt-1">Punya kipas, meja, atau perabot tak terpakai? Iklankan sekarang!</p>
+                    <a href="{{ route('barang.pasang') }}" wire:navigate class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-700 text-white text-xs font-semibold hover:bg-brand-800 transition">
+                        Pasang Iklan Sekarang
+                    </a>
+                </div>
+            @endif
+        </div>
 
     </div>
 

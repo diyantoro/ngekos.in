@@ -182,6 +182,8 @@ new class extends Component
                     'sisaLangganan' => SubscriptionService::sisaLanggananHari($user),
                 ];
             }),
+            'barangSayaCount' => \App\Models\BarangKos::where('user_id', $id)->count(),
+            'barangPasarCount' => \App\Models\BarangKos::where('status', \App\Enums\BarangStatus::Tersedia->value)->count(),
         ];
     }
 
@@ -541,6 +543,42 @@ new class extends Component
                         <p class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">Semua tagihan sudah lunas. Bagus!</p>
                     @endforelse
                 </div>
+            </div>
+        </div>
+
+        {{-- Widget Bursa & Jual Beli Perlengkapan Kos --}}
+        <div class="rounded-2xl border border-stone-200 dark:border-gray-800 bg-gradient-to-r from-brand-900/90 to-brand-950 p-5 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div class="flex items-start gap-4">
+                <div class="h-12 w-12 rounded-2xl bg-amber-400 text-brand-950 flex items-center justify-center shrink-0 shadow-md">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-white/10 text-amber-300">Fitur Komunitas Kos</span>
+                        <h3 class="text-base font-bold text-white">Jual Beli Perlengkapan & Perabot Kos</h3>
+                    </div>
+                    <p class="mt-1 text-xs text-brand-100 max-w-xl leading-relaxed">
+                        Punya kasur, lemari, kulkas, atau perlengkapan kamar kos yang berlebih? Iklankan gratis ke calon penyewa dan anak kos, atau cari perlengkapan kos harga terjangkau.
+                    </p>
+                    <div class="mt-2.5 flex items-center gap-4 text-xs text-brand-200">
+                        <span><strong>{{ $barangSayaCount }}</strong> barang Anda diiklankan</span>
+                        <span>•</span>
+                        <span><strong>{{ $barangPasarCount }}</strong> barang tersedia di Pasar Kos</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2.5 shrink-0">
+                <a href="{{ route('barang.kelola') }}" wire:navigate
+                   class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/20">
+                    Kelola Barang ({{ $barangSayaCount }})
+                </a>
+                <a href="{{ route('barang.pasang') }}" wire:navigate
+                   class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-brand-950 font-bold text-xs transition shadow-md">
+                    + Jual Barang Baru
+                </a>
             </div>
         </div>
 

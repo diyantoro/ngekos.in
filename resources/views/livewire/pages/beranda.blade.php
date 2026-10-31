@@ -393,6 +393,29 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
     </section>
 
+    <!-- Fitur Baru: Pasar Barang Kos -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="max-w-2xl relative z-10">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white mb-2">
+                    Fitur Baru
+                </span>
+                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">Pasar Barang Kos: Jual Beli Perlengkapan Hemat</h2>
+                <p class="mt-1.5 text-xs sm:text-sm text-amber-50 leading-relaxed">
+                    Mau pindah kos atau butuh perabot & elektronik murah? Jual barang tak terpakai atau beli dari sesama anak kos dan pemilik kos tanpa perantara.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
+                <a href="{{ route('barang.index') }}" wire:navigate class="px-5 py-2.5 rounded-xl bg-brand-950 hover:bg-brand-900 text-white font-bold text-xs transition shadow-md">
+                    Jelajahi Pasar Kos
+                </a>
+                <a href="{{ route('barang.pasang') }}" wire:navigate class="px-5 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition border border-white/30">
+                    + Jual Barang
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Promo Ngebut -->
     @if ($propertiPromo->isNotEmpty())
     <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10"

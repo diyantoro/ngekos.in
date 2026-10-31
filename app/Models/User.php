@@ -213,6 +213,11 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function barangKos(): HasMany
+    {
+        return $this->hasMany(BarangKos::class);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         // Jangan hanya cek baris terbaru: pemilik bisa punya trial Free

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             DomainDataSeeder::class,
             KatalogMamikosSeeder::class,
             PalembangSeeder::class,
+            BarangKosSeeder::class,
         ]);
     }
 }

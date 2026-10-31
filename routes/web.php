@@ -19,6 +19,19 @@ Volt::route('kos', 'pages.katalog.kos')->name('kos.index');
 // Detail kos (publik).
 Volt::route('kos/{properti}', 'pages.katalog.detail')->name('kos.detail');
 
+// Fitur Jual Beli Barang Kos (Anak Kos, Pemilik Kos, Publik).
+Volt::route('barang-kos', 'pages.barang.index')->name('barang.index');
+Volt::route('barang-kos/kelola', 'pages.barang.kelola')
+    ->middleware(['auth', 'verified'])
+    ->name('barang.kelola');
+Volt::route('barang-kos/pasang', 'pages.barang.form')
+    ->middleware(['auth', 'verified'])
+    ->name('barang.pasang');
+Volt::route('barang-kos/{barang}/ubah', 'pages.barang.form')
+    ->middleware(['auth', 'verified'])
+    ->name('barang.ubah');
+Volt::route('barang-kos/{barang}', 'pages.barang.detail')->name('barang.detail');
+
 // Pusat bantuan: chatbot & hubungi admin.
 Volt::route('bantuan', 'pages.bantuan.index')->name('bantuan');
 Volt::route('bantuan/riwayat', 'pages.bantuan.riwayat')
