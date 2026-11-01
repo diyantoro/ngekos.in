@@ -30,6 +30,12 @@ Volt::route('barang-kos/pasang', 'pages.barang.form')
 Volt::route('barang-kos/{barang}/ubah', 'pages.barang.form')
     ->middleware(['auth', 'verified'])
     ->name('barang.ubah');
+Volt::route('barang-kos/{barang}/chat', 'pages.barang.chat')
+    ->middleware(['auth', 'verified', 'role:anak_kos|pemilik'])
+    ->name('barang.chat');
+Volt::route('barang-kos/{barang}/chat/{pembeli}', 'pages.barang.chat')
+    ->middleware(['auth', 'verified', 'role:anak_kos|pemilik'])
+    ->name('barang.chat.pembeli');
 Volt::route('barang-kos/{barang}', 'pages.barang.detail')->name('barang.detail');
 
 // Pusat bantuan: chatbot & hubungi admin.

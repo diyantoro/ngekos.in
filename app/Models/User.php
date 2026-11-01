@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use App\Enums\UserRole;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -108,16 +109,16 @@ class User extends Authenticatable
         return $this->assignRole($roles);
     }
 
-    /** @return \Illuminate\Support\Collection<int,string> */
-    public function getRoleNames(): \Illuminate\Support\Collection
+    /** @return Collection<int,string> */
+    public function getRoleNames(): Collection
     {
         $nilai = $this->roleValue();
 
         return collect($nilai !== null ? [$nilai] : []);
     }
 
-    /** @return \Illuminate\Support\Collection<int,object> */
-    public function getRolesAttribute(): \Illuminate\Support\Collection
+    /** @return Collection<int,object> */
+    public function getRolesAttribute(): Collection
     {
         $nilai = $this->roleValue();
 
@@ -280,25 +281,36 @@ class User extends Authenticatable
 
     private function hitungPesanBelumDibaca(): int
     {
+        $total = 0;
+
         if ($this->hasRole('anak_kos')) {
-            return ChatPesan::query()
+            $total += ChatPesan::query()
                 ->where('anak_kos_id', $this->id)
+                ->where('pengirim_id', '!=', $this->id)
+                ->whereNull('dibaca_pada')
+                ->count();
+        } else {
+            $ids = Properti::where('pemilik_id', $this->id)->pluck('id')->all();
+
+            if ($ids !== []) {
+                $total += ChatPesan::query()
+                    ->whereIn('properti_id', $ids)
+                    ->where('pengirim_id', '!=', $this->id)
+                    ->whereNull('dibaca_pada')
+                    ->count();
+            }
+        }
+
+        // Pesan tanya-jawab Pasar Kos (jual beli barang kos).
+        if (Schema::hasTable('barang_pesans')) {
+            $total += BarangPesan::query()
+                ->untukUser($this->getKey())
                 ->where('pengirim_id', '!=', $this->id)
                 ->whereNull('dibaca_pada')
                 ->count();
         }
 
-        $ids = Properti::where('pemilik_id', $this->id)->pluck('id')->all();
-
-        if ($ids === []) {
-            return 0;
-        }
-
-        return ChatPesan::query()
-            ->whereIn('properti_id', $ids)
-            ->where('pengirim_id', '!=', $this->id)
-            ->whereNull('dibaca_pada')
-            ->count();
+        return $total;
     }
 
     public function bantuanMasukBelumDibaca(): int

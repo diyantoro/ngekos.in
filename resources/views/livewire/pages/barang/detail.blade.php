@@ -58,6 +58,15 @@ new #[Layout('layouts.publik')] class extends Component
     {
         $semuaFoto = $this->barang->semuaFoto();
         $isMilik = $this->barang->isMilik(auth()->user());
+        $user = auth()->user();
+        $sebagaiPenjual = $user && (int) $this->barang->user_id === (int) $user->id;
+
+        $pesanBelumDibaca = $sebagaiPenjual
+            ? \App\Models\BarangPesan::where('barang_kos_id', $this->barang->id)
+                ->where('pengirim_id', '!=', $user->id)
+                ->whereNull('dibaca_pada')
+                ->count()
+            : 0;
 
         $rekomendasi = BarangKos::where('id', '!=', $this->barang->id)
             ->where('status', BarangStatus::Tersedia->value)
@@ -72,6 +81,9 @@ new #[Layout('layouts.publik')] class extends Component
         return [
             'semuaFoto' => $semuaFoto,
             'isMilik' => $isMilik,
+            'sebagaiPenjual' => $sebagaiPenjual,
+            'pesanBelumDibaca' => $pesanBelumDibaca,
+            'bisaChatAplikasi' => $user && $user->hasAnyRole(['anak_kos', 'pemilik']),
             'rekomendasi' => $rekomendasi,
         ];
     }
@@ -111,6 +123,20 @@ new #[Layout('layouts.publik')] class extends Component
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    @if ($sebagaiPenjual)
+                        <a href="{{ route('barang.chat', $barang) }}" wire:navigate
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-xs font-bold text-white transition">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                            </svg>
+                            Pesan
+                            @if ($pesanBelumDibaca > 0)
+                                <span class="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-rose-500 text-[11px] font-bold text-white">
+                                    {{ $pesanBelumDibaca > 9 ? '9+' : $pesanBelumDibaca }}
+                                </span>
+                            @endif
+                        </a>
+                    @endif
                     <button type="button" wire:click="toggleStatus"
                             class="px-3 py-1.5 rounded-xl text-xs font-bold transition {{ $barang->status === \App\Enums\BarangStatus::Tersedia ? 'bg-amber-400 hover:bg-amber-300 text-brand-950' : 'bg-emerald-600 hover:bg-emerald-500 text-white' }}">
                         {{ $barang->status === \App\Enums\BarangStatus::Tersedia ? 'Tandai Sudah Terjual' : 'Aktifkan Kembali' }}
@@ -303,6 +329,33 @@ new #[Layout('layouts.publik')] class extends Component
                                 </svg>
                                 Chat WhatsApp Penjual
                             </a>
+
+                            @guest
+                                <a href="{{ route('login') }}" wire:navigate
+                                   class="w-full flex items-center justify-center gap-2.5 rounded-2xl border-2 border-brand-600 dark:border-brand-500 bg-white dark:bg-gray-900 py-3 px-6 text-sm font-bold text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition active:scale-[0.98]">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                                    </svg>
+                                    Masuk untuk Chat di Aplikasi
+                                </a>
+                            @endguest
+
+                            @auth
+                                @if ($bisaChatAplikasi)
+                                    <a href="{{ route('barang.chat', $barang) }}" wire:navigate
+                                       class="relative w-full flex items-center justify-center gap-2.5 rounded-2xl border-2 border-brand-600 dark:border-brand-500 bg-white dark:bg-gray-900 py-3 px-6 text-sm font-bold text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition active:scale-[0.98]">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                                        </svg>
+                                        {{ $sebagaiPenjual ? 'Pesan Pembeli' : 'Chat di Aplikasi' }}
+                                        @if ($pesanBelumDibaca > 0)
+                                            <span class="ml-0.5 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-rose-500 text-[11px] font-bold text-white">
+                                                {{ $pesanBelumDibaca > 9 ? '9+' : $pesanBelumDibaca }}
+                                            </span>
+                                        @endif
+                                    </a>
+                                @endif
+                            @endauth
 
                             <p class="text-[11px] text-center text-slate-400">
                                 Tip aman: Selalu periksa fisik barang saat COD sebelum melakukan pembayaran tunai / transfer.
