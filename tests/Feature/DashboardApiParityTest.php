@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\ChatPesan;
 use App\Models\Pembayaran;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\UserSeeder;
@@ -67,9 +69,9 @@ class DashboardApiParityTest extends TestCase
                 'penyewaan_aktif',
                 'chart' => ['labels', 'pendapatan', 'lunas', 'belum'],
                 'rekap' => ['labels', 'pendapatan', 'pengeluaran', 'laba', 'okupansi'],
-'pembayaran_terbaru',
-            'pembayaran_menunggu',
-            'tagihan_list',
+                'pembayaran_terbaru',
+                'pembayaran_menunggu',
+                'tagihan_list',
                 'funnel',
             ])
             ->json();
@@ -88,7 +90,7 @@ class DashboardApiParityTest extends TestCase
     public function test_api_pemilik_rekap_mengandung_pengeluaran_dan_laba(): void
     {
         $user = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
-        \App\Services\SubscriptionService::mulaiTrialFree($user);
+        SubscriptionService::mulaiTrialFree($user);
 
         Sanctum::actingAs($user, ['*']);
 
@@ -176,10 +178,12 @@ class DashboardApiParityTest extends TestCase
         $this->assertSame(count($response['transaction_growth']['jumlah']), 6);
         $this->assertSame(count($response['transaction_growth']['nilai']), 6);
         $this->assertNotEmpty($response['top_propertis']);
-        // Seeder tanpa upgrade approved & tanpa premium: revenue 0, konversi 0 dari 2 pemilik.
+        // Seeder tanpa upgrade approved & tanpa premium: revenue 0, konversi 0 dari seluruh pemilik.
+        $totalPemilik = User::where('role', UserRole::Pemilik)->count();
+        $this->assertGreaterThan(0, $totalPemilik);
         $this->assertSame(0, $response['platform_revenue']);
         $this->assertSame(0, $response['upgrade_approved']);
-        $this->assertSame(2, $response['premium_conversion']['total_pemilik']);
+        $this->assertSame($totalPemilik, $response['premium_conversion']['total_pemilik']);
         $this->assertSame(0, $response['premium_conversion']['premium_aktif']);
         $this->assertEquals(0, $response['premium_conversion']['persen']);
     }
