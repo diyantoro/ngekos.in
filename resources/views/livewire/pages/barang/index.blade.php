@@ -318,13 +318,13 @@ new #[Layout('layouts.publik')] class extends Component
 
         {{-- Grid Daftar Barang --}}
         @if ($barangs->count() > 0)
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                 @foreach ($barangs as $item)
                     @php
                         $isTerjual = $item->status === \App\Enums\BarangStatus::Terjual;
                         $penjualRole = $item->user?->roleValue() ?? 'anak_kos';
                     @endphp
-                    <div class="group relative bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col {{ $isTerjual ? 'opacity-75' : '' }}">
+                    <div class="group relative bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col {{ $isTerjual ? 'opacity-75' : '' }}">
                         {{-- Foto & Badges --}}
                         <div class="relative aspect-square w-full bg-stone-100 dark:bg-gray-800 overflow-hidden">
                             <img src="{{ $item->fotoUrl() }}"
@@ -342,85 +342,87 @@ new #[Layout('layouts.publik')] class extends Component
                             @endif
 
                             {{-- Badges atas --}}
-                            <div class="absolute top-2.5 inset-x-2.5 flex items-center justify-between gap-1 pointer-events-none">
-                                <span class="px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wide bg-brand-950/80 backdrop-blur text-white shadow-sm">
+                            <div class="absolute top-2 inset-x-2 sm:top-2.5 sm:inset-x-2.5 flex items-center justify-between gap-1 pointer-events-none">
+                                <span class="px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold uppercase tracking-wide bg-brand-950/80 backdrop-blur text-white shadow-sm">
                                     {{ $item->kondisi?->label() ?? 'Bekas' }}
                                 </span>
 
                                 @if ($item->bisa_nego)
-                                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-400 text-brand-950 shadow-sm">
+                                    <span class="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-400 text-brand-950 shadow-sm">
                                         Nego
                                     </span>
                                 @endif
                             </div>
 
                             {{-- Badge Penjual (Anak Kos / Pemilik) --}}
-                            <div class="absolute bottom-2.5 left-2.5 pointer-events-none">
+                            <div class="absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 pointer-events-none">
                                 @if ($penjualRole === 'pemilik')
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-amber-500/90 text-white backdrop-blur shadow-sm">
+                                    <span class="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold uppercase bg-amber-500/90 text-white backdrop-blur shadow-sm">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                        Pemilik Kos
+                                        Pemilik<span class="hidden sm:inline"> Kos</span>
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-brand-700/90 text-white backdrop-blur shadow-sm">
+                                    <span class="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold uppercase bg-brand-700/90 text-white backdrop-blur shadow-sm">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                        Anak Kos
+                                        Anak<span class="hidden sm:inline"> Kos</span>
                                     </span>
                                 @endif
                             </div>
                         </div>
 
                         {{-- Konten Kartu --}}
-                        <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div class="p-2.5 sm:p-4 flex-1 flex flex-col justify-between">
                             <div>
-                                <p class="text-[11px] font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wider mb-1">
+                                <p class="text-[10px] sm:text-[11px] font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wider mb-0.5 sm:mb-1">
                                     {{ $item->kategori?->label() ?? 'Lainnya' }}
                                 </p>
 
                                 <a href="{{ route('barang.detail', $item) }}" wire:navigate class="block">
-                                    <h2 class="text-sm font-bold text-slate-900 dark:text-gray-100 line-clamp-2 hover:text-brand-700 dark:hover:text-brand-300 transition" title="{{ $item->nama }}">
+                                    <h2 class="text-xs sm:text-sm font-bold leading-snug text-slate-900 dark:text-gray-100 line-clamp-2 hover:text-brand-700 dark:hover:text-brand-300 transition" title="{{ $item->nama }}">
                                         {{ $item->nama }}
                                     </h2>
                                 </a>
 
-                                <div class="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
+                                <div class="mt-1.5 sm:mt-2 text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
                                     {{ $item->formattedHarga() }}
                                 </div>
 
                                 {{-- Lokasi --}}
-                                <div class="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-gray-400">
-                                    <svg class="w-3.5 h-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div class="mt-1.5 sm:mt-2.5 flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-gray-400">
+                                    <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    <span class="truncate">{{ $item->kota }} {{ $item->lokasi_detail ? '• '.$item->lokasi_detail : '' }}</span>
+                                    <span class="truncate">
+                                        {{ $item->kota }}@if ($item->lokasi_detail)<span class="hidden sm:inline"> • {{ $item->lokasi_detail }}</span>@endif
+                                    </span>
                                 </div>
                             </div>
 
                             {{-- Footer Penjual & Tombol Aksi --}}
-                            <div class="mt-4 pt-3 border-t border-stone-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                            <div class="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-stone-100 dark:border-gray-800 flex items-center justify-between gap-1.5 sm:gap-2">
                                 <div class="flex items-center gap-2 min-w-0">
-                                    <div class="h-6 w-6 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                    <div class="hidden sm:flex h-6 w-6 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 items-center justify-center font-bold text-[10px] shrink-0">
                                         {{ strtoupper(substr($item->user?->nama ?? 'U', 0, 1)) }}
                                     </div>
-                                    <span class="text-xs text-slate-600 dark:text-gray-300 font-medium truncate">
+                                    <span class="text-[11px] sm:text-xs text-slate-600 dark:text-gray-300 font-medium truncate">
                                         {{ $item->user?->nama ?? 'Penjual' }}
                                     </span>
                                 </div>
 
-                                <div class="flex items-center gap-1.5 shrink-0">
+                                <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
                                     @if (! $isTerjual)
                                         <a href="{{ $item->waLink() }}" target="_blank" rel="noopener noreferrer"
                                            title="Chat via WhatsApp"
-                                           class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm">
-                                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                           class="inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm">
+                                            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" viewBox="0 0 24 24">
                                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                                             </svg>
                                         </a>
                                     @endif
 
                                     <a href="{{ route('barang.detail', $item) }}" wire:navigate
-                                       class="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-semibold text-xs transition">
+                                       class="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-semibold text-[11px] sm:text-xs transition">
                                         Detail
                                     </a>
                                 </div>
