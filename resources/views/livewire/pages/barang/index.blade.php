@@ -108,8 +108,9 @@ new #[Layout('layouts.publik')] class extends Component
             $query->where('kondisi', $this->kondisi);
         }
 
-        if ($this->kota) {
-            $query->where('kota', $this->kota);
+        if (trim($this->kota) !== '') {
+            $keywordKota = trim($this->kota);
+            $query->where('kota', 'like', "%{$keywordKota}%");
         }
 
         if ($this->status && $this->status !== 'semua') {
@@ -226,15 +227,30 @@ new #[Layout('layouts.publik')] class extends Component
                            class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
                 </div>
 
-                {{-- Filter Kota --}}
-                <div class="lg:col-span-3">
-                    <select wire:model.live="kota"
-                            class="w-full py-2.5 px-3 text-sm rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
-                        <option value="">Semua Kota</option>
-                        @foreach ($daftarKota as $k)
-                            <option value="{{ $k }}">{{ $k }}</option>
-                        @endforeach
-                    </select>
+                {{-- Filter Kota (ketikan, bukan dropdown) --}}
+                <div class="lg:col-span-3 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <input type="text"
+                           wire:model.live.debounce.300ms="kota"
+                           placeholder="Ketik kota (cth: bandung, malang)..."
+                           aria-label="Filter kota"
+                           class="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 placeholder-slate-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                    @if (trim($kota) !== '')
+                        <button type="button"
+                                wire:click="$set('kota', '')"
+                                title="Hapus filter kota"
+                                aria-label="Hapus filter kota"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Filter Penjual --}}
@@ -258,6 +274,37 @@ new #[Layout('layouts.publik')] class extends Component
                     </select>
                 </div>
             </div>
+
+            {{-- Saran Kota: ikut terfilter sesuai ketikan --}}
+            @php
+                $kataKota = trim($kota);
+                $saranKota = $kataKota === ''
+                    ? collect()
+                    : $daftarKota
+                        ->filter(fn ($k) => stripos($k, $kataKota) !== false)
+                        ->take(8);
+            @endphp
+            @if ($kataKota !== '')
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide text-xs">
+                    <span class="text-slate-500 dark:text-gray-400 font-medium shrink-0">Kota cocok:</span>
+                    @forelse ($saranKota as $k)
+                        <button type="button"
+                                wire:click="$set('kota', @js($k))"
+                                class="px-3 py-1.5 rounded-full font-medium transition shrink-0 {{ strcasecmp($kota, $k) === 0 ? 'bg-brand-700 text-white shadow-sm' : 'bg-stone-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 hover:bg-stone-200 dark:hover:bg-gray-700' }}">
+                            {{ $k }}
+                        </button>
+                    @empty
+                        <span class="text-slate-400 dark:text-gray-500 shrink-0">
+                            Tidak ada kota yang cocok dengan "{{ $kota }}".
+                        </span>
+                    @endforelse
+                    <button type="button"
+                            wire:click="$set('kota', '')"
+                            class="px-3 py-1.5 rounded-full font-medium shrink-0 text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 underline underline-offset-2">
+                        Hapus
+                    </button>
+                </div>
+            @endif
 
             {{-- Baris 2: Chips Kategori Cepat --}}
             <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide text-xs">

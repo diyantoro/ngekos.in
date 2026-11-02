@@ -206,6 +206,33 @@ class BarangKosTest extends TestCase
         ]);
     }
 
+    public function test_filter_kota_memakai_ketikan_dan_memfilter_sebagian_nama(): void
+    {
+        foreach ([['Bandung', 'Blender Portable'], ['Malang', 'Rak Buku Kayu']] as [$kota, $nama]) {
+            BarangKos::create([
+                'user_id' => $this->anakKos->id,
+                'nama' => $nama,
+                'kategori' => BarangKategori::Perabot,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 100000,
+                'deskripsi' => 'Barang demo untuk filter kota.',
+                'kota' => $kota,
+                'no_wa' => '081234567891',
+                'status' => BarangStatus::Tersedia,
+            ]);
+        }
+
+        Volt::test('pages.barang.index')
+            ->assertSeeHtml('wire:model.live.debounce.300ms="kota"')
+            ->assertDontSeeHtml('<select wire:model.live="kota"', false)
+            ->set('kota', 'band')
+            ->assertSee('Blender Portable')
+            ->assertDontSee('Rak Buku Kayu')
+            ->set('kota', 'MALANG')
+            ->assertSee('Rak Buku Kayu')
+            ->assertDontSee('Blender Portable');
+    }
+
     public function test_foto_demo_dari_folder_public_tampil_dengan_benar(): void
     {
         $barang = new BarangKos(['foto' => 'images/barang/kipas-angin.jpg']);
