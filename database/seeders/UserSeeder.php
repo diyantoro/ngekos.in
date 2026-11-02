@@ -28,6 +28,13 @@ class UserSeeder extends Seeder
             ['nama' => 'Anak Kos Rina', 'email' => 'anak1@ngekos.test', 'no_hp' => '081234567006', 'role' => 'anak_kos'],
             ['nama' => 'Anak Kos Yoga', 'email' => 'anak2@ngekos.test', 'no_hp' => '081234567007', 'role' => 'anak_kos'],
             ['nama' => 'Anak Kos Maya', 'email' => 'anak3@ngekos.test', 'no_hp' => '081234567008', 'role' => 'anak_kos'],
+            // Penjual demo dari kota lain (dipakai BarangKosSeeder).
+            ['nama' => 'Anak Kos Dinda', 'email' => 'anak4@ngekos.test', 'no_hp' => '081234567009', 'role' => 'anak_kos'],
+            ['nama' => 'Anak Kos Fajar', 'email' => 'anak5@ngekos.test', 'no_hp' => '081234567010', 'role' => 'anak_kos'],
+            ['nama' => 'Anak Kos Sinta', 'email' => 'anak6@ngekos.test', 'no_hp' => '081234567011', 'role' => 'anak_kos'],
+            ['nama' => 'Anak Kos Bima', 'email' => 'anak7@ngekos.test', 'no_hp' => '081234567012', 'role' => 'anak_kos'],
+            ['nama' => 'Pemilik Rudi', 'email' => 'pemilik3@ngekos.test', 'no_hp' => '081234567013', 'role' => 'pemilik'],
+            ['nama' => 'Pemilik Lestari', 'email' => 'pemilik4@ngekos.test', 'no_hp' => '081234567014', 'role' => 'pemilik'],
         ];
 
         foreach ($users as $data) {

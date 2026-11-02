@@ -20,6 +20,14 @@ class BarangKosSeeder extends Seeder
         $budi = User::where('email', 'pemilik1@ngekos.test')->first();
         $siti = User::where('email', 'pemilik2@ngekos.test')->first();
 
+        // Penjual dari kota lain.
+        $dinda = User::where('email', 'anak4@ngekos.test')->first();
+        $fajar = User::where('email', 'anak5@ngekos.test')->first();
+        $sinta = User::where('email', 'anak6@ngekos.test')->first();
+        $bima = User::where('email', 'anak7@ngekos.test')->first();
+        $rudi = User::where('email', 'pemilik3@ngekos.test')->first();
+        $lestari = User::where('email', 'pemilik4@ngekos.test')->first();
+
         // Fallback jika belum di-seed
         if (! $rina || ! $budi) {
             return;
@@ -27,6 +35,12 @@ class BarangKosSeeder extends Seeder
 
         $melati = Properti::where('nama', 'like', '%Melati%')->first();
         $mawar = Properti::where('nama', 'like', '%Mawar%')->first();
+        $bandung = Properti::where('kota', 'Bandung')->first();
+        $surabaya = Properti::where('kota', 'Surabaya')->first();
+        $palembang = Properti::where('kota', 'Palembang')->first();
+        $jakarta = Properti::where('kota', 'like', 'Jakarta%')->first();
+        $malang = Properti::where('kota', 'Malang')->first();
+        $semarang = Properti::where('kota', 'Semarang')->first();
 
         $daftarBarang = [
             [
@@ -148,9 +162,161 @@ class BarangKosSeeder extends Seeder
                 'status' => BarangStatus::Tersedia,
                 'dilihat' => 37,
             ],
+
+            // ===== Bandung =====
+            [
+                'user_id' => $dinda?->id,
+                'properti_id' => $bandung?->id,
+                'nama' => 'Blender Portable Mini USB 380ml',
+                'foto' => 'images/barang/blender-portable.jpg',
+                'kategori' => BarangKategori::Dapur,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 85000,
+                'bisa_nego' => true,
+                'deskripsi' => 'Blender portable muat di tas, cocok buat bikin jus atau smoothie di kamar kos. Bisa di-charge lewat USB, kapasitas 380 ml, mata pisau stainless masih tajam.',
+                'minus' => 'Sudah tidak ada dus, tinggal unit dan kabel charger.',
+                'kota' => 'Bandung',
+                'lokasi_detail' => 'Cisitu Lama, dekat ITB',
+                'no_wa' => $dinda?->no_hp ?? '081234567009',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 58,
+            ],
+            [
+                'user_id' => $dinda?->id,
+                'properti_id' => $bandung?->id,
+                'nama' => 'Setrika Listrik Philips Anti Lengket',
+                'foto' => 'images/barang/setrika-listrik.jpg',
+                'kategori' => BarangKategori::Elektronik,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 95000,
+                'bisa_nego' => false,
+                'deskripsi' => 'Setrika listrik 350 Watt dengan alas anti lengket, panasnya cepat dan merata. Cocok buat setrika seragam kuliah atau kerja.',
+                'minus' => 'Kabel masih original, body ada baret halus pemakaian.',
+                'kota' => 'Bandung',
+                'lokasi_detail' => 'Dago Atas, dekat ITB',
+                'no_wa' => $dinda?->no_hp ?? '081234567009',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 31,
+            ],
+
+            // ===== Surabaya =====
+            [
+                'user_id' => $fajar?->id,
+                'properti_id' => $surabaya?->id,
+                'nama' => 'Lemari Plastik 3 Susun Napolly',
+                'foto' => 'images/barang/lemari-plastik.jpg',
+                'kategori' => BarangKategori::Perabot,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 150000,
+                'bisa_nego' => true,
+                'deskripsi' => 'Lemari plastik 3 susun warna netral, muat banyak baju dan perlengkapan mandi. Roda masih lancar, tidak ada retak.',
+                'minus' => 'Satu gagang laci agak longgar, masih bisa dipakai normal.',
+                'kota' => 'Surabaya',
+                'lokasi_detail' => 'Ploso, dekat UNAIR Kampus B',
+                'no_wa' => $fajar?->no_hp ?? '081234567010',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 47,
+            ],
+
+            // ===== Palembang =====
+            [
+                'user_id' => $sinta?->id,
+                'properti_id' => $palembang?->id,
+                'nama' => 'Kompor Induksi Portable Maspion 1200W',
+                'foto' => 'images/barang/kompor-induksi.jpg',
+                'kategori' => BarangKategori::Dapur,
+                'kondisi' => BarangKondisi::BekasSepertiBaru,
+                'harga' => 220000,
+                'bisa_nego' => true,
+                'deskripsi' => 'Kompor induksi portable 1200 Watt, pemanasan cepat dan lebih aman tanpa api. Ada pengaturan suhu dan timer, hemat listrik untuk masak harian anak kos.',
+                'minus' => 'Perlu panci berbahan magnetik, dus sudah tidak ada.',
+                'kota' => 'Palembang',
+                'lokasi_detail' => 'Bukit Besar, dekat UNSRI',
+                'no_wa' => $sinta?->no_hp ?? '081234567011',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 63,
+            ],
+
+            // ===== Jakarta =====
+            [
+                'user_id' => $bima?->id,
+                'properti_id' => $jakarta?->id,
+                'nama' => 'Kursi Kerja Ergonomis Mesh',
+                'foto' => 'images/barang/kursi-kerja.jpg',
+                'kategori' => BarangKategori::Perabot,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 450000,
+                'bisa_nego' => true,
+                'deskripsi' => 'Kursi kerja ergonomis dengan sandaran mesh, tinggi bisa disetel, dan roda lancar. Nyaman buat WFH atau nugas seharian di kamar kos.',
+                'minus' => 'Ada sedikit goresan di kaki kursi, busa dudukan masih empuk.',
+                'kota' => 'Jakarta Selatan',
+                'lokasi_detail' => 'Tebet, dekat Stasiun MRT',
+                'no_wa' => $bima?->no_hp ?? '081234567012',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 112,
+            ],
+            [
+                'user_id' => $bima?->id,
+                'properti_id' => $jakarta?->id,
+                'nama' => 'Router WiFi ASUS TUF AX3000',
+                'foto' => 'images/barang/router-wifi.jpg',
+                'kategori' => BarangKategori::Elektronik,
+                'kondisi' => BarangKondisi::BekasSepertiBaru,
+                'harga' => 650000,
+                'bisa_nego' => false,
+                'deskripsi' => 'Router WiFi 6 dual band, sinyal kuat sampai kamar lantai atas. Cocok buat kos yang penghuninya banyak perangkat. Lengkap adaptor dan kabel LAN.',
+                'minus' => 'Dus original sudah hilang, unit berfungsi normal.',
+                'kota' => 'Jakarta Selatan',
+                'lokasi_detail' => 'Kemang, Jakarta Selatan',
+                'no_wa' => $bima?->no_hp ?? '081234567012',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 89,
+            ],
+
+            // ===== Malang =====
+            [
+                'user_id' => $rudi?->id,
+                'properti_id' => $malang?->id,
+                'nama' => 'Rak Buku Minimalis 4 Tingkat',
+                'foto' => 'images/barang/rak-buku.jpg',
+                'kategori' => BarangKategori::Perabot,
+                'kondisi' => BarangKondisi::Baru,
+                'harga' => 275000,
+                'bisa_nego' => false,
+                'deskripsi' => 'Rak buku minimalis 4 tingkat dari kayu olahan finishing natural. Stok pengadaan kamar kos baru, masih rapi dan kokoh. Bisa juga buat menyimpan perlengkapan belajar.',
+                'minus' => null,
+                'kota' => 'Malang',
+                'lokasi_detail' => 'Lowokwaru, dekat Universitas Brawijaya',
+                'no_wa' => $rudi?->no_hp ?? '081234567013',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 26,
+            ],
+
+            // ===== Semarang =====
+            [
+                'user_id' => $lestari?->id,
+                'properti_id' => $semarang?->id,
+                'nama' => 'Mesin Cuci Mini Portable 3kg',
+                'foto' => 'images/barang/mesin-cuci.jpg',
+                'kategori' => BarangKategori::Elektronik,
+                'kondisi' => BarangKondisi::BekasMulus,
+                'harga' => 750000,
+                'bisa_nego' => true,
+                'deskripsi' => 'Mesin cuci mini kapasitas 3 kg, pas untuk kebutuhan harian 1-2 orang. Pengering putar berfungsi, hemat listrik dan tidak perlu tempat luas.',
+                'minus' => 'Selang pembuangan diganti baru, body mulus 90%.',
+                'kota' => 'Semarang',
+                'lokasi_detail' => 'Tembalang, dekat UNDIP',
+                'no_wa' => $lestari?->no_hp ?? '081234567014',
+                'status' => BarangStatus::Tersedia,
+                'dilihat' => 74,
+            ],
         ];
 
         foreach ($daftarBarang as $item) {
+            if (empty($item['user_id'])) {
+                continue;
+            }
+
             BarangKos::updateOrCreate(
                 ['nama' => $item['nama'], 'user_id' => $item['user_id']],
                 $item
