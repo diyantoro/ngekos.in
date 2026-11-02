@@ -33,6 +33,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $rina->id,
                 'properti_id' => $melati?->id,
                 'nama' => 'Kipas Angin Berdiri Miyako 16 Inch',
+                'foto' => 'images/barang/kipas-angin.jpg',
                 'kategori' => BarangKategori::Elektronik,
                 'kondisi' => BarangKondisi::BekasMulus,
                 'harga' => 135000,
@@ -49,6 +50,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $budi->id,
                 'properti_id' => $melati?->id,
                 'nama' => 'Kulkas Mini Portable Sharp 50L Hemat Listrik',
+                'foto' => 'images/barang/kulkas-mini.jpg',
                 'kategori' => BarangKategori::Elektronik,
                 'kondisi' => BarangKondisi::BekasSepertiBaru,
                 'harga' => 850000,
@@ -65,6 +67,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $yoga->id,
                 'properti_id' => $melati?->id,
                 'nama' => 'Meja Belajar Lipat Minimalis Kayu + Dudukan Laptop',
+                'foto' => 'images/barang/meja-belajar.jpg',
                 'kategori' => BarangKategori::Perabot,
                 'kondisi' => BarangKondisi::BekasMulus,
                 'harga' => 65000,
@@ -81,6 +84,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $siti?->id ?? $budi->id,
                 'properti_id' => $mawar?->id,
                 'nama' => 'Kasur Busa Single Inoac Ukuran 90x200 cm Tebal 15 cm',
+                'foto' => 'images/barang/kasur-busa.jpg',
                 'kategori' => BarangKategori::Perabot,
                 'kondisi' => BarangKondisi::Baru,
                 'harga' => 490000,
@@ -97,6 +101,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $maya?->id ?? $rina->id,
                 'properti_id' => null,
                 'nama' => 'Rice Cooker Cosmos 0.8L Mini Anak Kos',
+                'foto' => 'images/barang/rice-cooker.jpg',
                 'kategori' => BarangKategori::Dapur,
                 'kondisi' => BarangKondisi::BekasMulus,
                 'harga' => 120000,
@@ -113,6 +118,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $rina->id,
                 'properti_id' => $melati?->id,
                 'nama' => 'Dispenser Galon Atas Miyako Hot & Normal',
+                'foto' => 'images/barang/dispenser.jpg',
                 'kategori' => BarangKategori::Elektronik,
                 'kondisi' => BarangKondisi::BekasMulus,
                 'harga' => 95000,
@@ -129,6 +135,7 @@ class BarangKosSeeder extends Seeder
                 'user_id' => $budi->id,
                 'properti_id' => $melati?->id,
                 'nama' => 'Jemuran Baju Lipat Aluminium 1 Meter',
+                'foto' => 'images/barang/jemuran.jpg',
                 'kategori' => BarangKategori::Kebersihan,
                 'kondisi' => BarangKondisi::BekasMulus,
                 'harga' => 80000,
@@ -144,7 +151,7 @@ class BarangKosSeeder extends Seeder
         ];
 
         foreach ($daftarBarang as $item) {
-            BarangKos::firstOrCreate(
+            BarangKos::updateOrCreate(
                 ['nama' => $item['nama'], 'user_id' => $item['user_id']],
                 $item
             );

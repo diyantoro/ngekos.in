@@ -205,4 +205,22 @@ class BarangKosTest extends TestCase
             'id' => $barang->id,
         ]);
     }
+
+    public function test_foto_demo_dari_folder_public_tampil_dengan_benar(): void
+    {
+        $barang = new BarangKos(['foto' => 'images/barang/kipas-angin.jpg']);
+
+        $this->assertSame(asset('images/barang/kipas-angin.jpg'), $barang->fotoUrl());
+        $this->assertContains(asset('images/barang/kipas-angin.jpg'), $barang->semuaFoto());
+        $this->assertFileExists(public_path('images/barang/kipas-angin.jpg'));
+        $this->assertFileExists(public_path('images/default-properti.jpg'));
+    }
+
+    public function test_barang_tanpa_foto_memakai_gambar_fallback(): void
+    {
+        $barang = new BarangKos(['foto' => null]);
+
+        $this->assertSame(asset('images/default-properti.jpg'), $barang->fotoUrl());
+        $this->assertSame([asset('images/default-properti.jpg')], $barang->semuaFoto());
+    }
 }

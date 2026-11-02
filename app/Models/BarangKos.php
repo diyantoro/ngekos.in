@@ -89,11 +89,29 @@ class BarangKos extends Model
 
     public function fotoUrl(): string
     {
-        if (! empty($this->foto)) {
-            return str_starts_with($this->foto, 'http') ? $this->foto : asset('storage/'.$this->foto);
+        return $this->urlFoto($this->foto);
+    }
+
+    /**
+     * Ubah path foto tersimpan menjadi URL yang bisa dibuka browser.
+     * Mendukung URL penuh, file di folder public (gambar demo), dan
+     * hasil upload di disk public.
+     */
+    private function urlFoto(?string $path): string
+    {
+        if (empty($path)) {
+            return asset('images/default-properti.jpg');
         }
 
-        return asset('images/default-properti.jpg');
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        if (str_starts_with($path, 'images/')) {
+            return asset($path);
+        }
+
+        return asset('storage/'.ltrim($path, '/'));
     }
 
     /**
@@ -102,14 +120,15 @@ class BarangKos extends Model
     public function semuaFoto(): array
     {
         $hasil = [];
+
         if (! empty($this->foto)) {
-            $hasil[] = str_starts_with($this->foto, 'http') ? $this->foto : asset('storage/'.$this->foto);
+            $hasil[] = $this->urlFoto($this->foto);
         }
 
         if (is_array($this->foto_tambahan)) {
             foreach ($this->foto_tambahan as $path) {
                 if (! empty($path)) {
-                    $hasil[] = str_starts_with($path, 'http') ? $path : asset('storage/'.$path);
+                    $hasil[] = $this->urlFoto($path);
                 }
             }
         }
