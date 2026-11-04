@@ -3,20 +3,93 @@
 @php
     $defaultAds = [
         [
-            'brand' => 'Biznet',
-            'tagline' => 'Internet Cepat & Stabil',
-            'desc' => 'Pasang Biznet Home, kuliah online dan streaming di kos makin lancar.',
-            'gradient' => 'from-blue-700 via-sky-600 to-sky-500',
-            'accent' => 'text-sky-200',
-            'icon' => 'wifi',
-        ],
-        [
             'brand' => 'Shopee',
             'tagline' => 'Belanja Online Murah',
             'desc' => 'Voucher gratis ongkir dan cashback untuk kebutuhan kos kamu.',
             'gradient' => 'from-orange-600 via-orange-500 to-amber-400',
             'accent' => 'text-amber-200',
             'icon' => 'bag',
+            'link' => 'https://shopee.co.id',
+        ],
+        [
+            'brand' => 'Lazada',
+            'tagline' => 'Promo Belanja Hemat',
+            'desc' => 'Perabot, elektronik, dan kebutuhan kos dengan harga promo.',
+            'gradient' => 'from-fuchsia-600 via-pink-500 to-orange-400',
+            'accent' => 'text-pink-100',
+            'icon' => 'bag',
+            'link' => 'https://www.lazada.co.id',
+        ],
+        [
+            'brand' => 'OLX',
+            'tagline' => 'Beli Barang Bekas',
+            'desc' => 'Cari perabot kos bekas berkualitas langsung dari penjual sekitar.',
+            'gradient' => 'from-indigo-700 via-blue-600 to-sky-500',
+            'accent' => 'text-sky-200',
+            'icon' => 'tag',
+            'link' => 'https://www.olx.co.id',
+        ],
+        [
+            'brand' => 'Tokopedia',
+            'tagline' => 'Lengkap & Terpercaya',
+            'desc' => 'Semua kebutuhan kamar kos, antar cepat ke alamatmu.',
+            'gradient' => 'from-emerald-600 via-green-500 to-lime-400',
+            'accent' => 'text-lime-100',
+            'icon' => 'bag',
+            'link' => 'https://www.tokopedia.com',
+        ],
+        [
+            'brand' => 'Bukalapak',
+            'tagline' => 'Belanja Aman',
+            'desc' => 'Elektronik dan perlengkapan kos dengan banyak pilihan.',
+            'gradient' => 'from-red-600 via-rose-500 to-pink-400',
+            'accent' => 'text-rose-100',
+            'icon' => 'tag',
+            'link' => 'https://www.bukalapak.com',
+        ],
+        [
+            'brand' => 'Blibli',
+            'tagline' => 'Belanja Tenang',
+            'desc' => 'Garansi resmi untuk elektronik dan perabot pilihan.',
+            'gradient' => 'from-blue-700 via-indigo-600 to-violet-500',
+            'accent' => 'text-indigo-200',
+            'icon' => 'bag',
+            'link' => 'https://www.blibli.com',
+        ],
+        [
+            'brand' => 'Traveloka',
+            'tagline' => 'Liburan Hemat',
+            'desc' => 'Promo tiket dan penginapan untuk liburan bareng teman kos.',
+            'gradient' => 'from-sky-600 via-cyan-500 to-blue-400',
+            'accent' => 'text-cyan-100',
+            'icon' => 'star',
+            'link' => 'https://www.traveloka.com',
+        ],
+        [
+            'brand' => 'TikTok Shop',
+            'tagline' => 'Belanja Live',
+            'desc' => 'Temukan barang kos murah lewat live shopping dan voucher.',
+            'gradient' => 'from-slate-900 via-gray-800 to-rose-600',
+            'accent' => 'text-rose-200',
+            'icon' => 'bag',
+            'link' => 'https://www.tiktok.com/shop',
+        ],
+        [
+            'brand' => 'Grab',
+            'tagline' => 'Antar ke Kos',
+            'desc' => 'GrabFood dan GrabExpress siap antar kebutuhan kosmu.',
+            'gradient' => 'from-green-700 via-emerald-600 to-lime-500',
+            'accent' => 'text-lime-200',
+            'icon' => 'scooter',
+            'link' => 'https://www.grab.com/id/',
+        ],
+        [
+            'brand' => 'Biznet',
+            'tagline' => 'Internet Cepat & Stabil',
+            'desc' => 'Pasang Biznet Home, kuliah online dan streaming di kos makin lancar.',
+            'gradient' => 'from-blue-700 via-sky-600 to-sky-500',
+            'accent' => 'text-sky-200',
+            'icon' => 'wifi',
         ],
         [
             'brand' => 'GoFood',
@@ -52,6 +125,22 @@
         ],
     ];
 
+    $imageUrl = function (?string $path): string {
+        if (empty($path)) {
+            return '';
+        }
+
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        if (str_starts_with($path, 'images/')) {
+            return asset($path);
+        }
+
+        return asset('storage/'.ltrim($path, '/'));
+    };
+
     $ads = filled($ads) ? $ads : $defaultAds;
     $total = count($ads);
     // Jeda auto-slide (ms): dari prop, atau pengaturan super-admin, atau bawaan 3000.
@@ -70,11 +159,11 @@
     ];
 @endphp
 
-<div class="relative group/promo select-none" data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
+<div {{ $attributes->merge(['class' => 'relative group/promo select-none']) }} data-promo data-promo-interval="{{ $intervalMs }}" role="region" aria-roledescription="carousel" aria-label="Iklan partner" tabindex="0">
     <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl ring-1 ring-black/5 shadow-lg" data-promo-viewport>
         <div class="promo-track w-full" data-promo-track>
             @foreach ($ads as $ad)
-                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-5 py-4 sm:px-8 sm:py-8 min-h-[176px] sm:min-h-[250px] lg:min-h-[290px] w-full flex items-center pb-10' : 'px-6 pt-6 pb-12 sm:px-9 sm:pt-7 sm:pb-12 w-full' }}"
+                <div class="promo-slide {{ $loop->first ? 'promo-active' : '' }} relative overflow-hidden bg-gradient-to-tr {{ $ad['gradient'] }} {{ $variant === 'hero' ? 'px-4 py-5 sm:px-8 sm:py-8 min-h-[168px] sm:min-h-[250px] lg:min-h-[290px] w-full flex items-center pb-11 sm:pb-10' : 'px-4 pt-5 pb-11 sm:px-9 sm:pt-7 sm:pb-12 w-full' }}"
                     data-promo-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
                     <div class="absolute inset-0"
                          style="background-image:url('data:image/svg+xml,%3Csvg width%3D%2240%22 height%3D%2240%22 viewBox%3D%220%200%2040%2040%22 xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle cx%3D%222%22 cy%3D%222%22 r%3D%221.2%22 fill%3D%22white%22 fill-opacity%3D%220.09%22%2F%3E%3C%2Fsvg%3E')"></div>
@@ -89,18 +178,27 @@
                                 <svg class="h-3 w-3 {{ $ad['accent'] }}" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                                 Iklan Partner
                             </span>
-                            <p class="mt-1.5 sm:mt-2 {{ $variant === 'hero' ? 'text-xl sm:text-3xl' : 'text-xl sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm text-balance break-words">{{ $ad['brand'] }}</p>
+                            <p class="mt-1.5 sm:mt-2 {{ $variant === 'hero' ? 'text-lg sm:text-3xl' : 'text-lg sm:text-2xl' }} font-extrabold tracking-tight text-white drop-shadow-sm text-balance break-words">{{ $ad['brand'] }}</p>
                             <p class="mt-0.5 {{ $variant === 'hero' ? 'text-sm sm:text-lg' : 'text-sm' }} font-bold text-white/95 text-balance break-words">{{ $ad['tagline'] }}</p>
                             <p class="mt-0.5 sm:mt-1 {{ $variant === 'hero' ? 'text-sm sm:text-base' : 'text-xs' }} leading-snug text-white/80 line-clamp-2 max-w-md break-words">{{ $ad['desc'] }}</p>
+                            @if (! empty($ad['link']))
+                                <a href="{{ $ad['link'] }}" target="_blank" rel="noopener noreferrer nofollow"
+                                   class="mt-1.5 sm:mt-2 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/30 backdrop-blur transition hover:bg-white/30">
+                                    Kunjungi
+                                    <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                                    </svg>
+                                </a>
+                            @endif
                         </div>
                         <div class="shrink-0 relative" data-promo-anim>
                             @if (! empty($ad['image']))
-                                <img src="{{ asset('storage/'.$ad['image']) }}" alt="{{ $ad['brand'] ?? 'Banner' }}"
+                                <img src="{{ $imageUrl($ad['image']) }}" alt="{{ $ad['brand'] ?? 'Banner' }}"
                                     loading="lazy" decoding="async"
-                                    class="h-20 w-28 sm:h-32 sm:w-52 aspect-[4/3] rounded-2xl border border-white/30 object-cover shadow-lg shadow-black/10">
+                                    class="h-16 w-24 sm:h-32 sm:w-52 aspect-[4/3] rounded-2xl border border-white/30 object-cover shadow-lg shadow-black/10">
                             @else
-                                <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-16 w-16 sm:h-24 sm:w-24' : 'h-12 w-12 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
-                                    <svg class="h-8 w-8 sm:h-11 sm:w-11 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon'] ?? 'wifi'] ?? $icons['wifi'] !!}</svg>
+                                <div class="flex items-center justify-center {{ $variant === 'hero' ? 'h-14 w-14 sm:h-24 sm:w-24' : 'h-10 w-10 sm:h-14 sm:w-14' }} rounded-2xl border border-white/30 bg-white/20 shadow-lg shadow-black/10 backdrop-blur">
+                                    <svg class="h-7 w-7 sm:h-11 sm:w-11 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">{!! $icons[$ad['icon'] ?? 'wifi'] ?? $icons['wifi'] !!}</svg>
                                 </div>
                             @endif
                             <div class="absolute -inset-1 -z-10 rounded-2xl bg-white/25 blur-md"></div>
@@ -121,13 +219,13 @@
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
         </button>
 
-        <div class="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5" data-promo-dots></div>
+        <div class="absolute bottom-2 sm:bottom-3 inset-x-0 flex items-center justify-center gap-2 py-1" data-promo-dots></div>
 
-        <span class="pointer-events-none absolute bottom-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur sm:hidden">
+        <span class="pointer-events-none absolute bottom-2 left-2.5 inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur sm:hidden">
             <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5L3.75 9m0 0l4.5 4.5M3.75 9h16.5m0 0l-4.5-4.5m4.5 4.5l-4.5 4.5" /></svg>
             Geser
         </span>
 
-        <span class="absolute top-3 right-3 sm:right-4 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur" data-promo-count>1 / {{ $total }}</span>
+        <span class="absolute top-2.5 right-2.5 sm:top-3 sm:right-4 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur" data-promo-count>1 / {{ $total }}</span>
     @endif
 </div>

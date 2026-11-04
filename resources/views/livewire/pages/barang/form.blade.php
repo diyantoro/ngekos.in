@@ -52,6 +52,12 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $status = 'tersedia';
 
+    public $tayangHari = 7;
+
+    public ?string $tayangSampai = null;
+
+    public int $jumlahBelumTerjual = 0;
+
     public $fotoUtama = null;
 
     public ?string $fotoUtamaLama = null;
@@ -83,11 +89,14 @@ new #[Layout('layouts.app')] class extends Component
             $this->no_wa = $barang->no_wa;
             $this->properti_id = $barang->properti_id;
             $this->status = $barang->status?->value ?? 'tersedia';
+            $this->tayangHari = $barang->tayang_hari ?? 7;
+            $this->tayangSampai = $barang->tayang_sampai;
             $this->fotoUtamaLama = $barang->foto;
             $this->fotoTambahanLama = $barang->foto_tambahan ?? [];
         } else {
             $this->isEdit = false;
             $this->no_wa = $user->no_hp ?? '';
+            $this->tayangHari = 7; // Default 7 hari
 
             // Coba tebak kota dari properti terkait user
             if ($user->hasRole('pemilik')) {
@@ -106,6 +115,11 @@ new #[Layout('layouts.app')] class extends Component
                 }
             }
         }
+
+        $this->jumlahBelumTerjual = BarangKos::jumlahBelumTerjual(
+            (int) $user->id,
+            $this->isEdit ? $this->barang?->id : null
+        );
     }
 
     public function hapusFotoTambahanLama(int $index): void
@@ -134,11 +148,31 @@ new #[Layout('layouts.app')] class extends Component
             'no_wa' => 'required|string|min:8|max:25',
             'properti_id' => 'nullable|integer',
             'status' => ['required', Rule::in(BarangStatus::values())],
+            'tayangHari' => 'required|integer|min:1|max:7',
             'fotoUtama' => $this->isEdit ? 'nullable|image|max:4096' : 'nullable|image|max:4096',
             'fotoTambahanBaru.*' => 'nullable|image|max:4096',
         ];
 
         $this->validate($rules);
+
+        $user = auth()->user();
+        $jumlahLainBelumTerjual = BarangKos::jumlahBelumTerjual(
+            (int) $user->id,
+            $this->isEdit ? $this->barang?->id : null
+        );
+
+        if ((! $this->isEdit || $this->barang?->status === BarangStatus::Terjual)
+            && $this->status !== BarangStatus::Terjual->value
+            && $jumlahLainBelumTerjual >= BarangKos::BATAS_BARANG_PER_AKUN) {
+            $this->addError('limitBarang', 'Maksimal '.BarangKos::BATAS_BARANG_PER_AKUN.' barang yang belum terjual. Hapus barang atau tandai terjual sebelum menambahkan barang baru.');
+            return;
+        }
+
+        // Masa tayang hanya dihitung saat pemasangan baru. Edit tidak
+        // memperpanjang masa tayang yang sudah berjalan.
+        if (! $this->isEdit) {
+            $this->tayangSampai = now()->addDays($this->tayangHari)->endOfDay();
+        }
 
         $fotoUtamaPath = $this->fotoUtamaLama;
         if ($this->fotoUtama) {
@@ -173,6 +207,8 @@ new #[Layout('layouts.app')] class extends Component
             'lokasi_detail' => $this->lokasi_detail ? trim($this->lokasi_detail) : null,
             'no_wa' => trim($this->no_wa),
             'status' => $this->status,
+            'tayang_hari' => $this->tayangHari,
+            'tayang_sampai' => $this->tayangSampai,
         ];
 
         if ($this->isEdit && $this->barang) {
@@ -227,6 +263,14 @@ new #[Layout('layouts.app')] class extends Component
                 <p class="mt-1 text-sm text-slate-500 dark:text-gray-400">
                     Isi detail barang dengan jelas agar cepat diminati oleh anak kos atau pemilik kos lainnya.
                 </p>
+                @if (! $isEdit)
+                    <p class="mt-2 text-xs font-medium text-slate-500 dark:text-gray-400">
+                        Barang belum terjual: {{ $jumlahBelumTerjual }}/{{ \App\Models\BarangKos::BATAS_BARANG_PER_AKUN }}
+                    </p>
+                @endif
+                @error('limitBarang')
+                    <p class="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
@@ -397,6 +441,59 @@ new #[Layout('layouts.app')] class extends Component
                               placeholder="Contoh: Dus asli hilang, ada goresan kecil di bagian samping, kabel ada lakban..."
                               class="w-full rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 text-sm px-4 py-2.5 focus:ring-2 focus:ring-brand-500"></textarea>
                     @error('minus') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
+            {{-- 3.5. Masa Tayang Barang --}}
+            <div class="space-y-4 pt-4 border-t border-stone-100 dark:border-gray-800">
+                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs">3.5</span>
+                    Masa Tayang Barang
+                </h2>
+
+                <div class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 rounded-xl p-4">
+                    @if ($isEdit)
+                        <p class="text-xs text-emerald-800 dark:text-emerald-300">
+                            Masa tayang tidak diperpanjang saat mengubah barang. Barang berhenti tampil di katalog setelah tanggal berikut.
+                        </p>
+                        <div class="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>
+                                Berakhir:
+                                <strong>{{ $tayangSampai ? \Carbon\Carbon::parse($tayangSampai)->format('d M Y') : 'Tidak terbatas' }}</strong>
+                            </span>
+                        </div>
+                    @else
+                        <p class="text-xs text-emerald-800 dark:text-emerald-300 mb-3">
+                            Pilih berapa lama barang tampil di katalog. Maksimal 7 hari per pemasangan dan tidak dapat diperpanjang.
+                        </p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label for="tayangHari" class="block text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-2">
+                                    Durasi Tayang <span class="text-slate-500 font-normal">(Maksimal 7 hari)</span>
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <select id="tayangHari" wire:model="tayangHari"
+                                            class="flex-1 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-800 text-slate-800 dark:text-gray-100 text-sm px-4 py-2.5 focus:ring-2 focus:ring-emerald-500">
+                                        <option value="1">1 hari</option>
+                                        <option value="2">2 hari</option>
+                                        <option value="3">3 hari</option>
+                                        <option value="4">4 hari</option>
+                                        <option value="5">5 hari</option>
+                                        <option value="6">6 hari</option>
+                                        <option value="7" selected>7 hari (maksimal)</option>
+                                    </select>
+                                    <span class="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                                        {{ $tayangHari }} hari = {{ \Carbon\Carbon::now()->addDays($tayangHari)->format('d M Y') }}
+                                    </span>
+                                </div>
+                                @error('tayangHari') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 

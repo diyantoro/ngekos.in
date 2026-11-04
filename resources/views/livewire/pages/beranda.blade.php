@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Kamar;
+use App\Models\BarangKos;
 use App\Models\Pengaturan;
 use App\Models\Properti;
 use App\Support\Koordinat;
@@ -41,6 +42,16 @@ new #[Layout('layouts.publik')] class extends Component
             ->latest('created_at')
             ->take(12)
             ->get();
+
+        $barangUnggulanIds = Pengaturan::landingBarangIds();
+        $barangUnggulan = BarangKos::query()
+            ->whereIn('id', $barangUnggulanIds)
+            ->tersedia()
+            ->tampilDiKatalog()
+            ->with('user:id,nama')
+            ->get()
+            ->sortBy(fn (BarangKos $barang) => array_search($barang->id, $barangUnggulanIds, true))
+            ->values();
 
         $promoIds = Pengaturan::landingPromoIds();
         $propertiPromo = collect();
@@ -90,6 +101,8 @@ new #[Layout('layouts.publik')] class extends Component
             'totalKamar' => cache()->remember('beranda.totalKamar', 300, fn () => Kamar::where('status', 'tersedia')->count()),
             'propertiList' => $propertiList,
             'propertiPromo' => $propertiPromo,
+            'barangUnggulan' => $barangUnggulan,
+            'promoInterval' => Pengaturan::promoIntervalMs(),
             'heroKos' => $heroKos,
             'bannerAds' => $bannerKustom === [] && ! Pengaturan::adaKustomLandingBanners() ? [] : $bannerKustom,
             'kotaRekomendasi' => cache()->remember('beranda.kotaRekomendasi', 3600, fn () => Properti::where('status', 'aktif')
@@ -415,6 +428,12 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
     </section>
+
+    @if ($barangUnggulan->isNotEmpty())
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+            <x-barang-featured-carousel :barangs="$barangUnggulan" :interval="$promoInterval" />
+        </section>
+    @endif
 
     <!-- Promo Ngebut -->
     @if ($propertiPromo->isNotEmpty())

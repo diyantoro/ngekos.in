@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\PenyewaanController;
 use App\Http\Controllers\Api\PropertiManageController;
 use App\Http\Controllers\Api\StorageProxyController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\IklanPasarKosController;
+use App\Http\Controllers\Api\BannerIklanController;
 use Illuminate\Support\Facades\Route;
 
 // Storage proxy (hanya prefix publik non-sensitif; KTP selalu 404 di sini)
@@ -193,5 +195,31 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:pemilik|admin|super_admin');
     Route::delete('/pemilik/pengeluaran/{id}', [PengeluaranController::class, 'destroy'])
         ->middleware('role:pemilik|admin|super_admin');
+
+    // Iklan Pasar Kos (anak kos)
+    Route::get('/iklan-pasar-kos', [IklanPasarKosController::class, 'index']);
+    Route::post('/iklan-pasar-kos', [IklanPasarKosController::class, 'store']);
+    Route::get('/iklan-pasar-kos/my', [IklanPasarKosController::class, 'myIklans']);
+    Route::get('/iklan-pasar-kos/{id}', [IklanPasarKosController::class, 'show']);
+    Route::put('/iklan-pasar-kos/{id}', [IklanPasarKosController::class, 'update']);
+    Route::delete('/iklan-pasar-kos/{id}', [IklanPasarKosController::class, 'destroy']);
+    Route::get('/iklan-pasar-kos/pengaturan', [IklanPasarKosController::class, 'pengaturan']);
+
+    // Banner Iklan (super admin & admin)
+    Route::get('/banner-iklan', [BannerIklanController::class, 'index']);
+    Route::post('/banner-iklan', [BannerIklanController::class, 'store']);
+    Route::get('/banner-iklan/my', [BannerIklanController::class, 'myIklans']);
+    Route::get('/banner-iklan/{id}', [BannerIklanController::class, 'show']);
+    Route::put('/banner-iklan/{id}', [BannerIklanController::class, 'update']);
+    Route::delete('/banner-iklan/{id}', [BannerIklanController::class, 'destroy']);
+    Route::get('/banner-iklan/pengaturan', [BannerIklanController::class, 'pengaturan']);
+
+    // Iklan Tayangan Katalog (super admin)
+    Route::get('/iklan-tayangan', [KatalogController::class, 'iklanTayangan'])
+        ->middleware('role:super_admin');
+    Route::get('/iklan-riwayat-tayangan', [KatalogController::class, 'riwayatIklanTayangan'])
+        ->middleware('role:super_admin');
+    Route::post('/iklan-set-akun-tayangan', [KatalogController::class, 'setAkunTayangan'])
+        ->middleware('role:super_admin');
     });
 });

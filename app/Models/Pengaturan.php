@@ -139,6 +139,39 @@ class Pengaturan extends Model
     }
 
     /**
+     * @return array<int>
+     */
+    public static function landingBarangIds(): array
+    {
+        $mentah = static::ambil('landing.barang_ids', null);
+
+        if ($mentah === null || $mentah === '') {
+            return [];
+        }
+
+        $data = json_decode((string) $mentah, true);
+
+        if (! is_array($data)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($v) => (int) $v > 0 ? (int) $v : null,
+            $data
+        ))));
+    }
+
+    public static function simpanLandingBarang(array $ids): void
+    {
+        $bersih = array_values(array_unique(array_filter(array_map(
+            fn ($v) => (int) $v > 0 ? (int) $v : null,
+            $ids
+        ))));
+
+        static::simpanBanyak(['landing.barang_ids' => json_encode(array_slice($bersih, 0, 8))]);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public static function landingBanners(bool $hanyaAktif = false): array
@@ -192,7 +225,8 @@ class Pengaturan extends Model
     }
 
     /**
-     * Jeda auto-slide carousel promo (milidetik). Bisa diatur super-admin.
+     * Jeda auto-slide Promo Ngebut dan barang unggulan (milidetik).
+     * Bisa diatur super-admin.
      * Dijepit 1000–10000 agar tidak terlalu cepat/lambat; default 3000.
      */
     public static function promoIntervalMs(): int
@@ -257,5 +291,115 @@ class Pengaturan extends Model
         }
 
         return mktime(23, 59, 59, (int) date('n'), (int) date('t'), (int) date('Y'));
+    }
+
+    /**
+     * Jumlah akun yang ditampilkan di katalog pasar kos.
+     * Diatur oleh superadmin. Default 10 akun.
+     */
+    public static function akunDiKatalogPasarKos(): int
+    {
+        $jumlah = (int) static::ambil('pasar_kos.akun_di_katalog', 10);
+
+        return max(1, min(50, $jumlah));
+    }
+
+    public static function simpanAkunDiKatalogPasarKos(int $jumlah): void
+    {
+        $jumlah = max(1, min(50, $jumlah));
+        static::simpanBanyak(['pasar_kos.akun_di_katalog' => (string) $jumlah]);
+    }
+
+    /**
+     * Durasi tayang maksimal iklan pasar kos (hari).
+     * Default 7 hari.
+     */
+    public static function maksimalDurasiIklanHari(): int
+    {
+        $hari = (int) static::ambil('pasar_kos.maksimal_durasi_hari', 7);
+
+        return max(1, min(30, $hari));
+    }
+
+    public static function simpanMaksimalDurasiIklanHari(int $hari): void
+    {
+        $hari = max(1, min(30, $hari));
+        static::simpanBanyak(['pasar_kos.maksimal_durasi_hari' => (string) $hari]);
+    }
+
+    /**
+     * Biaya per hari iklan pasar kos (Rp).
+     * Default 5000 per hari.
+     */
+    public static function biayaPerHariIklan(): int
+    {
+        return (int) static::ambil('pasar_kos.biaya_per_hari', 5000);
+    }
+
+    public static function simpanBiayaPerHariIklan(int $biaya): void
+    {
+        static::simpanBanyak(['pasar_kos.biaya_per_hari' => (string) max(1000, $biaya)]);
+    }
+
+    /**
+     * Status pasar kos (aktif/tidak).
+     */
+    public static function pasarKosAktif(): bool
+    {
+        return (bool) static::ambil('pasar_kos.aktif', true);
+    }
+
+    public static function simpanPasarKosAktif(bool $aktif): void
+    {
+        static::simpanBanyak(['pasar_kos.aktif' => $aktif ? '1' : '0']);
+    }
+
+    /**
+     * Ambil semua iklan pasar kos aktif untuk ditampilkan.
+     * Dipisah berdasarkan posisi untuk rendering berbeda.
+     */
+    public static function iklanPasarKosAktif(): array
+    {
+        $iklan = IklanPasarKos::aktif()
+            ->where('status', true)
+            ->orderBy('urutan', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'judul' => $i->judul ?? '',
+                'deskripsi' => $i->deskripsi ?? '',
+                'gambar' => $i->gambar ?? '',
+                'link' => $i->link ?? '',
+                'gradient' => $i->gradient ?? 'from-brand-700 via-brand-600 to-emerald-600',
+                'posisi' => $i->posisi ?? 'banner_atas',
+                'urutan' => $i->urutan ?? 0,
+                'created_at' => $i->created_at->toIso8601String(),
+            ])
+            ->toArray();
+
+        return $iklan;
+    }
+
+    /**
+     * Ambil semua iklan banner atas aktif.
+     */
+    public static function iklanBannerAktif(): array
+    {
+        return array_values(array_filter(
+            self::iklanPasarKosAktif(),
+            fn ($i) => $i['posisi'] === 'banner_atas'
+        ));
+    }
+
+    /**
+     * Ambil semua iklan katalog sisipan aktif.
+     */
+    public static function iklanKatalogSisipanAktif(): array
+    {
+        return array_values(array_filter(
+            self::iklanPasarKosAktif(),
+            fn ($i) => $i['posisi'] === 'katalog_sisipan'
+        ));
     }
 }

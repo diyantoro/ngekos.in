@@ -7,6 +7,7 @@ use App\Enums\BarangKondisi;
 use App\Enums\BarangStatus;
 use App\Enums\UserRole;
 use App\Models\BarangKos;
+use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
@@ -249,5 +250,150 @@ class BarangKosTest extends TestCase
 
         $this->assertSame(asset('images/default-properti.jpg'), $barang->fotoUrl());
         $this->assertSame([asset('images/default-properti.jpg')], $barang->semuaFoto());
+    }
+
+    public function test_semua_role_dibatasi_dua_barang_sampai_barang_terjual_atau_dihapus(): void
+    {
+        $admin = User::factory()->withRole(UserRole::Admin)->create(['email_verified_at' => now()]);
+        $superAdmin = User::factory()->withRole(UserRole::SuperAdmin)->create(['email_verified_at' => now()]);
+
+        foreach ([$this->anakKos, $this->pemilik, $admin, $superAdmin] as $seller) {
+            $pertama = $this->buatBarang($seller, 'Barang Pertama '.$seller->id);
+            $pertama->update(['tayang_sampai' => now()->subDay()]);
+            $this->buatBarang($seller, 'Barang Kedua '.$seller->id, BarangStatus::Diarsipkan);
+
+            $this->actingAs($seller);
+
+            Volt::test('pages.barang.form')
+                ->set('nama', 'Barang Ketiga '.$seller->id)
+                ->set('kategori', 'perabot')
+                ->set('kondisi', 'bekas_mulus')
+                ->set('harga', 100000)
+                ->set('deskripsi', 'Barang tambahan yang masih layak digunakan.')
+                ->set('kota', 'Yogyakarta')
+                ->set('no_wa', $seller->no_hp)
+                ->call('simpan')
+                ->assertHasErrors(['limitBarang']);
+
+            $pertama->update(['status' => BarangStatus::Terjual]);
+
+            Volt::test('pages.barang.form')
+                ->set('nama', 'Barang Pengganti '.$seller->id)
+                ->set('kategori', 'perabot')
+                ->set('kondisi', 'bekas_mulus')
+                ->set('harga', 100000)
+                ->set('deskripsi', 'Barang pengganti yang masih layak digunakan.')
+                ->set('kota', 'Yogyakarta')
+                ->set('no_wa', $seller->no_hp)
+                ->call('simpan')
+                ->assertHasNoErrors();
+
+            $this->assertSame(2, BarangKos::jumlahBelumTerjual((int) $seller->id));
+            Volt::test('pages.barang.kelola')
+                ->call('toggleStatus', $pertama->id);
+            $this->assertSame(BarangStatus::Terjual, $pertama->fresh()->status);
+
+            BarangKos::where('user_id', $seller->id)
+                ->where('status', BarangStatus::Diarsipkan->value)
+                ->firstOrFail()
+                ->delete();
+
+            Volt::test('pages.barang.form')
+                ->set('nama', 'Barang Setelah Hapus '.$seller->id)
+                ->set('kategori', 'perabot')
+                ->set('kondisi', 'bekas_mulus')
+                ->set('harga', 100000)
+                ->set('deskripsi', 'Barang tambahan setelah satu barang dihapus.')
+                ->set('kota', 'Yogyakarta')
+                ->set('no_wa', $seller->no_hp)
+                ->call('simpan')
+                ->assertHasNoErrors();
+
+            $this->assertSame(2, BarangKos::jumlahBelumTerjual((int) $seller->id));
+        }
+    }
+
+    public function test_barang_kedaluwarsa_tidak_tampil_di_katalog_dan_rekomendasi(): void
+    {
+        $aktif = $this->buatBarang($this->anakKos, 'Barang Masih Tayang');
+        $kedaluwarsa = $this->buatBarang($this->pemilik, 'Barang Sudah Kedaluwarsa');
+        $kedaluwarsa->update(['tayang_sampai' => now()->subDay()]);
+
+        $this->get(route('barang.index'))
+            ->assertOk()
+            ->assertSee('Barang Masih Tayang')
+            ->assertDontSee('Barang Sudah Kedaluwarsa');
+
+        $this->get(route('barang.detail', $aktif))
+            ->assertOk()
+            ->assertDontSee('Barang Sudah Kedaluwarsa');
+    }
+
+    public function test_edit_barang_tidak_memperpanjang_masa_tayang(): void
+    {
+        $barang = $this->buatBarang($this->anakKos, 'Barang Masa Tayang Tetap');
+        $awal = now()->addDays(2)->setTime(23, 59, 59);
+        $barang->update(['tayang_sampai' => $awal, 'tayang_hari' => 2]);
+
+        $this->actingAs($this->anakKos);
+
+        Volt::test('pages.barang.form', ['barang' => $barang])
+            ->set('nama', 'Barang Masa Tayang Tetap (Diedit)')
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            $awal->toDateTimeString(),
+            $barang->fresh()->tayang_sampai->toDateTimeString()
+        );
+    }
+
+    public function test_masa_tayang_tidak_boleh_lebih_dari_tujuh_hari(): void
+    {
+        $this->actingAs($this->anakKos);
+
+        Volt::test('pages.barang.form')
+            ->set('nama', 'Barang Durasi Terlalu Panjang')
+            ->set('kategori', 'perabot')
+            ->set('kondisi', 'bekas_mulus')
+            ->set('harga', 100000)
+            ->set('deskripsi', 'Barang dengan durasi tayang berlebihan untuk diuji.')
+            ->set('kota', 'Yogyakarta')
+            ->set('no_wa', '081234567891')
+            ->set('tayangHari', 8)
+            ->call('simpan')
+            ->assertHasErrors(['tayangHari']);
+    }
+
+    public function test_super_admin_dapat_memilih_barang_unggulan_untuk_katalog_dan_beranda(): void
+    {
+        $barang = $this->buatBarang($this->anakKos, 'Barang Unggulan Admin');
+        $superAdmin = User::factory()->withRole(UserRole::SuperAdmin)->create();
+        $this->actingAs($superAdmin);
+
+        Volt::test('pages.super-admin.landing')
+            ->call('toggleBarangUnggulan', $barang->id)
+            ->assertSet('barangUnggulanIds', [$barang->id]);
+
+        $this->assertSame([$barang->id], Pengaturan::landingBarangIds());
+
+        auth()->logout();
+        $this->get(route('home'))->assertOk()->assertSee('Barang Unggulan Admin');
+        $this->get(route('barang.index'))->assertOk()->assertSee('Barang Unggulan Admin');
+    }
+
+    private function buatBarang(User $seller, string $nama, BarangStatus $status = BarangStatus::Tersedia): BarangKos
+    {
+        return BarangKos::create([
+            'user_id' => $seller->id,
+            'nama' => $nama,
+            'kategori' => BarangKategori::Perabot,
+            'kondisi' => BarangKondisi::BekasMulus,
+            'harga' => 100000,
+            'deskripsi' => 'Barang yang masih layak digunakan dan siap dijual.',
+            'kota' => 'Yogyakarta',
+            'no_wa' => $seller->no_hp,
+            'status' => $status,
+        ]);
     }
 }

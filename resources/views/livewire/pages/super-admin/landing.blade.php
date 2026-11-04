@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PropertiStatus;
+use App\Models\BarangKos;
 use App\Models\Pengaturan;
 use App\Models\Properti;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public string $cariPromo = '';
 
+    public string $cariBarang = '';
+
     public ?string $pesan = null;
 
     public ?string $galat = null;
@@ -23,6 +26,8 @@ new #[Layout('layouts.app')] class extends Component
     public ?int $heroPropertiId = null;
 
     public array $promoIds = [];
+
+    public array $barangUnggulanIds = [];
 
     public array $banners = [];
 
@@ -54,6 +59,22 @@ new #[Layout('layouts.app')] class extends Component
     {
         $this->heroPropertiId = Pengaturan::landingHeroId();
         $this->promoIds = Pengaturan::landingPromoIds();
+        $this->barangUnggulanIds = Pengaturan::landingBarangIds();
+        $barangIdsValid = BarangKos::query()
+            ->whereIn('id', $this->barangUnggulanIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $barangIdsTersimpan = array_values(array_filter(
+            $this->barangUnggulanIds,
+            fn ($id) => in_array($id, $barangIdsValid, true)
+        ));
+
+        if ($barangIdsTersimpan !== $this->barangUnggulanIds) {
+            $this->barangUnggulanIds = $barangIdsTersimpan;
+            Pengaturan::simpanLandingBarang($barangIdsTersimpan);
+        }
+
         $this->banners = Pengaturan::landingBanners();
         $this->promoIntervalDetik = Pengaturan::promoIntervalMs() / 1000;
         $this->promoBerakhirPada = Pengaturan::promoBerakhirPada()?->format('Y-m-d\TH:i');
@@ -62,6 +83,14 @@ new #[Layout('layouts.app')] class extends Component
 
     public function with(): array
     {
+        $barangPilihanById = $this->barangUnggulanIds === []
+            ? collect()
+            : BarangKos::query()
+                ->with('user:id,nama')
+                ->whereIn('id', array_map('intval', $this->barangUnggulanIds))
+                ->get()
+                ->keyBy('id');
+
         return [
             'landingPropertisHero' => Properti::select(['id', 'nama', 'kota', 'alamat', 'status'])
                 ->with('pemilik:id,nama')
@@ -84,6 +113,21 @@ new #[Layout('layouts.app')] class extends Component
                 ->addSelect(['asli_termurah' => \App\Models\Kamar::select('harga_asli')->whereColumn('properti_id', 'propertis.id')->where('status', 'tersedia')->where('harga_sewa_bulanan', '>', 0)->orderBy('harga_sewa_bulanan')->limit(1)])
                 ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $this->promoIds)).')')
                 ->get() : collect(),
+            'landingBarangTersedia' => BarangKos::query()
+                ->with('user:id,nama')
+                ->where('status', \App\Enums\BarangStatus::Tersedia->value)
+                ->when($this->cariBarang, fn ($q) => $q->where(function ($w) {
+                    $w->where('nama', 'like', "%{$this->cariBarang}%")
+                        ->orWhere('kota', 'like', "%{$this->cariBarang}%")
+                        ->orWhereHas('user', fn ($user) => $user->where('nama', 'like', "%{$this->cariBarang}%"));
+                }))
+                ->orderByDesc('created_at')
+                ->limit(30)
+                ->get(),
+            'barangUnggulanTerpilih' => collect($this->barangUnggulanIds)
+                ->map(fn ($id) => $barangPilihanById->get((int) $id))
+                ->filter()
+                ->values(),
         ];
     }
 
@@ -183,6 +227,77 @@ new #[Layout('layouts.app')] class extends Component
         $this->promoIds = [];
         Pengaturan::simpanLandingPromo([]);
         $this->pesan = 'Pin Promo Ngebut dikosongkan. Landing kembali otomatis menampilkan kos diskon terbaru.';
+    }
+
+    public function toggleBarangUnggulan(int $id): void
+    {
+        $this->reset(['pesan', 'galat']);
+        $daftar = array_values(array_map('intval', (array) $this->barangUnggulanIds));
+
+        if (in_array($id, $daftar, true)) {
+            $daftar = array_values(array_diff($daftar, [$id]));
+        } else {
+            $barang = BarangKos::query()
+                ->whereKey($id)
+                ->where('status', \App\Enums\BarangStatus::Tersedia->value)
+                ->first();
+
+            if (! $barang) {
+                $this->galat = 'Barang tidak tersedia untuk ditampilkan.';
+
+                return;
+            }
+
+            if (count($daftar) >= 8) {
+                $this->galat = 'Maksimal 8 barang unggulan. Lepas satu dulu untuk menambah.';
+
+                return;
+            }
+
+            $daftar[] = $id;
+        }
+
+        $this->barangUnggulanIds = $daftar;
+        Pengaturan::simpanLandingBarang($daftar);
+        $this->pesan = 'Pilihan barang unggulan disimpan ('.count($daftar).'/8).';
+    }
+
+    public function naikBarangUnggulan(int $id): void
+    {
+        $daftar = array_values(array_map('intval', (array) $this->barangUnggulanIds));
+        $pos = array_search($id, $daftar, true);
+
+        if ($pos === false || $pos === 0) {
+            return;
+        }
+
+        [$daftar[$pos - 1], $daftar[$pos]] = [$daftar[$pos], $daftar[$pos - 1]];
+        $this->barangUnggulanIds = $daftar;
+        Pengaturan::simpanLandingBarang($daftar);
+        $this->pesan = 'Urutan barang unggulan diperbarui.';
+    }
+
+    public function turunBarangUnggulan(int $id): void
+    {
+        $daftar = array_values(array_map('intval', (array) $this->barangUnggulanIds));
+        $pos = array_search($id, $daftar, true);
+
+        if ($pos === false || $pos >= count($daftar) - 1) {
+            return;
+        }
+
+        [$daftar[$pos + 1], $daftar[$pos]] = [$daftar[$pos], $daftar[$pos + 1]];
+        $this->barangUnggulanIds = $daftar;
+        Pengaturan::simpanLandingBarang($daftar);
+        $this->pesan = 'Urutan barang unggulan diperbarui.';
+    }
+
+    public function resetBarangUnggulan(): void
+    {
+        $this->reset(['pesan', 'galat']);
+        $this->barangUnggulanIds = [];
+        Pengaturan::simpanLandingBarang([]);
+        $this->pesan = 'Semua pin barang unggulan dilepas.';
     }
 
     public function baruBanner(): void
@@ -413,7 +528,7 @@ new #[Layout('layouts.app')] class extends Component
                 Kembali ke dashboard
             </a>
             <h1 class="mt-2 text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Kelola Landing</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Atur hero, Promo Ngebut, dan banner iklan yang tampil di halaman utama.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Atur hero, Promo Ngebut, barang unggulan, dan banner partner di halaman utama.</p>
         </div>
 
         @if ($pesan)
@@ -428,6 +543,60 @@ new #[Layout('layouts.app')] class extends Component
         @endif
 
         <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100">Barang Unggulan Katalog & Beranda ({{ count($barangUnggulanIds) }}/8)</h4>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Pilih barang dari akun penjual mana pun. Barang tersedia ini tampil bergeser otomatis dan bisa digeser manual di katalog serta beranda.</p>
+                    </div>
+                    <button wire:click="resetBarangUnggulan" wire:loading.attr="disabled"
+                        class="shrink-0 inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 transition disabled:opacity-50">
+                        Lepas semua
+                    </button>
+                </div>
+
+                @if ($barangUnggulanTerpilih->isNotEmpty())
+                    <div class="mt-3 space-y-2">
+                        @foreach ($barangUnggulanTerpilih as $urutan => $barangPilihan)
+                            <div class="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 ring-1 ring-gray-100 dark:bg-gray-800/60 dark:ring-gray-700">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-[11px] font-extrabold text-white">{{ $urutan + 1 }}</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-xs font-bold text-gray-900 dark:text-gray-100">{{ $barangPilihan->nama }}</p>
+                                    <p class="truncate text-[11px] text-gray-500 dark:text-gray-400">{{ $barangPilihan->user?->nama ?? 'Akun dihapus' }} · {{ $barangPilihan->kota }} · {{ $barangPilihan->status?->label() ?? 'Tidak tersedia' }}</p>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1">
+                                    <button wire:click="naikBarangUnggulan({{ $barangPilihan->id }})" title="Naik" class="rounded-md px-1.5 py-1 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">↑</button>
+                                    <button wire:click="turunBarangUnggulan({{ $barangPilihan->id }})" title="Turun" class="rounded-md px-1.5 py-1 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">↓</button>
+                                    <button wire:click="toggleBarangUnggulan({{ $barangPilihan->id }})" title="Lepas dari unggulan" class="rounded-md px-1.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">Lepas</button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mt-3 rounded-xl ring-1 ring-dashed ring-gray-300 px-3 py-5 text-center text-xs text-gray-400 dark:ring-gray-600 dark:text-gray-500">Belum ada barang pilihan. Pilih barang dari daftar di bawah.</p>
+                @endif
+
+                <input type="search" wire:model.live.debounce.300ms="cariBarang" placeholder="Cari nama barang, kota, atau akun penjual..."
+                    class="mt-4 w-full rounded-lg border-gray-300 text-sm focus:border-teal-500 focus:ring-teal-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                <div class="mt-3 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                    @forelse ($landingBarangTersedia as $barangTersedia)
+                        @php $barangDipilih = in_array((int) $barangTersedia->id, array_map('intval', $barangUnggulanIds), true); @endphp
+                        <button type="button" wire:click="toggleBarangUnggulan({{ $barangTersedia->id }})"
+                            @disabled(! $barangDipilih && count($barangUnggulanIds) >= 8)
+                            class="flex min-w-0 items-center gap-3 rounded-xl p-2 text-left ring-1 transition {{ $barangDipilih ? 'bg-amber-50 ring-amber-300 dark:bg-amber-500/10 dark:ring-amber-500/40' : 'bg-white ring-gray-100 hover:bg-gray-50 dark:bg-gray-800 dark:ring-gray-700 dark:hover:bg-gray-700' }} disabled:cursor-not-allowed disabled:opacity-50">
+                            <img src="{{ $barangTersedia->fotoUrl() }}" alt="" class="h-12 w-12 shrink-0 rounded-lg object-cover">
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-xs font-bold text-gray-900 dark:text-gray-100">{{ $barangTersedia->nama }}</span>
+                                <span class="mt-0.5 block truncate text-[11px] text-gray-500 dark:text-gray-400">{{ $barangTersedia->user?->nama ?? '-' }} · {{ $barangTersedia->kota }} · Rp{{ number_format($barangTersedia->harga, 0, ',', '.') }}</span>
+                            </span>
+                            <span class="shrink-0 text-xs font-bold {{ $barangDipilih ? 'text-amber-700 dark:text-amber-300' : 'text-teal-600 dark:text-teal-400' }}">{{ $barangDipilih ? 'Dipilih' : '+ Pilih' }}</span>
+                        </button>
+                    @empty
+                        <p class="col-span-full rounded-xl px-3 py-6 text-center text-xs text-gray-400 dark:text-gray-500">Tidak ada barang tersedia yang cocok.</p>
+                    @endforelse
+                </div>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-4 sm:p-5">
                 <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100">Gambar kos mengambang (Hero)</h4>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Pin 1 kos agar foto hero di landing tidak ikut berubah saat ada kos baru. Kosongkan untuk kembali otomatis (kos terbaru).</p>
@@ -556,12 +725,12 @@ new #[Layout('layouts.app')] class extends Component
                 </div>
                 <form wire:submit="simpanIntervalPromo" class="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 ring-1 ring-gray-100 dark:ring-gray-700 p-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-200">Jeda auto-slide promo (detik)</label>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-200">Jeda auto-slide carousel (detik)</label>
                         <input type="number" wire:model="promoIntervalDetik" min="1" max="10" step="0.5"
                             class="mt-1 block w-28 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm focus:ring-teal-500 focus:border-teal-500">
                     </div>
                     <button type="submit" class="inline-flex items-center rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500 transition">Simpan jeda</button>
-                    <p class="w-full text-[11px] text-gray-400 dark:text-gray-500">Berlaku untuk semua carousel promo (landing & halaman cari kos). Antara 1–10 detik.</p>
+                    <p class="w-full text-[11px] text-gray-400 dark:text-gray-500">Berlaku untuk Promo Ngebut dan barang unggulan. Antara 1–10 detik.</p>
                     @error('promoIntervalDetik') <p class="w-full text-xs text-rose-600">{{ $message }}</p> @enderror
                 </form>
                 <div class="mt-3 space-y-2">

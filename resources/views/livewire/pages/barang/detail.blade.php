@@ -39,6 +39,13 @@ new #[Layout('layouts.publik')] class extends Component
             ? BarangStatus::Terjual
             : BarangStatus::Tersedia;
 
+        if ($baru === BarangStatus::Tersedia
+            && BarangKos::jumlahBelumTerjual((int) $this->barang->user_id, $this->barang->id) >= BarangKos::BATAS_BARANG_PER_AKUN) {
+            $this->pesan = 'Akun penjual sudah mencapai batas '.BarangKos::BATAS_BARANG_PER_AKUN.' barang belum terjual.';
+
+            return;
+        }
+
         $this->barang->update(['status' => $baru]);
         $this->pesan = 'Status barang berhasil diubah menjadi: '.$baru->label();
     }
@@ -68,15 +75,18 @@ new #[Layout('layouts.publik')] class extends Component
                 ->count()
             : 0;
 
-        $rekomendasi = BarangKos::where('id', '!=', $this->barang->id)
-            ->where('status', BarangStatus::Tersedia->value)
+        $rekomendasiQuery = BarangKos::query()
+            ->where('id', '!=', $this->barang->id)
+            ->tersedia()
+            ->tampilDiKatalog()
             ->where(function ($q) {
                 $q->where('kategori', $this->barang->kategori->value)
                     ->orWhere('kota', $this->barang->kota);
             })
             ->with(['user'])
-            ->limit(4)
-            ->get();
+            ->limit(4);
+
+        $rekomendasi = $rekomendasiQuery->get();
 
         return [
             'semuaFoto' => $semuaFoto,
@@ -122,7 +132,7 @@ new #[Layout('layouts.publik')] class extends Component
                         <p class="text-xs text-amber-800 dark:text-amber-300">Anda adalah pemilik iklan barang kos ini.</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     @if ($sebagaiPenjual)
                         <a href="{{ route('barang.chat', $barang) }}" wire:navigate
                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-xs font-bold text-white transition">
@@ -322,6 +332,22 @@ new #[Layout('layouts.publik')] class extends Component
                     {{-- Tombol Hubungi WhatsApp --}}
                     @if ($barang->status === \App\Enums\BarangStatus::Tersedia)
                         <div class="space-y-3 pt-2">
+                            @if ($sebagaiPenjual && $barang->status === \App\Enums\BarangStatus::Tersedia)
+                                <div class="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3">
+                                    <div class="text-xs text-emerald-800 dark:text-emerald-300">
+                                        <span class="font-semibold">Masa tayang:</span>
+                                        @if ($barang->tayang_sampai)
+                                            sampai {{ $barang->tayang_sampai->format('d M Y') }}
+                                            <span class="block mt-0.5 text-emerald-700/80 dark:text-emerald-400/80">
+                                                Masa tayang tidak dapat diperpanjang. Pasang ulang barang setelah berakhir.
+                                            </span>
+                                        @else
+                                            tidak terbatas
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
                             <a href="{{ $barang->waLink() }}" target="_blank" rel="noopener noreferrer"
                                class="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3.5 px-6 text-sm font-bold text-white transition shadow-lg shadow-emerald-600/25 active:scale-[0.98]">
                                 <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
@@ -377,9 +403,14 @@ new #[Layout('layouts.publik')] class extends Component
                             {{ strtoupper(substr($barang->user?->nama ?? 'U', 0, 1)) }}
                         </div>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">
-                                {{ $barang->user?->nama ?? 'Pengguna Ngekos.in' }}
-                            </h3>
+                            @if ($barang->user)
+                                <a href="{{ route('pasar.toko', $barang->user) }}" wire:navigate
+                                   class="block truncate text-sm font-bold text-slate-900 dark:text-white hover:text-brand-700 dark:hover:text-brand-300 hover:underline">
+                                    {{ $barang->user->nama }}
+                                </a>
+                            @else
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white truncate">Pengguna Ngekos.in</h3>
+                            @endif
                             <div class="mt-0.5 flex items-center gap-2">
                                 @if (($barang->user?->roleValue() ?? '') === 'pemilik')
                                     <span class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md">
@@ -392,6 +423,13 @@ new #[Layout('layouts.publik')] class extends Component
                                 @endif
                                 <span class="text-xs text-slate-400">Bergabung {{ $barang->user?->created_at?->translatedFormat('M Y') ?? '2026' }}</span>
                             </div>
+                            @if ($barang->user)
+                                <a href="{{ route('pasar.toko', $barang->user) }}" wire:navigate
+                                   class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-700 dark:text-brand-300 hover:underline">
+                                    Lihat toko penjual
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -400,35 +438,40 @@ new #[Layout('layouts.publik')] class extends Component
 
         </div>
 
+        {{-- Iklan promo partner: bergeser otomatis & bisa digeser manual --}}
+        <div class="mt-8 sm:mt-12">
+            <x-promo-ads wire:ignore />
+        </div>
+
         {{-- Rekomendasi Barang Lainnya --}}
         @if ($rekomendasi->count() > 0)
-            <div class="mt-14 pt-8 border-t border-stone-200 dark:border-gray-800">
-                <div class="flex items-center justify-between mb-6">
+            <div class="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-stone-200 dark:border-gray-800">
+                <div class="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
                     <div>
                         <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Barang Kos Lainnya</h2>
                         <p class="text-xs text-slate-500">Mungkin kamu juga membutuhkan barang-barang ini</p>
                     </div>
-                    <a href="{{ route('barang.index') }}" wire:navigate class="text-xs font-semibold text-brand-700 dark:text-brand-300 hover:underline">
+                    <a href="{{ route('barang.index') }}" wire:navigate class="shrink-0 text-[11px] sm:text-xs font-semibold text-brand-700 dark:text-brand-300 hover:underline">
                         Lihat Semua Pasar Kos →
                     </a>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
                     @foreach ($rekomendasi as $rek)
                         <a href="{{ route('barang.detail', $rek) }}" wire:navigate
                            class="group bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col">
                             <div class="aspect-square bg-stone-100 dark:bg-gray-800 overflow-hidden relative">
                                 <img src="{{ $rek->fotoUrl() }}" alt="{{ $rek->nama }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                                <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-brand-950/80 text-white">
+                                <span class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold uppercase bg-brand-950/80 text-white">
                                     {{ $rek->kondisi?->label() }}
                                 </span>
                             </div>
-                            <div class="p-3.5 flex-1 flex flex-col justify-between">
+                            <div class="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <h4 class="text-xs font-bold text-slate-900 dark:text-gray-100 line-clamp-2">{{ $rek->nama }}</h4>
-                                    <p class="mt-1.5 text-sm font-extrabold text-brand-800 dark:text-brand-300">{{ $rek->formattedHarga() }}</p>
+                                    <h4 class="text-[11px] leading-snug sm:text-xs font-bold text-slate-900 dark:text-gray-100 line-clamp-2">{{ $rek->nama }}</h4>
+                                    <p class="mt-1 sm:mt-1.5 text-xs sm:text-sm font-extrabold text-brand-800 dark:text-brand-300">{{ $rek->formattedHarga() }}</p>
                                 </div>
-                                <p class="mt-2 text-[11px] text-slate-400 truncate">{{ $rek->kota }}</p>
+                                <p class="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 truncate">{{ $rek->kota }}</p>
                             </div>
                         </a>
                     @endforeach

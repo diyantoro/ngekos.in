@@ -744,8 +744,8 @@ const initPromoRoot = (root) => {
         });
     }
     const paint = () => dots.forEach((d, i) => {
-        d.className = 'h-1.5 rounded-full transition-all duration-300 '
-            + (i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80');
+        d.className = 'h-2 rounded-full transition-all duration-300 '
+            + (i === index ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80');
     });
     const hematGerak = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let autoScrolling = false;

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\IklanPasarKos;
 use App\Models\Kamar;
 use App\Models\Properti;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class KatalogController extends Controller
 {
@@ -276,5 +279,141 @@ class KatalogController extends Controller
         return \App\Support\FacilityHelper::normalizeList(
             \App\Support\FacilityHelper::fromString($fasilitas)
         );
+    }
+
+    /**
+     * Daftar iklan aktif yang bisa ditayangkan di katalog (untuk super admin).
+     * Admin mengatur akun_jumlah berapa yang ditampilkan.
+     */
+    public function iklanTayangan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'akun_jumlah' => 'nullable|integer|min:1|max:10',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $akunFilter = $request->input('akun_jumlah');
+        $perPage = min(max((int) $request->input('per_page', 20), 1), 50);
+
+        $query = IklanPasarKos::with(['barangKos.user', 'barangKos.properti'])
+            ->aktif()
+            ->where('status', true);
+
+        if ($akunFilter) {
+            $query->where('akun_jumlah', '>=', $akunFilter);
+        }
+
+        $iklans = $query->orderBy('tayang_sampai', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'iklans' => $iklans->getCollection()->map(fn ($iklan) => $this->formatIklanTayangan($iklan)),
+            'total' => $iklans->total(),
+            'per_page' => $iklans->perPage(),
+            'current_page' => $iklans->currentPage(),
+            'akun_filter' => $akunFilter,
+        ]);
+    }
+
+    /**
+     * Daftar semua iklan yang sedang/dulu pernah tayang (untuk super admin).
+     * Admin bisa melihat statistik dan mengelola tayangan.
+     */
+    public function riwayatIklanTayangan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'akun_jumlah' => 'nullable|integer|min:1|max:10',
+            'status_iklan' => 'nullable|in:aktif,berakhir',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $akunFilter = $request->input('akun_jumlah');
+        $statusFilter = $request->input('status_iklan');
+        $perPage = min(max((int) $request->input('per_page', 20), 1), 50);
+
+        $query = IklanPasarKos::with(['barangKos.user', 'barangKos.properti']);
+
+        if ($akunFilter) {
+            $query->where('akun_jumlah', '>=', $akunFilter);
+        }
+
+        if ($statusFilter) {
+            if ($statusFilter === 'aktif') {
+                $query->aktif();
+            } else {
+                // Berakhir: status true tapi sudah lewat tayang_sampai
+                $query->where('status', true)
+                    ->where('tayang_sampai', '<', Carbon::now());
+            }
+        }
+
+        $iklans = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'iklans' => $iklans->getCollection()->map(fn ($iklan) => $this->formatIklanTayangan($iklan)),
+            'total' => $iklans->total(),
+            'per_page' => $iklans->perPage(),
+            'current_page' => $iklans->currentPage(),
+            'akun_filter' => $akunFilter,
+            'status_filter' => $statusFilter,
+        ]);
+    }
+
+    /**
+     * Set akun_jumlah minimum untuk tayangan katalog (super admin).
+     * Ini mengatur berapa akun minimum yang akan muncul di katalog.
+     */
+    public function setAkunTayangan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'akun_jumlah' => 'required|integer|min:1|max:10',
+        ]);
+
+        $akunJumlah = $request->input('akun_jumlah');
+        
+        // Simpan ke pengaturan
+        \App\Models\Pengaturan::where('key', 'akun_di_katalog_pasar_kos')->update([
+            'value' => (string) $akunJumlah,
+        ]);
+
+        return response()->json([
+            'message' => 'Akun tayangan katalog berhasil diset',
+            'akun_jumlah' => $akunJumlah,
+        ]);
+    }
+
+    /**
+     * Format iklan untuk tayangan katalog.
+     */
+    private function formatIklanTayangan(IklanPasarKos $iklan): array
+    {
+        return [
+            'id' => $iklan->id,
+            'barang_kos' => [
+                'id' => $iklan->barangKos->id,
+                'nama' => $iklan->barangKos->nama,
+                'harga' => $iklan->barangKos->harga,
+                'foto' => $iklan->barangKos->fotoUrl(),
+                'kota' => $iklan->barangKos->kota,
+                'status' => $iklan->barangKos->status,
+                'properti' => $iklan->barangKos->properti ? [
+                    'id' => $iklan->barangKos->properti->id,
+                    'nama' => $iklan->barangKos->properti->nama,
+                ] : null,
+            ],
+            'user' => [
+                'id' => $iklan->user->id,
+                'nama' => $iklan->user->nama,
+                'email' => $iklan->user->email,
+            ],
+            'akun_jumlah' => $iklan->akun_jumlah,
+            'tayang_dimulai' => $iklan->tayang_dimulai ? $iklan->tayang_dimulai->format('Y-m-d H:i:s') : null,
+            'tayang_sampai' => $iklan->tayang_sampai ? $iklan->tayang_sampai->format('Y-m-d H:i:s') : null,
+            'durasi_hari' => $iklan->durasi_hari,
+            'sisa_hari' => $iklan->sisaHari(),
+            'biaya' => $iklan->biaya,
+            'biaya_formatted' => 'Rp '.number_format($iklan->biaya, 0, ',', '.'),
+            'aktif' => $iklan->isAktif(),
+            'created_at' => $iklan->created_at->format('Y-m-d H:i:s'),
+        ];
     }
 }

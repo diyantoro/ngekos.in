@@ -220,6 +220,15 @@ class User extends Authenticatable
         return $this->hasMany(BarangKos::class);
     }
 
+    /**
+     * Barang milik penjual lain yang ditampilkan di toko akun ini.
+     */
+    public function barangKosDitampilkan(): BelongsToMany
+    {
+        return $this->belongsToMany(BarangKos::class, 'barang_kos_akun', 'user_id', 'barang_id')
+            ->withTimestamps();
+    }
+
     public function activeSubscription(): ?Subscription
     {
         // Jangan hanya cek baris terbaru: pemilik bisa punya trial Free

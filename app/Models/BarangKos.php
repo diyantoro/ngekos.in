@@ -9,11 +9,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BarangKos extends Model
 {
     use HasFactory;
+
+    public const BATAS_BARANG_PER_AKUN = 2;
 
     protected $table = 'barang_kos';
 
@@ -34,6 +38,8 @@ class BarangKos extends Model
         'no_wa',
         'status',
         'dilihat',
+        'tayang_sampai',
+        'tayang_hari',
     ];
 
     protected function casts(): array
@@ -46,6 +52,7 @@ class BarangKos extends Model
             'harga' => 'integer',
             'dilihat' => 'integer',
             'foto_tambahan' => 'array',
+            'tayang_sampai' => 'datetime',
         ];
     }
 
@@ -64,9 +71,80 @@ class BarangKos extends Model
         return $this->hasMany(BarangPesan::class, 'barang_kos_id');
     }
 
+    /**
+     * Akun/toko tempat barang ini ditampilkan. Satu barang bisa tampil di
+     * beberapa akun sekaligus sesuai kurasi superadmin.
+     */
+    public function akunTampil(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'barang_kos_akun', 'barang_id', 'user_id')
+            ->withTimestamps();
+    }
+
+    protected static function booted(): void
+    {
+        // Barang baru otomatis tampil di toko pemiliknya. Superadmin bisa
+        // menambah/mengurangi akun lewat halaman Kelola Pasar Kos.
+        static::created(function (self $barang) {
+            if ($barang->user_id) {
+                $barang->akunTampil()->syncWithoutDetaching([$barang->user_id]);
+            }
+        });
+    }
+
+    public function iklanPasarKos(): HasOne
+    {
+        return $this->hasOne(IklanPasarKos::class, 'barang_kos_id');
+    }
+
+    /**
+     * Barang yang belum lewat masa tayang. Masa tayang dihitung per hari,
+     * jadi barang masih tampil sampai akhir hari tayang_sampai.
+     */
+    public function scopeBelumKedaluwarsa(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('tayang_sampai')
+                ->orWhere('tayang_sampai', '>=', now()->startOfDay());
+        });
+    }
+
     public function scopeTersedia(Builder $query): Builder
     {
-        return $query->where('status', BarangStatus::Tersedia->value);
+        return $query->where('status', BarangStatus::Tersedia->value)
+            ->belumKedaluwarsa();
+    }
+
+    /**
+     * Barang yang sudah di-assign ke minimal satu akun/toko. Barang tanpa
+     * akun dianggap disembunyikan dari katalog publik.
+     */
+    public function scopeTampilDiKatalog(Builder $query): Builder
+    {
+        return $query->whereHas('akunTampil');
+    }
+
+    /**
+     * Barang sudah lewat masa tayang (tidak tampil di katalog publik).
+     */
+    public function sudahKedaluwarsa(): bool
+    {
+        return $this->tayang_sampai !== null
+            && $this->tayang_sampai->copy()->endOfDay()->lessThan(now());
+    }
+
+    public function scopeBelumTerjual(Builder $query): Builder
+    {
+        return $query->where('status', '!=', BarangStatus::Terjual->value);
+    }
+
+    public static function jumlahBelumTerjual(int $userId, ?int $kecualiId = null): int
+    {
+        return static::query()
+            ->where('user_id', $userId)
+            ->belumTerjual()
+            ->when($kecualiId, fn (Builder $query) => $query->where('id', '!=', $kecualiId))
+            ->count();
     }
 
     public function scopeKota(Builder $query, ?string $kota): Builder
@@ -175,5 +253,25 @@ class BarangKos extends Model
         }
 
         return (int) $this->user_id === (int) $user->id || $user->hasAnyRole(['super_admin', 'admin']);
+    }
+
+    /**
+     * Cek apakah iklan masih aktif (belum lewat tayang_sampai).
+     */
+    public function isAktif(): bool
+    {
+        if ($this->status !== BarangStatus::Tersedia) {
+            return false;
+        }
+
+        return ! $this->sudahKedaluwarsa();
+    }
+
+    /**
+     * Scope untuk iklan yang masih aktif (status tersedia dan belum lewat masa tayang).
+     */
+    public function scopeAktif(Builder $query): Builder
+    {
+        return $query->tersedia();
     }
 }

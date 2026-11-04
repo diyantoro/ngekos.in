@@ -4,6 +4,7 @@ use App\Enums\BarangKategori;
 use App\Enums\BarangKondisi;
 use App\Enums\BarangStatus;
 use App\Models\BarangKos;
+use App\Models\Pengaturan;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
@@ -87,8 +88,27 @@ new #[Layout('layouts.publik')] class extends Component
 
     public function with(): array
     {
+        $barangUnggulanIds = Pengaturan::landingBarangIds();
+
         $query = BarangKos::query()
-            ->with(['user', 'properti:id,nama,kota']);
+            ->with(['user', 'properti:id,nama,kota'])
+            ->belumKedaluwarsa()
+            ->tampilDiKatalog();
+
+        $barangUnggulanQuery = BarangKos::query()
+            ->whereIn('id', $barangUnggulanIds)
+            ->tersedia()
+            ->tampilDiKatalog()
+            ->with('user:id,nama');
+
+        $barangUnggulan = $barangUnggulanQuery
+            ->get()
+            ->sortBy(fn (BarangKos $barang) => array_search(
+                $barang->id,
+                $barangUnggulanIds,
+                true
+            ))
+            ->values();
 
         if ($this->cari) {
             $keyword = trim($this->cari);
@@ -134,23 +154,37 @@ new #[Layout('layouts.publik')] class extends Component
             default => $query->orderBy('created_at', 'desc'),
         };
 
-        $daftarKota = BarangKos::select('kota')
+        $daftarKotaQuery = BarangKos::query()
+            ->select('kota')
+            ->tersedia()
+            ->tampilDiKatalog()
             ->whereNotNull('kota')
             ->where('kota', '!=', '')
-            ->distinct()
-            ->pluck('kota')
-            ->sort()
-            ->values();
+            ->distinct();
+
+        $daftarKota = $daftarKotaQuery->pluck('kota')->sort()->values();
 
         $daftarKategori = BarangKategori::cases();
 
-        $totalTersedia = BarangKos::where('status', BarangStatus::Tersedia->value)->count();
+        $totalTersediaQuery = BarangKos::query()->tersedia()->tampilDiKatalog();
+        $totalTersedia = $totalTersediaQuery->count();
+
+        $user = auth()->user();
+        $jumlahBelumTerjualSaya = $user
+            ? BarangKos::jumlahBelumTerjual((int) $user->id)
+            : 0;
+        $bisaPasangBaru = ! $user
+            || $jumlahBelumTerjualSaya < BarangKos::BATAS_BARANG_PER_AKUN;
 
         return [
             'barangs' => $query->paginate(12),
+            'barangUnggulan' => $barangUnggulan,
+            'promoInterval' => Pengaturan::promoIntervalMs(),
             'daftarKota' => $daftarKota,
             'daftarKategori' => $daftarKategori,
             'totalTersedia' => $totalTersedia,
+            'jumlahBelumTerjualSaya' => $jumlahBelumTerjualSaya,
+            'bisaPasangBaru' => $bisaPasangBaru,
         ];
     }
 }; ?>
@@ -158,8 +192,8 @@ new #[Layout('layouts.publik')] class extends Component
 <div class="py-6 sm:py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {{-- Hero Banner Pasar Kos --}}
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 via-brand-800 to-emerald-900 p-6 sm:p-10 text-white shadow-xl mb-8">
+        {{-- Hero Pasar Kos --}}
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 via-brand-800 to-emerald-900 p-5 sm:p-10 text-white shadow-xl mb-8">
             <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
             <div class="absolute -left-10 -top-10 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -171,32 +205,41 @@ new #[Layout('layouts.publik')] class extends Component
                         </svg>
                         Pasar Barang Kos #LebihHemat
                     </div>
-                    <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+                    <h1 class="text-[1.6rem] leading-tight sm:text-4xl font-extrabold tracking-tight text-white">
                         Jual & Beli Perlengkapan Kos Antara Anak Kos & Pemilik
                     </h1>
                     <p class="mt-2 text-sm sm:text-base text-brand-100 leading-relaxed">
                         Mau pindah kos atau butuh perabot & elektronik murah? Jual barang tak terpakai atau temukan barang bekas layak pakai dengan harga anak kos.
                     </p>
-                    <div class="mt-4 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-brand-200">
+                    <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-brand-200">
                         <span class="flex items-center gap-1.5">
                             <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             <strong class="text-white">{{ $totalTersedia }}</strong> barang kos siap dipinang
                         </span>
-                        <span class="text-brand-400">•</span>
+                        <span class="hidden sm:inline text-brand-400">•</span>
                         <span>Transaksi Langsung via WhatsApp</span>
-                        <span class="text-brand-400">•</span>
+                        <span class="hidden sm:inline text-brand-400">•</span>
                         <span>Bebas Biaya Iklan</span>
                     </div>
                 </div>
 
                 <div class="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
-                    <a href="{{ route('barang.pasang') }}" wire:navigate
-                       class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 px-5 py-3 text-sm font-bold text-brand-950 transition shadow-lg hover:shadow-amber-400/20">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        Jual Barang Saya
-                    </a>
+                    @if ($bisaPasangBaru)
+                        <a href="{{ route('barang.pasang') }}" wire:navigate
+                           class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 px-5 py-3 text-sm font-bold text-brand-950 transition shadow-lg hover:shadow-amber-400/20">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            Jual Barang Saya
+                        </a>
+                    @else
+                        <span class="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-bold text-amber-200 ring-1 ring-white/20">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Batas 2 barang tercapai
+                        </span>
+                    @endif
                     @auth
                         <a href="{{ route('barang.kelola') }}" wire:navigate
                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition backdrop-blur">
@@ -210,12 +253,21 @@ new #[Layout('layouts.publik')] class extends Component
             </div>
         </div>
 
+        {{-- Banner iklan promo partner: bergeser otomatis & bisa digeser manual --}}
+        <div class="mb-8">
+            <x-promo-ads wire:ignore />
+        </div>
+
+        @if ($barangUnggulan->isNotEmpty())
+            <x-barang-featured-carousel :barangs="$barangUnggulan" :interval="$promoInterval" />
+        @endif
+
         {{-- Filter & Pencarian Bar --}}
         <div class="bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm mb-6 space-y-4">
             {{-- Baris 1: Search & Filter Utama --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+            <div class="grid grid-cols-2 lg:grid-cols-12 gap-3">
                 {{-- Input Cari --}}
-                <div class="lg:col-span-5 relative">
+                <div class="col-span-2 lg:col-span-5 relative">
                     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -228,7 +280,7 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
 
                 {{-- Filter Kota (ketikan, bukan dropdown) --}}
-                <div class="lg:col-span-3 relative">
+                <div class="col-span-2 lg:col-span-3 relative">
                     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
@@ -254,7 +306,7 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
 
                 {{-- Filter Penjual --}}
-                <div class="lg:col-span-2">
+                <div class="col-span-1 lg:col-span-2">
                     <select wire:model.live="peran"
                             class="w-full py-2.5 px-3 text-sm rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
                         <option value="">Semua Penjual</option>
@@ -264,7 +316,7 @@ new #[Layout('layouts.publik')] class extends Component
                 </div>
 
                 {{-- Urutan --}}
-                <div class="lg:col-span-2">
+                <div class="col-span-1 lg:col-span-2">
                     <select wire:model.live="urutkan"
                             class="w-full py-2.5 px-3 text-sm rounded-xl border border-stone-300 dark:border-gray-700 bg-stone-50 dark:bg-gray-800 text-slate-800 dark:text-gray-100 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
                         <option value="terbaru">Terbaru</option>
@@ -365,13 +417,14 @@ new #[Layout('layouts.publik')] class extends Component
 
         {{-- Grid Daftar Barang --}}
         @if ($barangs->count() > 0)
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-5">
                 @foreach ($barangs as $item)
                     @php
                         $isTerjual = $item->status === \App\Enums\BarangStatus::Terjual;
                         $penjualRole = $item->user?->roleValue() ?? 'anak_kos';
                     @endphp
-                    <div class="group relative bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col {{ $isTerjual ? 'opacity-75' : '' }}">
+
+                    {{-- Kartu Barang Asli --}}<div data-barang-id="{{ $item->id }}" class="group relative bg-white dark:bg-gray-900 border border-stone-200 dark:border-gray-800 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition duration-200 flex flex-col {{ $isTerjual ? 'opacity-75' : '' }}">
                         {{-- Foto & Badges --}}
                         <div class="relative aspect-square w-full bg-stone-100 dark:bg-gray-800 overflow-hidden">
                             <img src="{{ $item->fotoUrl() }}"
@@ -390,15 +443,18 @@ new #[Layout('layouts.publik')] class extends Component
 
                             {{-- Badges atas --}}
                             <div class="absolute top-2 inset-x-2 sm:top-2.5 sm:inset-x-2.5 flex items-center justify-between gap-1 pointer-events-none">
-                                <span class="px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold uppercase tracking-wide bg-brand-950/80 backdrop-blur text-white shadow-sm">
-                                    {{ $item->kondisi?->label() ?? 'Bekas' }}
-                                </span>
-
-                                @if ($item->bisa_nego)
-                                    <span class="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-400 text-brand-950 shadow-sm">
-                                        Nego
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold uppercase tracking-wide bg-brand-950/80 backdrop-blur text-white shadow-sm">
+                                        {{ $item->kondisi?->label() ?? 'Bekas' }}
                                     </span>
-                                @endif
+
+                                    @if ($item->bisa_nego)
+                                        <span class="px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-400 text-brand-950 shadow-sm">
+                                            Nego
+                                        </span>
+                                    @endif
+
+                                </div>
                             </div>
 
                             {{-- Badge Penjual (Anak Kos / Pemilik) --}}
@@ -452,9 +508,14 @@ new #[Layout('layouts.publik')] class extends Component
                                     <div class="hidden sm:flex h-6 w-6 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 items-center justify-center font-bold text-[10px] shrink-0">
                                         {{ strtoupper(substr($item->user?->nama ?? 'U', 0, 1)) }}
                                     </div>
-                                    <span class="text-[11px] sm:text-xs text-slate-600 dark:text-gray-300 font-medium truncate">
-                                        {{ $item->user?->nama ?? 'Penjual' }}
-                                    </span>
+                                    @if ($item->user)
+                                        <a href="{{ route('pasar.toko', $item->user) }}" wire:navigate
+                                           class="min-w-0 truncate text-[11px] sm:text-xs text-slate-600 dark:text-gray-300 font-medium hover:text-brand-700 dark:hover:text-brand-300 hover:underline">
+                                            {{ $item->user->nama }}
+                                        </a>
+                                    @else
+                                        <span class="min-w-0 truncate text-[11px] sm:text-xs text-slate-600 dark:text-gray-300 font-medium">Penjual</span>
+                                    @endif
                                 </div>
 
                                 <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -476,6 +537,13 @@ new #[Layout('layouts.publik')] class extends Component
                             </div>
                         </div>
                     </div>
+
+                    @if ($loop->iteration === 4 && $barangs->count() > 4)
+                        {{-- Sisipan iklan promo partner di tengah katalog --}}
+                        <div class="col-span-full my-2 sm:my-3">
+                            <x-promo-ads wire:ignore />
+                        </div>
+                    @endif
                 @endforeach
             </div>
 
@@ -493,7 +561,7 @@ new #[Layout('layouts.publik')] class extends Component
                 <p class="mt-1 text-sm text-slate-500 dark:text-gray-400 max-w-md mx-auto">
                     Coba sesuaikan kata kunci pencarian, ubah pilihan kategori atau bersihkan filter yang aktif.
                 </p>
-                <div class="mt-5 flex items-center justify-center gap-3">
+                <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
                     <button type="button" wire:click="resetSemuaFilter"
                             class="px-4 py-2 rounded-xl bg-stone-100 dark:bg-gray-800 hover:bg-stone-200 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-semibold text-xs transition">
                         Reset Filter

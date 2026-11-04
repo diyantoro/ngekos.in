@@ -20,6 +20,17 @@ Volt::route('kos', 'pages.katalog.kos')->name('kos.index');
 Volt::route('kos/{properti}', 'pages.katalog.detail')->name('kos.detail');
 
 // Fitur Jual Beli Barang Kos (Anak Kos, Pemilik Kos, Publik).
+// Iklan Pasar Kos (khusus anak kos) - Gratis 2/akun.
+Volt::route('iklan-pasar-kos/pasang', 'pages.barang.pasang-iklan')
+    ->middleware(['auth', 'verified', 'role:anak_kos'])
+    ->name('iklan-pasar-kos.pasang');
+Volt::route('iklan-pasar-kos/kelola', 'pages.barang.kelola-iklan')
+    ->middleware(['auth', 'verified', 'role:anak_kos'])
+    ->name('iklan-pasar-kos.kelola');
+Volt::route('iklan-pasar-kos/{iklan}/ubah', 'pages.barang.edit-iklan')
+    ->middleware(['auth', 'verified', 'role:anak_kos'])
+    ->name('iklan-pasar-kos.ubah');
+
 Volt::route('barang-kos', 'pages.barang.index')->name('barang.index');
 Volt::route('barang-kos/kelola', 'pages.barang.kelola')
     ->middleware(['auth', 'verified'])
@@ -67,6 +78,14 @@ Volt::route('pengguna', 'pages.super-admin.pengguna')
 Volt::route('landing/kelola', 'pages.super-admin.landing')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('landing.kelola');
+
+// Kelola kurasi akun penjual di katalog Pasar Kos (khusus super admin).
+Volt::route('pasar-kos/kelola', 'pages.super-admin.pasar-kos')
+    ->middleware(['auth', 'verified', 'role:super_admin'])
+    ->name('pasar.kelola');
+
+// Toko publik tempat barang-barang yang di-assign ke akun ditampilkan.
+Volt::route('pasar-kos/toko/{user}', 'pages.barang.toko')->name('pasar.toko');
 
 // Langganan premium khusus pemilik (aktivasi manual oleh admin).
 Volt::route('langganan', 'pages.langganan.subscription')

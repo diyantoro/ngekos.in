@@ -39,6 +39,13 @@ new #[Layout('layouts.app')] class extends Component
             ? BarangStatus::Terjual
             : BarangStatus::Tersedia;
 
+        if ($baru === BarangStatus::Tersedia
+            && BarangKos::jumlahBelumTerjual((int) $barang->user_id, $barang->id) >= BarangKos::BATAS_BARANG_PER_AKUN) {
+            $this->pesan = 'Akun penjual sudah mencapai batas '.BarangKos::BATAS_BARANG_PER_AKUN.' barang belum terjual.';
+
+            return;
+        }
+
         $barang->update(['status' => $baru]);
         $this->pesan = "\"{$barang->nama}\" ditandai sebagai {$baru->label()}.";
     }
@@ -104,6 +111,7 @@ new #[Layout('layouts.app')] class extends Component
             'totalSemua' => $totalSemua,
             'totalTersedia' => $totalTersedia,
             'totalTerjual' => $totalTerjual,
+            'jumlahBelumTerjualSaya' => BarangKos::jumlahBelumTerjual((int) $user->id),
         ];
     }
 }; ?>
@@ -131,13 +139,19 @@ new #[Layout('layouts.app')] class extends Component
                     </svg>
                     Lihat Pasar Kos
                 </a>
-                <a href="{{ route('barang.pasang') }}" wire:navigate
-                   class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-xs font-bold text-white transition shadow-sm">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Pasang Iklan Baru
-                </a>
+                @if ($jumlahBelumTerjualSaya < BarangKos::BATAS_BARANG_PER_AKUN)
+                    <a href="{{ route('barang.pasang') }}" wire:navigate
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-xs font-bold text-white transition shadow-sm">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Pasang Barang Baru
+                    </a>
+                @else
+                    <span class="inline-flex items-center gap-1.5 rounded-xl bg-stone-100 px-4 py-2.5 text-xs font-bold text-slate-500 dark:bg-gray-800 dark:text-gray-400">
+                        Batas 2 barang tercapai
+                    </span>
+                @endif
             </div>
         </div>
 
@@ -147,6 +161,10 @@ new #[Layout('layouts.app')] class extends Component
                 <button type="button" wire:click="$set('pesan', null)" class="text-emerald-700 hover:text-emerald-900 font-bold">✕</button>
             </div>
         @endif
+
+        <p class="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            Barang belum terjual di akun Anda: {{ $jumlahBelumTerjualSaya }}/{{ BarangKos::BATAS_BARANG_PER_AKUN }}. Tandai barang sebagai terjual atau hapus untuk membuka slot.
+        </p>
 
         {{-- Ringkasan Kartu Statistik --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

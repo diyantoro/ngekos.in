@@ -235,21 +235,24 @@
     scroll-snap-stop: always;
 }
 
+/*
+ * Konten tiap slide harus selalu terlihat. Sebelumnya opacity: 0 membuat
+ * slide yang sedang digeser tampak kosong sampai animasi selesai.
+ * Animasi sekarang hanya memakai transform agar tidak pernah blank.
+ */
 [data-promo-anim] {
-    opacity: 0;
-    transform: translateY(16px) scale(0.96);
-    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-    transition-delay: 0.15s;
+    opacity: 1;
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.45s ease-out;
+    transition-delay: 0.08s;
 }
 
 .promo-active [data-promo-anim] {
-    opacity: 1;
     transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
     [data-promo-anim] {
-        opacity: 1;
         transform: none;
         transition: none;
     }
