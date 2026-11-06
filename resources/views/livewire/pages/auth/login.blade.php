@@ -147,8 +147,18 @@ new #[Layout('layouts.guest')] class extends Component
     </div>
 
     <div class="text-center mb-6">
-        <div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center">
-            <x-application-logo class="h-16 w-16 drop-shadow-sm" />
+        <div @class([
+            'mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-2xl p-1',
+            'bg-emerald-50 dark:bg-emerald-500/10' => $peran === 'pemilik',
+            'bg-teal-50 dark:bg-teal-500/10' => $peran !== 'pemilik',
+        ])>
+            @if ($peran === 'pemilik')
+                <img src="{{ asset('images/login-owner.svg') }}" alt="Pemilik Kos"
+                     class="h-full w-full object-contain" draggable="false" decoding="async">
+            @else
+                <img src="{{ asset('images/login-tenant.svg') }}" alt="Pencari Kos"
+                     class="h-full w-full object-contain" draggable="false" decoding="async">
+            @endif
         </div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Masuk</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">

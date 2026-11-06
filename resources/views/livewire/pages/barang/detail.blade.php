@@ -278,6 +278,11 @@ new #[Layout('layouts.publik')] class extends Component
                         </div>
                     @endif
                 </div>
+
+                {{-- Iklan promo partner: di bawah deskripsi barang, bergeser otomatis & bisa digeser manual --}}
+                <div>
+                    <x-promo-ads wire:ignore />
+                </div>
             </div>
 
             {{-- Kolom Kanan: Info Harga, Penjual & Tombol Kontak --}}
@@ -436,11 +441,6 @@ new #[Layout('layouts.publik')] class extends Component
 
             </div>
 
-        </div>
-
-        {{-- Iklan promo partner: bergeser otomatis & bisa digeser manual --}}
-        <div class="mt-8 sm:mt-12">
-            <x-promo-ads wire:ignore />
         </div>
 
         {{-- Rekomendasi Barang Lainnya --}}

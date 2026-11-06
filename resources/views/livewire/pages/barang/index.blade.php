@@ -537,13 +537,6 @@ new #[Layout('layouts.publik')] class extends Component
                             </div>
                         </div>
                     </div>
-
-                    @if ($loop->iteration === 4 && $barangs->count() > 4)
-                        {{-- Sisipan iklan promo partner di tengah katalog --}}
-                        <div class="col-span-full my-2 sm:my-3">
-                            <x-promo-ads wire:ignore />
-                        </div>
-                    @endif
                 @endforeach
             </div>
 
