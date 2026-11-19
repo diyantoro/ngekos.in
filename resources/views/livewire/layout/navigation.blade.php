@@ -40,6 +40,14 @@ new class extends Component
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />',
                 'group' => 'UTAMA',
             ];
+            $links[] = [
+                'label' => 'Rekomendasi SPK',
+                'route' => 'spk.rekomendasi',
+                'active' => 'spk.rekomendasi',
+                'routeName' => route('spk.rekomendasi', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />',
+                'group' => 'UTAMA',
+            ];
         }
 
         if ($user->hasAnyRole(['anak_kos', 'pemilik'])) {
@@ -172,6 +180,22 @@ new class extends Component
                 'label' => 'Pasar Kos', 'route' => 'pasar.kelola', 'active' => 'pasar.kelola',
                 'routeName' => route('pasar.kelola', absolute: false),
                 'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />',
+                'group' => 'KELOLA',
+            ];
+        }
+
+        // Modul AI & SPK (khusus admin/super admin).
+        if ($user->hasAnyRole(['super_admin', 'admin'])) {
+            $links[] = [
+                'label' => 'Model AI', 'route' => 'admin.model-ai', 'active' => 'admin.model-ai',
+                'routeName' => route('admin.model-ai', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />',
+                'group' => 'KELOLA',
+            ];
+            $links[] = [
+                'label' => 'Data Latih', 'route' => 'admin.data-latih', 'active' => 'admin.data-latih',
+                'routeName' => route('admin.data-latih', absolute: false),
+                'icon' => '<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />',
                 'group' => 'KELOLA',
             ];
         }

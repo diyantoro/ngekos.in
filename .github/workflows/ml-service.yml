@@ -1,0 +1,58 @@
+name: ML Service (FastAPI)
+
+on:
+  push:
+    paths:
+      - 'ml-service/**'
+      - '.github/workflows/ml-service.yml'
+  pull_request:
+    paths:
+      - 'ml-service/**'
+
+jobs:
+  uji-dan-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: ml-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Uji lokal model (preprocessor + estimator pasar)
+        working-directory: ml-service
+        run: python test_model_lokal.py
+
+      - name: Build Docker image
+        working-directory: ml-service
+        run: docker build -t ngekos-ml-service:ci .
+
+      - name: Smoke test container
+        run: |
+          docker run -d --name ngekos-ml -p 8000:8000 -e ML_SERVICE_TOKEN=ngekos-secret-api-token ngekos-ml-service:ci
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8000/health; then
+              echo "Layanan sehat"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check gagal"
+          docker logs ngekos-ml
+          exit 1
+
+      # Deploy (aktifkan bila secret registry/render/cloud run sudah disiapkan):
+      # - name: Push image ke registry
+      #   run: |
+      #     echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+      #     docker tag ngekos-ml-service:ci ${{ secrets.REGISTRY_IMAGE }}:${{ github.sha }}
+      #     docker push ${{ secrets.REGISTRY_IMAGE }}:${{ github.sha }}

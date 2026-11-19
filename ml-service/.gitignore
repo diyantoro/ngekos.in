@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+artifacts/*.joblib
+artifacts/*.pkl
+artifacts/*.keras
+.env
+.pytest_cache/

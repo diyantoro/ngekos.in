@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
             DomainDataSeeder::class,
+            SpkSeeder::class,
             KatalogMamikosSeeder::class,
             PalembangSeeder::class,
             BarangKosSeeder::class,

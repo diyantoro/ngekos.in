@@ -6,6 +6,7 @@ use App\Models\Properti;
 use App\Models\User;
 use Database\Seeders\DomainDataSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\SpkSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,10 +47,10 @@ class SmokeSemuaHalamanTest extends TestCase
         $this->actingAs($user)->get(route('pemilik.kamar', $properti->id))->assertOk();
         $this->actingAs($user)->get(route('pemilik.pengeluaran'))->assertOk();
         $r = $this->actingAs($user)->get(route('chat.index'));
-        fwrite(STDERR, "chat.index=".$r->getStatusCode().PHP_EOL);
+        fwrite(STDERR, 'chat.index='.$r->getStatusCode().PHP_EOL);
         $r->assertOk();
         $r = $this->actingAs($user)->get(route('chat.room', $properti->id));
-        fwrite(STDERR, "chat.room=".$r->getStatusCode().PHP_EOL);
+        fwrite(STDERR, 'chat.room='.$r->getStatusCode().PHP_EOL);
         $this->assertTrue(in_array($r->getStatusCode(), [200, 302]), 'chat.room harus render atau arahkan ke daftar chat');
         $this->actingAs($user)->get(route('pengaturan'))->assertOk();
         $this->actingAs($user)->get(route('bantuan.riwayat'))->assertOk();
@@ -97,5 +98,27 @@ class SmokeSemuaHalamanTest extends TestCase
         $this->actingAs($user)->get(route('pemilik.properti'))->assertOk();
         $this->actingAs($user)->get(route('bantuan.masuk'))->assertOk();
         $this->actingAs($user)->get(route('pengaturan'))->assertOk();
+    }
+
+    public function test_halaman_modul_ai_dan_spk(): void
+    {
+        $this->seed(SpkSeeder::class);
+
+        $superAdmin = User::where('email', 'superadmin.ngekos@gmail.com')->firstOrFail();
+        $admin = User::where('email', 'admin.ngekos@gmail.com')->firstOrFail();
+        $anakKos = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+
+        // Halaman publik prakiraan SPK.
+        $this->get(route('spk.rekomendasi'))->assertOk();
+
+        // Halaman admin model AI & data latih.
+        $this->actingAs($superAdmin)->get(route('admin.model-ai'))->assertOk();
+        $this->actingAs($superAdmin)->get(route('admin.data-latih'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.model-ai'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.data-latih'))->assertOk();
+
+        // Anak kos tidak boleh mengakses halaman admin AI.
+        $this->actingAs($anakKos)->get(route('admin.model-ai'))->assertForbidden();
+        $this->actingAs($anakKos)->get(route('admin.data-latih'))->assertForbidden();
     }
 }

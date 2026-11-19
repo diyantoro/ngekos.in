@@ -29,8 +29,8 @@ return new class extends Migration
             $table->string('no_wa', 25);
             $table->enum('status', BarangStatus::values())->default(BarangStatus::Tersedia->value)->index();
             $table->unsignedInteger('dilihat')->default(0);
-            $table->timestamp('tayang_sampai')->nullable()->after('dilihat');
-            $table->unsignedTinyInteger('tayang_hari')->default(7)->after('tayang_sampai');
+            $table->timestamp('tayang_sampai')->nullable();
+            $table->unsignedTinyInteger('tayang_hari')->default(7);
             $table->timestamps();
 
             $table->index(['status', 'kota']);

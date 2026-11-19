@@ -41,6 +41,7 @@
 - [Tech Stack](#%EF%B8%8F-tech-stack)
 - [Alur Data](#-alur-data)
 - [Instalasi](#-instalasi--menjalankan-secara-lokal)
+- [Menjalankan Full Stack dengan Docker](#-menjalankan-full-stack-dengan-docker)
 - [Progress Pengembangan](#-progress-pengembangan)
 - [Kontributor](#-kontributor)
 
@@ -207,14 +208,81 @@ npm run build   # saat development: npm run dev
 
 # 8️⃣ Jalankan server lokal
 php artisan serve
+
+# 9️⃣ (Opsional) Aktifkan layanan Model AI / JST
+#    Opsi A — Docker (paling praktis, satu perintah):
+cd ml-service
+docker compose up -d --build
+#    Opsi B — tanpa Docker:
+#    .\run-lokal.bat    (Windows; PowerShell: powershell -ExecutionPolicy Bypass -File .\run-lokal.ps1)
+#    ./run-lokal.sh     (Linux/macOS)
+# Layanan berjalan di http://127.0.0.1:8001 (port 8000 dipakai Laravel).
 ```
 
 Aplikasi berjalan di **http://127.0.0.1:8000** 🎉
+
+> 🤖 **Layanan AI bersifat opsional.** Tanpa Docker dan tanpa Python, aplikasi
+> tetap berjalan penuh memakai estimator harga terkalibrasi internal. Untuk
+> inferensi JST/MLP asli dan pelatihan ulang model, jalankan `ml-service`
+> dengan Docker Compose atau skrip lokal (lihat [`ml-service/README.md`](ml-service/README.md)).
 
 > 🗺️ **Peta langsung jalan tanpa setup tambahan** (Leaflet + OpenStreetMap, gratis).
 > Isi `GOOGLE_MAPS_API_KEY=` di `.env` hanya jika ingin memakai Google Maps (key browser, batasi via HTTP referrer).
 
 </details>
+
+<br />
+
+## 🐳 Menjalankan Full Stack dengan Docker
+
+Satu perintah untuk menjalankan **Laravel + Nginx + MySQL + Queue Worker +
+Scheduler + ML Service** tanpa memasang PHP/MySQL/Node/Python di komputer.
+
+**Prasyarat:** Docker Desktop (Windows/macOS) atau Docker Engine + Compose (Linux).
+
+```bash
+# Dari root project
+docker compose up -d --build
+```
+
+Akses aplikasi di **http://localhost:8081** (ML service: `http://localhost:8001`). Port 8081 dipilih karena 8080 sering dipakai proyek lain; ubah lewat `DOCKER_APP_PORT` bila perlu.
+
+Perintah penting:
+
+```bash
+docker compose ps                  # status semua container
+docker compose logs -f app         # log Laravel / entrypoint
+docker compose logs -f nginx       # log web server
+docker compose exec app php artisan migrate:status
+docker compose down                # hentikan (data tetap tersimpan)
+docker compose down -v             # hentikan + hapus database/volume
+```
+
+Konfigurasi default container:
+
+| Variabel | Default | Keterangan |
+| --- | --- | --- |
+| `DOCKER_APP_PORT` | `8081` | Port aplikasi di host |
+| `DOCKER_DB_HOST_PORT` | `3307` | Port MySQL di host (internal tetap 3306) |
+| `DOCKER_ML_HOST_PORT` | `8001` | Port ML service di host |
+| `DOCKER_DB_DATABASE` | `ngekos` | Nama database |
+| `DOCKER_DB_USERNAME` | `ngekos` | User database |
+| `DOCKER_DB_PASSWORD` | `ngekos_secret` | Password database |
+| `DOCKER_RUN_SEEDERS` | `true` | Isi data demo saat database masih kosong |
+
+Nilai di atas bisa diubah lewat file `.env.docker`:
+
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up -d --build
+```
+
+**Ganti `DOCKER_APP_KEY` dan password database untuk produksi.**
+
+> ℹ️ Container `app` otomatis menunggu MySQL siap, menjalankan migrasi, dan
+> mengisi seeder demo hanya saat tabel `users` masih kosong. Foto unggahan
+> disimpan di volume `laravel-storage`, sedangkan data MySQL di volume
+> `mysql-data`, sehingga aman saat container dibuat ulang.
 
 <br />
 
@@ -230,6 +298,11 @@ Aplikasi berjalan di **http://127.0.0.1:8000** 🎉
 - [x] Notifikasi otomatis (push/FCM + pengingat tagihan)
 - [x] Dashboard per role + laporan & rekap
 - [x] Ulasan, favorit, langganan PRO, chatbot, REST API mobile
+- [x] Modul Prediksi Harga Wajar (JST/MLP) & Pemeringkatan Kos (SPK TOPSIS)
+  - Layanan model FastAPI di folder [`ml-service/`](ml-service/README.md)
+  - Saran harga wajar + label kewajaran pasar pada form kamar pemilik
+  - Halaman publik **Rekomendasi SPK** (`/rekomendasi-spk`)
+  - Dasbor admin **Model AI** (`/admin/model-ai`) & **Data Latih** (`/admin/data-latih`)
 - [ ] Aplikasi mobile (Flutter) — API sudah tersedia
 
 <br />

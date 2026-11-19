@@ -67,6 +67,8 @@ new #[Layout('layouts.app')] class extends Component
 
     public array $galeriEdit = [];
 
+    public ?array $estimasiHargaWajar = null;
+
     public ?string $pesan = null;
 
     public ?string $galat = null;
@@ -109,7 +111,7 @@ new #[Layout('layouts.app')] class extends Component
         $cek = SubscriptionService::checkLimit($owner, 'room');
 
         return [
-            'kamars' => Kamar::with('fotos')->where('properti_id', $this->properti->id)->orderBy('nama')->get(),
+            'kamars' => Kamar::with(['fotos', 'prediksiHargaTerbaru'])->where('properti_id', $this->properti->id)->orderBy('nama')->get(),
             'kamarEdit' => $this->mode === 'ubah' && $this->kamarId ? Kamar::with('fotos')->find($this->kamarId) : null,
             'bolehTambahKamar' => $cek['allowed'],
             'kunciKamar' => $cek['allowed']
@@ -151,6 +153,7 @@ new #[Layout('layouts.app')] class extends Component
 
             $kamar->update($data);
             $this->sinkronGaleri($kamar->refresh());
+            $this->rekamPrediksiHarga($kamar);
             $this->pesan = "Kamar {$kamar->nama} berhasil diperbarui.";
         } else {
             $owner = $this->properti->pemilik ?? auth()->user();
@@ -165,10 +168,81 @@ new #[Layout('layouts.app')] class extends Component
             $data['properti_id'] = $this->properti->id;
             $kamar = Kamar::create($data);
             $this->sinkronGaleri($kamar);
+            $this->rekamPrediksiHarga($kamar);
             $this->pesan = "Kamar {$data['nama']} berhasil ditambahkan.";
         }
 
         $this->resetForm();
+    }
+
+    public function hitungSaranHarga(): void
+    {
+        $titik = \App\Models\TitikAcuan::first();
+        $jarakKm = 1.0;
+        if ($titik && $this->properti->latitude && $this->properti->longitude) {
+            $jarakKm = \App\Services\SpkTopsisService::haversine(
+                (float) $this->properti->latitude, (float) $this->properti->longitude,
+                (float) $titik->latitude, (float) $titik->longitude
+            );
+        }
+
+        $dummyKamar = new Kamar(['ukuran' => $this->ukuran]);
+        $luasM2 = $dummyKamar->hitungLuasM2();
+
+        $fasilitas = collect($this->fasilitasKamarTerpilih)
+            ->merge(explode(',', (string) $this->properti->fasilitas))
+            ->map(fn ($f) => trim($f))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $mlService = app(\App\Services\MlModelService::class);
+        $this->estimasiHargaWajar = $mlService->predictSingle([
+            'kamar_id' => $this->kamarId,
+            'luas_m2' => $luasM2,
+            'jarak_km' => $jarakKm,
+            'kawasan' => $this->properti->kota ?? 'Coblong',
+            'tipe_penghuni' => $this->properti->tipe_hunian?->value ?? 'Campur',
+            'fasilitas' => $fasilitas,
+            'harga_aktual' => filled($this->harga) ? (float) $this->harga : null,
+        ], simpanKeDatabase: false);
+    }
+
+    public function terapkanSaranHarga(): void
+    {
+        if (! empty($this->estimasiHargaWajar['harga_prediksi'])) {
+            $this->harga = (string) $this->estimasiHargaWajar['harga_prediksi'];
+            if (filled($this->harga)) {
+                $this->hitungSaranHarga();
+            }
+        }
+    }
+
+    private function rekamPrediksiHarga(Kamar $kamar): void
+    {
+        try {
+            $titik = \App\Models\TitikAcuan::first();
+            $jarakKm = 1.0;
+            if ($titik && $this->properti->latitude && $this->properti->longitude) {
+                $jarakKm = \App\Services\SpkTopsisService::haversine(
+                    (float) $this->properti->latitude, (float) $this->properti->longitude,
+                    (float) $titik->latitude, (float) $titik->longitude
+                );
+            }
+
+            app(\App\Services\MlModelService::class)->predictSingle([
+                'kamar_id' => $kamar->id,
+                'luas_m2' => $kamar->hitungLuasM2(),
+                'jarak_km' => $jarakKm,
+                'kawasan' => $this->properti->kota ?? 'Coblong',
+                'tipe_penghuni' => $this->properti->tipe_hunian?->value ?? 'Campur',
+                'fasilitas' => $kamar->daftarFasilitas(),
+                'harga_aktual' => (float) $kamar->harga_sewa_bulanan,
+            ], simpanKeDatabase: true);
+        } catch (\Throwable $e) {
+            // Abaikan kesalahan agar proses simpan kamar tetap berjalan lancar (FR-11)
+        }
     }
 
     private function aturanValidasi(): array
@@ -456,6 +530,58 @@ new #[Layout('layouts.app')] class extends Component
                     <x-text-input wire:model="harga" id="harga" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 1000000" />
                     <x-input-error :messages="$errors->get('harga')" class="mt-2" />
                 </div>
+
+                <!-- Bantuan AI Prediksi Harga Wajar (JST MLP) -->
+                <div class="sm:col-span-2 lg:col-span-3 rounded-xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/40 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-white font-bold text-xs shadow-sm">AI</span>
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-900 dark:text-gray-100">Bantuan AI: Prediksi Harga Wajar Kamar (Jaringan Syaraf Tiruan)</h4>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400">Analisis cerdas berdasarkan luas, fasilitas, tipe hunian, dan jarak pasar sekitar.</p>
+                            </div>
+                        </div>
+                        <button type="button" wire:click="hitungSaranHarga" wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50">
+                            <span wire:loading.remove wire:target="hitungSaranHarga">Hitung Saran Harga</span>
+                            <span wire:loading wire:target="hitungSaranHarga">Menganalisis Pasar...</span>
+                        </button>
+                    </div>
+
+                    @if ($estimasiHargaWajar)
+                        <div class="mt-3 pt-3 border-t border-teal-200/60 dark:border-teal-800/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-gray-600 dark:text-gray-300">Estimasi Wajar Pasar:</span>
+                                <span class="font-extrabold text-sm text-gray-900 dark:text-gray-100">Rp{{ number_format($estimasiHargaWajar['harga_prediksi'], 0, ',', '.') }}/bln</span>
+
+                                @php
+                                    $lbl = $estimasiHargaWajar['label_kewajaran'] ?? 'wajar';
+                                    $badgeCls = match($lbl) {
+                                        'di_bawah_pasar' => 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+                                        'di_atas_pasar' => 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800',
+                                        default => 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+                                    };
+                                    $badgeTxt = match($lbl) {
+                                        'di_bawah_pasar' => 'Di Bawah Pasar (Murah)',
+                                        'di_atas_pasar' => 'Di Atas Pasar (Tinggi)',
+                                        default => 'Wajar Pasar',
+                                    };
+                                @endphp
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px] border {{ $badgeCls }}">
+                                    {{ $badgeTxt }}
+                                    @if ($estimasiHargaWajar['selisih_persen'] !== null)
+                                        ({{ $estimasiHargaWajar['selisih_persen'] > 0 ? '+' : '' }}{{ $estimasiHargaWajar['selisih_persen'] }}%)
+                                    @endif
+                                </span>
+                            </div>
+
+                            <button type="button" wire:click="terapkanSaranHarga"
+                                class="inline-flex items-center gap-1 rounded-md bg-white dark:bg-gray-800 border border-teal-300 dark:border-teal-700 px-3 py-1 text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition shadow-xs">
+                                Gunakan Saran Ini
+                            </button>
+                        </div>
+                    @endif
+                </div>
                 <div>
                     <x-input-label for="harga_mingguan" value="Harga per Minggu (Rp) — opsional" />
                     <x-text-input wire:model="harga_mingguan" id="harga_mingguan" class="mt-1 block w-full" type="number" min="0" placeholder="Contoh: 300000" />
@@ -678,6 +804,11 @@ new #[Layout('layouts.app')] class extends Component
                                 <span class="text-sm font-bold text-gray-900 dark:text-gray-100">Rp{{ number_format($kamar->harga_sewa_bulanan, 0, ',', '.') }}<span class="text-[10px] font-medium text-gray-400 dark:text-gray-500">/bulan</span></span>
                                 @if ($kamar->harga_sewa_harian)
                                     <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-gray-700 dark:text-gray-300">Rp{{ number_format($kamar->harga_sewa_harian, 0, ',', '.') }}/hari</span>
+                                @endif
+                                @if ($kamar->prediksiHargaTerbaru)
+                                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border {{ $kamar->prediksiHargaTerbaru->label_badge['class'] }}">
+                                        Est. Pasar: Rp{{ number_format($kamar->prediksiHargaTerbaru->harga_prediksi, 0, ',', '.') }} ({{ $kamar->prediksiHargaTerbaru->label_badge['text'] }})
+                                    </span>
                                 @endif
                             </div>
                         </div>

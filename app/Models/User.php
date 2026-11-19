@@ -467,4 +467,14 @@ class User extends Authenticatable
 
         return strtoupper(mb_substr($this->nama, 0, 2));
     }
+
+    public function profilPreferensi(): HasMany
+    {
+        return $this->hasMany(ProfilPreferensi::class, 'user_id');
+    }
+
+    public function sesiPencarian(): HasMany
+    {
+        return $this->hasMany(SesiPencarian::class, 'user_id');
+    }
 }

@@ -16,6 +16,9 @@ Volt::route('/', 'pages.beranda')->name('home');
 // Katalog kos (publik).
 Volt::route('kos', 'pages.katalog.kos')->name('kos.index');
 
+// Rekomendasi Cerdas SPK TOPSIS + AI JST (publik / pencari kos).
+Volt::route('rekomendasi-spk', 'pages.spk.rekomendasi')->name('spk.rekomendasi');
+
 // Detail kos (publik).
 Volt::route('kos/{properti}', 'pages.katalog.detail')->name('kos.detail');
 
@@ -83,6 +86,14 @@ Volt::route('landing/kelola', 'pages.super-admin.landing')
 Volt::route('pasar-kos/kelola', 'pages.super-admin.pasar-kos')
     ->middleware(['auth', 'verified', 'role:super_admin'])
     ->name('pasar.kelola');
+
+// Modul AI & SPK: Versi Model JST & Manajemen Data Latih (super admin / admin).
+Volt::route('admin/model-ai', 'pages.super-admin.model-ai')
+    ->middleware(['auth', 'verified', 'role:super_admin|admin'])
+    ->name('admin.model-ai');
+Volt::route('admin/data-latih', 'pages.super-admin.data-latih')
+    ->middleware(['auth', 'verified', 'role:super_admin|admin'])
+    ->name('admin.data-latih');
 
 // Toko publik tempat barang-barang yang di-assign ke akun ditampilkan.
 Volt::route('pasar-kos/toko/{user}', 'pages.barang.toko')->name('pasar.toko');

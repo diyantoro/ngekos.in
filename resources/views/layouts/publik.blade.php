@@ -70,6 +70,10 @@
                                class="px-3 py-2 text-sm font-medium rounded-lg transition {{ request()->routeIs('kos.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-gray-800' }}">
                                 Cari Kos
                             </a>
+                            <a href="{{ route('spk.rekomendasi') }}" wire:navigate
+                               class="px-3 py-2 text-sm font-medium rounded-lg transition {{ request()->routeIs('spk.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-gray-800' }}">
+                                Rekomendasi SPK
+                            </a>
                             <a href="{{ route('barang.index') }}" wire:navigate
                                class="px-3 py-2 text-sm font-medium rounded-lg transition {{ request()->routeIs('barang.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-gray-800' }}">
                                 Pasar Kos
@@ -155,6 +159,11 @@
                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ request()->routeIs('kos.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800' }}">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                             Cari Kos
+                        </a>
+                        <a href="{{ route('spk.rekomendasi') }}" wire:navigate @click="open = false"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ request()->routeIs('spk.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800' }}">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                            Rekomendasi SPK
                         </a>
                         <a href="{{ route('barang.index') }}" wire:navigate @click="open = false"
                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition {{ request()->routeIs('barang.*') ? 'text-brand-800 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-200' : 'text-slate-600 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800' }}">

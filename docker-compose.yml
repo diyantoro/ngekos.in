@@ -1,0 +1,173 @@
+name: ngekos
+
+# ---------------------------------------------------------------------------
+# Konfigurasi bersama untuk container PHP (app, queue, scheduler).
+# ---------------------------------------------------------------------------
+x-app-environment: &app-environment
+  APP_NAME: "Ngekos.in"
+  APP_ENV: "${DOCKER_APP_ENV:-local}"
+  APP_DEBUG: "${DOCKER_APP_DEBUG:-true}"
+  APP_KEY: "${DOCKER_APP_KEY:-base64:a+Rj+x0dCNMj04kSk7eGtSvwpsaOUoL10n/teJseTQk=}"
+  APP_URL: "http://localhost:${DOCKER_APP_PORT:-8081}"
+  APP_TIMEZONE: "Asia/Jakarta"
+  LOG_CHANNEL: "stderr"
+  LOG_LEVEL: "${DOCKER_LOG_LEVEL:-debug}"
+
+  DB_CONNECTION: "mysql"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_DATABASE: "${DOCKER_DB_DATABASE:-ngekos}"
+  DB_USERNAME: "${DOCKER_DB_USERNAME:-ngekos}"
+  DB_PASSWORD: "${DOCKER_DB_PASSWORD:-ngekos_secret}"
+
+  CACHE_STORE: "database"
+  SESSION_DRIVER: "database"
+  SESSION_SECURE_COOKIE: "false"
+  SESSION_ENCRYPT: "true"
+  QUEUE_CONNECTION: "database"
+  BROADCAST_CONNECTION: "log"
+  FILESYSTEM_DISK: "local"
+  MAIL_MAILER: "log"
+
+  ML_SERVICE_URL: "http://ml-service:8000"
+  ML_SERVICE_TOKEN: "${DOCKER_ML_SERVICE_TOKEN:-ngekos-secret-api-token}"
+  ML_SERVICE_TIMEOUT: "5.0"
+
+  GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:-}"
+  FCM_SERVER_KEY: "${FCM_SERVER_KEY:-}"
+
+services:
+  # -------------------------------------------------------------------------
+  # Aplikasi Laravel (PHP-FPM)
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ngekos-app:latest
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      RUN_MIGRATIONS: "true"
+      RUN_SEEDERS: "${DOCKER_RUN_SEEDERS:-true}"
+      SYNC_PUBLIC: "true"
+    volumes:
+      - laravel-public:/var/www/html/public
+      - laravel-storage:/var/www/html/storage/app/public
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 180s
+
+  # -------------------------------------------------------------------------
+  # Web server Nginx
+  # -------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_APP_PORT:-8081}:80"
+    volumes:
+      - laravel-public:/var/www/html/public:ro
+      - laravel-storage:/var/www/html/storage/app/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Worker antrean (notifikasi, pengingat tagihan, dsb.)
+  # -------------------------------------------------------------------------
+  queue:
+    image: ngekos-app:latest
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=3"]
+    environment:
+      <<: *app-environment
+      RUN_MIGRATIONS: "false"
+      RUN_SEEDERS: "false"
+      SYNC_PUBLIC: "false"
+    volumes:
+      - laravel-storage:/var/www/html/storage/app/public
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Penjadwal Laravel (pengingat otomatis, pembersihan, dsb.)
+  # -------------------------------------------------------------------------
+  scheduler:
+    image: ngekos-app:latest
+    restart: unless-stopped
+    command: ["php", "artisan", "schedule:work"]
+    environment:
+      <<: *app-environment
+      RUN_MIGRATIONS: "false"
+      RUN_SEEDERS: "false"
+      SYNC_PUBLIC: "false"
+    volumes:
+      - laravel-storage:/var/www/html/storage/app/public
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Database MySQL
+  # -------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_DB_HOST_PORT:-3307}:3306"
+    environment:
+      MYSQL_DATABASE: "${DOCKER_DB_DATABASE:-ngekos}"
+      MYSQL_USER: "${DOCKER_DB_USERNAME:-ngekos}"
+      MYSQL_PASSWORD: "${DOCKER_DB_PASSWORD:-ngekos_secret}"
+      MYSQL_ROOT_PASSWORD: "${DOCKER_DB_ROOT_PASSWORD:-ngekos_root_secret}"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # -------------------------------------------------------------------------
+  # Microservice prediksi harga (FastAPI + JST/MLP)
+  # -------------------------------------------------------------------------
+  ml-service:
+    build:
+      context: ./ml-service
+    image: ngekos-ml-service:latest
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_ML_HOST_PORT:-8001}:8000"
+    environment:
+      ML_SERVICE_TOKEN: "${DOCKER_ML_SERVICE_TOKEN:-ngekos-secret-api-token}"
+      MODEL_VERSION: "${DOCKER_MODEL_VERSION:-v1.0-mlp-baseline}"
+    volumes:
+      - ml-artifacts:/app/artifacts
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mysql-data:
+  laravel-public:
+  laravel-storage:
+  ml-artifacts:

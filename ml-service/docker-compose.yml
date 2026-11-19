@@ -1,0 +1,31 @@
+name: ngekos-ml
+
+services:
+  ml-service:
+    build: .
+    image: ngekos-ml-service:latest
+    container_name: ngekos-ml
+    init: true
+    ports:
+      # Host 8001 -> container 8000 (agar tidak bentrok dengan php artisan serve).
+      - "${ML_HOST_PORT:-8001}:8000"
+    environment:
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-ngekos-secret-api-token}
+      MODEL_VERSION: ${MODEL_VERSION:-v1.0-mlp-baseline}
+    volumes:
+      # Artefak hasil pelatihan tetap tersimpan saat container dibuat ulang.
+      - artifacts:/app/artifacts
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  artifacts:

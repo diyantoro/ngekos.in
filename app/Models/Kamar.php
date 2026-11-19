@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\KamarStatus;
+use App\Support\FacilityHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Kamar extends Model
@@ -26,7 +29,7 @@ class Kamar extends Model
             'harga_asli' => 'decimal:2',
             'deposit' => 'decimal:2',
             'termasuk_listrik' => 'boolean',
-            'status' => \App\Enums\KamarStatus::class,
+            'status' => KamarStatus::class,
         ];
     }
 
@@ -37,8 +40,8 @@ class Kamar extends Model
             return [];
         }
 
-        return \App\Support\FacilityHelper::normalizeList(
-            \App\Support\FacilityHelper::fromString((string) $this->fasilitas)
+        return FacilityHelper::normalizeList(
+            FacilityHelper::fromString((string) $this->fasilitas)
         );
     }
 
@@ -119,5 +122,51 @@ class Kamar extends Model
         }
 
         return $daftar;
+    }
+
+    public function prediksiHarga(): HasMany
+    {
+        return $this->hasMany(PrediksiHarga::class, 'kamar_id');
+    }
+
+    public function prediksiHargaTerbaru(): HasOne
+    {
+        return $this->hasOne(PrediksiHarga::class, 'kamar_id')->latestOfMany();
+    }
+
+    public function dataLatih(): HasMany
+    {
+        return $this->hasMany(DataLatih::class, 'kamar_id');
+    }
+
+    public function hasilPeringkat(): HasMany
+    {
+        return $this->hasMany(HasilPeringkat::class, 'kamar_id');
+    }
+
+    /**
+     * Hitung luas kamar dalam m2 dari kolom 'ukuran' (mis. '3x4', '3 x 3.5 m', dll).
+     * Jika tidak dapat diparsing, default ke 12 m2 (ukuran kos standar 3x4).
+     */
+    public function hitungLuasM2(): float
+    {
+        $teks = strtolower(trim((string) $this->ukuran));
+        if (preg_match('/(\d+(?:[.,]\d+)?)\s*[xX*×]\s*(\d+(?:[.,]\d+)?)/', $teks, $matches)) {
+            $p = (float) str_replace(',', '.', $matches[1]);
+            $l = (float) str_replace(',', '.', $matches[2]);
+            $hasil = $p * $l;
+            if ($hasil > 0 && $hasil < 100) {
+                return round($hasil, 2);
+            }
+        }
+
+        if (preg_match('/(\d+(?:[.,]\d+)?)/', $teks, $matches)) {
+            $angka = (float) str_replace(',', '.', $matches[1]);
+            if ($angka >= 4 && $angka <= 60) {
+                return round($angka, 2);
+            }
+        }
+
+        return 12.0;
     }
 }
