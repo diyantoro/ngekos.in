@@ -38,11 +38,15 @@ new #[Layout('layouts.publik')] class extends Component
     public string $presetAktif = 'seimbang';
     public int $batasTampil = 10;
 
+    // Input kampus: pengguna mengetik sendiri, lalu memilih dari saran.
+    public string $cariKampus = '';
+
     public function mount(): void
     {
         $titikPertama = TitikAcuan::first();
         if ($titikPertama) {
             $this->titikAcuanId = $titikPertama->id;
+            $this->cariKampus = $titikPertama->nama;
         }
 
         // Jika user login punya profil, muat profil pertama
@@ -51,6 +55,11 @@ new #[Layout('layouts.publik')] class extends Component
             if ($profil) {
                 $this->pilihProfil($profil->id);
             }
+        }
+
+        // Tampilkan rekomendasi awal agar halaman tidak terlihat kosong.
+        if ($this->titikAcuanId) {
+            $this->cariDanPeringkatkan(gulir: false);
         }
     }
 
@@ -68,10 +77,74 @@ new #[Layout('layouts.publik')] class extends Component
         ];
     }
 
-    public function cariDanPeringkatkan(): void
+    /**
+     * Saran kampus yang cocok dengan ketikan pengguna.
+     */
+    public function getSaranKampusProperty()
     {
+        $kata = trim($this->cariKampus);
+
+        return TitikAcuan::query()
+            ->when($kata !== '', fn ($q) => $q->where('nama', 'like', '%'.$kata.'%'))
+            ->orderBy('nama')
+            ->limit(8)
+            ->get();
+    }
+
+    public function pilihKampus(int $id): void
+    {
+        $titik = TitikAcuan::find($id);
+        if (! $titik) {
+            return;
+        }
+
+        $this->titikAcuanId = $titik->id;
+        $this->cariKampus = $titik->nama;
+        $this->resetErrorBag('cariKampus');
+    }
+
+    /**
+     * Cocokkan teks kampus dengan titik acuan agar tidak salah ketik.
+     */
+    private function selesaikanTitikAcuan(): bool
+    {
+        $kata = trim($this->cariKampus);
+
+        if ($this->titikAcuanId) {
+            $terpilih = TitikAcuan::find($this->titikAcuanId);
+
+            if ($terpilih && ($kata === '' || strcasecmp($kata, $terpilih->nama) === 0)) {
+                return true;
+            }
+        }
+
+        $cocok = TitikAcuan::where('nama', $kata)->first()
+            ?? TitikAcuan::where('nama', 'like', '%'.$kata.'%')->orderBy('nama')->first();
+
+        if (! $cocok) {
+            return false;
+        }
+
+        $this->titikAcuanId = $cocok->id;
+        $this->cariKampus = $cocok->nama;
+
+        return true;
+    }
+
+    public function cariDanPeringkatkan(bool $gulir = true): void
+    {
+        if (! $this->selesaikanTitikAcuan()) {
+            $this->addError('cariKampus', 'Kampus tidak ditemukan. Ketik nama kampus lalu pilih dari daftar saran.');
+            $this->hasilPeringkat = null;
+            $this->sensitivitas = null;
+            $this->totalKamarDitemukan = null;
+
+            return;
+        }
+
+        $this->resetErrorBag('cariKampus');
+
         $this->validate([
-            'titikAcuanId' => 'required|exists:titik_acuan,id',
             'budgetMaks' => 'nullable|numeric|min:0',
         ]);
 
@@ -125,6 +198,11 @@ new #[Layout('layouts.publik')] class extends Component
         if ($kamars->isEmpty()) {
             $this->hasilPeringkat = [];
             $this->sensitivitas = [];
+
+            if ($gulir) {
+                $this->dispatch('spk-hasil-siap');
+            }
+
             return;
         }
 
@@ -144,36 +222,42 @@ new #[Layout('layouts.publik')] class extends Component
         $this->hasilPeringkat = $topsisRes['hasil'];
         $this->sensitivitas = $topsisRes['sensitivitas'];
 
-        // Rekam sesi pencarian (FR-10)
-        $sesi = SesiPencarian::create([
-            'user_id' => auth()->id(),
-            'profil_id' => $this->profilTerpilihId,
-            'filter' => [
-                'titik_acuan_id' => $this->titikAcuanId,
-                'titik_nama' => $titik->nama,
-                'budget_maks' => $this->budgetMaks,
-                'tipe_hunian' => $this->tipeHunian,
-                'bobot' => $topsisRes['bobot'],
-            ],
-            'dibuat_pada' => now(),
-        ]);
-
-        // Simpan top 30 hasil peringkat
-        foreach (array_slice($this->hasilPeringkat, 0, 30) as $row) {
-            HasilPeringkat::create([
-                'sesi_id' => $sesi->id,
-                'kamar_id' => $row['kamar_id'],
-                'skor_preferensi' => $row['skor'],
-                'peringkat' => $row['peringkat'],
-                'detail_skor' => $row['detail_skor'],
+        // Rekam sesi pencarian (FR-10) hanya saat pengguna menekan tombol cari.
+        if ($gulir) {
+            $sesi = SesiPencarian::create([
+                'user_id' => auth()->id(),
+                'profil_id' => $this->profilTerpilihId,
+                'filter' => [
+                    'titik_acuan_id' => $this->titikAcuanId,
+                    'titik_nama' => $titik->nama,
+                    'budget_maks' => $this->budgetMaks,
+                    'tipe_hunian' => $this->tipeHunian,
+                    'bobot' => $topsisRes['bobot'],
+                ],
+                'dibuat_pada' => now(),
             ]);
+
+            // Simpan top 30 hasil peringkat
+            foreach (array_slice($this->hasilPeringkat, 0, 30) as $row) {
+                HasilPeringkat::create([
+                    'sesi_id' => $sesi->id,
+                    'kamar_id' => $row['kamar_id'],
+                    'skor_preferensi' => $row['skor'],
+                    'peringkat' => $row['peringkat'],
+                    'detail_skor' => $row['detail_skor'],
+                ]);
+            }
+        }
+
+        if ($gulir) {
+            $this->dispatch('spk-hasil-siap');
         }
     }
 
     /**
      * Terapkan preset prioritas agar pengguna tidak perlu mengatur 5 slider.
      */
-    public function terapkanPreset(string $preset): void
+    public function terapkanPreset(string $preset, bool $hitungUlang = true): void
     {
         $peta = [
             'hemat' => ['C1' => 40, 'C2' => 15, 'C3' => 30, 'C4' => 10, 'C5' => 5],
@@ -193,6 +277,11 @@ new #[Layout('layouts.publik')] class extends Component
 
         // Set terakhir agar tidak tertimpa hook updated().
         $this->presetAktif = $preset;
+
+        // Jika hasil sudah tampil, perbarui langsung agar terasa responsif.
+        if ($hitungUlang && $this->hasilPeringkat !== null) {
+            $this->cariDanPeringkatkan(gulir: false);
+        }
     }
 
     /**
@@ -202,6 +291,16 @@ new #[Layout('layouts.publik')] class extends Component
     {
         if (in_array($name, ['bobotC1', 'bobotC2', 'bobotC3', 'bobotC4', 'bobotC5'], true)) {
             $this->presetAktif = 'custom';
+        }
+
+        if ($name === 'cariKampus') {
+            $kata = trim($this->cariKampus);
+            $cocok = $kata === '' ? null : TitikAcuan::where('nama', $kata)->first();
+
+            if ($cocok) {
+                $this->titikAcuanId = $cocok->id;
+                $this->resetErrorBag('cariKampus');
+            }
         }
     }
 
@@ -215,22 +314,30 @@ new #[Layout('layouts.publik')] class extends Component
         $this->budgetMaks = null;
         $this->tipeHunian = '';
         $this->fasilitasWajib = [];
-        $this->hasilPeringkat = null;
-        $this->sensitivitas = null;
-        $this->totalKamarDitemukan = null;
-        $this->pesan = null;
         $this->batasTampil = 10;
-        $this->terapkanPreset('seimbang');
+        $this->pesan = null;
+        $this->terapkanPreset('seimbang', false);
+        $this->resetErrorBag('cariKampus');
 
         if ($titik = TitikAcuan::first()) {
             $this->titikAcuanId = $titik->id;
+            $this->cariKampus = $titik->nama;
         }
+
+        // Langsung tampilkan hasil lagi agar pengguna tidak melihat halaman kosong.
+        $this->cariDanPeringkatkan(gulir: false);
     }
 
     public function simpanProfil(): void
     {
         if (! auth()->check()) {
             $this->pesan = 'Silakan masuk (login) terlebih dahulu untuk menyimpan profil preferensi.';
+            return;
+        }
+
+        if (! $this->selesaikanTitikAcuan()) {
+            $this->addError('cariKampus', 'Kampus tidak ditemukan. Ketik nama kampus lalu pilih dari daftar saran.');
+
             return;
         }
 
@@ -284,6 +391,10 @@ new #[Layout('layouts.publik')] class extends Component
         $this->titikAcuanId = $profil->titik_acuan_id;
         $this->budgetMaks = $profil->budget_maks ? (float) $profil->budget_maks : null;
 
+        if ($titikProfil = TitikAcuan::find($profil->titik_acuan_id)) {
+            $this->cariKampus = $titikProfil->nama;
+        }
+
         foreach ($profil->bobots as $b) {
             $kode = $b->kriteria?->kode;
             $val = (float) $b->bobot * 100;
@@ -307,7 +418,8 @@ new #[Layout('layouts.publik')] class extends Component
 };
 ?>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+    x-on:spk-hasil-siap.window="$nextTick(() => document.getElementById('hasil-spk')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
     <!-- Header -->
     <div class="bg-gradient-to-r from-teal-700 via-teal-800 to-teal-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div class="relative z-10 max-w-3xl">
@@ -448,20 +560,63 @@ new #[Layout('layouts.publik')] class extends Component
                 <!-- Titik Acuan (Kampus) -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">Kampus / lokasi acuan</label>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">Jarak setiap kos dihitung dari titik ini.</p>
-                    <select wire:model="titikAcuanId" class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm shadow-xs focus:ring-teal-500 focus:border-teal-500">
-                        @foreach ($daftarTitik as $t)
-                            <option value="{{ $t->id }}">{{ $t->nama }}</option>
-                        @endforeach
-                    </select>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
+                        Ketik nama kampus, lalu pilih dari saran agar tidak salah ketik. Jarak setiap kos dihitung dari titik ini.
+                    </p>
+
+                    <div class="relative mt-1" x-data="{ buka: false }">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                        </span>
+                        <input type="text"
+                            wire:model.live.debounce.300ms="cariKampus"
+                            wire:keydown.enter="cariDanPeringkatkan"
+                            x-on:focus="buka = true"
+                            x-on:input="buka = true"
+                            x-on:click.outside="buka = false"
+                            autocomplete="off"
+                            placeholder="Ketik kampus, misal: UGM, ITB, UI..."
+                            class="block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm shadow-xs pl-9 focus:ring-teal-500 focus:border-teal-500" />
+
+                        @if ($this->saranKampus->isNotEmpty())
+                            <div x-show="buka" x-cloak
+                                class="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-xl">
+                                @foreach ($this->saranKampus as $s)
+                                    <button type="button" wire:click="pilihKampus({{ $s->id }})" x-on:click="buka = false"
+                                        class="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-teal-50 dark:hover:bg-teal-500/10 transition">
+                                        <span class="mt-0.5 text-teal-600 dark:text-teal-400">&#128205;</span>
+                                        <span class="font-medium text-gray-700 dark:text-gray-200">{{ $s->nama }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @elseif (trim($cariKampus) !== '')
+                            <div x-show="buka" x-cloak
+                                class="absolute z-30 mt-1 w-full rounded-xl border border-amber-200 dark:border-amber-700 bg-white dark:bg-gray-800 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300 shadow-xl">
+                                Kampus "{{ $cariKampus }}" tidak ditemukan. Coba kata lain, misal nama kota atau singkatan kampus.
+                            </div>
+                        @endif
+                    </div>
+
+                    @error('cariKampus')
+                        <p class="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                    @enderror
+
+                    @php $titikTerpilih = $daftarTitik->firstWhere('id', $titikAcuanId); @endphp
+                    @if ($titikTerpilih)
+                        <p class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            Terpilih: {{ $titikTerpilih->nama }}
+                        </p>
+                    @endif
                 </div>
 
                 <!-- Budget Maksimal & Tipe Hunian -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">Batas Budget / Bulan (Rp)</label>
-                        <input type="number" wire:model="budgetMaks" placeholder="Misal: 1500000"
+                        <input type="number" wire:model="budgetMaks" placeholder="Misal: 1500000" min="0" step="50000" inputmode="numeric"
                             class="mt-1 block w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm shadow-xs focus:ring-teal-500 focus:border-teal-500" />
+                        <p class="mt-1 text-[10px] text-gray-400">Tulis angka tanpa titik, misal 1500000. Kosongkan jika tanpa batas.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">Tipe Penghuni</label>
@@ -520,7 +675,7 @@ new #[Layout('layouts.publik')] class extends Component
                             Atur bobot sendiri (opsional)
                         </summary>
                         <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                            Geser untuk menyesuaikan. Persentase dihitung otomatis.
+                            Geser untuk menyesuaikan, lalu tekan <strong>Cari Kos Terbaik</strong> agar hasil diperbarui.
                         </p>
 
                         @php $persen = $this->bobotPersen; @endphp
@@ -571,7 +726,10 @@ new #[Layout('layouts.publik')] class extends Component
 
                 <!-- Tombol Aksi Hitung -->
                 <div class="pt-2">
-                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800 dark:text-teal-300 mb-2">Langkah 3 — Lihat Rekomendasi</h3>
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800 dark:text-teal-300 mb-1">Langkah 3 — Lihat Rekomendasi</h3>
+                    <p class="mb-2 text-[11px] text-gray-500 dark:text-gray-400">
+                        Mengubah budget, tipe, atau fasilitas? Tekan tombol ini untuk memperbarui hasil.
+                    </p>
                     <button wire:click="cariDanPeringkatkan" wire:loading.attr="disabled"
                         class="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50 flex items-center justify-center gap-2">
                         <span wire:loading.remove wire:target="cariDanPeringkatkan">Cari Kos Terbaik</span>
@@ -594,7 +752,21 @@ new #[Layout('layouts.publik')] class extends Component
         </div>
 
         <!-- Kolom Kanan: Hasil Peringkat & Visualisasi -->
-        <div class="lg:col-span-7 space-y-6">
+        <div id="hasil-spk" class="lg:col-span-7 space-y-6 scroll-mt-24">
+            <!-- Indikator proses -->
+            <div wire:loading wire:target="cariDanPeringkatkan"
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-teal-200 dark:ring-teal-700 p-10 text-center space-y-3">
+                <div class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-900/30">
+                    <svg class="h-6 w-6 animate-spin text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Sedang mencari kos terbaik...</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Menghitung harga wajar dengan AI dan memeringkatkan dengan TOPSIS.</p>
+            </div>
+
+            <div wire:loading.remove wire:target="cariDanPeringkatkan">
             @if ($hasilPeringkat === null)
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-12 text-center space-y-3">
                     <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
@@ -604,13 +776,24 @@ new #[Layout('layouts.publik')] class extends Component
                     </div>
                     <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Belum ada rekomendasi</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                        Isi <strong>Langkah 1</strong> (lokasi &amp; budget), pilih <strong>Langkah 2</strong> (prioritas),
+                        Ketik nama kampus di <strong>Langkah 1</strong>, atur prioritas di <strong>Langkah 2</strong>,
                         lalu tekan tombol <strong>Cari Kos Terbaik</strong>. Hasil akan muncul di sini.
                     </p>
                 </div>
             @elseif (empty($hasilPeringkat))
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-12 text-center">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Tidak ada kamar yang memenuhi filter pencarian Anda. Silakan longgarkan batas budget atau fasilitas wajib.</p>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-10 text-center space-y-3">
+                    <div class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">Belum ada kos yang cocok</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                        Dari {{ $totalKamarDitemukan ?? 0 }} kamar yang diperiksa, tidak ada yang lolos filter Anda.
+                        Coba naikkan budget, kurangi fasilitas wajib, atau ganti tipe hunian.
+                    </p>
+                    <button wire:click="resetFilter"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700 transition">
+                        Reset filter &amp; tampilkan semua
+                    </button>
                 </div>
             @else
                 <!-- Tingkat keyakinan rekomendasi -->
@@ -644,7 +827,8 @@ new #[Layout('layouts.publik')] class extends Component
                     <div>
                         <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">Rekomendasi untuk Anda</h3>
                         <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                            Menampilkan {{ count($ditampilkan) }} dari {{ $totalHasil }} kamar yang cocok.
+                            Menampilkan {{ count($ditampilkan) }} dari {{ $totalHasil }} kamar yang cocok
+                            &middot; Prioritas: {{ $presetAktif === 'custom' ? 'atur sendiri' : ucfirst($presetAktif) }}
                         </p>
                     </div>
                 </div>
@@ -767,6 +951,7 @@ new #[Layout('layouts.publik')] class extends Component
                     @endif
                 </div>
             @endif
+            </div>
         </div>
     </div>
 

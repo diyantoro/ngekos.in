@@ -48,12 +48,14 @@ Peringkat + % kecocokan + alasan + uji sensitivitas
 **Langkah:**
 
 1. Buka menu **Rekomendasi SPK** (`/rekomendasi-spk`). Bisa diakses tanpa login.
-2. **Langkah 1 — Lokasi & Budget:** pilih kampus/titik acuan, budget maksimal,
-   tipe hunian (putra/putri/campur), dan fasilitas wajib.
+2. **Langkah 1 — Lokasi & Budget:** ketik nama kampus/titik acuan (saran otomatis
+   muncul agar tidak salah ketik), lalu atur budget maksimal, tipe hunian
+   (putra/putri/campur), dan fasilitas wajib.
 3. **Langkah 2 — Prioritas:** pilih preset **Hemat / Seimbang / Lengkap**, atau buka
-   "Atur bobot sendiri" untuk mengatur 5 kriteria secara detail.
-4. **Langkah 3 — Cari Kos Terbaik:** sistem mengambil kamar yang lolos filter,
-   meminta prediksi harga wajar ke layanan AI, lalu memeringkatkan dengan TOPSIS.
+   "Atur bobot sendiri" untuk mengatur 5 kriteria secara detail. Hasil langsung
+   diperbarui saat preset diubah.
+4. **Langkah 3 — Cari Kos Terbaik:** rekomendasi awal sudah tampil saat halaman dibuka.
+   Tekan tombol ini setelah mengubah budget, tipe, atau fasilitas untuk memperbarui hasil.
 5. **Membaca hasil:**
    - persentase kecocokan tiap kos,
    - harga wajar menurut AI beserta label *lebih murah / wajar / lebih mahal dari pasar*,

@@ -163,4 +163,39 @@ class SpkHalamanTest extends TestCase
             ->assertSee('Siapkan Data Latih')
             ->assertSee('Aktifkan Versi');
     }
+
+    public function test_halaman_spk_langsung_menampilkan_hasil_awal(): void
+    {
+        Volt::test('pages.spk.rekomendasi')
+            ->assertSet('hasilPeringkat', fn ($hasil) => is_array($hasil) && count($hasil) > 0)
+            ->assertSee('Rekomendasi untuk Anda');
+    }
+
+    public function test_pencarian_kampus_menolak_teks_yang_tidak_dikenal(): void
+    {
+        Volt::test('pages.spk.rekomendasi')
+            ->set('cariKampus', 'Kampus Entah Di Mana')
+            ->call('cariDanPeringkatkan')
+            ->assertHasErrors(['cariKampus']);
+    }
+
+    public function test_pencarian_kampus_menampilkan_saran_dan_dapat_dipilih(): void
+    {
+        $titik = TitikAcuan::where('nama', 'like', '%UGM%')->firstOrFail();
+
+        Volt::test('pages.spk.rekomendasi')
+            ->set('cariKampus', 'UGM')
+            ->assertSee('Universitas Gadjah Mada')
+            ->call('pilihKampus', $titik->id)
+            ->assertSet('titikAcuanId', $titik->id)
+            ->assertSet('cariKampus', $titik->nama);
+    }
+
+    public function test_preset_langsung_memperbarui_hasil(): void
+    {
+        Volt::test('pages.spk.rekomendasi')
+            ->call('terapkanPreset', 'hemat')
+            ->assertSet('presetAktif', 'hemat')
+            ->assertSet('hasilPeringkat', fn ($hasil) => is_array($hasil) && count($hasil) > 0);
+    }
 }
