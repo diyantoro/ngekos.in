@@ -25,6 +25,9 @@ new #[Layout('layouts.guest')] class extends Component
     <div class="text-center mb-6">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Masuk sebagai</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Pilih peran kamu untuk melanjutkan.</p>
+        <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+            Pastikan akun sesuai peran. Jika sudah masuk dengan akun lain, keluar dulu dari dashboard.
+        </p>
     </div>
 
     <div class="space-y-3">

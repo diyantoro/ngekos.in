@@ -42,6 +42,7 @@
 - [Alur Data](#-alur-data)
 - [Instalasi](#-instalasi--menjalankan-secara-lokal)
 - [Menjalankan Full Stack dengan Docker](#-menjalankan-full-stack-dengan-docker)
+- [Akun Demo](#-akun-demo)
 - [Progress Pengembangan](#-progress-pengembangan)
 - [Kontributor](#-kontributor)
 
@@ -283,6 +284,23 @@ docker compose --env-file .env.docker up -d --build
 > mengisi seeder demo hanya saat tabel `users` masih kosong. Foto unggahan
 > disimpan di volume `laravel-storage`, sedangkan data MySQL di volume
 > `mysql-data`, sehingga aman saat container dibuat ulang.
+
+<br />
+
+## 🔑 Akun Demo
+
+Tersedia setelah `php artisan migrate --seed` atau saat container Docker
+pertama kali dijalankan.
+
+| Peran | Email | Password |
+| --- | --- | --- |
+| Super Admin | `superadmin.ngekos@gmail.com` | `Superadmin.ngekos123` |
+| Admin | `admin.ngekos@gmail.com` | `Admin.ngekos123` |
+| Pemilik Kos | `pemilik1@ngekos.test` s.d. `pemilik4@ngekos.test` | `password` |
+| Anak Kos | `anak1@ngekos.test` s.d. `anak7@ngekos.test` | `password` |
+
+> Login harus lewat peran yang sesuai. Jika sudah masuk dengan akun lain,
+> keluar (logout) dulu sebelum masuk sebagai peran berbeda.
 
 <br />
 

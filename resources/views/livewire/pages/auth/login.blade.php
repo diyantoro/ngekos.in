@@ -39,6 +39,20 @@ new #[Layout('layouts.guest')] class extends Component
     }
 
     /**
+     * Isi cepat akun demo (hanya ditampilkan saat mode lokal).
+     */
+    public function isiDemo(): void
+    {
+        if ($this->peran === 'pemilik') {
+            $this->form->email = 'pemilik1@ngekos.test';
+            $this->form->password = 'password';
+        } else {
+            $this->form->email = 'anak1@ngekos.test';
+            $this->form->password = 'password';
+        }
+    }
+
+    /**
      * Arahkan langsung ke dashboard sesuai role, menghindari redirect
      * antara `/dashboard` -> halaman role yang menambah satu round-trip.
      */
@@ -180,6 +194,14 @@ new #[Layout('layouts.guest')] class extends Component
                 <x-text-input wire:model="form.email" id="email" class="block w-full pl-10" type="email" name="email" required autofocus autocomplete="username" placeholder="nama@email.com" />
             </div>
             <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
+
+            @if ($errors->has('form.email') && str_contains($errors->first('form.email'), 'bukan'))
+                @php $peranLain = $peran === 'pemilik' ? 'anak_kos' : 'pemilik'; @endphp
+                <a href="{{ route('login.form', ['peran' => $peranLain]) }}" wire:navigate
+                   class="mt-2 inline-flex items-center gap-1 text-xs font-semibold {{ $peranLain === 'pemilik' ? 'text-emerald-600 dark:text-emerald-400' : 'text-teal-600 dark:text-teal-400' }} hover:underline">
+                    Masuk sebagai {{ $peranLain === 'pemilik' ? 'Pemilik Kos' : 'Pencari Kos' }} &rarr;
+                </a>
+            @endif
         </div>
 
         <!-- Password -->
@@ -239,4 +261,24 @@ new #[Layout('layouts.guest')] class extends Component
             </a>
         </p>
     </form>
+
+    @if (app()->environment('local'))
+        <div class="mt-6 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 p-4 text-xs text-gray-600 dark:text-gray-300">
+            <div class="flex items-center justify-between gap-2">
+                <p class="font-bold text-gray-700 dark:text-gray-200">Akun demo</p>
+                <button type="button" wire:click="isiDemo"
+                    class="rounded-lg bg-teal-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-teal-700 transition">
+                    Isi otomatis
+                </button>
+            </div>
+            <div class="mt-2 space-y-1">
+                @if ($peran === 'pemilik')
+                    <p>Pemilik Kos: <code class="font-mono">pemilik1@ngekos.test</code> / <code class="font-mono">password</code></p>
+                @else
+                    <p>Pencari Kos: <code class="font-mono">anak1@ngekos.test</code> / <code class="font-mono">password</code></p>
+                @endif
+                <p>Super Admin: <code class="font-mono">superadmin.ngekos@gmail.com</code> / <code class="font-mono">Superadmin.ngekos123</code></p>
+            </div>
+        </div>
+    @endif
 </div>
