@@ -323,6 +323,74 @@ new #[Layout('layouts.publik')] class extends Component
         <div class="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl"></div>
     </div>
 
+    @php
+        $penggunaAktif = auth()->user();
+        $peranPanduan = 'pencari';
+
+        if ($penggunaAktif?->hasRole('pemilik')) {
+            $peranPanduan = 'pemilik';
+        } elseif ($penggunaAktif?->hasRole('super_admin') || $penggunaAktif?->hasRole('admin')) {
+            $peranPanduan = 'pengelola';
+        }
+    @endphp
+
+    <!-- Panduan singkat sesuai peran pengguna -->
+    @if ($penggunaAktif && $peranPanduan === 'pencari')
+        <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Anda masuk sebagai Anak Kos</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Ikuti 3 langkah di bawah: tentukan lokasi &amp; budget, pilih prioritas, lalu lihat rekomendasi.
+                    Karena sudah masuk, Anda juga bisa menyimpan profil preferensi agar tidak perlu mengatur ulang nanti.
+                </p>
+            </div>
+        </div>
+    @elseif ($peranPanduan === 'pemilik')
+        <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75" /></svg>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Anda masuk sebagai Pemilik Kos</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Halaman ini untuk mencari kos. Sebagai pemilik, atur harga kamar Anda lewat menu
+                    <strong>Kelola Kos &rarr; Kamar</strong> dan gunakan tombol <strong>Hitung Saran Harga</strong>
+                    agar harga sewa sesuai pasar. Data kamar Anda juga menjadi bahan peringkat SPK bagi pencari kos.
+                </p>
+            </div>
+            <a href="{{ route('pemilik.properti') }}" wire:navigate
+                class="shrink-0 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition">
+                Kelola Kos Saya
+            </a>
+        </div>
+    @elseif ($peranPanduan === 'pengelola')
+        <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Anda masuk sebagai Pengelola Sistem</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    Halaman ini menampilkan hasil SPK yang dipakai pencari kos. Tugas Anda menjaga kualitasnya:
+                    lengkapi <strong>Data Latih</strong>, latih model di <strong>Model AI</strong>, lalu aktifkan versinya.
+                </p>
+            </div>
+            <div class="flex shrink-0 gap-2">
+                <a href="{{ route('admin.data-latih') }}" wire:navigate
+                    class="inline-flex items-center justify-center rounded-xl border border-teal-200 dark:border-teal-700 px-3 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-500/10 transition">
+                    Data Latih
+                </a>
+                <a href="{{ route('admin.model-ai') }}" wire:navigate
+                    class="inline-flex items-center justify-center rounded-xl bg-teal-600 px-3 py-2 text-xs font-bold text-white hover:bg-teal-700 transition">
+                    Model AI
+                </a>
+            </div>
+        </div>
+    @endif
+
     @if ($pesan)
         <div class="flex items-center justify-between gap-3 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
             <span>{{ $pesan }}</span>

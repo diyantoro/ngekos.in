@@ -108,4 +108,59 @@ class SpkHalamanTest extends TestCase
         $this->assertSame('aktif', $baru->refresh()->status);
         $this->assertSame('arsip', $lama->refresh()->status);
     }
+
+    public function test_panduan_peran_pemilik_tampil_di_halaman_spk(): void
+    {
+        $pemilik = User::where('email', 'pemilik1@ngekos.test')->firstOrFail();
+
+        $this->actingAs($pemilik)
+            ->get(route('spk.rekomendasi'))
+            ->assertOk()
+            ->assertSee('Anda masuk sebagai Pemilik Kos')
+            ->assertSee('Kelola Kos Saya');
+    }
+
+    public function test_panduan_peran_pengelola_tampil_di_halaman_spk(): void
+    {
+        $admin = User::where('email', 'admin.ngekos@gmail.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('spk.rekomendasi'))
+            ->assertOk()
+            ->assertSee('Anda masuk sebagai Pengelola Sistem')
+            ->assertSee('Data Latih');
+    }
+
+    public function test_dashboard_anak_kos_menautkan_ke_spk(): void
+    {
+        $anakKos = User::where('email', 'anak1@ngekos.test')->firstOrFail();
+
+        $this->actingAs($anakKos)
+            ->get(route('dashboard.anak-kos'))
+            ->assertOk()
+            ->assertSee('Cari Kos Terbaik');
+    }
+
+    public function test_halaman_data_latih_menjelaskan_kaitan_dengan_model(): void
+    {
+        $admin = User::where('email', 'admin.ngekos@gmail.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.data-latih'))
+            ->assertOk()
+            ->assertSee('bahan training model')
+            ->assertSee('Lanjut ke Model AI');
+    }
+
+    public function test_halaman_model_ai_menampilkan_alur_kerja(): void
+    {
+        $admin = User::where('email', 'admin.ngekos@gmail.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.model-ai'))
+            ->assertOk()
+            ->assertSee('Alur kerja model AI')
+            ->assertSee('Siapkan Data Latih')
+            ->assertSee('Aktifkan Versi');
+    }
 }

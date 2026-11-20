@@ -327,6 +327,27 @@ new class extends Component
             </div>
         </div>
 
+        <div class="rounded-2xl bg-gradient-to-r from-teal-700 to-teal-900 p-5 sm:p-6 text-white shadow-lg relative overflow-hidden">
+            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="min-w-0 flex-1">
+                    <div class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-teal-100 border border-white/20">
+                        AI + peringkat otomatis
+                    </div>
+                    <p class="mt-2 text-base sm:text-lg font-extrabold">Bingung pilih kos? Biar sistem yang mengurutkan.</p>
+                    <p class="mt-1 text-xs text-teal-100">
+                        Tentukan kampus, budget, dan prioritas Anda. Sistem membandingkan harga, jarak,
+                        fasilitas, dan luas kamar, lalu menampilkan kos paling cocok.
+                    </p>
+                </div>
+                <a href="{{ route('spk.rekomendasi') }}" wire:navigate
+                    class="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-teal-800 hover:bg-teal-50 transition">
+                    Cari Kos Terbaik
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3" /></svg>
+                </a>
+            </div>
+            <div class="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
+        </div>
+
         <div class="rounded-2xl bg-white dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700 p-4">
             <p class="text-sm font-bold text-gray-900 dark:text-gray-100">Area kos terpopuler</p>
             <div class="mt-2.5 flex flex-wrap gap-2">

@@ -38,6 +38,7 @@
 - [Fitur Utama](#-fitur-utama)
 - [Peta & Lokasi](#️-peta--lokasi)
 - [Role Pengguna](#-role-pengguna)
+- [Alur Fitur SPK per Peran](#-alur-fitur-spk-per-peran)
 - [Tech Stack](#%EF%B8%8F-tech-stack)
 - [Alur Data](#-alur-data)
 - [Instalasi](#-instalasi--menjalankan-secara-lokal)
@@ -136,6 +137,23 @@ Seluruh peta memakai **Leaflet + OpenStreetMap** — interaktif (geser, zoom, kl
 | **Anak Kos** | Booking, pantau tagihan, upload bukti bayar |
 
 </div>
+
+<br />
+
+## 🧭 Alur Fitur SPK per Peran
+
+Fitur prediksi harga AI (JST/MLP) dan pemeringkatan kos (SPK TOPSIS) dipakai
+berbeda oleh setiap peran:
+
+| Peran | Perannya di fitur | Mulai dari |
+|:---|:---|:---|
+| **Anak Kos** | Mencari & memeringkat kos | Menu **Rekomendasi SPK** (`/rekomendasi-spk`) |
+| **Pemilik** | Mengisi data kamar + memakai saran harga AI | **Kelola Kos → Kamar → Hitung Saran Harga** |
+| **Admin** | Merawat data latih & model AI | **Data Latih** → **Model AI** → **Jadikan Aktif** |
+| **Super Admin** | Sama seperti admin + mengatur peran pengguna | **Pengguna** & menu pengelolaan lainnya |
+
+Alur lengkap, diagram data, matriks akses, dan penjelasan istilah ada di
+**[docs/alur-fitur-spk.md](docs/alur-fitur-spk.md)**.
 
 <br />
 

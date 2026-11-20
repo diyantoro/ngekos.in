@@ -142,6 +142,22 @@ new #[Layout('layouts.app')] class extends Component
         </button>
     </div>
 
+    <!-- Hubungan data latih dengan model & SPK -->
+    <div class="rounded-2xl border border-teal-200 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/20 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-teal-900 dark:text-teal-200">Data di sini adalah bahan training model</p>
+            <p class="mt-0.5 text-[11px] text-teal-800 dark:text-teal-300">
+                Setelah data cukup (minimal 30 baris non-outlier), latih model di menu <strong>Model AI</strong>
+                lalu aktifkan versinya. Model aktif dipakai untuk memprediksi harga wajar di halaman SPK
+                dan saran harga untuk pemilik kos.
+            </p>
+        </div>
+        <a href="{{ route('admin.model-ai') }}" wire:navigate
+            class="shrink-0 inline-flex items-center justify-center rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700 transition">
+            Lanjut ke Model AI &rarr;
+        </a>
+    </div>
+
     @if ($pesan)
         <div class="p-4 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-sm flex justify-between items-center">
             <span>{{ $pesan }}</span>

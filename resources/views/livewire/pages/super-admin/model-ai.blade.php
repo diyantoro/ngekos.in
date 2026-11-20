@@ -123,6 +123,62 @@ new #[Layout('layouts.app')] class extends Component
         </div>
     </div>
 
+    <!-- Alur kerja pengelolaan model -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-gray-100 dark:ring-gray-700 p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-bold text-gray-900 dark:text-gray-100">Alur kerja model AI</h2>
+            <span class="text-[11px] text-gray-400">Data &rarr; Latih &rarr; Aktifkan &rarr; dipakai SPK</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <a href="{{ route('admin.data-latih') }}" wire:navigate
+                class="group rounded-xl border border-gray-200 dark:border-gray-600 p-4 hover:border-teal-400 hover:bg-teal-50/40 dark:hover:bg-teal-500/5 transition">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-bold text-gray-600 dark:text-gray-300">1</span>
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100">Siapkan Data Latih</span>
+                </div>
+                <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    Kumpulkan data kamar & survei, lalu tandai outlier. Data ini bahan training model.
+                </p>
+                <span class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300 group-hover:underline">
+                    Buka Data Latih &rarr;
+                </span>
+            </a>
+
+            <div class="rounded-xl border-2 border-teal-500 bg-teal-50/60 dark:bg-teal-500/10 p-4">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-[11px] font-bold text-white">2</span>
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100">Latih Model</span>
+                </div>
+                <p class="mt-1.5 text-[11px] text-gray-600 dark:text-gray-300">
+                    Tekan <strong>Latih Ulang Model Sekarang</strong> di bawah. Sistem membuat versi baru beserta metrik evaluasinya.
+                </p>
+                <span class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                    Anda di langkah ini
+                </span>
+            </div>
+
+            <div class="rounded-xl border border-gray-200 dark:border-gray-600 p-4">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-[11px] font-bold text-gray-600 dark:text-gray-300">3</span>
+                    <span class="text-xs font-bold text-gray-900 dark:text-gray-100">Aktifkan Versi</span>
+                </div>
+                <p class="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                    Pilih versi dengan metrik terbaik di tabel Riwayat Versi, lalu klik <strong>Jadikan Aktif</strong>.
+                </p>
+                <span class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                    Model aktif langsung dipakai SPK
+                </span>
+            </div>
+        </div>
+
+        <p class="text-[11px] text-gray-500 dark:text-gray-400">
+            Model aktif dipakai otomatis untuk prediksi harga pada halaman SPK dan saran harga pemilik.
+            Model JST (MLP) baru berjalan penuh setelah tersedia <strong>minimal 30 data latih non-outlier</strong>;
+            di bawah jumlah itu sistem memakai estimator pasar terkalibrasi agar hasil tetap stabil.
+        </p>
+    </div>
+
     @if ($pesan)
         <div class="p-4 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-sm flex justify-between items-center">
             <span>{{ $pesan }}</span>
@@ -162,22 +218,22 @@ new #[Layout('layouts.app')] class extends Component
             </p>
 
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750">
+                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750" title="MAE: rata-rata selisih harga prediksi dengan harga asli. Makin kecil makin baik.">
                     <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Mean Absolute Error (MAE)</div>
                     <div class="text-xl font-extrabold text-gray-900 dark:text-gray-100 mt-1">Rp{{ number_format($modelAktif->mae ?? 0, 0, ',', '.') }}</div>
-                    <div class="text-[10px] text-gray-400 mt-0.5">Selisih nominal rata-rata</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5">Rata-rata selisih harga prediksi vs asli (makin kecil makin baik)</div>
                 </div>
-                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750">
+                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750" title="RMSE: mirip MAE, tetapi lebih menghukum kesalahan prediksi yang besar.">
                     <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Root Mean Sq Error (RMSE)</div>
                     <div class="text-xl font-extrabold text-gray-900 dark:text-gray-100 mt-1">Rp{{ number_format($modelAktif->rmse ?? 0, 0, ',', '.') }}</div>
-                    <div class="text-[10px] text-gray-400 mt-0.5">Penalti deviasi ekstrem</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5">Penalti untuk kesalahan besar (makin kecil makin baik)</div>
                 </div>
-                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750">
+                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750" title="R²: seberapa besar variasi harga yang bisa dijelaskan model. Skala 0-1, makin dekat 1 makin baik.">
                     <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">Koefisien Determinasi (R²)</div>
                     <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{{ number_format($modelAktif->r2 ?? 0, 4) }}</div>
-                    <div class="text-[10px] text-gray-400 mt-0.5">Target R² &gt; 0.85</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5">Kecocokan model (0&ndash;1), target &gt; 0.85</div>
                 </div>
-                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750">
+                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-750" title="MAPE: rata-rata galat dalam persen. Semakin kecil semakin akurat; target PRD maksimal 15%.">
                     <div class="text-xs font-semibold text-gray-500 dark:text-gray-400">MAPE (Persentase Galat)</div>
                     <div class="text-xl font-extrabold text-teal-600 dark:text-teal-400 mt-1">{{ number_format($modelAktif->mape ?? 0, 2) }}%</div>
                     <div class="text-[10px] text-emerald-600 mt-0.5 font-bold">&le; 15% (Target PRD Terpenuhi)</div>
